@@ -208,6 +208,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             disabled: () => state.personal.config.secrets.disabledBackends,
             // The user's own commands replace a company's of the same name.
             commands: () => ({ ...state.company.secretCommands, ...state.personal.config.secrets.commands }),
+            pass: () => state.personal.config.secrets.pass,
             agentDir: () => state.agentDir(),
             redactor,
         }),
@@ -270,7 +271,12 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         policy() {
             if (policy === undefined) {
                 const home = homedir();
-                const entries = defaultProtectedPaths({ agentDir: state.agentDir(), home, env: process.env });
+                const entries = defaultProtectedPaths({
+                    agentDir: state.agentDir(),
+                    home,
+                    env: process.env,
+                    pass: state.personal.config.secrets.pass,
+                });
                 policy = buildPolicy(state.personal, state.company, { entries, home });
             }
             return policy;

@@ -115,7 +115,7 @@ describe("the package", () => {
     };
 
     test("Pi loads the extension and finds the skill", () => {
-        assert.ok(manifest.pi.extensions.includes("./plugins/jig-jira/src/index.ts"));
+        assert.ok(manifest.pi.extensions.includes("./plugins/jig-jira/index.ts"));
         assert.ok(manifest.pi.skills.includes("./plugins/*/skills"));
         assert.ok(fs.existsSync(path.join(root, "plugins", "jig-jira", "src", "index.ts")));
     });

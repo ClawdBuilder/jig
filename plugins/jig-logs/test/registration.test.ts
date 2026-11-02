@@ -117,8 +117,8 @@ test("the package manifest loads the plugin after jig-core, and the skills of ev
     const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
         pi: { extensions: string[]; skills: string[] };
     };
-    const core = manifest.pi.extensions.indexOf("./plugins/jig-core/src/index.ts");
-    const logs = manifest.pi.extensions.indexOf("./plugins/jig-logs/src/index.ts");
+    const core = manifest.pi.extensions.indexOf("./plugins/jig-core/index.ts");
+    const logs = manifest.pi.extensions.indexOf("./plugins/jig-logs/index.ts");
     assert.ok(core >= 0 && logs > core, "jig-logs comes after jig-core");
     assert.deepEqual(manifest.pi.skills, ["./plugins/*/skills"]);
     assert.ok(fs.existsSync(path.join(ROOT, manifest.pi.extensions[logs] as string)));

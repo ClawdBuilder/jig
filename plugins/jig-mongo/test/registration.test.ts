@@ -94,10 +94,10 @@ describe("the package", () => {
     };
 
     test("Pi loads the extension after jig-core, and finds the skill", () => {
-        assert.ok(manifest.pi.extensions.includes("./plugins/jig-mongo/src/index.ts"));
+        assert.ok(manifest.pi.extensions.includes("./plugins/jig-mongo/index.ts"));
         assert.ok(
-            manifest.pi.extensions.indexOf("./plugins/jig-mongo/src/index.ts") >
-                manifest.pi.extensions.indexOf("./plugins/jig-core/src/index.ts"),
+            manifest.pi.extensions.indexOf("./plugins/jig-mongo/index.ts") >
+                manifest.pi.extensions.indexOf("./plugins/jig-core/index.ts"),
         );
         assert.ok(manifest.pi.skills.includes("./plugins/*/skills"));
         assert.ok(fs.existsSync(path.join(plugin, "src", "index.ts")));

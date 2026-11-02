@@ -5,6 +5,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 ## Contents
 
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
+- [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
 - [2026-11-01: guards a person would not see break](#2026-11-01-guards-a-person-would-not-see-break)
 - [2026-11-01: a role only narrows, and the child enforces it](#2026-11-01-a-role-only-narrows-and-the-child-enforces-it)
 - [2026-10-31: every dependency is on its latest stable release, pinned, and kept there by Dependabot](#2026-10-31-every-dependency-is-on-its-latest-stable-release-pinned-and-kept-there-by-dependabot)
@@ -83,6 +84,39 @@ checked a VPN, unlocked a password store and set a company's folders. This entry
   reach Pi inside tmux. "Everything except the terminal's own" has no list to keep up.
 - **`-e NAME=value` for the variables,** and `env -u NAME` for the ones to remove, for the reason above. Names alone are safe on a
   command line.
+
+## 2026-11-02: where the secret store is, and who types secrets
+
+**Decided**
+- **Where the store is, is a setting.** `secrets.pass.storeDir` and `secrets.pass.gnupgHome` in `jig.json` say where `pass`
+  looks. They win over `PASSWORD_STORE_DIR` and `GNUPGHOME`, which win over `pass`'s own defaults, so the store no longer
+  depends on how Pi was started. The two folders are protected paths with the setting: Pi's file tools refuse them and
+  `jig-sandbox` hides them from `bash`.
+- **A credential folder that an environment variable moves is protected too.** The built-in list knew `~/.password-store`,
+  `~/.gnupg`, `~/.aws` and the like, so a store kept elsewhere through `PASSWORD_STORE_DIR`, `GNUPGHOME`, `AWS_CONFIG_FILE`,
+  `AWS_SHARED_CREDENTIALS_FILE`, `KUBECONFIG`, `GH_CONFIG_DIR`, `GLAB_CONFIG_DIR`, `CLOUDSDK_CONFIG` or `DOCKER_CONFIG` was
+  readable by the agent. Pi's environment is now read when the session starts, and an absolute (or `~/`) value becomes a
+  secret path. The root, the home folder and a folder above it are never protected this way.
+- **Other stores go through `cmd:`.** A backend is a program that `jig-core` runs, so any store with a command line works with
+  one declared command per secret (gopass, Vault, AWS Secrets Manager, Azure Key Vault, the Linux Secret Service, Bitwarden).
+  The pages say how ([Other stores](secrets.md#other-stores)).
+- **A read-only status comes later.** For each reference a session's tools name, whether it is found, missing or behind a locked
+  store, never a value ([Secrets](secrets.md#later)).
+
+**Why**
+- A security rule that depends on how a program was launched is a rule that fails quietly. The folder a store lives in is a fact
+  about the user's machine, so it is written down once, and it is protected wherever it is.
+- Each store already has a command line and an owner who keeps it up to date. Using it as it is costs Jig nothing and
+  ties it to no store.
+- Jig's rule is that you handle passwords: it never asks for one, takes one or keeps one.
+
+**Rejected**
+- **A store library as a `jig-core` dependency.** `pass` is a program, and a library for one store would tie Jig to that
+  store and leave every other one out.
+- **A password panel or prompt in Jig.** A secret typed into Jig's code, or into a terminal program's, passes through code that
+  is not the store's own. You add secrets with your store's tool, in your own terminal.
+- **A Windows Credential Manager backend, for now.** No standard command prints a stored password, so `cmd:` has nothing to run,
+  and a backend would need code of its own to read the store.
 
 ## 2026-11-01: guards a person would not see break
 

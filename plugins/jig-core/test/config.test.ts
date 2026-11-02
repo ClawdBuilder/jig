@@ -1,7 +1,7 @@
 // Configuration: what loads, what is an error, and what can never lower the floor.
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import {
@@ -184,6 +184,67 @@ describe("secrets.disabledBackends", () => {
         assert.deepEqual(loaded.problems, []);
         assert.deepEqual(loaded.config.secrets.backends, ["pass", "env"]);
         assert.deepEqual(loaded.config.secrets.disabledBackends, ["env", "cmd"]);
+    });
+});
+
+describe("secrets.pass: where pass looks", () => {
+    const stores = (pass: unknown) => personal({ secrets: { pass } });
+
+    test("is empty by default, and takes a store and a GnuPG home, each absolute or starting with ~/", () => {
+        assert.deepEqual(personal({}).config.secrets.pass, {});
+        assert.deepEqual(personal({ secrets: { backends: ["pass"] } }).config.secrets.pass, {});
+        const loaded = stores({ storeDir: "/srv/vault/pass", gnupgHome: "~/vault/gnupg" });
+        assert.deepEqual(loaded.problems, []);
+        assert.deepEqual(loaded.config.secrets.pass, { storeDir: "/srv/vault/pass", gnupgHome: "~/vault/gnupg" });
+        assert.deepEqual(stores({ storeDir: "~/pass" }).config.secrets.pass, { storeDir: "~/pass" });
+        assert.deepEqual(stores({}).config.secrets.pass, {});
+    });
+
+    test("a relative path, text that is not a path and an unknown field are errors that name the key", () => {
+        const keyOf = (pass: unknown) => stores(pass).problems.map((problem) => problem.key);
+        assert.deepEqual(keyOf({ storeDir: "pass" }), ["secrets.pass.storeDir"]);
+        assert.deepEqual(keyOf({ storeDir: "./pass" }), ["secrets.pass.storeDir"]);
+        assert.deepEqual(keyOf({ gnupgHome: "../gnupg" }), ["secrets.pass.gnupgHome"]);
+        assert.deepEqual(keyOf({ gnupgHome: "~other/gnupg" }), ["secrets.pass.gnupgHome"]);
+        assert.deepEqual(keyOf({ storeDir: "" }), ["secrets.pass.storeDir"]);
+        assert.deepEqual(keyOf({ storeDir: 7 }), ["secrets.pass.storeDir"]);
+        assert.deepEqual(keyOf({ storeDir: ["/a"] }), ["secrets.pass.storeDir"]);
+        assert.deepEqual(keyOf({ storeDir: `/${"a".repeat(1100)}` }), ["secrets.pass.storeDir"]);
+        assert.deepEqual(keyOf({ store: "/srv/pass" }), ["secrets.pass.store"]);
+        assert.deepEqual(keyOf("/srv/pass"), ["secrets.pass"]);
+        assert.deepEqual(keyOf(["/srv/pass"]), ["secrets.pass"]);
+    });
+
+    test("control characters are refused, and the message does not repeat the value", () => {
+        const loaded = stores({ storeDir: "/srv/pa\nss", gnupgHome: "/srv/gn\u0000upg" });
+        assert.deepEqual(
+            loaded.problems.map((problem) => problem.key),
+            ["secrets.pass.storeDir", "secrets.pass.gnupgHome"],
+        );
+        for (const problem of loaded.problems) assert.ok(!problem.message.includes("srv"), problem.message);
+    });
+
+    test("the root, the home folder and a folder above it are refused, however they are written", () => {
+        const home = homedir();
+        for (const value of ["/", "~", "~/", "~/.", "~/sub/..", home, `${home}/`, path.dirname(home)]) {
+            assert.deepEqual(
+                stores({ storeDir: value }).problems.map((problem) => problem.key),
+                ["secrets.pass.storeDir"],
+                value,
+            );
+            assert.deepEqual(
+                stores({ gnupgHome: value }).problems.map((problem) => problem.key),
+                ["secrets.pass.gnupgHome"],
+                value,
+            );
+        }
+        assert.deepEqual(stores({ storeDir: `${home}/pass` }).problems, []);
+    });
+
+    test("one wrong field makes the whole file fall back to the defaults, as for every jig-core setting", () => {
+        const loaded = stores({ storeDir: "/srv/pass", gnupgHome: "gnupg" });
+        assert.equal(loaded.problems.length, 1);
+        assert.deepEqual(loaded.config.secrets.pass, {});
     });
 });
 

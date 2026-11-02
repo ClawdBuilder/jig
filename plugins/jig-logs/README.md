@@ -120,6 +120,7 @@ limits, and has an example for each type.
 
 ```text
 jig-logs/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      the tool and its checks (index, tool, params, config), the search (search, time, query, request, response,
             failure), what the model reads (summary, line, clip), helpers (values), backends/ (the interface, a file each)
   skills/   logs/SKILL.md: how to search (an identifier first, a narrow window, then wider)

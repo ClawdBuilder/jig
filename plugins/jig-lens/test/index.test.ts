@@ -33,8 +33,8 @@ test("the extension is listed in the package, after jig-core, and every listed f
         pi: { extensions: string[] };
     };
     const listed = manifest.pi.extensions;
-    assert.ok(listed.includes("./plugins/jig-lens/src/index.ts"));
-    assert.ok(listed.indexOf("./plugins/jig-core/src/index.ts") < listed.indexOf("./plugins/jig-lens/src/index.ts"));
+    assert.ok(listed.includes("./plugins/jig-lens/index.ts"));
+    assert.ok(listed.indexOf("./plugins/jig-core/index.ts") < listed.indexOf("./plugins/jig-lens/index.ts"));
     for (const extension of listed) assert.ok(existsSync(path.join(ROOT, extension)), extension);
 });
 

@@ -65,8 +65,10 @@ Then start Pi and run `/jig`: it shows the rules in force and anything that
 needs fixing. Each plugin's README says what it needs in `~/.pi/agent/jig.json`
 and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
 
-To load only some plugins, filter the package in Pi's settings. Keep `jig-core`
-first in the list, because every other plugin needs it:
+To load only some plugins, filter the package in Pi's settings. Name each plugin by
+its entry file, `plugins/<name>/index.ts` (a filter that names `src/index.ts`
+matches nothing). Keep `jig-core` first in the list, because every other plugin
+needs it:
 
 ```json
 {
@@ -74,9 +76,9 @@ first in the list, because every other plugin needs it:
     {
       "source": "git:github.com/Dev-Mriganka/jig",
       "extensions": [
-        "plugins/jig-core/src/index.ts",
-        "plugins/jig-sandbox/src/index.ts",
-        "plugins/jig-git/src/index.ts"
+        "plugins/jig-core/index.ts",
+        "plugins/jig-sandbox/index.ts",
+        "plugins/jig-git/index.ts"
       ]
     }
   ]
@@ -193,8 +195,8 @@ the sandbox check and `/lens`, in plain words. Then:
 2. [Permissions](docs/permissions.md): environments, rules per tool, and the
    floor that configuration cannot lower.
 3. [Approvals](docs/approvals.md): how and where you are asked.
-4. [Secrets](docs/secrets.md): where passwords and tokens come from, on any
-   operating system.
+4. [Secrets](docs/secrets.md): where passwords and tokens come from, where `pass`
+   looks, and how to use the store you already have.
 5. [Plugins](docs/plugins.md): every tool and the plugin it belongs to.
 6. [Writing a company plugin](docs/company-plugin.md): what a company adds, the
    seams in order, how your `jig.json` layers over its defaults, and the tested

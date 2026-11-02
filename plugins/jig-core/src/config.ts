@@ -13,6 +13,7 @@
 //   user writes only what they change; with no section of their own, the defaults must pass the check alone, and when
 //   they do not (a field only the user can give) the plugin is simply not configured and `/jig` says why.
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { matchesName } from "./classify.ts";
 import { namesOutsideCommand } from "./decide.ts";
 import { errorMessage } from "./errors.ts";
@@ -20,7 +21,7 @@ import { isObject } from "./kit/values.ts";
 import { buildEnvironments } from "./environments.ts";
 import type { Environments } from "./environments.ts";
 import type { ApprovalKind, ClassifyRule, Decision, Effect, EnvironmentConfig, Rule } from "./contract.ts";
-import { expandProtected, isListablePath, mergeProtected } from "./protected-paths.ts";
+import { coversHome, expandProtected, isListablePath, mergeProtected } from "./protected-paths.ts";
 import type { ProtectedPath, ProtectedSource } from "./protected-paths.ts";
 import { layered } from "./section-defaults.ts";
 
@@ -47,12 +48,24 @@ export interface ProtectedPathLists {
     guarded: string[];
 }
 
+/** Where `pass` looks, bound in `jig.json` so it does not depend on how Pi was started. Each is absolute or starts
+ *  with `~/`, as written. Without one, `PASSWORD_STORE_DIR` or `GNUPGHOME` of Pi's environment applies, then pass's own. */
+export interface PassBinding {
+    storeDir?: string;
+    gnupgHome?: string;
+}
+
 export interface JigConfig {
     environments: Record<string, EnvironmentConfig>;
     rules: Rule[];
     classify: ClassifyRule[];
     protectedPaths: ProtectedPathLists;
-    secrets: { backends: SecretBackend[]; disabledBackends: SecretBackend[]; commands: Record<string, string[]> };
+    secrets: {
+        backends: SecretBackend[];
+        disabledBackends: SecretBackend[];
+        commands: Record<string, string[]>;
+        pass: PassBinding;
+    };
     records: { retentionDays: number };
     spill: { retentionDays: number };
 }
@@ -63,7 +76,7 @@ export function defaultConfig(): JigConfig {
         rules: [],
         classify: [],
         protectedPaths: { secret: [], guarded: [] },
-        secrets: { backends: ["pass"], disabledBackends: [], commands: {} },
+        secrets: { backends: ["pass"], disabledBackends: [], commands: {}, pass: {} },
         records: { retentionDays: 90 },
         spill: { retentionDays: 7 },
     };
@@ -544,13 +557,46 @@ function parseBackendList(raw: unknown, path: string, fail: Fail): SecretBackend
     return backends;
 }
 
+/** Why `value` cannot be a folder `pass` is bound to, or undefined when it can. The folder is protected and handed to
+ *  `pass`, so it is a folder of its own: not the root, and not the home folder or one above it. */
+function whyNotAStoreFolder(value: unknown): string | undefined {
+    if (typeof value !== "string" || value === "" || value.length > MAX_PROTECTED_PATH_CHARS)
+        return `must be a path of up to ${MAX_PROTECTED_PATH_CHARS} characters`;
+    if (/[\u0000-\u001f\u007f]/.test(value)) return "must not hold control characters";
+    if (!isListablePath(value)) return "must be an absolute path, or start with ~/";
+    const home = homedir();
+    const absolute = expandProtected(value, home);
+    if (absolute === undefined || coversHome(absolute, home))
+        return "must be a folder of its own: not the root, the home folder or a folder above it";
+    return undefined;
+}
+
+/** `{ storeDir, gnupgHome }`: the folders `pass` and its GnuPG use. */
+function parsePassBinding(raw: unknown, path: string, fail: Fail): PassBinding {
+    const out: PassBinding = {};
+    if (!isObject(raw)) {
+        fail(path, "must be an object with storeDir and gnupgHome");
+        return out;
+    }
+    knownFields(raw, ["storeDir", "gnupgHome"], path, fail);
+    for (const key of ["storeDir", "gnupgHome"] as const) {
+        const value = raw[key];
+        if (value === undefined) continue;
+        const problem = whyNotAStoreFolder(value);
+        if (problem === undefined) out[key] = value as string;
+        else fail(at(path, key), problem);
+    }
+    return out;
+}
+
 function parseSecrets(raw: unknown, fail: Fail): JigConfig["secrets"] {
-    const out: JigConfig["secrets"] = { backends: ["pass"], disabledBackends: [], commands: {} };
+    const out: JigConfig["secrets"] = { backends: ["pass"], disabledBackends: [], commands: {}, pass: {} };
     if (!isObject(raw)) {
         fail("secrets", "must be an object");
         return out;
     }
-    knownFields(raw, ["backends", "disabledBackends", "commands"], "secrets", fail);
+    knownFields(raw, ["backends", "disabledBackends", "commands", "pass"], "secrets", fail);
+    if (raw.pass !== undefined) out.pass = parsePassBinding(raw.pass, "secrets.pass", fail);
     if (raw.commands !== undefined) out.commands = parseSecretCommands(raw.commands, "secrets.commands", fail);
     if (raw.backends !== undefined)
         out.backends = parseBackendList(raw.backends, "secrets.backends", fail) ?? out.backends;

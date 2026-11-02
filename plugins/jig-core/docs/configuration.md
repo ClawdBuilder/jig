@@ -29,6 +29,12 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
 - **`secrets.commands`:** the program, then its arguments, such as
   `{ "gh": ["gh", "auth", "token"] }`. Used only when `cmd` is in
   `secrets.backends`.
+- **`secrets.pass`:** `{ "storeDir": "...", "gnupgHome": "..." }`, where `pass` looks
+  for its store and its GnuPG keys. Each is an absolute path or starts with `~/`;
+  a relative path, a control character, `/` and the home folder itself (or a
+  folder above it) are errors. It wins over `PASSWORD_STORE_DIR` and `GNUPGHOME`
+  of Pi's environment, and both folders are protected paths (see
+  [Where pass looks](../../../docs/secrets.md#where-pass-looks)). `/jig` shows them.
 - **`records.retentionDays`** and **`spill.retentionDays`:** whole numbers of
   days, from 1 to 3650.
 
@@ -154,8 +160,11 @@ removes one. `/jig rules` lists them all, each with where it came from
   - `bash` and `powershell` are the sandbox's job: until a sandbox runs, a
     shell command can still read and write these paths. `jig-sandbox` hides the
     same list from `bash`, through `protectedPaths.list()`.
-  - Variables that move a tool's folder (`GH_CONFIG_DIR`, `CLOUDSDK_CONFIG`) are
-    not read: list that folder yourself.
+  - A store the environment moves is covered only through the variables the
+    defaults know (`PASSWORD_STORE_DIR`, `GNUPGHOME`, `KUBECONFIG` and the other
+    variables in [Permissions](../../../docs/permissions.md#protected-paths)), and
+    the folders `secrets.pass` binds. A tool with a variable of its own is not:
+    list that folder yourself.
   - The check is made when the call starts, so a link swapped afterwards by a
     shell command is not seen.
 

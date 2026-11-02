@@ -137,7 +137,7 @@ variables such as `JAVA_HOME`) and `outside` (a command that needs what the sand
 ## Layout
 
 ```text
-jig-workflow/
+jig-workflow/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows the plugin's name
   src/        index.ts (the factory), runtime.ts (the session), config.ts, definition.ts + load.ts (workflow files),
               store.ts (workflow.json), ticket.ts + repos.ts, conditions.ts + sources.ts + listeners.ts + forge.ts (evidence),
               plan.ts, tests.ts + environment.ts + outside.ts (test runs), gate.ts (holds), tool.ts + actions.ts (one
