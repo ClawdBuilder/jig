@@ -26,14 +26,15 @@ The fields of the `git` section of `jig.json`, in detail. The table is in the
 - **`watchBots`:** `true` or `false` (the default). Whether the comment watch also
   tells the agent about comments made by bots. It is read at each poll, so a
   change applies to a watch that is already running.
-- **`forges`:** an object of host names. It names the hosts that are not `github.com` or `gitlab.com`, and each entry is a forge,
-  `"github"` or `"gitlab"`, such as `{ "gitlab.example.com": "gitlab" }`, or an object `{ "forge": "github", "host": "github.com" }`
-  for an ssh alias of a real host. Host names are compared without regard to case, and carry no port. An `origin` on any other
-  host is refused. The setting is configuration only: no call can set or change it
+- **`forges`:** an object of host names. It names the hosts that `ssh -G` cannot explain and that are not `github.com` or `gitlab.com`,
+  such as a self-hosted GitLab. Each entry is a forge, `"github"` or `"gitlab"`, as in `{ "gitlab.example.com": "gitlab" }`, or an
+  object `{ "forge": "github", "host": "ghe.example.com" }`. Host names are compared without regard to case, and carry no port. An
+  `origin` on any other host is refused. The setting is configuration only: no call can set or change it
   ([GitLab](gitlab.md#which-forge-a-repository-is-on)).
-  - **A word** is the forge, and `gh` or `glab` is told the host in `origin`.
-  - **An object** names the forge and, with `host`, the real host `gh` and `glab` are told. git goes on using the alias in
-    `origin`, so cloning, fetching and pushing are unchanged ([an ssh alias](gitlab.md#an-ssh-alias-for-a-real-host)).
+  - **A word** is the forge. `gh` or `glab` is told the real host: what `ssh -G` says for an ssh origin, else the convention
+    (`github.com-<alias>` is `github.com`), else the host in `origin`.
+  - **An object** names the forge and, with `host`, the host `gh` and `glab` are told, over what ssh says. git goes on using the
+    address in `origin`, so cloning, fetching and pushing are unchanged ([an ssh alias](gitlab.md#an-ssh-alias-for-a-real-host)).
 
 ## Moved fields
 

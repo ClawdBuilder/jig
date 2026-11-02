@@ -73,6 +73,32 @@ describe("/jig and the folders secrets.pass binds", () => {
     });
 });
 
+describe("/jig and secrets.pass.unlockAtStart", () => {
+    // A store that does not exist, so no session start here ever runs `pass`.
+    const store = "/nonexistent/jig-test-pass-store";
+
+    test("says the store is unlocked when a session starts, and says nothing when it is not asked to", async () => {
+        const off = await begin({ config: { secrets: { pass: { storeDir: store, unlockAtStart: false } } } });
+        assert.doesNotMatch(await jigStatus(off), /unlockAtStart/);
+        await off.shutdown();
+        const on = await begin({ config: { secrets: { pass: { storeDir: store, unlockAtStart: true } } } });
+        assert.match(
+            await jigStatus(on),
+            /^Secret store: unlocked when a session starts \(secrets\.pass\.unlockAtStart\)$/m,
+        );
+    });
+
+    test("says so when pass is not a backend that is on, since the setting then does nothing", async () => {
+        const harness = await begin({
+            config: { secrets: { backends: ["env"], pass: { storeDir: store, unlockAtStart: true } } },
+        });
+        assert.match(
+            await jigStatus(harness),
+            /^Secret store: unlocked when a session starts \(secrets\.pass\.unlockAtStart\), but pass is not an enabled backend, so this does nothing$/m,
+        );
+    });
+});
+
 describe("which backends are on", () => {
     test("without a company plugin only pass is, as it always was", async () => {
         const harness = await begin();

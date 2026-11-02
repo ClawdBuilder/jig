@@ -9,12 +9,13 @@ pull request is a merge request, and the tools talk to GitLab through `glab`, as
 ## Which forge a repository is on
 
 The host of `origin` decides. The model cannot choose it, so a call cannot send one forge's request with another forge's sign-in.
+For an ssh origin the host is the real one: what `ssh -G` says an alias stands for ([below](#an-ssh-alias-for-a-real-host)).
 
 | Host of origin | Forge |
 |---|---|
-| `github.com`, `ssh.github.com`, `github.com-<alias>` or `git.cloneHost` | GitHub, through `gh` |
-| `gitlab.com` or `altssh.gitlab.com` | GitLab, through `glab`, on `gitlab.com` |
-| A host named in `git.forges` | What the setting says, and for an ssh alias the real host `gh` or `glab` is told |
+| `github.com`, `ssh.github.com`, `git.cloneHost`, or an ssh alias for github.com | GitHub, through `gh` |
+| `gitlab.com`, `altssh.gitlab.com`, or an ssh alias for gitlab.com | GitLab, through `glab`, on `gitlab.com` |
+| A host named in `git.forges` | What the setting says; `gh` or `glab` is told the real host |
 | No host (a local path, or no origin) | GitHub, as before: `gh` reads the repository's own remotes |
 | Any other host | `pr` and `release` refuse it, with the line that names it |
 
@@ -24,11 +25,11 @@ The host of `origin` decides. The model cannot choose it, so a call cannot send 
 
 - **The refusal for an unknown host** says which host it was and shows the setting that names it, as in `origin of orders-api is on
   git.example.com, which jig-git does not know as GitHub or GitLab; name it in jig.json, such as "git": { "forges": {
-  "git.example.com": "gitlab" } }`, and the object form for an alias.
+  "git.example.com": "gitlab" } }`. When ssh maps an alias to a host that is not known, it names that real host.
 - **A host set to `"github"`** is accepted as GitHub, which is how a GitHub Enterprise Server host is told apart from the refused
   ones. `gh` is told the repository by `host/owner/name`.
 - **Nested groups** work: `platform/payments/orders-api` is a project path of three parts, and `origin` may use https, ssh or scp
-  form. The host is the one `origin` names; for an ssh alias from `~/.ssh/config`, see below.
+  form. The host is the one `origin` names, or for an ssh alias from `~/.ssh/config`, the one it stands for (see below).
 
 ## An ssh alias for a real host
 
@@ -41,27 +42,34 @@ Host github.com-work
 ```
 
 and `git remote add origin git@github.com-work:acme/orders-api.git`. git needs the alias, to pick the key, and `gh` needs the real
-host, which it cannot read from an alias. Name the real host in `git.forges`, and git keeps the alias while `gh` and `glab` get the
-real one:
+host, which it cannot read from an alias. So for an ssh origin (`user@host:path` or `ssh://`) `jig-git` runs `ssh -G <host>` and reads
+its `hostname` line. `-G` only reads the configuration and never connects. An alias that ssh maps to `github.com` therefore works
+with no `git.forges` entry at all, whatever its name, and `gh` is never told the alias.
+
+- **The answer is kept** for the session: one `ssh -G` per host. An https origin is not asked, since its host is the real one.
+- **When ssh cannot answer** (not installed, failing, too slow, or an alias it has nothing to say about) the convention applies:
+  `github.com-<anything>` and `ssh.github.com` are github.com, `altssh.gitlab.com` is gitlab.com, and `git.cloneHost` is
+  github.com. Any other alias needs an entry. Nothing is reported, and ssh is asked again a minute later.
+- **`git.forges` is for a host ssh cannot explain,** such as a self-hosted GitLab named by its real host. An entry is found by the
+  host in `origin` or by the real host:
 
 ```json
-{
-  "git": {
-    "forges": {
-      "gh-work": { "forge": "github", "host": "github.com" },
-      "gl-work": { "forge": "gitlab", "host": "gitlab.example.com" }
-    }
-  }
-}
+{ "git": { "forges": { "gitlab.example.com": "gitlab" } } }
 ```
 
-- **`github.com-<anything>` and `git.cloneHost`** are already taken for github.com, and need no entry. Any other alias does.
+- **A word decides the forge only.** The host `gh` or `glab` is told still comes from ssh, else the convention, else the host in `origin`.
+- **An object, `{ "forge": ..., "host": ... }`, wins over ssh.** It names the host to tell, for an alias ssh does not describe:
+
+```json
+{ "git": { "forges": { "gl-work": { "forge": "gitlab", "host": "gitlab.example.com" } } } }
+```
+
 - **For GitHub** the repository is named to `gh` as `owner/name` on github.com, and as `host/owner/name` on another host, such as a
   GitHub Enterprise Server. `gh api` calls and the comment watch are told the host (`GH_HOST`) the same way.
 - **For GitLab** `glab api --hostname` gets the real host, and the project path comes from the alias's address.
-- **An alias that is not mapped** is refused with a line that shows the object form, as in `origin of orders-api is on gh-work, which
-  jig-git does not know as GitHub or GitLab; name it in jig.json, such as "git": { "forges": { "gh-work": "gitlab" } }, or, when it is
-  an ssh alias for a real host, "git": { "forges": { "gh-work": { "forge": "github", "host": "github.com" } } }`.
+- **An alias that neither ssh nor `git.forges` explains** is refused with a line that shows both ways, as in `origin of orders-api is on
+  gh-work, which jig-git does not know as GitHub or GitLab; name it in jig.json, such as "git": { "forges": { "gh-work": "gitlab" } }, or,
+  when it is an ssh alias for a real host, "git": { "forges": { "gh-work": { "forge": "github", "host": "github.com" } } }`.
 - **Only you set it.** The setting is in `jig.json`; no parameter of `pr` or `release` can name a host.
 
 ## Sign-in

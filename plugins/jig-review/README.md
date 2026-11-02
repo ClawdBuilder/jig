@@ -40,7 +40,7 @@ Neither can approve. Both are declared to `jig-core`, which classifies them as l
 | `--branch` | everything since the branch left the main branch (`develop`, `main` or `master`) |
 | `--staged` | staged changes |
 | `--unstaged` | unstaged changes |
-| `--touched` | the files the agent edited last, and what it committed in that run |
+| `--touched` | the files the agent edited last and committed in that run, not what a merge brought in |
 | `<folder>` | only the repositories in that folder, relative to Pi's folder |
 | `<ticket>` | the repositories `jig-memory` bound to the ticket, whole branch (see below) |
 
@@ -52,7 +52,9 @@ repositories. The folder is the `memory` section's `folder` in `jig.json`. Witho
 the command says that ticket scope needs `jig-memory` with bound repositories, and guesses nothing.
 
 After an agent run that changed files, Pi offers to review them. The files come from git, taken when the
-run starts and ends, so a change counts whatever tool made it.
+run starts and ends, so a change counts whatever tool made it. What came in from other commits (a merge, a
+pull, a rebase) is not the agent's, so it is left out; when nothing else changed, Pi says so in one line
+([What counts as the agent's](docs/run-changes.md)). The other scopes show everything in them.
 
 ## Approving
 
@@ -115,7 +117,7 @@ None. `jig-review` needs nothing from a company: it works on a repository's own 
 ```text
 jig-review/
   index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      coordinator + run-tracker (what the agent changed in a run), store, server, tools, git sources, approval service
+  src/      coordinator + run-tracker and run-base (what the agent changed in a run), store, server, tools, git sources, approval service
   src/passkey/   WebAuthn on node:crypto: CBOR, checks, challenges, the store
   web/      the page: sources, build tooling, and the built files in web/dist
   test/     one file per module, a fake authenticator and a fake Pi
@@ -128,6 +130,7 @@ jig-review/
 - [Server security](docs/server-security.md): the link, the cookie, Host and Origin, what is served.
 - [The page](docs/page.md): its parts, the build, and why `web/dist/` is committed.
 - [Rounds](docs/rounds.md): comments, resolutions, the record, the event, cleanup.
+- [What counts as the agent's](docs/run-changes.md): what a run changed, and why a merge, pull or rebase is left out.
 - [Not verified yet](docs/not-verified.md): what needs a real browser.
 
 ## Origin

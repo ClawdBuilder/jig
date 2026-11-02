@@ -1,6 +1,6 @@
 // The parameters of the `deploy` tool, and the checks that turn them into a Call. The version is the only text of a
 // call that can reach a command line, and it is checked here to be an image tag. parseCall does no I/O.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { describeServices, findEnvironment, notSetUp } from "../catalog.ts";
 import type { Catalog, Environment } from "../catalog.ts";
@@ -15,7 +15,7 @@ export const MAX_WATCH_MINUTES = 120;
 
 export const parameters = Type.Object(
     {
-        action: StringEnum(ACTIONS, { description: "plan, run, status, rollback or watch" }),
+        action: stringEnum(ACTIONS, { description: "plan, run, status, rollback or watch" }),
         service: Type.String({
             description: "A service from the ops catalog. An unknown name is refused with the names there are",
         }),

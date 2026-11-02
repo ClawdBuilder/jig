@@ -147,6 +147,7 @@ describe("the API", () => {
             "rules",
             "secrets",
             "spill",
+            "startChecks",
         ]);
     });
 
@@ -225,6 +226,7 @@ describe("what plugins import", () => {
             "oauth.ts",
             "ports.ts",
             "role-policy.ts",
+            "schema.ts",
             "text.ts",
             "values.ts",
         ]);
@@ -264,6 +266,7 @@ describe("what plugins import", () => {
                 "readRolePolicy",
                 "writeRolePolicy",
             ],
+            "schema.ts": ["stringEnum"],
             "text.ts": ["printable", "stringOf"],
             "values.ts": ["InputError", "isObject"],
         };

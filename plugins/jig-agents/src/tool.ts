@@ -1,6 +1,6 @@
 // The `subagent` tool: how the agent hands work to a child and watches over it. `start`, `message` and `stop` are local writes that
 // jig-core allows by default; `status` is a read. A child's report arrives as a message through a watch, so the agent never polls.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts";
@@ -37,7 +37,7 @@ export const ACTION_NAMES: readonly string[] = NAMES;
 
 const parameters = Type.Object(
     {
-        action: StringEnum(NAMES, {
+        action: stringEnum(NAMES, {
             description: NAMES.map((name) => `- ${name}: ${ACTIONS[name].summary}`).join("\n"),
         }),
         role: Type.Optional(
