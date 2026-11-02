@@ -77,11 +77,14 @@ All fields are optional.
 | `secrets.disabledBackends` | none | Backends to keep off, even ones a company plugin turned on |
 | `secrets.commands` | none | The commands that `cmd:<name>` may run, by name |
 | `secrets.pass` | none | Where `pass` looks: `storeDir` and `gnupgHome`, each absolute or `~/...` |
+| `secrets.pass.unlockAtStart` | `false` | Unlock the pass store once when a session starts, so no prompt comes mid-task |
 | `records.retentionDays` | 90 | Days record files are kept, from 1 to 3650 |
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
+| `startChecks` | none | Up to 16 TCP checks made when a session starts: `name`, `tcp` (`host:port`), `hint` |
 
 What each field means, with its limits, is in the
-[configuration reference](docs/configuration.md#the-fields). An unknown field is
+[configuration reference](docs/configuration.md#the-fields); the two that run when a session starts,
+with an example, are under [At session start](docs/configuration.md#at-session-start). An unknown field is
 an error. It names the file and the key, and the plugin starts with the defaults
 rather than guessing. So is a wrong type or value.
 
@@ -126,8 +129,8 @@ on Linux first; any store with a command line works through `cmd:`, see
 ```text
 jig-core/
   src/      the hooks (gate, results), classify and decide, gates (the checks plugins add), config, approvals,
-            secrets, sign-in, transports, redact, records, exec; mask/ (the masker), watch/ (the engine and its
-            tool), kit/ (helpers plugins import)
+            secrets, sign-in, transports, redact, records, exec, start-up work (unlock, checks); mask/ (the
+            masker), watch/ (the engine and its tool), kit/ (helpers plugins import)
   test/     unit tests, and tests inside a real Pi session
   docs/     the detail pages below
 ```
