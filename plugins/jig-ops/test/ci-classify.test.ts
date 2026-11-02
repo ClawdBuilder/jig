@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
-import { gitlabCi, jenkinsCi, withCi } from "./support/section.ts";
+import { concourseCi, gitlabCi, jenkinsCi, withCi } from "./support/section.ts";
 
 let h: Harness;
 beforeEach(() => {
@@ -34,6 +34,7 @@ const SYSTEMS: Array<[string, () => void]> = [
     ["GitHub Actions", () => h.configure()],
     ["GitLab CI", () => h.configure(withCi(gitlabCi()))],
     ["Jenkins", () => h.configure(withCi(jenkinsCi()))],
+    ["Concourse", () => h.configure(withCi(concourseCi()))],
 ];
 
 describe("reads are external reads", () => {
@@ -64,7 +65,7 @@ describe("reads are external reads", () => {
 });
 
 describe("rerun and trigger are external writes, and so they ask", () => {
-    test("rerun on GitHub Actions and GitLab, trigger on GitLab and Jenkins", () => {
+    test("rerun on GitHub Actions and GitLab, trigger on GitLab, Jenkins and Concourse", () => {
         h.configure();
         assert.deepEqual(said({ action: "rerun", run_id: 1 }), {
             action: "rerun",
@@ -83,6 +84,8 @@ describe("rerun and trigger are external writes, and so they ask", () => {
             effect: "write",
         });
         h.configure(withCi(jenkinsCi()));
+        assert.deepEqual(said({ action: "trigger" }), { action: "trigger", environment: "external", effect: "write" });
+        h.configure(withCi(concourseCi()));
         assert.deepEqual(said({ action: "trigger" }), { action: "trigger", environment: "external", effect: "write" });
     });
 
@@ -123,7 +126,7 @@ describe("a watch is a local write", () => {
     for (const [label, use] of SYSTEMS) {
         test(`on ${label}: it starts something on this machine and asks nobody`, () => {
             use();
-            const where = label === "Jenkins" ? {} : { branch: "main" };
+            const where = label === "Jenkins" || label === "Concourse" ? {} : { branch: "main" };
             assert.deepEqual(said({ action: "watch", ...where }), {
                 action: "watch",
                 environment: "local",
@@ -147,6 +150,14 @@ describe("an action an adapter does not have is invalid input, and the message n
         assert.equal(
             said({ action: "rerun", run_id: 1 }),
             "ci rerun: Jenkins (orders-api) does not support rerun. It supports: status, runs, run, log, trigger, watch",
+        );
+    });
+
+    test("Concourse has no rerun either", () => {
+        h.configure(withCi(concourseCi()));
+        assert.equal(
+            said({ action: "rerun", run_id: 1 }),
+            "ci rerun: Concourse (orders-api) does not support rerun. It supports: status, runs, run, log, trigger, watch",
         );
     });
 

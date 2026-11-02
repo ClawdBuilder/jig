@@ -223,13 +223,13 @@ describe("a catalog that is refused", () => {
         const billing = (raw.services as Record<string, Raw>).billing as Raw;
         billing.ci = { workflow: "build.yml" };
         assert.deepEqual(validateOps(raw), [
-            "ops.services.billing.ci.system: required, the CI system: github-actions, gitlab, jenkins",
+            "ops.services.billing.ci.system: required, the CI system: github-actions, gitlab, jenkins, concourse",
         ]);
         billing.ci = "github-actions";
         assert.match(validateOps(raw)[0] ?? "", /^ops\.services\.billing\.ci: must be an object with a system/);
         billing.ci = { system: "Github Actions" };
         assert.deepEqual(validateOps(raw), [
-            "ops.services.billing.ci.system: unknown CI system; the systems there are: github-actions, gitlab, jenkins",
+            "ops.services.billing.ci.system: unknown CI system; the systems there are: github-actions, gitlab, jenkins, concourse",
         ]);
     });
 
