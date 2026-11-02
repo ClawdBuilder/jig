@@ -40,8 +40,9 @@ gone, so this table cannot drift from the code.
 |---|---|---|
 | `conditions.ts` | The eight exit conditions, each decided from evidence and never from a claim | `action-stages.ts`, `gate.ts`, `runtime.ts` |
 | `plan.ts` | `plan.md`: what it must hold, its fingerprint, its numbered scenarios | `action-plan.ts`, `conditions.ts` |
-| `tests.ts` | Which command tests a repository, running it, and recording the result against the commit | `action-tests.ts`, `environment.ts`, `outside.ts` |
+| `tests.ts` | Which command tests a repository (a Gradle wrapper's with its JDK), running it, and recording the result against the commit | `action-tests.ts`, `environment.ts`, `outside.ts` |
 | `environment.ts` | The plain environment variables of a test command: what is accepted, how `~` expands | `tests.ts`, `outside.ts`, `action-tests.ts` |
+| `java.ts` | Which installed JDK a Gradle build runs on: the wrapper's version, the build's Java level, Gradle's table | `tests.ts` |
 | `outside.ts` | A test command set to run outside the sandbox: it goes through `bash` with `outside: true`, so you are asked | `action-tests.ts` |
 | `status.ts` | Says where the work is: the stage, each missing condition, the holds | `action-start.ts`, `action-support.ts`, `index.ts` |
 | `definition.ts` | A workflow file, checked: stages, conditions and holds | `load.ts`, `runtime.ts`, `conditions.ts`, `gate.ts`, `status.ts`, `action-start.ts` |

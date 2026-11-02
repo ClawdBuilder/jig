@@ -18,7 +18,7 @@ counts if the commit it names is still HEAD.
 | `history` | Each start, advance and back, with the time |
 | `plan` | The approved fingerprint, the time, the number of scenarios |
 | `scenarios` | By number: the result, the evidence (kind and reference), the time, the scenario's hash |
-| `tests` | By repository folder: the last result ([Tests](tests.md)) |
+| `tests` | By repository folder: the last result, and the JDK a Gradle build was given ([Tests](tests.md)) |
 | `reviews` | The `jig-review:approved` events that cover commits: review id, time, folders and commits |
 | `ci` | The `jig-ops:ci-finished` results: folder, commit, outcome, time (the last 20) |
 | `observed` | The last reading per repository (`gh pr view`, or the merge request on GitLab): pull request, head, checks, time |

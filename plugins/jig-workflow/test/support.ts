@@ -12,6 +12,16 @@ import type {
     SandboxRunResult,
 } from "../../jig-core/src/contract.ts";
 import type { Host } from "../src/host.ts";
+import type { JavaSources } from "../src/java.ts";
+
+/** A machine with no JDK where a test could find one. */
+const NO_JDKS: JavaSources = {
+    home: "/nonexistent-home",
+    env: {},
+    platform: "linux",
+    linuxJvmDir: "/nonexistent-jvm",
+    macJvmDir: "/nonexistent-jvm",
+};
 
 /** A temporary folder, removed when the test ends. Its real path, so comparisons do not trip over a link in /tmp. */
 export function tempFolder(t: TestContext, prefix = "jig-workflow-"): string {
@@ -83,6 +93,8 @@ export function fakeHost(
         sandbox?: (command: string, options: SandboxRunOptions) => SandboxRunResult | Promise<SandboxRunResult>;
         /** The `git` section of `jig.json`, as jig-core would give it. */
         gitSection?: unknown;
+        /** Where JDKs can be found. By default nowhere: a test never reads the machine's own. */
+        java?: JavaSources;
     } = {},
 ): FakeHost {
     const host: FakeHost = {
@@ -132,6 +144,7 @@ export function fakeHost(
         },
         approvedPreview: (toolCallId) => host.approved.get(toolCallId),
         gitSection: () => over.gitSection,
+        java: () => over.java ?? NO_JDKS,
         now: () => host.clock.now,
     };
     return host;

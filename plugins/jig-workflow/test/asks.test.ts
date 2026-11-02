@@ -2,11 +2,12 @@
 // Each is asked inside the waiting call, whatever a rule or an earlier "allow for this session" says, and each is refused when
 // what was approved is not what would happen.
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import { hash } from "../src/host.ts";
-import { commit, headOf, ok } from "./support.ts";
+import type { JavaSources } from "../src/java.ts";
+import { commit, git, headOf, ok, tempFolder } from "./support.ts";
 import { PLAN, useWorlds, world } from "./world.ts";
 import type { World } from "./world.ts";
 
@@ -477,5 +478,96 @@ describe("test, in the sandbox", () => {
         assert.match(result.text, /orders-api-PROJ-1: could not run: the sandbox broker failed/);
         assert.match(result.text, /unbound: PASSED/);
         assert.match(result.text, /1 of 2 repositories passed/);
+    });
+});
+
+describe("test, with a Gradle build", () => {
+    /** A machine whose only JDKs are the ones named, and a work tree whose wrapper downloads `gradle`. */
+    async function gradle(
+        t: Parameters<typeof world>[0],
+        version: string,
+        jdks: Record<string, string>,
+        options: Parameters<typeof world>[1] = {},
+    ): Promise<{ w: World; jvm: string }> {
+        const machine = tempFolder(t);
+        for (const [name, release] of Object.entries(jdks)) {
+            mkdirSync(path.join(machine, "jvm", name, "bin"), { recursive: true });
+            writeFileSync(path.join(machine, "jvm", name, "bin", "javac"), "");
+            writeFileSync(path.join(machine, "jvm", name, "release"), `JAVA_VERSION="${release}"\n`);
+        }
+        const java: JavaSources = {
+            home: path.join(machine, "home"),
+            env: {},
+            platform: "linux",
+            linuxJvmDir: path.join(machine, "jvm"),
+        };
+        const w = await started(t, { ...options, java });
+        mkdirSync(path.join(w.orders, "gradle", "wrapper"), { recursive: true });
+        writeFileSync(
+            path.join(w.orders, "gradle", "wrapper", "gradle-wrapper.properties"),
+            `distributionUrl=https\\://services.gradle.org/distributions/gradle-${version}-bin.zip\n`,
+        );
+        writeFileSync(path.join(w.orders, "gradlew"), "");
+        writeFileSync(path.join(w.orders, "build.gradle"), "sourceCompatibility = 11\n");
+        git(w.orders, "add", ".");
+        git(w.orders, "commit", "-q", "-m", "gradle");
+        return { w, jvm: path.join(machine, "jvm") };
+    }
+    test("the sandbox gets the JDK that fits, and the result and the record say which and why", async (t) => {
+        const { w, jvm } = await gradle(t, "6.9.4", { "jdk-11": "11.0.31", "jdk-21": "21.0.11" });
+        const result = await w.call({ action: "test" });
+        assert.equal(result.isError, false, result.text);
+        assert.equal(w.asked.length, 0);
+        assert.deepEqual(
+            w.host.sandboxed.map((run) => run.command),
+            [`export JAVA_HOME=${path.join(jvm, "jdk-11")} && ./gradlew test`],
+        );
+        assert.match(result.text, /orders-api-PROJ-1: PASSED at [0-9a-f]{7} · .\/gradlew test · in the sandbox/);
+        assert.match(
+            result.text,
+            /\n {4}Java: Java 11\.0\.31 \(.*jdk-11\), the lowest installed that fits: Gradle 6\.9\.4 runs on Java 8 to 15, and the build asks for Java 11 or newer\./,
+        );
+        assert.match(w.state()?.tests[w.orders].java, /^Java 11\.0\.31 /);
+    });
+
+    test("a JAVA_HOME in the configuration is used as it is", async (t) => {
+        const { w } = await gradle(
+            t,
+            "6.9.4",
+            { "jdk-11": "11.0.31" },
+            {
+                config: { tests: { "orders-api": { command: "./gradlew test", env: { JAVA_HOME: "/opt/jdk-17" } } } },
+            },
+        );
+        const result = await w.call({ action: "test" });
+        assert.equal(result.isError, false, result.text);
+        assert.deepEqual(
+            w.host.sandboxed.map((run) => run.command),
+            ["export JAVA_HOME=/opt/jdk-17 && ./gradlew test"],
+        );
+        assert.doesNotMatch(result.text, /Java:/);
+        assert.equal(w.state()?.tests[w.orders].java, undefined);
+    });
+
+    test("with no JDK that fits, the repository is not run, and the result says what is needed and what was found", async (t) => {
+        const { w } = await gradle(t, "6.9.4", { "jdk-21": "21.0.11" });
+        const result = await w.call({ action: "test" });
+        assert.match(
+            result.text,
+            /orders-api-PROJ-1: could not run: no installed JDK fits: Gradle 6\.9\.4 runs on Java 8 to 15 and the build asks for Java 11 or newer; found 21\.0\.11 \(.*jdk-21\)\. Install a JDK of Java 11 to 15, or set env\.JAVA_HOME for this repository in workflow\.tests\./,
+        );
+        assert.deepEqual(w.host.sandboxed, []);
+        assert.equal(w.state()?.tests[w.orders], undefined);
+    });
+
+    test("the question outside a sandbox shows the JDK, so the user approves what will run", async (t) => {
+        const { w, jvm } = await gradle(t, "6.9.4", { "jdk-11": "11.0.31" });
+        w.host.sandboxOn = false;
+        w.answers.push(0);
+        const result = await w.call({ action: "test" });
+        assert.equal(result.isError, false, result.text);
+        const question = w.asked[0]?.title ?? "";
+        assert.match(question, new RegExp(`with JAVA_HOME=${path.join(jvm, "jdk-11").replace(/[.]/g, "\\.")}`));
+        assert.match(question, /Java: Java 11\.0\.31 /);
     });
 });

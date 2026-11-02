@@ -6,6 +6,8 @@ import path from "node:path";
 import type { TestRule, WorkflowSettings } from "./config.ts";
 import { withEnvironment } from "./environment.ts";
 import type { Host } from "./host.ts";
+import { chooseJava } from "./java.ts";
+import type { JavaSources } from "./java.ts";
 import type { RepoView } from "./repos.ts";
 import type { TestResult } from "./store.ts";
 
@@ -23,6 +25,10 @@ export interface TestPlan {
     /** Where the command came from: `jig.json` or the build file that was found. */
     source?: string;
     problem?: string;
+    /** One line on the JDK a Gradle build was given, or why it was left alone (see java.ts). */
+    java?: string;
+    /** Set when no installed JDK fits the build: the run for this repository does not start, and this says why. */
+    javaProblem?: string;
 }
 
 /** How many lines of output the tool hands back, and how many characters at most. */
@@ -88,8 +94,24 @@ export function detectCommand(root: string): { command: string; file: string } |
     return undefined;
 }
 
-/** The command for a repository: the first `workflow.tests` entry that matches, else the build file's default. */
-export function planTests(settings: WorkflowSettings, view: RepoView, cwd: string): TestPlan {
+/**
+ * The command for a repository: the first `workflow.tests` entry that matches, else the build file's default. With `java`, a Gradle
+ * wrapper's command that has no `JAVA_HOME` from configuration is given the installed JDK that fits (java.ts); `env.JAVA_HOME` wins.
+ */
+export function planTests(settings: WorkflowSettings, view: RepoView, cwd: string, java?: JavaSources): TestPlan {
+    const plan = planCommand(settings, view, cwd);
+    if (java === undefined || plan.command === undefined || plan.env?.JAVA_HOME !== undefined) return plan;
+    const choice = chooseJava(view.root, plan.command, java);
+    if (choice === undefined) return plan;
+    return {
+        ...plan,
+        ...(choice.home === undefined ? {} : { env: { ...plan.env, JAVA_HOME: choice.home } }),
+        java: choice.note,
+        ...(choice.problem === undefined ? {} : { javaProblem: choice.problem }),
+    };
+}
+
+function planCommand(settings: WorkflowSettings, view: RepoView, cwd: string): TestPlan {
     const rule = settings.tests.find((candidate) => ruleMatches(candidate, view, cwd));
     if (rule !== undefined) {
         return {
@@ -164,6 +186,7 @@ export async function runTests(
     options: { sandboxed: boolean; outside?: OutsideRunner; signal?: AbortSignal },
 ): Promise<TestRun> {
     if (plan.command === undefined) throw new Error(plan.problem ?? "no test command");
+    if (plan.javaProblem !== undefined) throw new Error(plan.javaProblem);
     if (view.head === undefined) throw new Error(view.problem ?? `${view.name} has no commit to test`);
     const started = host.now();
     const timeoutMs = plan.timeoutSeconds * 1000;
@@ -205,6 +228,7 @@ export async function runTests(
             sandboxed: options.sandboxed,
             at: finished.toISOString(),
             durationMs: Math.max(0, finished.getTime() - started.getTime()),
+            ...(plan.java === undefined ? {} : { java: plan.java }),
         },
         tail: tailOf(output),
         truncated,
