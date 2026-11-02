@@ -12,7 +12,7 @@
         "pi-package"
     ],
     "scripts": {
-        "test": "node --import ./test/support/host.mjs --test \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\"",
+        "test": "node --import ./test/support/host.mjs --test \"test/*.test.ts\" \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\"",
         "test:it": "node --import ./test/support/host.mjs --test \"plugins/*/test/it/*.test.ts\"",
         "check": "node test/support/link-host.mjs && node scripts/check-pinned-deps.mjs && node scripts/check-runtime-deps.mjs && tsc -p tsconfig.json && biome ci .",
         "check:install": "node scripts/check-install.mjs",
@@ -39,20 +39,20 @@
     },
     "pi": {
         "extensions": [
-            "./plugins/jig-core/src/index.ts",
-            "./plugins/jig-sandbox/src/index.ts",
-            "./plugins/jig-memory/src/index.ts",
-            "./plugins/jig-workflow/src/index.ts",
-            "./plugins/jig-agents/src/index.ts",
-            "./plugins/jig-git/src/index.ts",
-            "./plugins/jig-lens/src/index.ts",
-            "./plugins/jig-jira/src/index.ts",
-            "./plugins/jig-logs/src/index.ts",
-            "./plugins/jig-api/src/index.ts",
-            "./plugins/jig-ops/src/index.ts",
-            "./plugins/jig-review/src/index.ts",
-            "./plugins/jig-mongo/src/index.ts",
-            "./plugins/jig-theme/src/index.ts"
+            "./plugins/jig-core/index.ts",
+            "./plugins/jig-sandbox/index.ts",
+            "./plugins/jig-memory/index.ts",
+            "./plugins/jig-workflow/index.ts",
+            "./plugins/jig-agents/index.ts",
+            "./plugins/jig-git/index.ts",
+            "./plugins/jig-lens/index.ts",
+            "./plugins/jig-jira/index.ts",
+            "./plugins/jig-logs/index.ts",
+            "./plugins/jig-api/index.ts",
+            "./plugins/jig-ops/index.ts",
+            "./plugins/jig-review/index.ts",
+            "./plugins/jig-mongo/index.ts",
+            "./plugins/jig-theme/index.ts"
         ],
         "skills": [
             "./plugins/*/skills"

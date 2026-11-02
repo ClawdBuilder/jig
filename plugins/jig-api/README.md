@@ -137,6 +137,7 @@ example of each source, is in [Configuration](docs/configuration.md).
 
 ```text
 jig-api/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      the tool and its checks (index, tool, params, config, ad-hoc, refresh), collections (model, template,
             catalog, sources/ with a few files per format), a request worked out (resolve, planning, optional, show),
             engine/ (sending through jig-core's request, previews, results)

@@ -17,7 +17,9 @@ export default function (pi: ExtensionAPI): void {
         handler: async () => {
             const out = process.env.JIG_INSTALL_PROBE_OUT;
             if (out === undefined) throw new Error("JIG_INSTALL_PROBE_OUT is not set");
-            const tools = pi.getAllTools().map((tool) => ({ name: tool.name, path: tool.sourceInfo.path }));
+            const tools = pi
+                .getAllTools()
+                .map((tool) => ({ name: tool.name, path: tool.sourceInfo.path, sourceInfo: tool.sourceInfo }));
             writeFileSync(out, JSON.stringify({ tools }));
         },
     });

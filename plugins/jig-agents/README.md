@@ -256,6 +256,7 @@ An unknown field is an error, as in `jig-core`, and so is `writes` or `tools` un
 
 ```text
 jig-agents/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      index (factory), runtime + start-plan (the session's children; what a start works out), child (one child)
             with child-process, child-questions, child-report and child-types, rpc, forward (questions), limits,
             launch (flags, environment, model), roles + policy (an agent file; configuration laid over it), role-plan +

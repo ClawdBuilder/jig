@@ -117,6 +117,7 @@ plugin's rules. An error names the key, and the plugin then uses its defaults.
 
 ```text
 jig-memory/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      index.ts (the factory), session.ts (the active ticket, its events and /ticket),
             store.ts (the ticket folder), notes.ts (the ## Now rule), evidence.ts,
             message.ts (the notes message and the reminder), clip.ts, config.ts,

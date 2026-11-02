@@ -126,6 +126,7 @@ Use a read-only database user for production. The floor denies writes anyway, bu
 
 ```text
 jig-mongo/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      the tool (index, tool, params, plan), access lists (access, expr, filter, pipeline), reads, writes (write-check,
             writes), the index check (require-index), results (render, explain, bson, ejson), the driver seam (backend, driver),
             connections (config, session, route)

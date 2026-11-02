@@ -174,6 +174,7 @@ nothing in the default `open` mode, so a company that wants it applied also defa
 ## Layout
 
 ```text
+index.ts            the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
 broker/broker.mjs   the only place the runtime runs: a plain-JavaScript child process
 src/                index.ts (entry), bash.ts (the tool, and one command outside), sandbox.ts + sandbox-types.ts +
                     sandbox-setup.ts + sandbox-messages.ts (the session), rules.ts + lists.ts + repos.ts (the rules as

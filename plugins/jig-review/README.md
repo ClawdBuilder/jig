@@ -114,6 +114,7 @@ None. `jig-review` needs nothing from a company: it works on a repository's own 
 
 ```text
 jig-review/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      coordinator + run-tracker (what the agent changed in a run), store, server, tools, git sources, approval service
   src/passkey/   WebAuthn on node:crypto: CBOR, checks, challenges, the store
   web/      the page: sources, build tooling, and the built files in web/dist

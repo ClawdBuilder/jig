@@ -146,6 +146,7 @@ is.
 
 ```text
 jig-jira/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      the tool and its checks (index, tool, params, classify, config), Jira's endpoints and request (api, http,
             create-meta), field names and values, what the model reads (format, reads), the search by who commented
             (commented, jql, window), writes and their previews (plan*, shown, page, writes), the wiki-markup renderer
