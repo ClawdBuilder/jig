@@ -6,9 +6,15 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
 import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
+import type { ContextHost } from "./context.ts";
+import { ContextView } from "./context.ts";
 import { stateDir } from "./files.ts";
+import { SWITCHES_ENTRY } from "./requests.ts";
 import { StatusFile, terminalOf } from "./status.ts";
 import type { Sources } from "./status.ts";
+
+/** The command the Context panel's Reload runs, through `pi.sendUserMessage`, when Pi is idle. */
+export const RELOAD_COMMAND = "session-reload";
 
 /** The parts a test replaces. */
 export interface SessionOptions extends Partial<Sources> {
@@ -16,6 +22,8 @@ export interface SessionOptions extends Partial<Sources> {
     tickMs?: number;
     /** Receives the status file's handle, for a test. */
     onStatus?: (status: StatusFile) => void;
+    /** Replaces the parts of Pi the Context part uses, for a test. */
+    contextHost?: Partial<ContextHost>;
 }
 
 /** A section of jig.json as jig-core loaded it; undefined without jig-core or without the section. */
@@ -36,6 +44,16 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const env = options.env ?? process.env;
         if (isChild(env)) return;
+        const context = new ContextView({
+            allTools: () => pi.getAllTools(),
+            activeTools: () => pi.getActiveTools(),
+            setActiveTools: (names) => pi.setActiveTools(names),
+            commands: () => pi.getCommands(),
+            settings: () => pi.getSettings(),
+            save: (saved) => pi.appendEntry(SWITCHES_ENTRY, saved),
+            reload: () => pi.sendUserMessage(`/${RELOAD_COMMAND}`, { expandPromptTemplates: true }),
+            ...options.contextHost,
+        });
         const status = new StatusFile({
             env,
             stateDir: options.stateDir ?? (() => stateDir(env)),
@@ -52,6 +70,7 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
                     }
                 }),
             now: options.now ?? (() => new Date()),
+            context,
         });
         options.onStatus?.(status);
 
@@ -66,17 +85,40 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
             },
         });
 
+        // `/session-reload`: Pi's reload, as a command an extension may run. The Context panel's Reload asks for it through the
+        // request file; the session runs it when the agent is idle (a reload needs a command's context, and an idle Pi).
+        pi.registerCommand(RELOAD_COMMAND, {
+            description:
+                "Reload extensions, skills, prompts and context files once the agent is idle (the Context panel's Reload)",
+            handler: async (_args, ctx) => {
+                await ctx.waitForIdle();
+                await ctx.reload();
+            },
+        });
+
+        // A skill switched off is left out of the prompt from the next turn, for this session only.
+        pi.on("before_agent_start", (event) => {
+            context.beforeTurn(event.systemPromptOptions);
+        });
+
         // jig-core publishes a decision for every call it governs; listened to from the start, so none is missed.
         pi.events.on(JIG_EVENTS.decision, (event) => {
             if (status.activity.decided(event)) status.write();
         });
 
-        pi.on("session_start", (_event, ctx: ExtensionContext) => status.start(ctx, options.tickMs ?? 2000));
-        pi.on("session_shutdown", () => status.stop());
+        pi.on("session_start", (event, ctx: ExtensionContext) =>
+            status.start(ctx, options.tickMs ?? 2000, (event as { reason?: string }).reason),
+        );
+        pi.on("session_shutdown", (event) => status.stop((event as { reason?: string }).reason === "reload"));
         pi.on("agent_start", () => status.setBusy(true));
         pi.on("agent_settled", (_event, ctx) => {
             status.setBusy(false);
             status.refresh(ctx);
+            try {
+                context.settled(); // a reload asked while the agent worked
+            } catch {
+                // Pi refused: the outcome still says waiting
+            }
         });
         pi.on("turn_end", (_event, ctx) => status.refresh(ctx));
         pi.on("model_select", (_event, ctx) => status.refresh(ctx));
