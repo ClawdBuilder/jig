@@ -132,6 +132,12 @@ function entry(
     return { path: absolute, shown: abbreviate(absolute, home, pathApi), kind, source };
 }
 
+/** A guarded entry for code that Pi loads. `note` says what named it, and `/jig rules` and a refusal show it: `~/work/ext (a package in settings.json)`. */
+export function guardedEntry(absolute: string, note: string, home: string, platform?: NodeJS.Platform): ProtectedPath {
+    const found = entry(absolute, "guarded", "default", home, flavour(platform));
+    return { ...found, shown: `${found.shown} (${note})` };
+}
+
 /** True when protecting `absolute` would protect the whole home folder, a folder above it, or the root. */
 export function coversHome(absolute: string, home: string, platform?: NodeJS.Platform): boolean {
     const pathApi = flavour(platform);

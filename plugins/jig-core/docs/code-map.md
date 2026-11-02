@@ -32,6 +32,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `gates.ts` | Checks that other plugins register; a gate can make a decision stricter and never looser | `gate.ts`, `state.ts` |
 | `environments.ts` | The names a call can act in, and which are test and which are production | `config.ts` |
 | `protected-paths.ts` | The files Pi's own file tools may not touch: credentials, Pi's settings, Jig's state | `commands.ts`, `config.ts` and 2 more |
+| `loaded-code.ts` | The code Pi loads at its next start with no sandbox: the local packages and extensions of its settings, guarded | `state.ts` |
 
 ### Asking you
 

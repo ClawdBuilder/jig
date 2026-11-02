@@ -19,7 +19,8 @@ import type { Gates } from "./gates.ts";
 import { createMasker, dailyMaskKey } from "./mask/index.ts";
 import type { Masker } from "./mask/index.ts";
 import { stateDir } from "./paths.ts";
-import { defaultProtectedPaths } from "./protected-paths.ts";
+import { loadedCodePaths, loadedExtensionFiles } from "./loaded-code.ts";
+import { defaultProtectedPaths, mergeProtected } from "./protected-paths.ts";
 import { openInBrowser, writePreviewPage } from "./preview-html.ts";
 import { createRedactor } from "./redact.ts";
 import type { Redactor } from "./redact.ts";
@@ -113,6 +114,8 @@ export interface JigState {
     /** Pi's agent folder, which holds jig.json and is protected from Pi's file tools. The extension sets it. Empty until
      *  then, and the paths inside it are left out of the protected ones. */
     agentDir: () => string;
+    /** Pi's working folder, which holds the project's `.pi/settings.json`. Set when the session starts; empty until then. */
+    workingDir: string;
     /** True once jig.json has been read in this runtime. */
     configLoaded: boolean;
     /** Pi's environment, read through here so a test can give another. */
@@ -212,6 +215,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         sectionUnion: new Map(),
         configPath: () => "",
         agentDir: () => "",
+        workingDir: "",
         configLoaded: false,
         env,
         sessionId: undefined,
@@ -290,12 +294,17 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         policy() {
             if (policy === undefined) {
                 const home = homedir();
-                const entries = defaultProtectedPaths({
-                    agentDir: state.agentDir(),
-                    home,
-                    env,
-                    pass: state.personal.config.secrets.pass,
-                });
+                const agentDir = state.agentDir();
+                const entries = mergeProtected(
+                    defaultProtectedPaths({ agentDir, home, env, pass: state.personal.config.secrets.pass }),
+                    // The code Pi loads at its next start, with no sandbox: the local packages and extensions of its settings.
+                    loadedCodePaths({
+                        agentDir,
+                        cwd: state.workingDir === "" ? process.cwd() : state.workingDir,
+                        home,
+                        extensionFiles: loadedExtensionFiles(pi),
+                    }),
+                );
                 policy = buildPolicy(state.personal, state.company, { entries, home });
             }
             return policy;
