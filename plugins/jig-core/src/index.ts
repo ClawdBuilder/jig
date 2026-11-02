@@ -22,6 +22,7 @@ import { configFile } from "./paths.ts";
 import { cleanupPreviews } from "./preview-html.ts";
 import { cleanupRecords, conditionProblem } from "./records.ts";
 import { finishCall, finishTurn, toolResult } from "./results.ts";
+import { startJobs } from "./start-jobs.ts";
 import { createState, loadPersonalConfig } from "./state.ts";
 import type { JigCoreOptions, JigState } from "./state.ts";
 import { registerWatchTool } from "./watch/tool.ts";
@@ -49,6 +50,8 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
             state.sessionAllows.clear();
             state.calls.clear();
             state.watches.end();
+            state.startJobs?.abort();
+            state.startJobs = undefined;
             state.screen = undefined;
         });
         registerCommands(pi, state);
@@ -81,6 +84,8 @@ function startSession(state: JigState, ctx: ExtensionContext): void {
     }
 
     announceSandbox(state, ctx);
+    // In the background: the session does not wait for it, and it cannot fail the start.
+    startJobs(state);
 
     // Old records, spill files and preview pages are removed when a session starts.
     const { config } = state.personal;

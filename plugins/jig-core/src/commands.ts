@@ -105,6 +105,7 @@ export function statusLines(state: JigState): string[] {
         environmentsLine(state),
         secretBackendsLine(state),
         ...passBindingLines(state),
+        ...startLines(state),
         `Tools on the unknown default (they ask until classified): ${unclassified.length === 0 ? "none" : unclassified.join(", ")}`,
         watchesLine(state),
         ...(gates.length === 0
@@ -211,6 +212,16 @@ export function passBindingLines(state: JigState): string[] {
         ...(gnupgHome === undefined ? [] : [`GnuPG home ${gnupgHome}`]),
     ];
     return bound.length === 0 ? [] : [`pass is bound by secrets.pass to: ${bound.join(", ")}`];
+}
+
+/** What a session start sets going in the background, from `jig.json`: the store unlock, and (below it) the start checks. */
+export function startLines(state: JigState): string[] {
+    const { secrets } = state.personal.config;
+    if (secrets.pass.unlockAtStart !== true) return [];
+    const usable = effectiveBackends(secrets, state.company).on.includes("pass");
+    return [
+        `Secret store: unlocked when a session starts (secrets.pass.unlockAtStart)${usable ? "" : ", but pass is not an enabled backend, so this does nothing"}`,
+    ];
 }
 
 /**
