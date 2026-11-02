@@ -1,3 +1,5 @@
+<img src="docs/assets/jig.svg" width="72" alt="Jig logo: a set-square">
+
 # Jig
 
 [![CI](https://github.com/Dev-Mriganka/jig/actions/workflows/ci.yml/badge.svg)](https://github.com/Dev-Mriganka/jig/actions/workflows/ci.yml)

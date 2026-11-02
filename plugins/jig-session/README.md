@@ -1,3 +1,5 @@
+<img src="../../docs/assets/jig.svg" width="48" alt="Jig logo: a set-square">
+
 # jig-session: the live session's state, as a file other programs read
 
 **Status: built.** Tested with a stand-in for Pi, and seen working with Pi 1.4.0 in a real session in WSL, read by the Work
