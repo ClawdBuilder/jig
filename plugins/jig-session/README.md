@@ -5,16 +5,30 @@
 **Status: built.** Tested with a stand-in for Pi, and seen working with Pi 1.4.0 in a real session in WSL, read by the Work
 panel of the [Herdr app files](../../herdr/README.md). Not tried: macOS, Windows without WSL.
 
-`jig-session` publishes what a Pi session is doing as one small JSON file per session: its terminal, model, context and what
-fills it, cost, ticket and workflow stage, the files it created or changed, and its recent tool calls with jig-core's decision
-on each. Any program can read it: a side panel, a status bar, a script. Nothing has to ask Pi, and Pi opens no port for it.
+`jig-session` is a Pi extension that publishes what a Pi session is doing as one small JSON file per session: its terminal,
+model, context and what fills it, cost, ticket and workflow stage, the files it created or changed, and its recent tool calls
+with jig-core's decision on each. Any program can read it, such as a side panel or a script; Pi opens no port for it.
 
 A reader may also send one kind of request, through a file: turn a tool or a skill on or off for this session, or reload
 Pi when it is idle. The session answers in its status file. A request never approves a call.
 
-For example, a session in a terminal that herdr-core runs writes `~/.local/state/jig/sessions/<session id>.json` with
-`"terminal": "t7"`, and a panel shows the session whose terminal has the focus. One such reader is Jig's
-[Herdr app files](../../herdr/README.md).
+For example, a session in a herdr-core terminal writes `~/.local/state/jig/sessions/<session id>.json` with
+`"terminal": "t7"`, and the Work panel of Jig's [Herdr app files](../../herdr/README.md) shows it while that terminal has the focus.
+
+## How it works
+
+Pi calls the extension on its events (start, each turn, each tool call, a model change, shutdown); it writes the file when
+the content changed. Readers poll: the Herdr panels every 2 seconds, while on screen, from another machine if need be.
+
+![On the agent's machine, Pi tells jig-session about its events and jig-session writes sessions/<id>.json by a rename; on your computer, the Herdr app's Work and Context panels run one sh script on that machine through Herdr's exec every 2 seconds while shown](../../docs/img/session-file.svg)
+
+*One file, two machines. jig-session writes on the agent's machine; the Herdr panels read it there through Herdr's `exec` with
+`on`, every 2 seconds while they are on screen, and never write it.*
+
+![The Context panel writes a request file; jig-session takes it by rename every 2 seconds, calls setActiveTools, filters skills in before_agent_start, saves the switches with appendEntry, reloads when idle if asked, and answers in lastRequest, which the panel reads](../../docs/img/session-switch.svg)
+
+*A switch, there and back. The request changes what the model is offered (tools from its next request, skills from your
+next prompt); jig-core still decides every call. Step by step, with the source files, in [How it works](docs/how-it-works.md).*
 
 ## The status file
 
@@ -48,26 +62,24 @@ its meaning, needs `schema: 2` and a [Decisions](../../docs/decisions.md) entry.
 | `lastRequest` | object or null | `{ id, ok, message, at, reload? }`: the answer to the last request |
 | `startedAt`, `updatedAt` | string | ISO times |
 
-What each field holds in detail is in [The status file](docs/status-file.md#fields-in-detail).
-
-[The status file](docs/status-file.md) says when it is written, shows an example and says how to read it safely.
+[The status file](docs/status-file.md) says when it is written, shows an example, how to read it safely and
+[each field in detail](docs/status-file.md#fields-in-detail).
 
 ## Requests
 
 `<state dir>/requests/<file name of the session>.json`, next to `sessions/`: the same name as the status file. A reader
 writes it to a temporary file and renames it over this name. The session looks every 2 seconds, takes the file and answers
-in `lastRequest`. **Schema 1:**
+in `lastRequest`. The switches are kept in the session (a `jig-session.switches` entry), so a reload or a resume keeps
+them. **Schema 1:**
 
 ```json
 { "schema": 1, "id": "ctx-1", "tools": { "bash": false }, "skills": { "pdf-tools": false }, "reload": true }
 ```
 
-- **`tools`:** each name on (`true`) or off from the next turn, with `pi.setActiveTools()`. A hidden tool cannot be turned on.
-- **`skills`:** each name on or off for this session only: a skill off is left out of the skills list of every later turn.
+- **`tools`:** each name on (`true`) or off, with `pi.setActiveTools()`, from the model's next request. A hidden tool cannot be turned on.
+- **`skills`:** each name on or off for this session only: a skill off is left out of the skills list from your next prompt.
 - **`reload`:** runs `/session-reload` (Pi's reload) once the agent is idle.
 - **Anything else:** a name the session does not have is ignored and named in the answer; an unknown field is ignored.
-
-The switches are kept in the session (a `jig-session.switches` entry), so a reload or a resume keeps them.
 
 ## Commands
 
@@ -85,7 +97,7 @@ The switches are kept in the session (a `jig-session.switches` entry), so a relo
 - **One step.** A file is written to a temporary file and renamed over the old one, so a reader never sees half of one.
 - **A request approves nothing.** It can switch a tool or a skill of this session, or reload it. jig-core's rules still
   decide every call, so a tool turned on is as allowed or denied as before.
-- **Its own life.** The file goes when the session ends; files left by a Pi that crashed are removed at the next start.
+- **Its own life.** The file goes when the session ends (a reload keeps it); files left by a Pi that crashed are removed at the next start.
 - **No child files.** A child Pi that `jig-agents` started writes nothing: it runs in its parent's terminal.
 
 ## Configure
@@ -95,9 +107,10 @@ the `memory` and `workflow` sections, and the Jira address from the `jira` secti
 
 ## How it fits with the other plugins
 
-- **`jig-core`:** `recent` takes each call's decision from the `jig:decision` event.
+- **`jig-core`:** `recent` takes each call's decision from the `jig:decision` event; its rules decide every call.
 - **`jig-memory`, `jig-workflow`, `jig-jira`:** read only, for `ticket` and `workflow`.
-- **Readers:** any program on the same machine. Jig's [Herdr app files](../../herdr/README.md) read it for their Work panel.
+- **Readers:** any program that can read the folder, on this machine or through a link to it, as the
+  [Herdr app files](../../herdr/README.md) do for their Work and Context panels.
 
 ## Company part (in the company plugin)
 
@@ -107,15 +120,16 @@ None. Nothing here is specific to a company.
 
 ```text
 jig-session/
-  src/   index.ts (the factory, the commands), status.ts (the file and when it is written), activity.ts (outputs and
-         recent calls), ticket.ts (ticket and workflow), usage.ts (context and cost), files.ts (folder, atomic write, sweep),
-         context.ts (the context detail and requests), breakdown.ts (the counting), requests.ts (the request file, switches)
-  test/  the file written, updated and removed; outputs, recent calls, ticket and workflow; the atomic write; the breakdown,
-         requests, switches and reload
-  docs/  status-file.md, context.md
+  index.ts  the entry Pi loads; it hands on src/index.ts
+  src/      index.ts (events, commands), status.ts (the file and when), activity.ts, ticket.ts, usage.ts, files.ts,
+            context.ts + breakdown.ts (the context detail), requests.ts (the request file, the switches)
+  test/     the file written, updated and removed; outputs, ticket, workflow; the breakdown, requests, switches, reload
+  docs/     how-it-works.md, status-file.md, context.md
 ```
 
 ## More detail
 
+- [How it works](docs/how-it-works.md): the write and the switch step by step, a reading path through `src/`, and what it is
+  built on (Pi's extension API, Node's built-ins)
 - [The status file](docs/status-file.md): when it is written, an example, and how a reader finds the session it wants
 - [Context and requests](docs/context.md): how the breakdown is counted, how a request is handled, skills and reload
