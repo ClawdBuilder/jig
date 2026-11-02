@@ -49,7 +49,7 @@ jobs:
       # the latest. When Pi has a new release, change it here and in AGENTS.md together, after the checks pass on it.
       - name: Install Pi
         run: |
-          npm install -g @earendil-works/pi-coding-agent@1.4.0
+          npm install -g @earendil-works/pi-coding-agent@1.5.0
           npm ls -g --depth=0 @earendil-works/pi-coding-agent
 
       # jig-sandbox's escape and keep-working tests run the real sandbox, and fail (they are not skipped) when it cannot run.
@@ -175,7 +175,7 @@ jobs:
       # The tests resolve Pi's own packages from the installed Pi, as `checks` does. Exactly this version, the latest.
       - name: Install Pi
         run: |
-          npm install -g @earendil-works/pi-coding-agent@1.4.0
+          npm install -g @earendil-works/pi-coding-agent@1.5.0
           npm ls -g --depth=0 @earendil-works/pi-coding-agent
 
       # The key file of the replica set, the jump host's SSH key and its settings go to a folder of this run. The script prints
