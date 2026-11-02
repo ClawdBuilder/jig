@@ -77,9 +77,18 @@ test("every git call goes through jig().exec.git and every gh and glab call thro
     );
     assert.ok(calls.length >= 4);
     for (const call of calls) {
-        if (call.kind === "run")
-            assert.match(call.first ?? "", /^"(gh|glab)"$/, `${call.file}: exec.run is for gh and glab`);
+        if (call.kind !== "run") continue;
+        // The one other program is ssh, only to read its configuration (`ssh -G <host>`, which never connects).
+        if (call.first === '"ssh"')
+            assert.equal(call.file, "src/origin-host.ts", `${call.file}: only origin-host.ts runs ssh`);
+        else assert.match(call.first ?? "", /^"(gh|glab)"$/, `${call.file}: exec.run is for gh and glab`);
     }
+});
+
+test("the only ssh call is `ssh -G <host>`, which reads the configuration and never connects", () => {
+    const text = sources().find(({ file }) => file === "src/origin-host.ts")?.text ?? "";
+    const runs = [...text.matchAll(/exec\.run\(\s*"ssh",\s*(\[[^\]]*\])/g)].map((match) => match[1]);
+    assert.deepEqual(runs, ['["-G", host]']);
 });
 
 test("the plugin never handles a token: no token variable, no Authorization header, no secret resolution", () => {

@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
@@ -50,6 +51,34 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: jig-git asks ssh which host an alias is
+
+**Decided**
+- **For an ssh origin, the real host comes from `ssh -G <host>`.** An origin in the scp-like form (`user@host:path`) or `ssh://` names
+  a host that may be an alias in the user's `~/.ssh/config`. `jig-git` runs `ssh -G` on it through `jig-core`'s `exec.run` (3 seconds,
+  no input) and reads the `hostname` line. `-G` only parses the configuration and never connects. An https origin is not asked.
+- **The answer decides the forge and the host.** github.com and `ssh.github.com` are GitHub, gitlab.com and `altssh.gitlab.com` are
+  GitLab, and the host `gh` or `glab` is told is that real host. An alias that ssh maps to github.com works with no `git.forges`
+  entry, whatever its name.
+- **`git.forges` keeps what it can do that ssh cannot.** An object-form entry (`{ "forge": ..., "host": ... }`) wins over ssh. A
+  string-form entry decides the forge, and the host comes from ssh's answer. An entry is found by the host in `origin` or by the real
+  host, so a self-hosted GitLab is named once, whatever alias reaches it.
+- **When ssh cannot answer** (not installed, failing, too slow, or no `hostname` line) the convention applies, as it did before:
+  `github.com-<alias>` and `ssh.github.com` are github.com, `altssh.gitlab.com` is gitlab.com. Nothing alarming is said.
+- **One answer per host for the session,** and a failure is believed for a minute. One helper, `originHost`, serves `githubRepo` and
+  `forgeOf`, so the two cannot disagree.
+
+**Why**
+- A company config named an alias in the string form, `"github.com-myteam": "github"`. `gh` was then told the alias as `GH_HOST`, and
+  failed with "error connecting to github.com-myteam; check your internet connection", which the agent reported as GitHub being down.
+- The alias lives in the user's own `~/.ssh/config`. Naming it again in `jig.json`, in a company plugin or by hand, repeats a fact that
+  ssh already holds and that drifts from it.
+
+**Rejected**
+- **Only the `github.com-<alias>` convention in the string form.** It fixes the incident but still leaves every other alias to be
+  named in `jig.json`.
+- **Reading `~/.ssh/config` ourselves.** `Include`, `Match` and tokens make the file hard to read right, and ssh already does it.
 
 ## 2026-11-02: a review of an agent run leaves out the commits that came in with it
 
