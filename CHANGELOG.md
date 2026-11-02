@@ -10,6 +10,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   (such as `cmd:` reading what `fly login` saved); Jig never signs in. A paused pipeline or a job closed to manual starts is
   refused before anyone is asked.
 - `jig-core` requests can stop at a marker in the reply, for a stream that never closes on its own.
+- A Context panel in the Herdr app files: what fills the session's context (messages, tools, system prompt, skills, context
+  files, the compaction buffer, free space), a switch for each tool and skill of that session, and Reload. `jig-session`
+  writes the figures into its status file and takes the switches from a request file; `/session-reload` reloads when idle.
 
 ## [0.2.0] - 2026-11-02
 
