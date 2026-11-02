@@ -12,6 +12,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - `jig-core` requests can stop at a marker in the reply, for a stream that never closes on its own.
 - A service's environment can name its own CI job (`environments.<name>.job`), and `ci` takes an `environment`: "build orders-api for staging" runs that environment's job. A write in a test environment asks; one in production is refused before asking.
 
+### Changed
+
+- A command that fails because the sandbox makes no Unix socket (a JVM attaching to itself, Docker, a socket tool) says so in one line, and how to run it outside with the user's approval.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
