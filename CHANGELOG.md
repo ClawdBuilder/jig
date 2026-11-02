@@ -10,6 +10,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `approvals.openInBrowser` in `jig.json`: `"always"` opens a review screen's preview in the browser as soon as the screen appears (once per question); the default `"on-key"` keeps the `o` key.
 - `workflow test` picks the JDK a Gradle build needs from its files (the wrapper's Gradle version, the build's Java level, and each installed JDK's `release` file), so no repository needs its own `JAVA_HOME`; a configured one still wins, and the result says which JDK ran and why.
 - `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure
   (such as `cmd:` reading what `fly login` saved); Jig never signs in. A paused pipeline or a job closed to manual starts is
@@ -34,6 +35,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Fixed
 
+- The `o` key on the review screen opens the preview over `http://localhost` from a small server on this machine, not as a file, so it opens in a Windows browser under WSL; it says which address it opened, and why when it could not (the launcher failed, or the server could not start; off WSL a file is then used, and under WSL, or with a Windows program as the opener, none is, because Windows warns about a network file).
 - Files Jig writes for itself (its state, ticket notes and evidence, the Postman copy, themes, passkeys, the sandbox's lists) are
   synced to disk before they take their name, so a killed machine no longer leaves one empty. `kit/files.ts` holds the helper.
 - The local packages Pi loads from its settings (and the extension files it loaded) are guarded: the sandboxed `bash` cannot change code that runs unsandboxed at the next start, and Pi's file tools refuse to write it.

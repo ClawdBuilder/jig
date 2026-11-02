@@ -38,6 +38,10 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
   `unlockAtStart` is `true` or `false` (default `false`); see [At session start](#at-session-start).
 - **`records.retentionDays`** and **`spill.retentionDays`:** whole numbers of
   days, from 1 to 3650.
+- **`approvals.openInBrowser`:** `"on-key"` (the default) or `"always"`. On a review screen the `o` key opens the preview in
+  the browser. With `"always"` it also opens once, as soon as the screen appears, so the plan is beside the terminal when you
+  start reading. The browser only shows: you still answer in Pi. Any other value is an error. See
+  [Approval screens](approval-screens.md).
 - **`startChecks`:** a list of at most 16 checks, each `{ "name": "VPN", "tcp":
   "vpn.example.com:443", "hint": "connect your VPN client" }`. See
   [At session start](#at-session-start).
@@ -341,7 +345,7 @@ such as `git`, `lens` or `memory`.
 - **A top-level key that neither jig-core nor a plugin registered** is an
   unknown field.
 - **A plugin cannot register a name jig-core uses itself:** `environments`,
-  `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`, `startChecks`.
+  `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`, `approvals`, `startChecks`.
 - **Order does not matter.** A plugin that loads before jig-core waits for it,
   and a section or defaults registered after the file was read are applied at
   once.
@@ -364,4 +368,5 @@ such as `git`, `lens` or `memory`.
 - **`JIG_CONDITION`:** a value that does not fit is left out of the records and shown as a configuration problem when
   the session starts. A child agent gets the parent's value.
 - **`BROWSER`:** a name, optionally with arguments, and `%s` for the address.
-  The default is `xdg-open`, or `open` on macOS.
+  The default is `xdg-open`, or `open` on macOS. The address is `http://localhost:<port>/preview/...`, served by Jig on
+  this machine only, so a browser on the other side of WSL can open it.

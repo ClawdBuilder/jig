@@ -1,7 +1,8 @@
 // What the user sees when a call asks: the summary, the preview a tool builds, and the page for the browser.
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { after, before, describe, test } from "node:test";
 import type { Preview, ToolDeclaration } from "../src/contract.ts";
 import { buildPreview, defaultSummary, describeCall, PREVIEW_TIMEOUT_MS } from "../src/preview.ts";
@@ -10,9 +11,13 @@ import {
     cleanupPreviews,
     escapeHtml,
     openInBrowser,
+    openPreview,
+    opensInWindows,
     renderPreviewPage,
+    runsUnderWsl,
     writePreviewPage,
 } from "../src/preview-html.ts";
+import type { PreviewServer } from "../src/preview-server.ts";
 import { tempState } from "./support/state.ts";
 
 const declared = (preview: ToolDeclaration["preview"]): ToolDeclaration => ({
@@ -240,7 +245,7 @@ describe("writing the page and opening it", () => {
     });
     after(() => state.stop());
 
-    test("the page is a private file under <state>/previews/, with no server", () => {
+    test("a page written as a file is private, under <state>/previews/", () => {
         const file = writePreviewPage(
             { summary: "Comment on PR 7", body: "hello", format: "text" },
             "pr · comment · external · write",
@@ -290,7 +295,7 @@ describe("writing the page and opening it", () => {
         assert.equal(browserCommand("u", {}, "darwin").program, "open");
     });
 
-    test("opening says how it went", async () => {
+    test("a file is opened by its file address, and the line says so", async () => {
         const launched: Array<{ program: string; args: string[] }> = [];
         const message = await openInBrowser(
             "/tmp/a b/preview.html",
@@ -299,16 +304,220 @@ describe("writing the page and opening it", () => {
             },
             { BROWSER: "my-browser" },
         );
-        assert.equal(message, "opened in the browser");
+        assert.equal(message, "opened in the browser: file:///tmp/a%20b/preview.html");
         assert.deepEqual(launched, [{ program: "my-browser", args: ["file:///tmp/a%20b/preview.html"] }]);
+    });
+
+    test("an http address is passed to the browser as it is", async () => {
+        const launched: Array<{ program: string; args: string[] }> = [];
+        const url = "http://localhost:4123/preview/0b1f.html";
+        const message = await openInBrowser(
+            url,
+            async (program, args) => {
+                launched.push({ program, args });
+            },
+            { BROWSER: "browser-wrapper --new-tab" },
+        );
+        assert.equal(message, `opened in the browser: ${url}`);
+        assert.deepEqual(launched, [{ program: "browser-wrapper", args: ["--new-tab", url] }]);
+    });
+
+    test("a launcher that cannot start is reported, with the address to open by hand", async () => {
         const failed = await openInBrowser(
-            "/tmp/p.html",
+            "http://localhost:4123/preview/x.html",
             async () => {
                 throw new Error("xdg-open is not installed");
             },
             {},
         );
-        assert.equal(failed, "could not open the browser: xdg-open is not installed");
+        assert.equal(
+            failed,
+            "could not open the browser: xdg-open is not installed (the address is http://localhost:4123/preview/x.html)",
+        );
+    });
+});
+
+describe("opening a preview", () => {
+    const state = tempState();
+    before(() => {
+        state.start();
+    });
+    after(() => state.stop());
+
+    const preview: Preview = { summary: "Comment on PR 7", body: "hello", format: "text" };
+    /** A server that keeps what it is given and answers at a fixed address. */
+    function fakeServer(): PreviewServer & { pages: string[] } {
+        const pages: string[] = [];
+        return {
+            pages,
+            serve: async (html) => {
+                pages.push(html);
+                return "http://localhost:4123/preview/abc.html";
+            },
+            close: async () => undefined,
+        };
+    }
+    const launcher = () => {
+        const launched: string[][] = [];
+        return {
+            launched,
+            launch: async (_program: string, args: string[]) => {
+                launched.push(args);
+            },
+        };
+    };
+
+    test("serves the page over http and opens that address, writing no file", async () => {
+        const server = fakeServer();
+        const { launched, launch } = launcher();
+        const message = await openPreview(preview, "h", { server, launch, env: {} });
+        assert.equal(message, "opened in the browser: http://localhost:4123/preview/abc.html");
+        assert.deepEqual(launched, [["http://localhost:4123/preview/abc.html"]]);
+        assert.equal(server.pages.length, 1);
+        assert.match(server.pages[0] ?? "", /Comment on PR 7/);
+        assert.equal(
+            existsSync(path.join(state.dir, "previews")) && readdirSync(path.join(state.dir, "previews")).length > 0,
+            false,
+        );
+    });
+
+    test("a launcher that cannot start is said, with the address", async () => {
+        const message = await openPreview(preview, "h", {
+            server: fakeServer(),
+            launch: async () => {
+                throw new Error("spawn xdg-open ENOENT");
+            },
+            env: {},
+        });
+        assert.equal(
+            message,
+            "could not open the browser: spawn xdg-open ENOENT (the address is http://localhost:4123/preview/abc.html)",
+        );
+    });
+
+    test("when the server cannot listen, it falls back to a file and says which it used", async () => {
+        const { launched, launch } = launcher();
+        const server: PreviewServer = {
+            serve: async () => {
+                throw new Error("listen EADDRNOTAVAIL");
+            },
+            close: async () => undefined,
+        };
+        const message = await openPreview(preview, "h", { server, launch, env: {}, wsl: false });
+        const files = readdirSync(path.join(state.dir, "previews"));
+        assert.equal(files.length, 1);
+        const address = pathToFileURL(path.join(state.dir, "previews", files[0] ?? "")).href;
+        assert.deepEqual(launched, [[address]]);
+        assert.equal(
+            message,
+            `opened the page as a file, not over http (the local preview server could not start: listen EADDRNOTAVAIL): ${address}`,
+        );
+    });
+
+    test("with the server down and the launcher too, both reasons are in the line", async () => {
+        const server: PreviewServer = {
+            serve: async () => {
+                throw new Error("listen EADDRNOTAVAIL");
+            },
+            close: async () => undefined,
+        };
+        const message = await openPreview(preview, "h", {
+            server,
+            launch: async () => {
+                throw new Error("no browser");
+            },
+            env: {},
+            wsl: false,
+        });
+        assert.match(
+            message,
+            /^could not open the browser: no browser \(the local preview server could not start: listen EADDRNOTAVAIL; the file is file:\/\/\/.*\.html\)$/,
+        );
+    });
+});
+
+describe("a file address is never tried for a Windows browser", () => {
+    const state = tempState();
+    before(() => {
+        state.start();
+    });
+    after(() => state.stop());
+
+    const down: PreviewServer = {
+        serve: async () => {
+            throw new Error("listen EADDRNOTAVAIL");
+        },
+        close: async () => undefined,
+    };
+    const preview: Preview = { summary: "s", body: "b" };
+
+    test("under WSL, a server that cannot start is said, and nothing is launched or written", async () => {
+        const launched: string[][] = [];
+        const message = await openPreview(preview, "h", {
+            server: down,
+            launch: async (_program, args) => {
+                launched.push(args);
+            },
+            env: {},
+            wsl: true,
+        });
+        assert.match(
+            message,
+            /^could not open the browser: the local preview server could not start: listen EADDRNOTAVAIL/,
+        );
+        assert.ok(!message.includes("file://"));
+        assert.deepEqual(launched, []);
+        assert.equal(existsSync(path.join(state.dir, "previews")), false);
+    });
+
+    test("a Windows program as the opener is the same, off WSL", async () => {
+        for (const browser of [
+            "/mnt/c/Windows/explorer.exe",
+            "msedge.exe",
+            "C:\\Windows\\explorer.exe",
+            "/mnt/d/tools/open",
+        ]) {
+            const launched: string[][] = [];
+            const message = await openPreview(preview, "h", {
+                server: down,
+                launch: async (_program, args) => {
+                    launched.push(args);
+                },
+                env: { BROWSER: browser },
+                wsl: false,
+            });
+            assert.match(message, /^could not open the browser: the local preview server could not start/, browser);
+            assert.deepEqual(launched, [], browser);
+        }
+    });
+
+    test("opensInWindows tells the cases apart", () => {
+        assert.equal(opensInWindows({}, true), true);
+        assert.equal(opensInWindows({}, false), false);
+        assert.equal(opensInWindows({ BROWSER: "firefox" }, false), false);
+        assert.equal(opensInWindows({ BROWSER: "/usr/bin/chromium --new-window" }, false), false);
+        assert.equal(opensInWindows({ BROWSER: "/mnt/c/Program Files/x.exe" }, false), true);
+        assert.equal(opensInWindows({ BROWSER: "wslview.exe" }, false), true);
+    });
+
+    test("WSL is found by the interop file or the kernel version, not by WSL_DISTRO_NAME", () => {
+        const none = () => false;
+        const missing = (): string => {
+            throw new Error("ENOENT");
+        };
+        assert.equal(
+            runsUnderWsl((file) => file.endsWith("WSLInterop"), missing),
+            true,
+        );
+        assert.equal(
+            runsUnderWsl(none, () => "Linux version 6.18.26.1-microsoft-standard-WSL2 (root@x)"),
+            true,
+        );
+        assert.equal(
+            runsUnderWsl(none, () => "Linux version 6.8.0-generic (buildd@lcy02)"),
+            false,
+        );
+        assert.equal(runsUnderWsl(none, missing), false);
     });
 });
 

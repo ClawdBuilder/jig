@@ -80,6 +80,7 @@ All fields are optional.
 | `secrets.pass.unlockAtStart` | `false` | Unlock the pass store once when a session starts, so no prompt comes mid-task |
 | `records.retentionDays` | 90 | Days record files are kept, from 1 to 3650 |
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
+| `approvals.openInBrowser` | `"on-key"` | `"always"` opens a review screen's preview in the browser as soon as it appears |
 | `startChecks` | none | Up to 16 TCP checks made when a session starts: `name`, `tcp` (`host:port`), `hint` |
 
 What each field means, with its limits, is in the

@@ -45,7 +45,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
         pi.on("tool_result", (event, ctx) => toolResult(state, event, ctx));
         pi.on("tool_execution_end", (event, ctx) => finishCall(state, event, ctx));
         pi.on("turn_end", (event, ctx) => finishTurn(state, event, ctx));
-        pi.on("session_shutdown", () => {
+        pi.on("session_shutdown", async () => {
             // Safe to run twice: cancellation, reload and exit can all arrive here.
             withdrawJig(api);
             state.sessionAllows.clear();
@@ -54,6 +54,8 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
             state.startJobs?.abort();
             state.startJobs = undefined;
             state.screen = undefined;
+            // The preview server listens only while previews are being read.
+            await state.previews.close().catch(() => undefined);
         });
         registerCommands(pi, state);
         registerWatchTool(pi, api, state.watches);

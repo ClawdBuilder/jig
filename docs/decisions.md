@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file](#2026-11-02-the-review-screens-browser-page-is-served-over-localhost-not-opened-as-a-file)
 - [2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files](#2026-11-02-a-gradle-builds-tests-pick-an-installed-jdk-that-fits-from-files)
 - [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
 - [2026-11-02: a push says how the agent will hear how the checks end](#2026-11-02-a-push-says-how-the-agent-will-hear-how-the-checks-end)
@@ -183,6 +184,35 @@ Teams that deploy with Concourse start a job by hand, and read its builds, the w
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file
+
+The `o` key wrote the page under the state folder and started the browser with a `file:///home/...` address. A Windows
+browser started from Linux under WSL cannot open a Linux path, so nothing opened, and Jig still said "opened in the browser"
+because the launcher had started. A `\\wsl.localhost\...` address stalls on a network-file security prompt.
+
+**Decided**
+- **The page is served by a small server in `jig-core`,** on `127.0.0.1` and a random port, started by the first preview and
+  closed when the session ends, and opened at `http://localhost:<port>/preview/<uuid>.html`, as `jig-review` opens its page.
+- **It serves only pages `jig-core` wrote,** each at an unguessable path; GET and HEAD only; any other path is a 404, and a
+  Host that is not this server's is a 403 (DNS rebinding). The headers are `no-store`, `nosniff`, `no-referrer` and the page's
+  own policy plus `frame-ancestors 'none'`.
+- **The pages are kept in memory (the latest 50),** not written to disk, while the server works. The file under `previews/`
+  is the fallback only, used when the server cannot listen, and the status line says which was used.
+- **A file address is never tried under WSL, or when the opener is a Windows program** (an `.exe`, or a path under
+  `/mnt/<drive>/`). WSL is found by `/proc/sys/fs/binfmt_misc/WSLInterop` or "microsoft" in `/proc/version`, not by
+  `WSL_DISTRO_NAME`, which a shell started over SSH lacks. Opened that way, the file raised a Windows network-file security
+  warning every time, so the screen reports the server's failure and leaves y, s and n.
+- **The line says what is known:** the address that was opened, or why it could not be, with the address to paste. A
+  launcher that starts proves nothing about what the browser did.
+- **`approvals.openInBrowser`** (`"on-key"` by default, or `"always"`) opens the page once as a review screen appears.
+
+**Why**
+- An address on `localhost` is the one thing both sides of WSL can reach, and it works the same on every platform.
+- The server has no route that takes input, so the rule that approvals happen only inside the waiting call is unchanged: it
+  is not an approval endpoint. A random path alone is not relied on, because the agent's shell shares this machine's network;
+  the page holds what the user is about to approve, which the agent already knows, and nothing else.
+- Keeping the pages out of the state folder leaves less of a plan on disk.
 
 ## 2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files
 

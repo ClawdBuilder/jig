@@ -21,7 +21,9 @@ import type { Masker } from "./mask/index.ts";
 import { stateDir } from "./paths.ts";
 import { loadedCodePaths, loadedExtensionFiles } from "./loaded-code.ts";
 import { defaultProtectedPaths, mergeProtected } from "./protected-paths.ts";
-import { openInBrowser, writePreviewPage } from "./preview-html.ts";
+import { openPreview } from "./preview-html.ts";
+import { createPreviewServer } from "./preview-server.ts";
+import type { PreviewServer } from "./preview-server.ts";
 import { createRedactor } from "./redact.ts";
 import type { Redactor } from "./redact.ts";
 import type { Answer, ErrorKind } from "./records.ts";
@@ -48,7 +50,7 @@ export interface JigCoreOptions {
     /** Makes the masker for a day, with the field names company plugins added. The default masks with the key of
      *  that day. */
     createMasker?: (stateDir: string, now: Date, extraFields: readonly string[]) => Masker;
-    /** Shows the rendered preview in the browser. The default writes the page under the state folder and opens it. */
+    /** Shows the rendered preview in the browser. The default serves the page on `localhost` and opens that address. */
     openPreview?: (preview: Preview, header: string) => Promise<string>;
     now?: () => Date;
     /** The timers the watch engine uses. The default is Node's, none of which keeps the process alive. */
@@ -136,6 +138,8 @@ export interface JigState {
     transports: Transports;
     tunnels: Tunnels;
     approvals: Approvals;
+    /** The local server that shows previews in the browser. Starts on the first preview; closed when the session ends. */
+    previews: PreviewServer;
     /** The checks other plugins registered, asked about each call after the rules. */
     gates: Gates;
     watches: WatchEngine;
@@ -185,6 +189,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
     const now = options.now ?? (() => new Date());
     const env = options.env ?? process.env;
     const redactor = createRedactor();
+    const previews = createPreviewServer();
     const makeMasker =
         options.createMasker ?? ((dir, date, extraFields) => createMasker(dailyMaskKey(dir, date), { extraFields }));
 
@@ -239,10 +244,12 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         signIn: createSignIn({ redactor }),
         transports: createTransports(),
         tunnels: createTunnels(),
+        previews,
         approvals: createApprovals({
             now: () => Date.now(),
             openPreview:
-                options.openPreview ?? (async (preview, header) => openInBrowser(writePreviewPage(preview, header))),
+                options.openPreview ?? ((preview, header) => openPreview(preview, header, { server: previews, env })),
+            openInBrowser: () => state.personal.config.approvals.openInBrowser,
         }),
         gates: createGates(options.gateTimeoutMs === undefined ? {} : { timeoutMs: options.gateTimeoutMs }),
         watches: createWatchEngine({
