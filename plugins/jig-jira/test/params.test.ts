@@ -78,7 +78,7 @@ describe("a search with no JQL", () => {
     test("is refused without projects, as it always was", () => {
         assert.equal(
             problem({ action: "search" }),
-            "jira search needs jql. Usage: jira search {jql, limit?, page?, include?}",
+            "jira search needs jql. Usage: jira search {jql, limit?, page?, include?, commented?}",
         );
         assert.throws(() => parseCall({ action: "search" }, { projects: [] }), /jira search needs jql/);
     });
@@ -108,7 +108,7 @@ describe("a call is checked against its action's table", () => {
     test("the usage line lists the needed parameters, then the optional ones with a question mark", () => {
         assert.equal(usage("comment"), "Usage: jira comment {key, text}");
         assert.equal(usage("get"), "Usage: jira get {key, include?, full?}");
-        assert.equal(usage("search"), "Usage: jira search {jql, limit?, page?, include?}");
+        assert.equal(usage("search"), "Usage: jira search {jql, limit?, page?, include?, commented?}");
         assert.equal(usage("create"), "Usage: jira create {project, type, summary, description?, fields?}");
     });
 
@@ -123,7 +123,7 @@ describe("a call is checked against its action's table", () => {
         );
         assert.equal(
             problem({ action: "search", jql: null }),
-            "jira search needs jql. Usage: jira search {jql, limit?, page?, include?}",
+            "jira search needs jql. Usage: jira search {jql, limit?, page?, include?, commented?}",
         );
     });
 
@@ -407,5 +407,106 @@ describe("the values", () => {
     test("find_field needs two characters", () => {
         assert.match(problem({ action: "find_field", query: "a" }), /query must be at least 2 characters/);
         assert.deepEqual(parse({ action: "find_field", query: "story" }), { action: "find_field", query: "story" });
+    });
+});
+
+describe("a search with commented", () => {
+    const search = (commented: unknown, more: Record<string, unknown> = {}) => ({
+        action: "search",
+        jql: "project = PROJ",
+        commented,
+        ...more,
+    });
+
+    test("is a person and two days, either of which may be left out", () => {
+        assert.deepEqual(parse(search({ by: "me", from: "2026-10-01", to: "2026-10-31" })), {
+            action: "search",
+            jql: "project = PROJ",
+            limit: 20,
+            page: undefined,
+            include: [],
+            commented: { by: "me", from: "2026-10-01", to: "2026-10-31" },
+        });
+        assert.deepEqual((parse(search({ by: " jdoe ", from: "2026-10-01" })) as { commented: unknown }).commented, {
+            by: "jdoe",
+            from: "2026-10-01",
+        });
+        assert.deepEqual((parse(search({ by: "me", to: "2026-10-31" })) as { commented: unknown }).commented, {
+            by: "me",
+            to: "2026-10-31",
+        });
+        assert.deepEqual((parse(search({ by: "me", from: null })) as { commented: unknown }).commented, { by: "me" });
+    });
+
+    test("is not in the call when it was not given, so a plain search is as it was", () => {
+        assert.equal("commented" in parse({ action: "search", jql: "a" }), false);
+        assert.equal("commented" in parse({ action: "search", jql: "a", commented: null }), false);
+    });
+
+    test("looks in the user's projects when the call has no JQL", () => {
+        const call = parseCall({ action: "search", commented: { by: "me" } }, { projects: ["PROJ"] });
+        assert.equal(call.action === "search" && call.jql, 'project in ("PROJ") ORDER BY updated DESC');
+    });
+
+    test("a mistake in it is named, with the shape it takes", () => {
+        const shape = "Usage: commented {by, from?, to?}";
+        assert.equal(
+            problem(search("me")),
+            `jira search: commented must be an object such as {"by": "me", "from": "2026-10-01"}. ${shape}`,
+        );
+        assert.equal(problem(search(["me"])), problem(search("me")));
+        assert.equal(
+            problem(search({ from: "2026-10-01" })).startsWith('jira search: commented.by must be "me"'),
+            true,
+        );
+        for (const by of ["", "  ", 5, "x".repeat(129), "two\nlines"]) {
+            assert.match(problem(search({ by })), /^jira search: commented\.by must be "me" or a person's account id/);
+        }
+        assert.equal(
+            problem(search({ by: "me", since: "2026-10-01" })),
+            `jira search: commented does not use since. ${shape}`,
+        );
+    });
+
+    test("the days are real days, in order", () => {
+        for (const day of ["2026-02-30", "2026-10-1", "10/01/2026", "yesterday", 20261001, "1999-12-31"]) {
+            assert.match(
+                problem(search({ by: "me", from: day })),
+                /^jira search: commented\.from must be a day such as 2026-10-01 \(got /,
+            );
+            assert.match(
+                problem(search({ by: "me", to: day })),
+                /^jira search: commented\.to must be a day such as 2026-10-01 \(got /,
+            );
+        }
+        assert.equal(
+            problem(search({ by: "me", from: "2026-10-31", to: "2026-10-01" })),
+            "jira search: commented.from (2026-10-31) is after commented.to (2026-10-01). Usage: commented {by, from?, to?}",
+        );
+        assert.doesNotThrow(() => parse(search({ by: "me", from: "2026-10-01", to: "2026-10-01" })));
+    });
+
+    test("takes no limit and no page, which a list of every match has no use for", () => {
+        for (const more of [{ limit: 5 }, { page: "1" }]) {
+            assert.match(
+                problem(search({ by: "me" }, more)),
+                /^jira search: limit and page do not apply with commented, which lists every issue the person commented on\./,
+            );
+        }
+    });
+
+    test("only a search takes it", () => {
+        assert.equal(
+            problem({ action: "comments", key: "PROJ-1", commented: { by: "me" } }),
+            "jira comments does not use commented. Usage: jira comments {key, limit?, full?}",
+        );
+    });
+
+    test("is in the schema as an object, with its three parts", () => {
+        const property = (parameters as unknown as { properties: Record<string, Record<string, unknown>> }).properties
+            .commented;
+        assert.equal(property?.type, "object");
+        assert.deepEqual(Object.keys((property?.properties ?? {}) as object), ["by", "from", "to"]);
+        assert.deepEqual(property?.required, ["by"]);
     });
 });

@@ -61,6 +61,9 @@ Traps:
 ## Searching
 
 - `search` takes JQL. With no `jql` it looks in the user's listed projects, newest first, and the result names the query it ran; with none listed, a search without `jql` is refused.
+- JQL has no "commented by". To find the issues a person commented on, use `commented: {by, from?, to?}` on `search`, not the Participants field and not one `comments` call per issue. `by` is `"me"` or an account id, user name or email; `from` and `to` are days (`2026-10-01`) on the user's own clock, both included. Give the `jql` that says where to look (a project, a status): at most 500 issues are checked, and a bigger set is refused with advice.
+- The result lists each match with the ids and dates of the comments, not their text. Read a text with `comments`. If it lists issues whose comments could not be read, say so; do not treat them as having none.
+- A note under a result about `labels != x` means that clause also drops the issues with no labels. Use `(labels is EMPTY OR labels != x)` if those should stay.
 
 ## Updating fields
 

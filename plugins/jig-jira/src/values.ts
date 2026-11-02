@@ -29,6 +29,8 @@ export interface User {
     accountId: string;
     username: string;
     key: string;
+    /** Empty where the site hides it: Jira Cloud shows an email address only when the person allows it. */
+    email: string;
     displayName: string;
     active: boolean;
 }
@@ -39,6 +41,7 @@ export function userOf(value: unknown): User {
         accountId: str(user.accountId),
         username: str(user.name),
         key: str(user.key),
+        email: str(user.emailAddress),
         displayName: str(user.displayName) || str(user.name) || str(user.accountId),
         active: user.active !== false,
     };
@@ -49,11 +52,21 @@ export function userId(user: User): string {
     return user.accountId || user.username || user.key;
 }
 
-/** True when two descriptions are of the same person, by any identifier they share. */
+/**
+ * True when two descriptions are of the same person, by any identifier they share: account id, user name, key or email
+ * address. Case does not matter: Data Center user names and email addresses are not case-sensitive, and account ids are
+ * random strings, so two of them never differ only in case.
+ */
 export function sameUser(a: User, b: User): boolean {
-    const ids = (user: User): string[] => [user.accountId, user.username, user.key].filter((id) => id !== "");
+    const ids = (user: User): string[] =>
+        [user.accountId, user.username, user.key, user.email].filter((id) => id !== "").map((id) => id.toLowerCase());
     const mine = ids(a);
     return ids(b).some((id) => mine.includes(id));
+}
+
+/** Someone known only by the text a caller gave: it may be an account id, a user name, a key or an email address. */
+export function userNamed(text: string): User {
+    return { accountId: text, username: text, key: text, email: text, displayName: text, active: true };
 }
 
 /** `2026-10-12T14:03:22.123+0000` as `2026-10-12`. */

@@ -6,6 +6,7 @@ import { Type } from "typebox";
 import { PROJECT_KEY } from "./config.ts";
 import { convertField, MAX_TEXT } from "./fields.ts";
 import { InputError, shortList } from "./values.ts";
+import { checkedDay } from "./window.ts";
 
 export type Param =
     | "key"
@@ -24,7 +25,8 @@ export type Param =
     | "description"
     | "fields"
     | "to"
-    | "linkType";
+    | "linkType"
+    | "commented";
 
 interface ActionSpec {
     kind: "read" | "write";
@@ -34,7 +36,7 @@ interface ActionSpec {
 
 export const ACTIONS = {
     get: { kind: "read", required: ["key"], optional: ["include", "full"] },
-    search: { kind: "read", required: ["jql"], optional: ["limit", "page", "include"] },
+    search: { kind: "read", required: ["jql"], optional: ["limit", "page", "include", "commented"] },
     comments: { kind: "read", required: ["key"], optional: ["limit", "full"] },
     transitions: { kind: "read", required: ["key"], optional: [] },
     changelog: { kind: "read", required: ["key"], optional: ["limit"] },
@@ -112,15 +114,48 @@ export const parameters = Type.Object({
             description: 'Fields to set, by name or id: {"labels": ["a"], "priority": "High", "assignee": "<id>"}',
         }),
     ),
+    commented: Type.Optional(
+        Type.Object(
+            {
+                by: Type.String({ description: '"me", or a person\'s account id, user name or email address' }),
+                from: Type.Optional(
+                    Type.String({ description: "First day, YYYY-MM-DD, on the user's own clock; the day is included" }),
+                ),
+                to: Type.Optional(
+                    Type.String({ description: "Last day, YYYY-MM-DD, on the user's own clock; the day is included" }),
+                ),
+            },
+            {
+                description:
+                    "Search only: issues commented on by a person; from and to are whole days, user's clock, both in",
+            },
+        ),
+    ),
 });
 
 // ---- parsed calls -----------------------------------------------------------------------------------------------------
 
 type Fields = Record<string, unknown>;
 
+/** `search`'s `commented` filter: who, and which days (on the user's clock, both included). An end left out is open. */
+export interface CommentedFilter {
+    /** `me`, or an account id, user name, key or email address. */
+    by: string;
+    from?: string;
+    to?: string;
+}
+
 export type Call =
     | { action: "get"; key: string; include: string[]; full: boolean }
-    | { action: "search"; jql: string; limit: number; page: string | undefined; include: string[] }
+    | {
+          action: "search";
+          jql: string;
+          limit: number;
+          page: string | undefined;
+          include: string[];
+          /** Set only when the call has the filter. */
+          commented?: CommentedFilter;
+      }
     | { action: "comments"; key: string; limit: number; full: boolean }
     | { action: "transitions"; key: string }
     | { action: "changelog"; key: string; limit: number }
@@ -173,6 +208,34 @@ export interface ParseOptions {
 /** What `search` looks for when the call has no JQL: the newest issues of the user's projects. */
 export function projectsQuery(projects: readonly string[]): string {
     return `project in (${projects.map((key) => `"${key}"`).join(", ")}) ORDER BY updated DESC`;
+}
+
+const COMMENTED_KEYS = ["by", "from", "to"];
+const MAX_BY = 128;
+
+/** The `commented` parameter of a search, checked: who, and the days, which are real dates in the right order. */
+function commentedOf(value: unknown): CommentedFilter {
+    const fail = (message: string): never => {
+        throw new InputError(`jira search: ${message}. Usage: commented {by, from?, to?}`);
+    };
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return fail('commented must be an object such as {"by": "me", "from": "2026-10-01"}');
+    }
+    const given = value as Record<string, unknown>;
+    const unused = Object.keys(given).filter((name) => present(given[name]) && !COMMENTED_KEYS.includes(name));
+    if (unused.length > 0) return fail(`commented does not use ${unused.join(", ")}`);
+    const by = typeof given.by === "string" ? given.by.trim() : "";
+    if (by === "" || by.length > MAX_BY || /[\u0000-\u001f]/.test(by)) {
+        return fail(
+            `commented.by must be "me" or a person's account id, user name or email address (got ${shown(given.by)})`,
+        );
+    }
+    const from = present(given.from) ? checkedDay(given.from, "commented.from") : undefined;
+    const to = present(given.to) ? checkedDay(given.to, "commented.to") : undefined;
+    if (from !== undefined && to !== undefined && from > to) {
+        return fail(`commented.from (${from}) is after commented.to (${to})`);
+    }
+    return { by, ...(from === undefined ? {} : { from }), ...(to === undefined ? {} : { to }) };
 }
 
 /**
@@ -270,7 +333,15 @@ export function parseCall(input: Readonly<Record<string, unknown>>, options: Par
         case "search": {
             const jql = present(input.jql) ? words("jql", 8000).replace(/\s+/g, " ") : projectsQuery(projects);
             const page = present(input.page) ? words("page", 2000) : undefined;
-            return { action, jql, limit: limit(), page, include: include() };
+            const commented = present(input.commented) ? commentedOf(input.commented) : undefined;
+            if (commented !== undefined && (present(input.limit) || present(input.page))) {
+                return fail(
+                    "limit and page do not apply with commented, which lists every issue the person commented on. " +
+                        "Narrow it with from, to or the JQL",
+                );
+            }
+            const filter = commented === undefined ? {} : { commented };
+            return { action, jql, limit: limit(), page, include: include(), ...filter };
         }
         case "comments":
             return { action, key: issueKey(), limit: limit(), full: flag("full") };

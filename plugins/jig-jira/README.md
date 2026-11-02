@@ -22,7 +22,7 @@ it, and posts it only after you press `y`.
 | Action | Kind | What it does |
 |---|---|---|
 | `get` | read | An issue's fields, description and latest 5 comments |
-| `search` | read | Issues matching a JQL query, with paging |
+| `search` | read | Issues matching a JQL query, with paging; with `commented`, the issues a person commented on |
 | `comments` | read | The newest comments, up to 100 |
 | `transitions` | read | The transitions available, with their target status |
 | `changelog` | read | Status and field history |
@@ -43,6 +43,24 @@ Writes go to `external` (or the environment you set), so they ask you by
 default. Each action's parameters, and the limits on what the tool returns, are
 in [Parameters](docs/parameters.md).
 
+## Finding issues by who commented
+
+JQL has no "commented by" (only an app, ScriptRunner, adds one), so `search` takes a `commented` filter. `from` and `to` are whole
+days on your own clock, midnight to midnight, and both days are included.
+
+```json
+{ "action": "search", "jql": "project = PROJ", "commented": { "by": "me", "from": "2026-10-01", "to": "2026-10-31" } }
+```
+
+- **Candidates:** the issues of your JQL (or of `projects`) updated since `from`, at most 500. More is refused, with advice on narrowing.
+- **Exact check:** every comment of each candidate is read, and an issue matches when one is by that person and was created in
+  the days. A match is listed with the ids and dates of those comments, not their text.
+- **Two methods:** `read` reads the comments. `scriptrunner` lets ScriptRunner's `commented()` shorten the list of candidates where
+  the site has it; `commentSearch` chooses. `me` names you where the site has no `/myself`.
+- **JQL note:** a `search` whose JQL says `labels != x` is told that it also drops issues with no labels (see Rules).
+
+The rules, limits and failures are in [Commented by](docs/commented.md).
+
 ## Rules
 
 - **Rendered previews.** Text is Jira wiki markup, and the review screen shows
@@ -58,8 +76,12 @@ in [Parameters](docs/parameters.md).
   see the new preview".
 - **No resend on timeout.** A write whose result is unknown is never sent
   again. The issue is read once, and the tool says whether the write happened.
+- **JQL notes.** A `search` whose JQL says `labels != x` (or `not in`, or the same
+  with `component` or `fixVersion`) gets a note: such a clause also drops issues
+  that have none. It is a note, never a refusal.
 - **Facts.** After a write, the call's record carries the issue key, as the
-  fact `issue`.
+  fact `issue`. After a `search` with `commented`, it carries `candidates`,
+  `matched`, `method` and `unread`.
 
 ## Configure
 
@@ -76,6 +98,8 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | `createDefaults` | none | Values `create` gives a field when the call does not set it, by field name or id |
 | `privateNames` | none | Folder or host names to flag in outgoing text, up to 100 |
 | `environment` | `external` | The environment name that rules and classification know this Jira by |
+| `me` | none | Your account id (Cloud) or user name (Data Center), for `commented` when `/myself` is unavailable |
+| `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` (see [Commented by](docs/commented.md)) |
 
 The fields in detail are in [Configuration](docs/configuration.md).
 
@@ -123,8 +147,9 @@ is.
 ```text
 jig-jira/
   src/      the tool and its checks (index, tool, params, classify, config), Jira's endpoints and request (api, http,
-            create-meta), field names and values, what the model reads (format, reads), writes and their previews
-            (plan*, shown, page, writes), the wiki-markup renderer (wiki), the local-pointer check (pointers)
+            create-meta), field names and values, what the model reads (format, reads), the search by who commented
+            (commented, jql, window), writes and their previews (plan*, shown, page, writes), the wiki-markup renderer
+            (wiki), the local-pointer check (pointers)
   skills/   jira/SKILL.md: comment style and conventions
   test/     against a fake Jira server on this machine and a fake jig-core
   docs/     the detail pages below
@@ -133,6 +158,7 @@ jig-jira/
 ## More detail
 
 - [Parameters](docs/parameters.md): what each action needs, fields, limits on results, and people
+- [Commented by](docs/commented.md): the `commented` filter of `search`, its days, candidates, checks and ScriptRunner
 - [Configuration](docs/configuration.md): the fields of the `jira` section in detail
 - [Writes](docs/writes.md): the rules for writes in full, and what each preview shows
 - [Not verified yet](docs/not-verified.md): what needs a real Jira

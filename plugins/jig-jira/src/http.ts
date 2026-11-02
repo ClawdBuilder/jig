@@ -180,7 +180,7 @@ function failed(error: unknown, timeoutMs: number): unknown {
 }
 
 const NOT_JSON = Symbol("not json");
-const TOO_LARGE = "Jira's answer is larger than 8 MiB, so it was not read";
+export const TOO_LARGE = "Jira's answer is larger than 8 MiB, so it was not read";
 
 function parse(text: string): unknown {
     if (text.trim() === "") return undefined;

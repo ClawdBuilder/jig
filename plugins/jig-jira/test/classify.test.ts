@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { classifyCall } from "../src/classify.ts";
 import { readJira, validateJira } from "../src/config.ts";
-import { ACTION_NAMES, ACTIONS } from "../src/params.ts";
+import { ACTION_NAMES, ACTIONS, parseCall } from "../src/params.ts";
 import { setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
 
@@ -210,6 +210,8 @@ describe("the README", () => {
             "createDefaults",
             "privateNames",
             "environment",
+            "me",
+            "commentSearch",
         ]);
         const valid = { site: "https://example.test", auth: { token: "pass:x/y" } };
         for (const field of documented) {
@@ -240,10 +242,27 @@ describe("the README", () => {
     });
 
     test("its example configuration is valid", () => {
-        const example = /```json\n([\s\S]*?)\n```/.exec(README)?.[1];
+        // The README also has an example call of the tool; the configuration is the block that has a "jira" section.
+        const example = [...README.matchAll(/```json\n([\s\S]*?)\n```/g)]
+            .map((match) => match[1])
+            .find((block) => block?.includes('"jira"'));
         assert.ok(example);
         const section = (JSON.parse(example) as { jira: unknown }).jira;
         assert.deepEqual(validateJira(section), []);
         assert.ok(readJira(section).settings);
+    });
+
+    test("its example calls of the search with commented are calls the tool accepts", () => {
+        const COMMENTED = fs.readFileSync(path.join(PLUGIN, "docs", "commented.md"), "utf8");
+        for (const [name, document] of [
+            ["README.md", README],
+            ["docs/commented.md", COMMENTED],
+        ] as const) {
+            const blocks = [...document.matchAll(/```json\n([\s\S]*?)\n```/g)].map((match) => match[1] ?? "");
+            const example = blocks.find((block) => block.includes('"commented"'));
+            assert.ok(example, `${name} has an example call with commented`);
+            const call = parseCall(JSON.parse(example) as Record<string, unknown>);
+            assert.equal(call.action === "search" && call.commented?.by, "me", name);
+        }
     });
 });

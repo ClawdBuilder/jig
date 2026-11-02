@@ -33,7 +33,18 @@ export interface JiraSettings {
     privateNames: readonly string[];
     /** The environment name that jig-core's rules know this Jira by. */
     environment: string;
+    /** Who "me" is for `search`'s `commented` filter when the site does not answer `GET /myself`: an account id (Jira
+     *  Cloud), or a user name or key (Data Center). Undefined when not set. */
+    me: string | undefined;
+    /** How `search`'s `commented` filter finds issues: ScriptRunner's `commented()` when the site has it, else by
+     *  reading every candidate's comments. */
+    commentSearch: CommentSearch;
 }
+
+/** `auto` tries ScriptRunner's `issueFunction in commented(...)` once and remembers that a site does not have it. */
+export const COMMENT_SEARCH_MODES = ["auto", "scriptrunner", "read"] as const;
+export type CommentSearch = (typeof COMMENT_SEARCH_MODES)[number];
+export const DEFAULT_COMMENT_SEARCH: CommentSearch = "auto";
 
 export const DEFAULT_UPDATE_FIELDS: readonly string[] = ["summary", "description", "labels", "priority", "assignee"];
 export const DEFAULT_ENVIRONMENT = "external";
@@ -47,6 +58,8 @@ const SECTION_FIELDS: ReadonlySet<string> = new Set([
     "createDefaults",
     "privateNames",
     "environment",
+    "me",
+    "commentSearch",
 ]);
 const AUTH_FIELDS: ReadonlySet<string> = new Set(["email", "token", "signIn", "transport"]);
 
@@ -58,6 +71,7 @@ const MAX_LIST = 100;
 /** A project key as Jira writes it: letters first, then letters, digits and underscores. */
 export const PROJECT_KEY = /^[A-Z][A-Z0-9_]{0,19}$/;
 const MAX_PROJECTS = 50;
+const MAX_ME = 128;
 const MAX_DEFAULTS = 30;
 /** What the project and type parameters set, so a default cannot. `summary` is a parameter that `create` requires. */
 const NOT_DEFAULTABLE = new Set(["project", "issuetype", "issue type", "summary"]);
@@ -244,6 +258,25 @@ function checkCreateDefaults(value: unknown, errors: string[]): Record<string, u
     return defaults;
 }
 
+function checkMe(value: unknown, errors: string[]): string | undefined {
+    if (value === undefined) return undefined;
+    const me = typeof value === "string" ? value.trim() : "";
+    if (me === "" || me.length > MAX_ME || /[\u0000-\u001f]/.test(me)) {
+        errors.push(
+            `jira.me: must be your account id (Jira Cloud) or user name (Data Center), 1 to ${MAX_ME} characters`,
+        );
+        return undefined;
+    }
+    return me;
+}
+
+function checkCommentSearch(value: unknown, errors: string[]): CommentSearch {
+    if (value === undefined) return DEFAULT_COMMENT_SEARCH;
+    const mode = COMMENT_SEARCH_MODES.find((known) => known === value);
+    if (mode === undefined) errors.push(`jira.commentSearch: must be one of ${COMMENT_SEARCH_MODES.join(", ")}`);
+    return mode ?? DEFAULT_COMMENT_SEARCH;
+}
+
 /**
  * Checks a raw `jira` section and reads it. `errors` name their key; with any error there are no settings. A misspelt
  * field is an error and not a silent default: `updateField` would otherwise leave `update` on its default list.
@@ -272,6 +305,8 @@ export function readJira(raw: unknown): { settings?: JiraSettings; errors: strin
     if (typeof environment !== "string" || !ENVIRONMENT_NAME.test(environment)) {
         errors.push("jira.environment: must be an environment name, such as external");
     }
+    const me = checkMe(raw.me, errors);
+    const commentSearch = checkCommentSearch(raw.commentSearch, errors);
 
     if (errors.length > 0 || site === undefined || auth === undefined) return { errors };
     return {
@@ -285,6 +320,8 @@ export function readJira(raw: unknown): { settings?: JiraSettings; errors: strin
             createDefaults,
             privateNames: privateNames ?? [],
             environment: String(environment),
+            me,
+            commentSearch,
         },
     };
 }

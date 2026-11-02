@@ -12,7 +12,7 @@ comment needs text. Usage: jira comment {key, text}`.
 | Action | Needs | Optional |
 |---|---|---|
 | `get` | `key` | `include`, `full` |
-| `search` | `jql` | `limit`, `page`, `include` |
+| `search` | `jql` | `limit`, `page`, `include`, `commented` |
 | `comments` | `key` | `limit`, `full` |
 | `transitions` | `key` | |
 | `changelog` | `key` | `limit` |
@@ -40,11 +40,13 @@ comment needs text. Usage: jira comment {key, text}`.
 | `commentId`, `text` | The number `comments` shows; the comment, in Jira wiki markup |
 | `transition` | A name from `transitions` (or its id) |
 | `type`, `summary`, `description` | The issue type name; a one-line title of at most 255 characters; the description, in wiki markup |
+| `commented` | `search` only: `{by, from?, to?}`, the issues a person commented on (see [Commented by](commented.md)) |
 | `fields` | The fields to set, by name or id (see below) |
 | `to`, `linkType` | The other issue's key; a link type from `link_types`, by name or by a phrase (see below) |
 
 - **`limit`:** `search` and `assignable` return 20 by default, up to 50.
-  `comments` returns 20, up to 100. `changelog` returns 30, up to 100.
+  `comments` returns 20, up to 100. `changelog` returns 30, up to 100. A
+  `search` with `commented` takes no `limit` and no `page`: it lists every match.
 - **`fields`:** an example is
   `{"labels": ["a"], "priority": "High", "assignee": "<id from assignable>"}`. A
   person is given by the id `assignable` shows, or `null` to unassign.
@@ -92,6 +94,12 @@ Compact plain text for the model, one line per issue, comment or change.
 | Text in a write | 32,767 characters, Jira's own limit; longer is refused before you are asked |
 | A reply from Jira | 8 MiB |
 | Timeouts | 30 seconds; 60 for `search` |
+
+A search whose JQL says `labels != x` or `labels not in (...)`, or the same with
+`component` or `fixVersion`, gets a one-line note under the result. Such a clause
+also drops the issues that have no value, and `(labels is EMPTY OR labels != x)`
+keeps them. There is no note when the JQL already says `labels is EMPTY`, and the
+query is always sent as written.
 
 A search that names a field Jira does not know gets the closest field names
 appended. Searching pages by token on Jira Cloud (`/search/jql`) and by offset
