@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: a push says how the agent will hear how the checks end](#2026-11-02-a-push-says-how-the-agent-will-hear-how-the-checks-end)
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
@@ -79,6 +80,26 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-02: a push says how the agent will hear how the checks end
+
+After a push the agent said "I'll look at the CI result once it runs" and ended its turn, with nothing that would wake it.
+
+**Decided**
+- **The result of a push ends with one line.** When a listener started a watch while the push was announced, the line names it. When
+  none did, it says what starts one and that the user has to ask otherwise. A push that was not announced gets no line.
+- **The way to start one is the `ci` tool's `watch` action,** not `pr watch`: `pr watch` reports new comments, and never checks.
+  The line says so, so that a model does not wait for checks on a watch that cannot report them.
+- **A started watch is found by what `jig-core` lists,** open after the event and not before. `jig-git` still does not know
+  `jig-ops` or whether it is installed.
+- **One sentence in the tool guidance and the skill** says that a promise to report later needs a watch.
+
+**Why**
+- The agent can hold only what it is told. A line at the moment of the push is read when it matters.
+- Starting a CI watch from `jig-git` would put CI back into it, after CI moved to `jig-ops` so that each system has one adapter.
+
+**Rejected**
+- **Naming `pr watch` as the way to hear about checks.** It would send the agent to wait on a watch that never reports them.
 
 ## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
 
