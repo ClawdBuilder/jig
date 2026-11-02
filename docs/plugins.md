@@ -39,7 +39,7 @@ paths (see [Permissions](permissions.md#the-floor-what-configuration-cannot-chan
 | [`jig-ops`](../plugins/jig-ops/README.md) | built | `ci`, `deploy`, `runtime` | 7 |
 | [`jig-review`](../plugins/jig-review/README.md) | built | `start_interactive_code_review` and one more; `/code-review` | 8 |
 | [`jig-theme`](../plugins/jig-theme/README.md) | built | none: the `/theme` command, palettes and a footer | 8 |
-| [`jig-session`](../plugins/jig-session/README.md) | built | none: `/session-file`, and a status file per session that other programs read | 8 |
+| [`jig-session`](../plugins/jig-session/README.md) | built | none: `/session-file`, `/session-reload`, and a status file per session that other programs read | 8 |
 | [`jig-agents`](../plugins/jig-agents/README.md) | built | `subagent`: start, status, message, stop; the `/agents` command | 8 |
 
 `jig-agents` is Jig's own, on Pi's RPC mode: no Pi store package keeps every child
