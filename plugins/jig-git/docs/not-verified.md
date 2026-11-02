@@ -27,6 +27,9 @@ put it in place. A test run has no key GitHub knows, so CI runs only the refusal
 
 ## What is still not verified
 
+- **`ssh -G` against a real `~/.ssh/config`.** The tests answer it with a fake `ssh` on `PATH`, so they prove what `jig-git` does with
+  a `hostname` line, not what the real program prints for `Include`, `Match` or a token in your file. A real alias is the thing to try:
+  `ssh -G github.com-work | grep ^hostname`, then a `pr view` in a repository whose origin uses it.
 - **Pi's event bus** was checked against an older Pi (1.2), not 1.4. `jig-git`
   only publishes `jig-git:pushed` with `pi.events.emit`; the watch messages that
   start a turn are `jig-core`'s, and the listener is `jig-ops`'s.

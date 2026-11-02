@@ -5,6 +5,10 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 ## Contents
 
 - [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
+- [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
+- [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
+- [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
+- [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
@@ -71,6 +75,111 @@ guessed that only by reasoning. The sandbox explained refusals it could see (a p
 - **Telling the agent about every possible block up front.** The description is read on every call; a line after a failure is
   read only when it matters.
 - **A long list of tools.** Each entry is another message to keep right. An entry is added when a real session needs it.
+
+## 2026-11-02: an environment can have its own CI job, and a `ci` call can name it
+
+A service has one build CI, but the jobs that deploy it differ by environment, and so may the CI system. A Concourse job per
+environment is the case that asked for it; a Jenkins job that differs by environment is the same case.
+
+**Decided**
+- **`environments.<e>.job` is a `ci` entry,** for any system that can start a build (Concourse, Jenkins, GitLab). GitHub Actions has no
+  trigger, so it is refused. An environment may have only a `job`.
+- **Every `ci` action takes `environment`.** With it the call uses that job; without it, the service's `ci`.
+- **A call that names an environment acts in it.** The job carries the environment's name, so the rules of that environment decide:
+  reads are reads there, `trigger` and `rerun` are writes there, a test environment asks and production is denied before anyone is
+  asked. `watch` stays a local write.
+- **The environment is in the fingerprint and the preview.** The same job approved for one environment is not approved for another.
+- **A job never starts a watch on a push,** and its watch says nothing about a commit: no `jig-ops:ci-finished`, no "artifact
+  ready". A push means "a commit was built"; a deploy job does not say that.
+- **A user's own `auth` for a job replaces the company's whole** (`services.*.environments.*.job.auth` joins the `replace` keys).
+
+**Why**
+- **The environment already decides the rules.** Deriving the environment of a call from the job keeps one mapping, as the catalog
+  does for `deploy`.
+- **A second tool or a second service entry per environment** would have repeated the repository, the artifact rules and the
+  service's name, and a call could not say "staging" at all.
+
+## 2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker
+
+Teams that deploy with Concourse start a job by hand, and read its builds, the way a Jenkins team does. `ci` gains an adapter for it.
+
+**Decided**
+- **`concourse` is the fourth CI system** of `jig-ops`: `status`, `runs`, `run`, `log`, `trigger` and `watch`, with no `rerun`. The
+  catalog names the team, the pipeline and the job; a call names none of them. `trigger` has no `ref` and no `parameters`, because a job
+  runs what its pipeline pins. A paused job or pipeline is refused before anyone is asked.
+- **Every build read is checked to be the catalog's.** Its team, pipeline and job must match, so a number cannot reach another job.
+- **The login is a secret reference, sent as a bearer.** `fly login` writes a token for the person; a command the company declares
+  prints only that token, and the entry says `{ "token": "cmd:<name>" }`. Jig never signs in: no `fly login`, no browser, no
+  `~/.flyrc` read by a plugin. When Concourse refuses the login, or the reference cannot be read, the message names the command in
+  `signInHint`, for the user to run in their own terminal.
+- **`HttpRequest.stopAt` is a stop marker.** Concourse writes an `end` event and then keeps the stream open until the client goes (read in
+  its source). The request stops reading when the reply holds the marker and lets the connection go. The contract only grows.
+
+**Why**
+- **A broker or a `fly curl` transport was the alternative to a reference.** Both need a program of ours to hold a session. A reference
+  is read again for each request, so the call after the user's login works, and `jig-core` keeps the value from the plugin.
+- **Without a marker, `ci log` waits for the time limit** on a finished build, and every failed watch carries no log.
+
+**Rejected**
+- **A plugin that runs `fly login` on a 401.** It signs in for the user, which no plugin does.
+- **A `file:` selector in `jig-core`** for the token in `~/.flyrc`. A company's reader command does the same with no new backend.
+
+## 2026-11-02: jig-git asks ssh which host an alias is
+
+**Decided**
+- **For an ssh origin, the real host comes from `ssh -G <host>`.** An origin in the scp-like form (`user@host:path`) or `ssh://` names
+  a host that may be an alias in the user's `~/.ssh/config`. `jig-git` runs `ssh -G` on it through `jig-core`'s `exec.run` (3 seconds,
+  no input) and reads the `hostname` line. `-G` only parses the configuration and never connects. An https origin is not asked.
+- **The answer decides the forge and the host.** github.com and `ssh.github.com` are GitHub, gitlab.com and `altssh.gitlab.com` are
+  GitLab, and the host `gh` or `glab` is told is that real host. An alias that ssh maps to github.com works with no `git.forges`
+  entry, whatever its name.
+- **`git.forges` keeps what it can do that ssh cannot.** An object-form entry (`{ "forge": ..., "host": ... }`) wins over ssh. A
+  string-form entry decides the forge, and the host comes from ssh's answer. An entry is found by the host in `origin` or by the real
+  host, so a self-hosted GitLab is named once, whatever alias reaches it.
+- **When ssh cannot answer** (not installed, failing, too slow, or no `hostname` line) the convention applies, as it did before:
+  `github.com-<alias>` and `ssh.github.com` are github.com, `altssh.gitlab.com` is gitlab.com. Nothing alarming is said.
+- **One answer per host for the session,** and a failure is believed for a minute. One helper, `originHost`, serves `githubRepo` and
+  `forgeOf`, so the two cannot disagree.
+
+**Why**
+- A company config named an alias in the string form, `"github.com-myteam": "github"`. `gh` was then told the alias as `GH_HOST`, and
+  failed with "error connecting to github.com-myteam; check your internet connection", which the agent reported as GitHub being down.
+- The alias lives in the user's own `~/.ssh/config`. Naming it again in `jig.json`, in a company plugin or by hand, repeats a fact that
+  ssh already holds and that drifts from it.
+
+**Rejected**
+- **Only the `github.com-<alias>` convention in the string form.** It fixes the incident but still leaves every other alias to be
+  named in `jig.json`.
+- **Reading `~/.ssh/config` ourselves.** `Include`, `Match` and tokens make the file hard to read right, and ssh already does it.
+
+## 2026-11-02: a review of an agent run leaves out the commits that came in with it
+
+**Decided**
+- **The offered review starts from a base that already holds what came in.** When a run merged, pulled, fast-forwarded, reset to a ref or
+  rebased onto other commits, `jig-review` diffs the working tree against the run's starting commit merged with those commits by git's
+  own automatic merge (`git merge-tree --write-tree`, git 2.38 or newer). A clean merge leaves nothing; a conflict leaves its markers in the
+  base, so the agent's resolution is the difference. The agent's own commits and uncommitted edits show as before, and `--touched` follows
+  the offer.
+- **The agent's commits are the ones HEAD's reflog says git created in the run** (`commit`, `cherry-pick`, `revert`, `am`, a rebase's
+  picks). Any other commit under a merge's other parent, or under where a fast-forward, pull, reset or rebase moved HEAD, and with
+  none of the agent's under it, came in from elsewhere.
+- **Nothing left means no offer, and one line says why:** `Nothing to review: the run only merged origin/develop.`
+- **An explicit scope is unchanged.** `--branch`, `--staged`, `--unstaged`, a folder and a ticket show everything: you asked for it.
+- **When git cannot tell** (older git, a reflog that is off or expired, a very long run) the review starts at the starting commit, as before:
+  more than the agent did, never less. See [What counts as the agent's](../plugins/jig-review/docs/run-changes.md).
+
+**Why**
+- A clean merge of the main branch into a feature branch offered its colleagues' files as "the agent's changes". The user was asked to
+  review and approve code the agent never wrote, which makes an approval mean less.
+- A diff against a base that holds the incoming commits keeps the lines of a file the agent edited after the merge, and drops the lines
+  the merge brought.
+
+**Rejected**
+- **Commits reachable from the upstream branch are not the agent's.** A push makes the agent's own commit reachable from it, and its
+  review would vanish.
+- **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
+- **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
+- **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
 
 ## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
 

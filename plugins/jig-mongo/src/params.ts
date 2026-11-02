@@ -1,7 +1,7 @@
 // The parameters of the `mongo` tool. One flat object, because several model providers reject a top-level union. ACTIONS says
 // which parameters each action takes; the schema's action list, the usage lines in errors and the checks in parseCall all come
 // from it, so they cannot drift apart.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { COLLECTION_NAME, DATABASE_NAME } from "./access.ts";
 import { checkExtended } from "./ejson.ts";
@@ -105,7 +105,7 @@ const json = (description: string) =>
     Type.Unsafe<Record<string, unknown>>({ type: "object", additionalProperties: true, description });
 
 export const parameters = Type.Object({
-    action: StringEnum(ACTION_NAMES, {
+    action: stringEnum(ACTION_NAMES, {
         description: `What to do. Needs: ${describeActions()}. All also need environment`,
     }),
     environment: Type.Optional(Type.String({ description: "The connection's environment name, such as staging" })),
@@ -148,7 +148,7 @@ export const parameters = Type.Object({
         }),
     ),
     which: Type.Optional(
-        StringEnum(["one", "many"], { description: "update, delete: change one document or every match" }),
+        stringEnum(["one", "many"], { description: "update, delete: change one document or every match" }),
     ),
     documents: Type.Optional(
         Type.Array(json("One document"), { description: "insert: the documents, in Extended JSON" }),
@@ -167,7 +167,7 @@ export const parameters = Type.Object({
     ),
     name: Type.Optional(Type.String({ description: "drop-index: the index name, from indexes" })),
     verbosity: Type.Optional(
-        StringEnum(["queryPlanner", "executionStats"], {
+        stringEnum(["queryPlanner", "executionStats"], {
             description: "explain: executionStats (default) also runs the query",
         }),
     ),

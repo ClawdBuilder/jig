@@ -1,6 +1,6 @@
 # jig-core: the tool manager
 
-**Status: built.** Unit tests, and tests inside a real Pi 1.4 session with a
+**Status: built.** Unit tests, and tests inside a real Pi 1.5 session with a
 scripted model, pass. Watches are tested only against a fake Pi so far, and
 three parts are not built (see [Later](#later)).
 

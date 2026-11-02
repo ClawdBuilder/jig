@@ -26,6 +26,8 @@ export type JenkinsFinish =
 export interface JenkinsSpec {
     system: "jenkins";
     service: string;
+    /** The environment the call named, when it named one: its CI is watched. */
+    environment?: string;
     /** The build number, when it is known. */
     build?: number;
     /** The commit the build is for, when the push that caused it is known. Only the artifact rules use it. */
@@ -40,8 +42,8 @@ const SKEW_MS = 10_000;
 
 /** One line naming what is watched, such as "build #12 of orders-api" or "stage test of the next build of x". */
 export function titleOf(spec: JenkinsSpec): string {
-    const build =
-        spec.build !== undefined ? `build #${spec.build} of ${spec.service}` : `the next build of ${spec.service}`;
+    const of = spec.environment === undefined ? spec.service : `${spec.service} in ${spec.environment}`;
+    const build = spec.build !== undefined ? `build #${spec.build} of ${of}` : `the next build of ${of}`;
     if (spec.finish.kind === "build") return build;
     const names = spec.finish.names;
     return names.length === 1 ? `stage ${names[0]} of ${build}` : `required stages ${names.join(", ")} of ${build}`;

@@ -1,7 +1,7 @@
 // The parameters of the `jira` tool. One flat object, because several model providers reject a top-level union. ACTIONS
 // says which parameters each action takes. The schema's action list, the usage lines in errors and the checks in
 // parseCall all come from it, so they cannot drift apart.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { PROJECT_KEY } from "./config.ts";
 import { convertField, MAX_TEXT } from "./fields.ts";
@@ -73,7 +73,7 @@ function describeActions(): string {
 }
 
 export const parameters = Type.Object({
-    action: StringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
+    action: stringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
     key: Type.Optional(Type.String({ description: "Issue key, such as PROJ-123" })),
     jql: Type.Optional(
         Type.String({
