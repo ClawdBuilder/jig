@@ -108,6 +108,8 @@ paths.
     A value counts when it is absolute or starts with `~/`. An empty or relative value is ignored, and so is one
     that would protect the whole home folder, a folder above it, or `/`. `/jig rules` names the variable beside
     each such path.
+  - *Secret*, the store and the GnuPG home that `secrets.pass` in `jig.json` binds `pass` to (see
+    [Where pass looks](secrets.md#where-pass-looks)). `/jig rules` says that `secrets.pass` named them.
   - *Guarded* (readable, not writable): the whole agent folder (`~/.pi/agent`,
     or where `PI_CODING_AGENT_DIR` points).
 - **How a path is matched.** `~` is expanded, a relative path starts from Pi's

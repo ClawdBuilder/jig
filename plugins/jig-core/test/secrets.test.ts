@@ -258,6 +258,70 @@ echo "end $1 $2" >> "${log}.timing"
     });
 });
 
+describe("where pass looks: secrets.pass, then Pi's environment, then pass's own defaults", () => {
+    /** A fake runner that records the environment each program was started with. */
+    function recorder() {
+        const seen: Array<{ file: string; args: readonly string[]; env: Record<string, string> | undefined }> = [];
+        const run: FakeRun = async (file, args, options) => {
+            seen.push({ file, args, env: options?.env as Record<string, string> | undefined });
+            return ok("the-secret\n");
+        };
+        return { seen, run };
+    }
+    const resolveWith = async (extra: Partial<SecretsOptions>) => {
+        const { seen, run } = recorder();
+        const { secrets } = setup(["pass"], { run, home: "/home/me", platform: "linux", ...extra });
+        assert.equal(await secrets.resolve("pass:work/token"), "the-secret");
+        assert.equal(seen.length, 1);
+        return seen[0]?.env ?? {};
+    };
+    const environment = {
+        PASSWORD_STORE_DIR: "/from/env/store",
+        GNUPGHOME: "/from/env/gnupg",
+        JIG_NOT_FORWARDED: "secret-from-pi-env",
+    };
+
+    test("the configuration wins over the environment, for each folder on its own", async () => {
+        const both = await resolveWith({
+            env: environment,
+            pass: () => ({ storeDir: "/bound/store", gnupgHome: "/bound/gnupg" }),
+        });
+        assert.equal(both.PASSWORD_STORE_DIR, "/bound/store");
+        assert.equal(both.GNUPGHOME, "/bound/gnupg");
+        const storeOnly = await resolveWith({ env: environment, pass: () => ({ storeDir: "/bound/store" }) });
+        assert.equal(storeOnly.PASSWORD_STORE_DIR, "/bound/store");
+        assert.equal(storeOnly.GNUPGHOME, "/from/env/gnupg");
+        const gnupgOnly = await resolveWith({ env: environment, pass: () => ({ gnupgHome: "~/vault/gnupg" }) });
+        assert.equal(gnupgOnly.PASSWORD_STORE_DIR, "/from/env/store");
+        assert.equal(gnupgOnly.GNUPGHOME, "/home/me/vault/gnupg", "~/ is the home folder");
+    });
+
+    test("without the configuration the environment applies, and without either pass's own defaults do", async () => {
+        const fromEnv = await resolveWith({ env: environment, pass: () => ({}) });
+        assert.equal(fromEnv.PASSWORD_STORE_DIR, "/from/env/store");
+        assert.equal(fromEnv.GNUPGHOME, "/from/env/gnupg");
+        assert.equal((await resolveWith({ env: environment })).PASSWORD_STORE_DIR, "/from/env/store");
+        const neither = await resolveWith({ env: {}, pass: () => ({}) });
+        assert.ok(!("PASSWORD_STORE_DIR" in neither));
+        assert.ok(!("GNUPGHOME" in neither));
+    });
+
+    test("pass still gets only its own variables, and the binding is read again on every call", async () => {
+        let bound: { storeDir?: string } = { storeDir: "/first/store" };
+        const { seen, run } = recorder();
+        const { secrets } = setup(["pass"], { run, env: environment, pass: () => bound });
+        await secrets.resolve("pass:work/token");
+        bound = { storeDir: "/second/store" };
+        await secrets.resolve("pass:work/token");
+        assert.deepEqual(
+            seen.map((call) => call.env?.PASSWORD_STORE_DIR),
+            ["/first/store", "/second/store"],
+        );
+        assert.equal(seen[0]?.env?.LC_ALL, "C");
+        assert.ok(!("JIG_NOT_FORWARDED" in (seen[0]?.env ?? {})));
+    });
+});
+
 describe("the keychain backend (macOS)", () => {
     function fake(stdout = "kc-secret\n", code = 0) {
         const calls: Array<{ file: string; args: readonly string[]; options?: RunOptions }> = [];

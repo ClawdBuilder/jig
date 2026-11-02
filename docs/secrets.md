@@ -34,6 +34,35 @@ interface. **Nor does it sign in:** the tool that owns a login does it, and
 `cmd:gh` reads the token `gh auth token` prints, so Jig keeps none of its own
 (see [Decisions](decisions.md)).
 
+## Where pass looks
+
+`pass` is a program, so `jig-core` tells it where its store and its GnuPG keys are. Each folder comes
+from the first of these that is set:
+1. **`jig.json`:** `secrets.pass.storeDir` and `secrets.pass.gnupgHome`, each an absolute path or `~/...`;
+2. **Pi's environment:** `PASSWORD_STORE_DIR` and `GNUPGHOME`;
+3. **`pass`'s own defaults:** `~/.password-store` and `~/.gnupg`.
+
+```json
+{
+  "secrets": {
+    "pass": { "storeDir": "~/vault/pass-store", "gnupgHome": "~/vault/gnupg" }
+  }
+}
+```
+
+Binding the folders in `jig.json` means the store does not depend on how Pi was started: from a
+terminal, a launcher or a desktop shortcut. The two settings are independent, and each wins over the
+environment on its own.
+
+**These folders are protected without further setting.**
+- The two folders in `secrets.pass`.
+- Every credential folder that an environment variable moves: `PASSWORD_STORE_DIR`, `GNUPGHOME`,
+  `AWS_CONFIG_FILE`, `AWS_SHARED_CREDENTIALS_FILE`, `KUBECONFIG`, `GH_CONFIG_DIR`, `GLAB_CONFIG_DIR`,
+  `CLOUDSDK_CONFIG` and `DOCKER_CONFIG`.
+
+Pi's file tools refuse them, and `jig-sandbox` hides them from `bash`
+([the list](permissions.md#protected-paths)). `/jig` shows the folders `secrets.pass` binds, as paths.
+
 ## Rules
 
 - **Only through `jig-core`:** a tool gets a secret by naming its reference.

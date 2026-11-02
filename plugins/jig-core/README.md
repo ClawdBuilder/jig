@@ -76,6 +76,7 @@ All fields are optional.
 | `secrets.backends` | `["pass"]` | Which backends may resolve secret references |
 | `secrets.disabledBackends` | none | Backends to keep off, even ones a company plugin turned on |
 | `secrets.commands` | none | The commands that `cmd:<name>` may run, by name |
+| `secrets.pass` | none | Where `pass` looks: `storeDir` and `gnupgHome`, each absolute or `~/...` |
 | `records.retentionDays` | 90 | Days record files are kept, from 1 to 3650 |
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
 

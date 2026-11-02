@@ -171,6 +171,23 @@ describe("jig-core's protected paths", () => {
         );
     });
 
+    test("the folders secrets.pass binds are hidden too, where they really are", () => {
+        const files = linux({ dirs: ["/srv/bound/pass", `${HOME}/bound/gnupg`, "/srv/bound/other"] });
+        const set = rules(files, {
+            protectedPaths: defaultProtectedPaths({
+                agentDir: `${HOME}/.pi/agent`,
+                home: HOME,
+                env: {},
+                pass: { storeDir: "/srv/bound/pass", gnupgHome: "~/bound/gnupg" },
+            }),
+        });
+        for (const place of ["/srv/bound/pass", `${HOME}/bound/gnupg`]) {
+            assert.ok(of(set, "hidden").includes(place), place);
+            assert.equal(ruleFor(set, `${place}/inside`)?.kind, "hidden", place);
+        }
+        assert.equal(ruleFor(set, "/srv/bound/other/file"), undefined, "a neighbour stays as it was");
+    });
+
     test("without those variables nothing outside the usual places is hidden", () => {
         const files = linux({ dirs: ["/srv/vault/pass"] });
         const set = rules(files, {

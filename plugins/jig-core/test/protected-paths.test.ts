@@ -6,7 +6,7 @@ import path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import { buildPolicy, emptyAdditions, parseConfig } from "../src/config.ts";
 import type { LoadedConfig } from "../src/config.ts";
-import { checkFileTool, defaultProtectedPaths, relocatedStores } from "../src/protected-paths.ts";
+import { boundStores, checkFileTool, defaultProtectedPaths, relocatedStores } from "../src/protected-paths.ts";
 import type { CheckContext, Env, ProtectedPath } from "../src/protected-paths.ts";
 import { start } from "./support/harness.ts";
 import type { Harness, StartOptions } from "./support/harness.ts";
@@ -326,6 +326,89 @@ describe("stores that the environment moves", () => {
         } finally {
             rmSync(link, { force: true });
         }
+    });
+});
+
+describe("stores that secrets.pass binds", () => {
+    type Pass = NonNullable<Parameters<typeof boundStores>[0]>;
+    const bound = (pass: Pass, platform?: NodeJS.Platform, homeFolder = home) =>
+        boundStores(pass, homeFolder, platform);
+
+    test("the store and the GnuPG home are secret defaults, and `shown` says that secrets.pass named them", () => {
+        assert.deepEqual(bound({ storeDir: "/srv/vault/pass", gnupgHome: "/srv/vault/gnupg" }), [
+            {
+                path: "/srv/vault/pass",
+                shown: "/srv/vault/pass (from secrets.pass.storeDir)",
+                kind: "secret",
+                source: "default",
+            },
+            {
+                path: "/srv/vault/gnupg",
+                shown: "/srv/vault/gnupg (from secrets.pass.gnupgHome)",
+                kind: "secret",
+                source: "default",
+            },
+        ]);
+        assert.deepEqual(
+            bound({ gnupgHome: "~/vault/gnupg" }).map((item) => [item.path, item.shown]),
+            [[`${home}/vault/gnupg`, "~/vault/gnupg (from secrets.pass.gnupgHome)"]],
+        );
+    });
+
+    test("nothing is added for a folder that is not set, relative, or the root, the home folder or one above it", () => {
+        assert.deepEqual(bound({}), []);
+        assert.deepEqual(bound({ storeDir: undefined, gnupgHome: undefined }), []);
+        for (const value of ["pass", "./pass", "/", home, "~", "~/", path.dirname(home)]) {
+            assert.deepEqual(bound({ storeDir: value, gnupgHome: value }), [], value);
+        }
+    });
+
+    test("they are part of the defaults, ahead of what the environment names, and the same folder is listed once", () => {
+        const entries = defaultProtectedPaths({
+            agentDir: agent,
+            home,
+            env: { PASSWORD_STORE_DIR: "/srv/vault/pass", GNUPGHOME: "/srv/env/gnupg" },
+            pass: { storeDir: "/srv/vault/pass", gnupgHome: "/srv/vault/gnupg" },
+        });
+        assert.deepEqual(
+            entries.filter((item) => item.path.startsWith("/srv/")).map((item) => item.shown),
+            [
+                "/srv/vault/pass (from secrets.pass.storeDir)",
+                "/srv/vault/gnupg (from secrets.pass.gnupgHome)",
+                "/srv/env/gnupg (from GNUPGHOME)",
+            ],
+        );
+        assert.equal(entries.at(-1)?.kind, "guarded", "the agent folder stays last");
+        const without = defaultProtectedPaths({ agentDir: agent, home, env: {}, pass: {} });
+        assert.ok(!without.some((item) => item.path.startsWith("/srv/")));
+    });
+
+    test("the file tools refuse both folders, and the message names the setting", () => {
+        const store = path.join(elsewhere, "vault", "pass");
+        const gnupg = path.join(elsewhere, "vault", "gnupg");
+        const ctx: CheckContext = {
+            ...context(),
+            entries: defaultProtectedPaths({
+                agentDir: agent,
+                home,
+                env: {},
+                pass: { storeDir: store, gnupgHome: gnupg },
+            }),
+        };
+        for (const tool of ["read", "write", "edit", "grep", "find", "ls"]) {
+            assert.equal(
+                check(tool, path.join(store, "work", "db.gpg"), ctx)?.reason,
+                `${tool} is refused: ${store} (from secrets.pass.storeDir) holds credentials, so the file tools neither read nor write it`,
+                tool,
+            );
+            assert.match(
+                check(tool, path.join(gnupg, "private-keys-v1.d", "key.key"), ctx)?.reason ?? "",
+                /\(from secrets\.pass\.gnupgHome\) holds credentials/,
+                tool,
+            );
+        }
+        assert.equal(check("read", path.join(elsewhere, "vault", "other"), ctx), undefined);
+        assert.equal(check("read", path.join(store, "work", "db.gpg"), context()), undefined, "not bound: readable");
     });
 });
 
@@ -839,6 +922,35 @@ describe("the tool_call hook", () => {
             if (saved === undefined) delete process.env.PASSWORD_STORE_DIR;
             else process.env.PASSWORD_STORE_DIR = saved;
         }
+    });
+
+    test("the folders secrets.pass binds are refused through the hook and listed for the sandbox", async () => {
+        const store = path.join(elsewhere, "bound-store");
+        const gnupg = "~/bound-gnupg";
+        const harness = await begin({ config: { secrets: { pass: { storeDir: store, gnupgHome: gnupg } } } });
+        const read = await harness.call({ tool: "read", input: { path: path.join(store, "work", "db.gpg") } });
+        const write = await harness.call({ tool: "write", input: { path: `${gnupg}/pubring.kbx` } });
+        assert.equal(read.blocked, true);
+        assert.equal(write.blocked, true);
+        assert.match(read.reason ?? "", /\(from secrets\.pass\.storeDir\) holds credentials/);
+        assert.match(write.reason ?? "", /~\/bound-gnupg \(from secrets\.pass\.gnupgHome\) holds credentials/);
+        assert.deepEqual(
+            harness.decisions().map((d) => [d.tool, d.decision, d.source]),
+            [
+                ["read", "deny", "floor"],
+                ["write", "deny", "floor"],
+            ],
+        );
+        const listed = harness.api.protectedPaths.list();
+        assert.deepEqual(
+            listed
+                .filter((item) => item.shown.includes("secrets.pass"))
+                .map((item) => [item.path, item.kind, item.source]),
+            [
+                [store, "secret", "default"],
+                [path.join(home, "bound-gnupg"), "secret", "default"],
+            ],
+        );
     });
 
     test("other tools, and the file tools on other paths, run as before", async () => {

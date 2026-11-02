@@ -44,6 +44,8 @@ export interface DefaultsInput extends PathContext {
     home: string;
     /** Where `XDG_CONFIG_HOME`, `APPDATA` and the variables that move a credential store are read from. */
     env?: Env;
+    /** The folders `secrets.pass` of `jig.json` binds `pass` to, as written (absolute, or starting with `~/`). */
+    pass?: { storeDir?: string | undefined; gnupgHome?: string | undefined };
 }
 
 /** What a tool's input is checked against. */
@@ -130,6 +132,38 @@ function entry(
     return { path: absolute, shown: abbreviate(absolute, home, pathApi), kind, source };
 }
 
+/** True when protecting `absolute` would protect the whole home folder, a folder above it, or the root. */
+export function coversHome(absolute: string, home: string, platform?: NodeJS.Platform): boolean {
+    const pathApi = flavour(platform);
+    return (
+        absolute === pathApi.parse(absolute).root ||
+        (home !== "" && isInside(comparable(home, platform), comparable(absolute, platform), pathApi.sep))
+    );
+}
+
+/** A secret entry of the defaults that says in `shown` what named it: `/srv/pass (from PASSWORD_STORE_DIR)`. */
+function namedEntry(absolute: string, namedBy: string, home: string, pathApi: typeof path.posix): ProtectedPath {
+    const found = entry(absolute, "secret", "default", home, pathApi);
+    return { ...found, shown: `${found.shown} (from ${namedBy})` };
+}
+
+/** The folders `jig.json` binds `pass` to (`secrets.pass`), which `pass` and `gpg` read and Pi's file tools must not. */
+export function boundStores(
+    pass: NonNullable<DefaultsInput["pass"]>,
+    home: string,
+    platform?: NodeJS.Platform,
+): ProtectedPath[] {
+    const pathApi = flavour(platform);
+    const out: ProtectedPath[] = [];
+    for (const key of ["storeDir", "gnupgHome"] as const) {
+        const text = pass[key];
+        const named = text === undefined ? undefined : expandProtected(text, home, platform);
+        if (named === undefined || coversHome(named, home, platform)) continue;
+        out.push(namedEntry(named, `secrets.pass.${key}`, home, pathApi));
+    }
+    return out;
+}
+
 /**
  * The secret paths that the environment moves a store to. `pass` and `gpg` honour `PASSWORD_STORE_DIR` and `GNUPGHOME`,
  * and the cloud and forge tools have variables of their own, so a store that is not where it usually is would escape the
@@ -150,12 +184,7 @@ export function relocatedStores(env: Env, home: string, platform?: NodeJS.Platfo
             const named = expandProtected(text, home, platform);
             if (named === undefined) continue;
             const target = inside === undefined ? named : pathApi.join(named, inside);
-            const wholeHome =
-                target === pathApi.parse(target).root ||
-                (home !== "" && isInside(comparable(home, platform), comparable(target, platform), pathApi.sep));
-            if (wholeHome) continue;
-            const found = entry(target, "secret", "default", home, pathApi);
-            out.push({ ...found, shown: `${found.shown} (from ${variable})` });
+            if (!coversHome(target, home, platform)) out.push(namedEntry(target, variable, home, pathApi));
         }
     }
     return out;
@@ -181,6 +210,8 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     if (pathApi === path.win32 && appData !== undefined && pathApi.isAbsolute(appData)) {
         for (const name of APPDATA_SECRETS) out.push(make(pathApi.join(appData, name), "secret"));
     }
+    // The bound folders first: when `secrets.pass` and the environment name one folder, the entry says `secrets.pass`.
+    if (input.pass !== undefined) out.push(...boundStores(input.pass, home, input.platform));
     if (input.env !== undefined) out.push(...relocatedStores(input.env, home, input.platform));
     // Last, so a message about a file inside it names the more specific secret entry first.
     if (agentDir !== "") out.push(make(agentDir, "guarded"));
