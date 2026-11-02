@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files](#2026-11-02-a-gradle-builds-tests-pick-an-installed-jdk-that-fits-from-files)
 - [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
 - [2026-11-02: a push says how the agent will hear how the checks end](#2026-11-02-a-push-says-how-the-agent-will-hear-how-the-checks-end)
 - [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
@@ -182,6 +183,27 @@ Teams that deploy with Concourse start a job by hand, and read its builds, the w
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files
+
+A test run used a `JAVA_HOME` from a stale document, a JDK patch release that was no longer installed, and Gradle 2 to 7 cannot run
+on the machine's default Java 21. `workflow.tests` could only fix it with an `env.JAVA_HOME` that each user wrote for each repository.
+
+**Decided**
+- **A test command that runs a Gradle wrapper gets an installed JDK that fits,** when no `env.JAVA_HOME` is set. The wrapper's
+  Gradle version, the build's stated Java level and Gradle's compatibility table decide; `env.JAVA_HOME` still wins.
+- **Everything is read from files and nothing is run.** The JDKs are found in the usual places and read from their `release` file.
+- **With a level stated, the lowest Java that fits; with none, a default that Gradle runs on stays,** and otherwise the newest.
+- **When none fits the repository is not run,** and the line says what is needed and which JDKs were found.
+
+**Why**
+- Starting an unsuitable build wastes a long run on an error about class file versions that sends the agent after the wrong cause.
+- The table is Gradle's own and small, so a wrong Java is a data fix. A wrong guess costs one line that says what was chosen.
+- A level nobody stated is more likely too low than too high: a build with no `sourceCompatibility` runs on whatever Java starts it.
+
+**Rejected**
+- **Running `java -version`** on each folder: slower, and it runs code from folders the agent may be able to write.
+- **Choosing for builds that are not a Gradle wrapper.** Maven and `gradle test` have no pinned version to decide from.
 
 ## 2026-11-02: the local packages and extensions that Pi loads are guarded paths
 

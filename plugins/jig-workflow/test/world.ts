@@ -12,6 +12,7 @@ import type { Harness } from "../../jig-core/test/support/harness.ts";
 import { tempState } from "../../jig-core/test/support/state.ts";
 import { bashDeclaration } from "../../jig-sandbox/src/outside.ts";
 import { workflow } from "../src/index.ts";
+import type { JavaSources } from "../src/java.ts";
 import type { RunScript, FakeHost } from "./support.ts";
 import { fakeHost, git, makeRepo, tempFolder } from "./support.ts";
 
@@ -154,6 +155,8 @@ export interface WorldOptions {
     company?: (api: JigApi, workspace: string) => void;
     /** With `company`: the `workflow` section the user wrote in jig.json. `$workflows` stands for the world's folder of files. */
     userWorkflow?: Record<string, unknown>;
+    /** Where JDKs can be found. By default nowhere. */
+    java?: JavaSources;
 }
 
 /** Hooks that keep the state folder of jig-core private to each test. */
@@ -178,7 +181,10 @@ export async function world(t: TestContext, options: WorldOptions = {}): Promise
     const orders = makeRepo(workspace, "orders-api-PROJ-1", "git@github.example.com:acme/orders-api.git");
     const other = makeRepo(workspace, "unbound", "git@github.example.com:acme/unbound.git");
 
-    const host = fakeHost(options.run === undefined ? {} : { run: options.run });
+    const host = fakeHost({
+        ...(options.run === undefined ? {} : { run: options.run }),
+        ...(options.java === undefined ? {} : { java: options.java }),
+    });
     const pi = new PluginPi();
     const entries: SessionEntry[] = [];
     const notices: Notice[] = [];

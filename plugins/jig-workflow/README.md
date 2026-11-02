@@ -93,7 +93,7 @@ At session start, a line says which stage the active ticket is in and what is mi
 - **Evidence is recorded against what it is about.** A new commit ends a test result, and an edited plan
   needs approving again ([State](docs/state.md)).
 - **Tests run in the sandbox.** Without `jig-sandbox`, or for a command set to run `outside`, a test run asks
-  first, naming the command ([Tests](docs/tests.md)).
+  first, naming the command. A Gradle wrapper gets the JDK that fits ([Tests](docs/tests.md#the-jdk-of-a-gradle-build)).
 - **The agent cannot mark anything passed.** It asks for a run, an approval or a check, and the plugin
   records the outcome in a file that Pi's file tools and the sandbox cannot write.
 - **A broken file is reported, not guessed.** A file with an unknown field, condition or stage is skipped,
@@ -140,7 +140,7 @@ variables such as `JAVA_HOME`) and `outside` (a command that needs what the sand
 jig-workflow/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows the plugin's name
   src/        index.ts (the factory), runtime.ts (the session), config.ts, definition.ts + load.ts (workflow files),
               store.ts (workflow.json), ticket.ts + repos.ts, conditions.ts + sources.ts + listeners.ts + forge.ts (evidence),
-              plan.ts, tests.ts + environment.ts + outside.ts (test runs), gate.ts (holds), tool.ts + actions.ts (one
+              plan.ts, tests.ts + environment.ts + java.ts + outside.ts (test runs), gate.ts (holds), tool.ts + actions.ts (one
               file for each family: action-start, -plan, -tests, -stages, -support), commands.ts, status.ts, host.ts
   skills/     workflow/SKILL.md: how to take work through its workflow
   examples/   feature.json, bugfix.json, investigation.json

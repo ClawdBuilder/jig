@@ -37,7 +37,7 @@ repository and says to set `workflow.tests`.
 
 ## Variables for a repository
 
-A repository may need its own environment, such as a JDK of the right version. Give the object form of the entry an `env`:
+A repository may need its own environment. A Gradle build's JDK is [chosen for it](#the-jdk-of-a-gradle-build) when you set none; for anything else, give the object form of the entry an `env`:
 
 ```json
 {
@@ -61,6 +61,46 @@ A repository may need its own environment, such as a JDK of the right version. G
   as text. Outside it, the shell gets them in its environment.
 - **The question shows them.** When a run needs your approval, each command is listed with its variables. The record
   keeps the command as you configured it.
+
+## The JDK of a Gradle build
+
+A Gradle release runs on some Java versions only, and the machine's default Java may suit one repository and not the next.
+So when a test command runs a Gradle wrapper (`./gradlew test`, `cd app && ./gradlew test`) and nothing sets `JAVA_HOME`,
+`workflow test` picks an installed JDK from files, and runs nothing to do it. **`env.JAVA_HOME` in the entry always wins,**
+and so does a `JAVA_HOME=` in the command, an `org.gradle.java.home` in the repository's `gradle.properties`, and a command
+that is not a wrapper (`gradle test`, `mvn -q test`): they are left alone and nothing is said.
+
+- **The Gradle version** is in `gradle/wrapper/gradle-wrapper.properties` (`distributionUrl`). A wrapper older than 2.0, or
+  with no such file, is left alone.
+- **The build's Java level** is the highest that `build.gradle` or `build.gradle.kts` states, in the repository's root and
+  in each folder just below it: `sourceCompatibility`, `targetCompatibility` (`'1.8'`, `11`, `JavaVersion.VERSION_17`),
+  `JavaLanguageVersion.of(17)` and `jvmToolchain(17)`. Comments are ignored. A build may state none.
+- **The installed JDKs** are read from their `release` file (`JAVA_VERSION`) and never run, in these places: `JAVA_HOME` of Pi's
+  environment, the `java` first on `PATH`, `~/.sdkman/candidates/java/*` (`SDKMAN_DIR` moves it), `/usr/lib/jvm/*` and, on a
+  Mac, `/Library/Java/JavaVirtualMachines/*/Contents/Home` and the same under `~/Library`. A folder with no `bin/javac` is a
+  runtime, not a JDK, and is not used. A JDK seen twice, through a link, counts once.
+- **Gradle's table** says which Java versions a release runs on: the "Java" table of
+  [Gradle's compatibility page](https://docs.gradle.org/current/userguide/compatibility.html), column "Support for running
+  Gradle". It is a small table in `src/java.ts` (read on 2026-11-02, the page for Gradle 9.8.2), and a Java version newer than
+  its last row is not chosen. Gradle 9 and later need Java 17 or newer; every earlier release runs on Java 8.
+
+**The choice.** With a level stated, the lowest installed Java version that is at least that level and that the Gradle release
+runs on, and of that version the newest patch release (an early access build comes last). With none stated, a default Java
+that Gradle runs on stays as it is, and otherwise the newest installed Java version that Gradle runs on is used: a level nobody
+stated is more likely too low than too high.
+
+**What is said.** One line under the verdict of the repository, and in its record as `java`:
+
+```text
+orders-api: PASSED at 1a2b3c4 · ./gradlew test · in the sandbox · 41.2 s
+    Java: Java 11.0.31 (~/.sdkman/candidates/java/11.0.31-tem), the lowest installed that fits: Gradle 6.9.4 runs on Java 8 to 15, and the build asks for Java 11 or newer.
+```
+
+The question for a run outside a sandbox shows the same line and the `JAVA_HOME` it sets.
+
+**When none fits,** the repository is not run, and the others go on. The line says what is needed and what was found:
+`no installed JDK fits: Gradle 6.9.4 runs on Java 8 to 15 and the build asks for Java 11 or newer; found 21.0.11 (~/.sdkman/candidates/java/21.0.11-tem). Install a JDK of Java 11 to 15, or set env.JAVA_HOME for this repository in workflow.tests.`
+When no JDK is found at all, the machine's own Java is used and the line says so.
 
 ## Where the command runs
 
@@ -129,6 +169,7 @@ One result per repository, replaced by the next run, in `workflow.json`:
 | `command`, `exitCode`, `timedOut` | What ran, and how it ended |
 | `sandboxed` | Whether it ran in the sandbox: false for a run outside, however it was approved |
 | `at`, `durationMs` | When, and how long |
+| `java` | For a Gradle build: the JDK it was given, or why the machine's own was kept |
 
 The output is not saved. The tool's result carries the last 60 lines, cleaned and capped like any result,
 for the agent to read; the full output is the sandbox's, or the program's, to keep.

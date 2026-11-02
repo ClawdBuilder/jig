@@ -9,6 +9,7 @@ import type { WorkflowSettings } from "../src/config.ts";
 import { inspect } from "../src/repos.ts";
 import type { RepoView } from "../src/repos.ts";
 import { detectCommand, globToRegExp, planTests, ruleMatches, runTests, tailOf } from "../src/tests.ts";
+import type { JavaSources } from "../src/java.ts";
 import { commit, fakeHost, headOf, makeRepo, NOW, ok, tempFolder } from "./support.ts";
 
 const settings = (tests: Record<string, unknown> = {}, timeout = 900): WorkflowSettings =>
@@ -394,4 +395,100 @@ test("a folder with no commit cannot be tested", async (t) => {
     await assert.rejects(
         runTests(host, { root: dir, name: "empty", command: "x", timeoutSeconds: 60 }, view, { sandboxed: true }),
     );
+});
+
+describe("a Gradle build's JDK", () => {
+    /** A repository with a wrapper that downloads `gradle`, and a machine whose only JDKs are the folders named. */
+    async function gradleRepo(
+        t: Parameters<typeof tempFolder>[0],
+        gradle: string,
+        jdks: Record<string, string>,
+        level = "",
+    ) {
+        const parent = tempFolder(t);
+        const root = makeRepo(parent, "orders-api", "git@github.example.com:acme/orders-api.git");
+        mkdirSync(path.join(root, "gradle", "wrapper"), { recursive: true });
+        writeFileSync(
+            path.join(root, "gradle", "wrapper", "gradle-wrapper.properties"),
+            `distributionUrl=https\\://services.gradle.org/distributions/gradle-${gradle}-bin.zip\n`,
+        );
+        writeFileSync(path.join(root, "gradlew"), "");
+        writeFileSync(path.join(root, "build.gradle"), level);
+        const jvm = path.join(parent, "jvm");
+        for (const [name, version] of Object.entries(jdks)) {
+            mkdirSync(path.join(jvm, name, "bin"), { recursive: true });
+            writeFileSync(path.join(jvm, name, "bin", "javac"), "");
+            writeFileSync(path.join(jvm, name, "release"), `JAVA_VERSION="${version}"\n`);
+        }
+        const java: JavaSources = { home: path.join(parent, "home"), env: {}, platform: "linux", linuxJvmDir: jvm };
+        const host = fakeHost({ run: () => ok(), java });
+        return { root, jvm, java, host, view: await inspect(host, root), cwd: parent };
+    }
+
+    test("a Gradle wrapper's default command is given the JDK that fits, in the plan, in the command line and in the record", async (t) => {
+        const r = await gradleRepo(
+            t,
+            "6.9.4",
+            { "jdk-11": "11.0.31", "jdk-17": "17.0.19", "jdk-8": "1.8.0_492" },
+            "sourceCompatibility = 11",
+        );
+        const plan = planTests(settings(), r.view, r.cwd, r.java);
+        assert.equal(plan.command, "./gradlew test");
+        assert.deepEqual(plan.env, { JAVA_HOME: path.join(r.jvm, "jdk-11") });
+        assert.match(
+            plan.java ?? "",
+            /^Java 11\.0\.31 \(.*jdk-11\), the lowest installed that fits: Gradle 6\.9\.4 runs on Java 8 to 15, and the build asks for Java 11 or newer\.$/,
+        );
+        const run = await runTests(r.host, plan, r.view, { sandboxed: true });
+        assert.equal(r.host.sandboxed[0]?.command, `export JAVA_HOME=${path.join(r.jvm, "jdk-11")} && ./gradlew test`);
+        assert.equal(
+            run.result.command,
+            "./gradlew test",
+            "the record keeps the command that was run, not the variable",
+        );
+        assert.equal(run.result.java, plan.java);
+    });
+
+    test("a rule's own JAVA_HOME wins, and nothing is read or said about Java", async (t) => {
+        const r = await gradleRepo(t, "6.9.4", { "jdk-11": "11.0.31" });
+        const plan = planTests(
+            settingsFrom({ tests: { "orders-api": { command: "./gradlew test", env: { JAVA_HOME: "/opt/jdk-17" } } } }),
+            r.view,
+            r.cwd,
+            r.java,
+        );
+        assert.deepEqual(plan.env, { JAVA_HOME: "/opt/jdk-17" });
+        assert.equal(plan.java, undefined);
+        const other = planTests(
+            settingsFrom({ tests: { "orders-api": { command: "./gradlew test", env: { GRADLE_OPTS: "-Xmx2g" } } } }),
+            r.view,
+            r.cwd,
+            r.java,
+        );
+        assert.deepEqual(
+            other.env,
+            { GRADLE_OPTS: "-Xmx2g", JAVA_HOME: path.join(r.jvm, "jdk-11") },
+            "other variables are kept",
+        );
+    });
+
+    test("with no sources, or for a command that is not a Gradle wrapper, the plan is as it was", async (t) => {
+        const r = await gradleRepo(t, "6.9.4", { "jdk-11": "11.0.31" });
+        const plain = planTests(settings(), r.view, r.cwd);
+        assert.deepEqual([plain.env, plain.java, plain.javaProblem], [undefined, undefined, undefined]);
+        const npm = planTests(settings({ "orders-api": "npm test" }), r.view, r.cwd, r.java);
+        assert.deepEqual([npm.env, npm.java], [undefined, undefined]);
+    });
+
+    test("when no JDK fits, the plan carries the reason and the run for it does not start", async (t) => {
+        const r = await gradleRepo(t, "6.9.4", { "jdk-21": "21.0.11" }, "sourceCompatibility = 11");
+        const plan = planTests(settings(), r.view, r.cwd, r.java);
+        assert.equal(plan.env, undefined);
+        assert.match(
+            plan.javaProblem ?? "",
+            /^no installed JDK fits: Gradle 6\.9\.4 runs on Java 8 to 15 and the build asks for Java 11 or newer; found 21\.0\.11 \(/,
+        );
+        await assert.rejects(runTests(r.host, plan, r.view, { sandboxed: true }), /no installed JDK fits/);
+        assert.deepEqual([r.host.sandboxed, r.host.ran], [[], []]);
+    });
 });

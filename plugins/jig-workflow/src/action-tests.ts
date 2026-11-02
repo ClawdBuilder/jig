@@ -49,7 +49,8 @@ export async function plannedTests(rt: Runtime, params: Params): Promise<TestsTo
     const ticket = ticketOf(rt, params);
     started(rt, ticket);
     const views = await testViews(rt, ticket, params.repo);
-    const plans = views.map((view) => planTests(rt.settings, view, rt.cwd));
+    const java = rt.host.java();
+    const plans = views.map((view) => planTests(rt.settings, view, rt.cwd, java));
     const problems = plans.flatMap((plan) => (plan.problem === undefined ? [] : [plan.problem]));
     if (problems.length > 0) throw new InputError(problems.join("; "));
     return { ticket, views, plans };
@@ -104,6 +105,7 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
             if (run.result.passed && run.result.clean) passed++;
             lines.push(
                 `${view.name}: ${verdict} at ${short(view.head)}${note} · ${plan.command} · ${run.result.sandboxed ? "in the sandbox" : "outside the sandbox, as you approved"} · ${(run.result.durationMs / 1000).toFixed(1)} s`,
+                ...(plan.java === undefined ? [] : [`    Java: ${plan.java}`]),
                 ...(run.result.passed && run.result.clean ? [] : [indent(run.tail)]),
             );
         } catch (error) {
@@ -138,6 +140,8 @@ export function testQuestion(ticket: string, plans: readonly TestPlan[]): { summ
                 `- ${plan.name}: ${plan.command}`,
                 `    in ${plan.root}, at most ${plan.timeoutSeconds} s (${plan.source ?? "set in jig.json"})`,
                 ...environmentLines(plan.env),
+                ...(plan.java === undefined ? [] : [`    Java: ${plan.java}`]),
+                ...(plan.javaProblem === undefined ? [] : ["    This one will not run: no installed JDK fits."]),
             ]),
             "",
             "A test can run anything. With jig-sandbox active, these would run inside it without asking.",
