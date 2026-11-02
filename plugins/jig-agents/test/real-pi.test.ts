@@ -98,9 +98,9 @@ function folders(
                       {
                           source: REPO,
                           extensions: [
-                              "plugins/jig-core/src/index.ts",
-                              "plugins/jig-agents/src/index.ts",
-                              ...(options.sandbox === true ? ["plugins/jig-sandbox/src/index.ts"] : []),
+                              "plugins/jig-core/index.ts",
+                              "plugins/jig-agents/index.ts",
+                              ...(options.sandbox === true ? ["plugins/jig-sandbox/index.ts"] : []),
                           ],
                           skills: [],
                           prompts: [],

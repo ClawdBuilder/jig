@@ -2,6 +2,7 @@
 // runtime is told. The machines are made in memory, so WSL, a Mac and links that loop are as easy to try as a plain home.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { defaultProtectedPaths } from "../../jig-core/src/protected-paths.ts";
 import { canWritePath, computeRules, ruleFor, runtimeFilesystem, secretFilesIn } from "../src/rules.ts";
 import type { RuleKind, RulesInput, RuleSet } from "../src/rules.ts";
 import { fakeMachine } from "./support/fake-files.ts";
@@ -141,6 +142,58 @@ describe("jig-core's protected paths", () => {
         assert.ok(of(set, "hidden").includes("/opt/company-secrets"));
         assert.ok(of(set, "locked").includes(`${HOME}/.pi/agent`));
         assert.match(set.rules.find((rule) => rule.path === "/opt/company-secrets")?.source ?? "", /a company plugin/);
+    });
+
+    test("a credential store that the environment moved is hidden too, from the list jig-core builds", () => {
+        const env = {
+            PASSWORD_STORE_DIR: "/srv/vault/pass",
+            GNUPGHOME: `${HOME}/keys/gnupg`,
+            KUBECONFIG: "/srv/kube/a",
+        };
+        const files = linux({
+            dirs: ["/srv/vault/pass", `${HOME}/keys/gnupg`, "/srv/vault/other"],
+            files: { "/srv/kube/a": "" },
+        });
+        const set = rules(files, {
+            protectedPaths: defaultProtectedPaths({ agentDir: `${HOME}/.pi/agent`, home: HOME, env }),
+        });
+        for (const place of ["/srv/vault/pass", `${HOME}/keys/gnupg`, "/srv/kube/a"]) {
+            assert.ok(of(set, "hidden").includes(place), place);
+            assert.equal(ruleFor(set, `${place}/inside`)?.kind, "hidden", place);
+        }
+        assert.equal(ruleFor(set, "/srv/vault/other/file"), undefined, "a neighbour stays as it was");
+        const store = set.rules.find((rule) => rule.path === "/srv/vault/pass");
+        assert.match(store?.source ?? "", /jig-core protected paths/);
+        assert.match(store?.reason ?? "", /holds credentials/);
+        assert.equal(
+            runtimeFilesystem(set).denyRead.some((entry) => entry.path === "/srv/vault/pass"),
+            true,
+        );
+    });
+
+    test("the folders secrets.pass binds are hidden too, where they really are", () => {
+        const files = linux({ dirs: ["/srv/bound/pass", `${HOME}/bound/gnupg`, "/srv/bound/other"] });
+        const set = rules(files, {
+            protectedPaths: defaultProtectedPaths({
+                agentDir: `${HOME}/.pi/agent`,
+                home: HOME,
+                env: {},
+                pass: { storeDir: "/srv/bound/pass", gnupgHome: "~/bound/gnupg" },
+            }),
+        });
+        for (const place of ["/srv/bound/pass", `${HOME}/bound/gnupg`]) {
+            assert.ok(of(set, "hidden").includes(place), place);
+            assert.equal(ruleFor(set, `${place}/inside`)?.kind, "hidden", place);
+        }
+        assert.equal(ruleFor(set, "/srv/bound/other/file"), undefined, "a neighbour stays as it was");
+    });
+
+    test("without those variables nothing outside the usual places is hidden", () => {
+        const files = linux({ dirs: ["/srv/vault/pass"] });
+        const set = rules(files, {
+            protectedPaths: defaultProtectedPaths({ agentDir: `${HOME}/.pi/agent`, home: HOME, env: {} }),
+        });
+        assert.ok(!of(set, "hidden").includes("/srv/vault/pass"));
     });
 
     test("a path both lists name is one rule that keeps both sources", () => {

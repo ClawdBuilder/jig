@@ -360,6 +360,6 @@ test("the extension is listed in the package, after jig-core", () => {
         pi: { extensions: string[] };
     };
     const listed = manifest.pi.extensions;
-    assert.ok(listed.includes("./plugins/jig-session/src/index.ts"));
-    assert.ok(listed.indexOf("./plugins/jig-core/src/index.ts") < listed.indexOf("./plugins/jig-session/src/index.ts"));
+    assert.ok(listed.includes("./plugins/jig-session/index.ts"));
+    assert.ok(listed.indexOf("./plugins/jig-core/index.ts") < listed.indexOf("./plugins/jig-session/index.ts"));
 });

@@ -101,25 +101,31 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
     }
 
     async function showReview(ctx: AskContext, request: AskRequest): Promise<Answer | undefined> {
-        return ctx.ui.custom<Answer | undefined>((tui, theme, _keybindings, done) => {
-            // A run that is aborted while the screen is open closes it.
-            const onAbort = () => done(undefined);
-            ctx.signal?.addEventListener("abort", onAbort, { once: true });
-            const finish = (answer: Answer) => {
-                ctx.signal?.removeEventListener("abort", onAbort);
-                done(answer);
-            };
-            return createReviewScreen(
-                {
-                    header: request.header,
-                    preview: request.preview,
-                    openInBrowser: () => openPreview(request.preview, request.header),
-                },
-                tui,
-                theme,
-                finish,
-            );
-        });
+        // `blocked` tells the terminal (OSC 7501) that Pi waits for an approval, as Pi's own dialogs do, so a terminal app
+        // that lists agents shows this one as waiting for the user.
+        const blocked = { kind: "permission" as const, message: request.header };
+        return ctx.ui.custom<Answer | undefined>(
+            (tui, theme, _keybindings, done) => {
+                // A run that is aborted while the screen is open closes it.
+                const onAbort = () => done(undefined);
+                ctx.signal?.addEventListener("abort", onAbort, { once: true });
+                const finish = (answer: Answer) => {
+                    ctx.signal?.removeEventListener("abort", onAbort);
+                    done(answer);
+                };
+                return createReviewScreen(
+                    {
+                        header: request.header,
+                        preview: request.preview,
+                        openInBrowser: () => openPreview(request.preview, request.header),
+                    },
+                    tui,
+                    theme,
+                    finish,
+                );
+            },
+            { blocked },
+        );
     }
 
     async function askReason(ctx: AskContext): Promise<string | undefined> {

@@ -8,7 +8,8 @@
 //   2. `pi install git:example.com/jig/jig` runs in a temporary agent folder and home;
 //   3. the installed copy is checked: the exact dependencies are there and no dev dependency is;
 //   4. the stock Pi starts in RPC mode with that copy as its only package, and every extension of package.json's `pi.extensions` must
-//      have loaded and registered a command or a tool, with no `extension_error` and no load failure.
+//      have loaded and registered a command or a tool, with no `extension_error` and no load failure;
+//   5. Pi's own code, given what Pi reported about each extension, must label it with its plugin's name (not `src`), as in its start-up list.
 // It needs network access for npm, a Pi 1.x (PI_HOST_DIR, else the global install next to this Node) and git.
 //   node scripts/check-install.mjs [--keep]      the temporary folder is removed at the end; --keep, or a failure, leaves it and prints where it is
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -25,6 +26,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { piHostDir } from "../test/support/pi-host-dir.mjs";
+import { extensionLabels } from "../test/support/pi-labels.mjs";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 const PROBE = path.join(REPO, "test/support/install-probe.ts");
@@ -151,6 +153,7 @@ async function loadInPi(cli, env, cwd, probeOut) {
         const listed = (await commands).data.commands.map((command) => ({
             name: command.name,
             path: command.sourceInfo?.path,
+            sourceInfo: command.sourceInfo,
         }));
         const probed = ask({ id: "probe", type: "prompt", message: "/install-probe" });
         send({ id: "probe", type: "prompt", message: "/install-probe" });
@@ -217,12 +220,24 @@ async function main() {
         const here = (file) => realpathSync(file);
         const from = (list, file) =>
             list.filter((item) => item.path !== undefined && existsSync(item.path) && here(item.path) === file);
+        const loaded = [];
         for (const entry of manifest.pi.extensions) {
             const file = here(path.join(clone, entry));
             const count = from(commands, file).length + from(tools, file).length;
             if (count === 0) problems.push(`${entry} registered no command and no tool: it did not load`);
             else console.log(`  ${entry}: ${from(commands, file).length} commands, ${from(tools, file).length} tools`);
+            const known = [...from(commands, file), ...from(tools, file)].find((item) => item.sourceInfo !== undefined);
+            if (known !== undefined) loaded.push({ entry, path: known.path, sourceInfo: known.sourceInfo });
         }
+        // What Pi calls each extension in its start-up list: from the folder of the entry file, so the plugin's name.
+        const labels = await extensionLabels(piHostDir, loaded);
+        loaded.forEach(({ entry }, index) => {
+            const label = labels[index] ?? "";
+            const plugin = /^\.\/plugins\/([^/]+)\//.exec(entry)?.[1];
+            if (label.split(/[/:]/).at(-1) !== plugin)
+                problems.push(`${entry} is labelled "${label}" by Pi, not ${plugin}`);
+        });
+        console.log(`  Pi's labels: ${labels.join(", ")}`);
         const names = new Set(commands.map((command) => command.name));
         for (const name of REQUIRED_COMMANDS)
             if (!names.has(name)) problems.push(`/${name} is not among Pi's commands`);

@@ -34,6 +34,10 @@ changes, the other changes in the same commit. Tests read the tool tables of
   `herdr/mods/jig-theme-sync/convert.js`, run `node herdr/scripts/build-themes.ts`; a test fails when the committed themes
   are out of date. Write the other mods in your own words: never copy code from a mod under another licence (EUPL, GPL). `npm test` runs
   `herdr/test/` too.
+- **The launcher is not a plugin.** `bin/pi`, with `bin/tmux.conf` and `bin/clipboard-copy`, is the optional `pi` command. The "Starting
+  Pi" section of `README.md` is its specification, and `test/launcher.test.ts` fails when that section misses a flag or variable the
+  script reads. The tests run a fake Pi and tmux in a closed world (`test/support/launcher-world.ts`) and start nothing real. It stays
+  generic like everything here: it sets none of the user's settings, runs no checks at start, and never signs in.
 - **Docs.** Write them by [Writing the docs](docs/writing.md): open with what
   it is and why, short paragraphs and table cells (about 350 and 100
   characters), lists with bold lead-ins, generic examples, tagged code blocks.
@@ -62,7 +66,7 @@ changes, the other changes in the same commit. Tests read the tool tables of
   uses a fake home built at run time, hides the real home's credential paths as well,
   and never reads a file under it or contacts any host but a server of its own.
 - **`jig-agents` tests start a real Pi.** `test/real-pi.test.ts` runs the Pi installed next to Node
-  (`npm install -g @earendil-works/pi-coding-agent@1.4.0`; `JIG_AGENTS_TEST_PI` names another) as a child,
+  (`npm install -g @earendil-works/pi-coding-agent@1.5.0`; `JIG_AGENTS_TEST_PI` names another) as a child,
   with this repository's `jig-core` and `jig-agents` and Pi's own scripted model, so it calls no model. It skips
   with the reason when there is no Pi 1.x, and runs in CI, where Pi is installed. It uses a temporary agent
   folder and home, never `~/.pi/agent`, and never the `pi` on `PATH`, which may be a wrapper that signs in. Two tests also
@@ -88,6 +92,9 @@ changes, the other changes in the same commit. Tests read the tool tables of
   command in the `jig-agents` bullet above. To move it: run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`,
   "Run workflow") and wait for it to be green on the new release, change those places in one commit, and run `npm run check`,
   `npm test` and `npm run check:install` on that Pi. `plugins/jig-core/test/ci-config.test.ts` fails when they disagree.
+- **Changelog.** A change a user would notice adds a line under `## [Unreleased]` in `CHANGELOG.md`. A release moves those lines
+  under a new version heading and raises `version` in `package.json` in the same commit: Pi shows a package's changelog after an
+  update only when that field rises.
 - **No secret-shaped literals, even fake ones.** A test value that looks like a
   real credential (a GitHub token, a Postman key, an AWS key, a private-key
   block) is built at run time from parts, such as `["PMAK", "1a2b"].join("-")`.

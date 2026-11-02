@@ -29,8 +29,65 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
 - **`secrets.commands`:** the program, then its arguments, such as
   `{ "gh": ["gh", "auth", "token"] }`. Used only when `cmd` is in
   `secrets.backends`.
+- **`secrets.pass`:** `{ "storeDir": "...", "gnupgHome": "...", "unlockAtStart": true }`.
+  The two folders say where `pass` looks for its store and its GnuPG keys. Each is an absolute path or starts with `~/`;
+  a relative path, a control character, `/` and the home folder itself (or a
+  folder above it) are errors. It wins over `PASSWORD_STORE_DIR` and `GNUPGHOME`
+  of Pi's environment, and both folders are protected paths (see
+  [Where pass looks](../../../docs/secrets.md#where-pass-looks)). `/jig` shows them.
+  `unlockAtStart` is `true` or `false` (default `false`); see [At session start](#at-session-start).
 - **`records.retentionDays`** and **`spill.retentionDays`:** whole numbers of
   days, from 1 to 3650.
+- **`startChecks`:** a list of at most 16 checks, each `{ "name": "VPN", "tcp":
+  "vpn.example.com:443", "hint": "connect your VPN client" }`. See
+  [At session start](#at-session-start).
+
+## At session start
+
+Two settings of yours run when a session starts, so they work however Pi was started. Both are yours alone: a
+company plugin can neither set `startChecks` nor add a host to it.
+
+```json
+{
+  "secrets": { "pass": { "unlockAtStart": true } },
+  "startChecks": [
+    { "name": "VPN", "tcp": "vpn.example.com:443", "hint": "connect your VPN client" },
+    { "name": "Orders API", "tcp": "api.staging.example.com:8443" }
+  ]
+}
+```
+
+- **`secrets.pass.unlockAtStart`** gets the `pass` store unlocked once, so a passphrase prompt does not interrupt a
+  task later.
+  - `jig-core` finds one `*.gpg` entry in the store `pass` uses (`secrets.pass.storeDir`, else `PASSWORD_STORE_DIR`,
+    else `~/.password-store`) and has `pass` decrypt it through the same resolver as any secret, so a tool that asks
+    meanwhile waits for it and then finds the store open.
+  - If the store is locked, gpg-agent shows its own prompt, often a desktop dialog. A prompt that only a terminal can
+    show cannot appear inside Pi: use a graphical pinentry.
+  - Jig never asks for, sees or keeps the passphrase. It drops what the entry held at once and does not register it
+    with the redactor, since an entry picked at random may be too short to hide safely.
+  - It runs only when `pass` is an enabled backend.
+- **`startChecks`** tests that what you rely on is up.
+  - Each check is one TCP connection to the host and port, closed at once with nothing sent, with a limit of 3
+    seconds. All run in parallel and none is retried. Nothing else is done: no other traffic, and nothing is
+    started, stopped or signed in to.
+  - A **`name`** is 1 to 40 printable characters. A **`tcp`** is a hostname or an IP address, a colon and a port from
+    1 to 65535; an IPv6 address goes in brackets, as in `[::1]:443`. A **`hint`**, optional, is up to 200
+    characters.
+  - A mistake names the key, as `startChecks[1].tcp`, and never repeats the value. Like any wrong setting of
+    `jig-core`'s own, it makes the file fall back to the defaults.
+- **Both run in the background,** so the session never waits for them and they cannot fail it.
+- **Both run only in the top-level session with a screen.** Not in print mode or RPC mode with no UI, and not in a
+  child agent (one started with `PI_SUBAGENT_ID` set by `jig-agents`, or the older `PI_SUBAGENT_CHILD=1`).
+- **What you are told** is a notice on your screen. It is never sent to the model, and it never holds a value.
+  - A check that failed: `VPN is not reachable (vpn.example.com:443): connect your VPN client`. A check that
+    succeeded says nothing.
+  - The unlock says nothing when the store was already open or has no entry, `secret store unlocked` after a prompt
+    you answered, and `secret store still locked; a tool that needs it will ask again` when `pass` reports that it is
+    locked. An entry that took 1.5 seconds or more to open counts as a prompt that was answered. Any other failure,
+    such as `pass` not being installed, is left for the tool that needs the store.
+- **`/jig` lists the checks** with the last result of each: `reachable`, `not reachable` or `not run` (it has not
+  finished, or this session does not run them). It also says that the store is unlocked at start.
 
 ## The `/jig` commands
 
@@ -39,7 +96,7 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
   loaded, the environments and who defined them, the tools still on the unknown
   default, and the open watches (and how many are paused or wait
   for their plugin). It also shows the configuration file with the state of each
-  plugin section, lines that plugins registered (such as `jig-mongo` saying that
+  plugin section, the start checks and their last result, lines that plugins registered (such as `jig-mongo` saying that
   its index check is off), configuration errors, a failed records write, and
   problems with saved watches.
   - **A section is `loaded`,** `company defaults incomplete` (waiting for the part
@@ -154,8 +211,11 @@ removes one. `/jig rules` lists them all, each with where it came from
   - `bash` and `powershell` are the sandbox's job: until a sandbox runs, a
     shell command can still read and write these paths. `jig-sandbox` hides the
     same list from `bash`, through `protectedPaths.list()`.
-  - Variables that move a tool's folder (`GH_CONFIG_DIR`, `CLOUDSDK_CONFIG`) are
-    not read: list that folder yourself.
+  - A store the environment moves is covered only through the variables the
+    defaults know (`PASSWORD_STORE_DIR`, `GNUPGHOME`, `KUBECONFIG` and the other
+    variables in [Permissions](../../../docs/permissions.md#protected-paths)), and
+    the folders `secrets.pass` binds. A tool with a variable of its own is not:
+    list that folder yourself.
   - The check is made when the call starts, so a link swapped afterwards by a
     shell command is not seen.
 
@@ -281,7 +341,7 @@ such as `git`, `lens` or `memory`.
 - **A top-level key that neither jig-core nor a plugin registered** is an
   unknown field.
 - **A plugin cannot register a name jig-core uses itself:** `environments`,
-  `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`.
+  `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`, `startChecks`.
 - **Order does not matter.** A plugin that loads before jig-core waits for it,
   and a section or defaults registered after the file was read are applied at
   once.

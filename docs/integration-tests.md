@@ -8,7 +8,7 @@ such as Elasticsearch, MongoDB and Kubernetes, so a fake that is wrong about the
 | | Unit tests | Integration tests |
 |---|---|---|
 | Command | `npm test` | `npm run test:it` |
-| Files | `plugins/*/test/*.test.ts` | `plugins/*/test/it/*.test.ts` |
+| Files | `plugins/*/test/*.test.ts`, `test/*.test.ts` | `plugins/*/test/it/*.test.ts` |
 | Talks to | fakes on `127.0.0.1` | real services |
 | Runs in CI | the `checks` job | the `integration` job |
 
@@ -84,7 +84,7 @@ moves several versions together, so the lines that users run side by side are al
 | Helm | 4.3.1 | 3.22.1 |
 
 - **The same on both:** Grafana Loki 3.7.9, go-httpbin 2.26.0, Keycloak 26.8.1, OpenSSH 10.3 (the jump host), kind v0.33.0 with
-  Kubernetes 1.37.0 nodes and kubectl 1.37.2, and Pi 1.4.0. Loki, Keycloak and the rest have no older line that the plugins claim.
+  Kubernetes 1.37.0 nodes and kubectl 1.37.2, and Pi 1.5.0. Loki, Keycloak and the rest have no older line that the plugins claim.
 - **Pi is installed at an exact version,** the latest one, because the type check and the `jig-agents` tests read its own packages.
   To move it, follow "Pi version" in [AGENTS.md](../AGENTS.md); [Compatibility](compatibility.md) has the table and the weekly canary.
 - **The `checks` job** runs both Node lines, and prints `node --version` first. Node 22.19, the lowest that `package.json` allows,

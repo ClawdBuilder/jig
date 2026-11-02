@@ -21,7 +21,8 @@ import { errorMessage } from "./errors.ts";
 import { run as defaultRun } from "./exec.ts";
 import type { RunOptions, RunResult } from "./contract.ts";
 import { SECRET_BACKENDS } from "./config.ts";
-import type { SecretBackend } from "./config.ts";
+import type { PassBinding, SecretBackend } from "./config.ts";
+import { expandProtected } from "./protected-paths.ts";
 import type { Redactor } from "./redact.ts";
 
 export type SecretErrorCode = "invalid_ref" | "backend_disabled" | "missing" | "locked" | "unavailable";
@@ -39,6 +40,15 @@ export class SecretError extends Error {
 
 export interface Secrets {
     resolve(ref: string, signal?: AbortSignal): Promise<string>;
+    /** The folder `pass` reads, by the rule `resolve` follows: `secrets.pass`, then Pi's environment, then `~/.password-store`. */
+    passStoreDir(): string;
+    /**
+     * Gets the pass store unlocked: runs `pass show` for one entry, in turn with the other lookups through `pass`, and
+     * drops what it printed. The value is not registered with the redactor, because nothing uses it and an entry picked
+     * at random may be short enough to blank ordinary words. Fails with the errors `resolve` gives for `pass:<entry>`,
+     * and with `backend_disabled` when `pass` is not on.
+     */
+    unlockPass(entry: string, signal?: AbortSignal): Promise<void>;
 }
 
 export interface SecretsOptions {
@@ -56,6 +66,8 @@ export interface SecretsOptions {
     timeoutMs?: number;
     /** The commands `cmd:<name>` may run: the user's and the company's, by name. Read on every call. */
     commands?: () => Readonly<Record<string, readonly string[]>>;
+    /** The folders `secrets.pass` of `jig.json` binds `pass` to. Read on every call. They win over Pi's environment. */
+    pass?: () => PassBinding;
     /** Pi's agent folder, which a `file:` reference may not read from. Read on every call. Empty when not known. */
     agentDir?: () => string;
     /** The home folder, for `file:~/...`. Default: the user's. */
@@ -76,6 +88,11 @@ const COMMAND_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /** The most names an error lists. */
 const MAX_NAMES_SHOWN = 10;
 const DEFAULT_TIMEOUT_MS = 60_000;
+
+/** Whether `entry` is a name `pass:<entry>` accepts: letters, digits and `. _ @ + - /`, with no empty, `.` or `..` part. */
+export function isPassEntry(entry: string): boolean {
+    return PASS_ENTRY.test(entry) && !entry.split("/").some((part) => part === "" || part === "." || part === "..");
+}
 
 /** What a declared command may also see of Pi's environment, beyond the short list every program gets: where a
  *  desktop keyring or a pinentry shows its prompt, and where the common command-line tools keep their configuration.
@@ -155,15 +172,28 @@ export function createSecrets(options: SecretsOptions): Secrets {
         return value;
     }
 
-    async function fromPass(entry: string, signal: AbortSignal | undefined): Promise<string> {
-        if (!PASS_ENTRY.test(entry) || entry.split("/").some((part) => part === "" || part === "." || part === "..")) {
-            throw new SecretError("invalid_ref", "a pass: entry uses letters, digits and . _ @ + - / only");
-        }
+    /** What `pass` is started with: its two folders, from `secrets.pass` first, then Pi's environment, then (when neither
+     *  names one) nothing, so that pass's own defaults apply. Plus the variables a graphical passphrase prompt needs. */
+    function passEnvironment(): Record<string, string> {
+        const bound = options.pass?.() ?? {};
+        const configured: Record<string, string | undefined> = {
+            PASSWORD_STORE_DIR:
+                bound.storeDir === undefined ? undefined : expandProtected(bound.storeDir, home, platform),
+            GNUPGHOME: bound.gnupgHome === undefined ? undefined : expandProtected(bound.gnupgHome, home, platform),
+        };
         const passEnv: Record<string, string> = { LC_ALL: "C" };
         for (const name of PASS_ENV) {
-            const value = env[name];
+            const value = configured[name] ?? env[name];
             if (value !== undefined) passEnv[name] = value;
         }
+        return passEnv;
+    }
+
+    async function fromPass(entry: string, signal: AbortSignal | undefined): Promise<string> {
+        if (!isPassEntry(entry)) {
+            throw new SecretError("invalid_ref", "a pass: entry uses letters, digits and . _ @ + - / only");
+        }
+        const passEnv = passEnvironment();
         const result = await runBackend("pass", ["show", entry], passEnv, signal);
         if (result.code === 0) {
             const value = firstLine(result.stdout);
@@ -314,6 +344,18 @@ export function createSecrets(options: SecretsOptions): Secrets {
         return result;
     }
 
+    /** Refuses a backend that is not on, and says whether the user turned it off or it was never turned on. */
+    function requireBackend(backend: SecretBackend): void {
+        if (options.backends().includes(backend)) return;
+        const turnedOff = options.disabled?.().includes(backend) === true;
+        throw new SecretError(
+            "backend_disabled",
+            turnedOff
+                ? `the ${backend} secret backend is not enabled: you turned it off in secrets.disabledBackends in jig.json`
+                : `the ${backend} secret backend is not enabled: add "${backend}" to secrets.backends in jig.json`,
+        );
+    }
+
     async function lookup(ref: string, signal: AbortSignal | undefined): Promise<string> {
         const parsed = parse(ref);
         if (parsed === undefined) {
@@ -323,15 +365,7 @@ export function createSecrets(options: SecretsOptions): Secrets {
                 "not a secret reference: use pass:<entry>, env:<NAME>, keychain:<service>/<account>, op://<vault>/<item>/<field>, cmd:<name> or file:<absolute path>",
             );
         }
-        if (!options.backends().includes(parsed.backend)) {
-            const turnedOff = options.disabled?.().includes(parsed.backend) === true;
-            throw new SecretError(
-                "backend_disabled",
-                turnedOff
-                    ? `the ${parsed.backend} secret backend is not enabled: you turned it off in secrets.disabledBackends in jig.json`
-                    : `the ${parsed.backend} secret backend is not enabled: add "${parsed.backend}" to secrets.backends in jig.json`,
-            );
-        }
+        requireBackend(parsed.backend);
         let value: string;
         switch (parsed.backend) {
             case "env":
@@ -367,6 +401,12 @@ export function createSecrets(options: SecretsOptions): Secrets {
             const started = lookup(ref, signal).finally(() => inFlight.delete(ref));
             inFlight.set(ref, started);
             return started;
+        },
+        passStoreDir: () => passEnvironment().PASSWORD_STORE_DIR ?? path.join(home, ".password-store"),
+        async unlockPass(entry, signal) {
+            requireBackend("pass");
+            // The value is dropped here, unregistered: see the interface.
+            await fromPass(entry, signal);
         },
     };
 }

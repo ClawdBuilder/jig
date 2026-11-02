@@ -21,8 +21,9 @@ export type ReviewFileSelection = {
     /** Limits a review to one ticket's bound repositories. */
     ticket?: string;
     /**
-     * Touched scope: each repository's HEAD when the agent's run started (repository root -> commit), so the review
-     * shows what the run changed even when it also committed it. A repository not named here compares with HEAD.
+     * Touched scope: where each repository's review of the run starts (repository root -> commit or tree): its HEAD when
+     * the run started, so the review shows what the run changed even when it also committed it, or a tree that already holds
+     * the commits the run merged, pulled or rebased in (see run-base.ts). A repository not named here compares with HEAD.
      */
     since?: Record<string, string>;
     /** Touched scope, one repository: the commit its diff starts from (from `since`); HEAD when absent. */

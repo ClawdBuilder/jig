@@ -19,6 +19,7 @@ export interface FakeUiScript {
     /** Runs the component factory the way Pi does: it gets a fake terminal, a theme, keybindings and `done`. */
     custom?: (
         factory: (tui: unknown, theme: unknown, keybindings: unknown, done: (value: unknown) => void) => unknown,
+        options?: unknown,
     ) => Promise<unknown>;
 }
 
@@ -50,11 +51,11 @@ export function fakeUi(script: FakeUiScript = {}): { ui: ExtensionUIContext; log
         notify: (message: string, type?: string) => {
             log.notifications.push({ message, type });
         },
-        custom: (factory: Parameters<NonNullable<FakeUiScript["custom"]>>[0]) =>
+        custom: (factory: Parameters<NonNullable<FakeUiScript["custom"]>>[0], options?: unknown) =>
             counted(async () => {
                 log.customs++;
                 if (script.custom === undefined) throw new Error("this fake screen has no custom component");
-                return script.custom(factory);
+                return script.custom(factory, options);
             }),
     };
     return { ui: ui as unknown as ExtensionUIContext, log };

@@ -369,6 +369,12 @@ export interface HttpRequest {
     timeoutMs?: number;
     /** The most reply bytes that are read; more is cut and `truncated` is set. From 1 byte to 64 MiB. Default 4 MiB. */
     maxBytes?: number;
+    /**
+     * For a reply that goes on after its last word, such as an event stream whose server keeps the connection open: stop
+     * reading as soon as the reply holds this text (1 to 100 plain characters, line breaks allowed) and return what has
+     * come, the text included, with `truncated` false. Not for a transport, which hands over its whole reply.
+     */
+    stopAt?: string;
 }
 
 export interface HttpResponse {

@@ -104,6 +104,8 @@ export function statusLines(state: JigState): string[] {
         `Plugins: ${[...plugins].join(", ")}`,
         environmentsLine(state),
         secretBackendsLine(state),
+        ...passBindingLines(state),
+        ...startLines(state),
         `Tools on the unknown default (they ask until classified): ${unclassified.length === 0 ? "none" : unclassified.join(", ")}`,
         watchesLine(state),
         ...(gates.length === 0
@@ -200,6 +202,34 @@ export function secretBackendsLine(state: JigState): string {
     const enabled = byCompany.length === 0 ? "" : ` (${byCompany.join(", ")} enabled by a company plugin)`;
     const disabled = off.length === 0 ? "" : `; turned off by you: ${off.join(", ")}`;
     return `Secret backends on: ${on.length === 0 ? "none" : on.join(", ")}${enabled}${disabled}`;
+}
+
+/** The folders `secrets.pass` binds `pass` to, as written in `jig.json`: paths, never a value. Nothing when none is bound. */
+export function passBindingLines(state: JigState): string[] {
+    const { storeDir, gnupgHome } = state.personal.config.secrets.pass;
+    const bound = [
+        ...(storeDir === undefined ? [] : [`store ${storeDir}`]),
+        ...(gnupgHome === undefined ? [] : [`GnuPG home ${gnupgHome}`]),
+    ];
+    return bound.length === 0 ? [] : [`pass is bound by secrets.pass to: ${bound.join(", ")}`];
+}
+
+/** What a session start sets going in the background, from `jig.json`: the store unlock, and the start checks with the
+ *  last result of each. */
+export function startLines(state: JigState): string[] {
+    const { secrets, startChecks } = state.personal.config;
+    const lines: string[] = [];
+    if (secrets.pass.unlockAtStart === true) {
+        const usable = effectiveBackends(secrets, state.company).on.includes("pass");
+        lines.push(
+            `Secret store: unlocked when a session starts (secrets.pass.unlockAtStart)${usable ? "" : ", but pass is not an enabled backend, so this does nothing"}`,
+        );
+    }
+    if (startChecks.length > 0) {
+        lines.push(`Start checks (one TCP connection each, made in the background when a session starts):`);
+        for (const check of startChecks) lines.push(`  ${check.name} (${check.tcp}): ${state.startChecks.last(check)}`);
+    }
+    return lines;
 }
 
 /**

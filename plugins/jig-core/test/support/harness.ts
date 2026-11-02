@@ -7,6 +7,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../src/client.ts";
 import type { JigApi } from "../../src/contract.ts";
 import { jigCore } from "../../src/index.ts";
+import type { JigCoreOptions } from "../../src/state.ts";
 import type { Masker } from "../../src/mask/index.ts";
 import { fakeMasker } from "./fakes.ts";
 import type { FakeUiLog, FakeUiScript } from "./fakes.ts";
@@ -81,6 +82,12 @@ export interface StartOptions {
     clock?: FakeClock;
     /** How long a gate may take, so a test of a slow one need not wait ten seconds. */
     gateTimeoutMs?: number;
+    /** Pi's environment, in place of the process's: a child agent is told by it, and `pass` finds its store by it. */
+    env?: NodeJS.ProcessEnv;
+    /** Starts the programs that secret backends run (`pass`), in place of the real ones. */
+    runProgram?: JigCoreOptions["runProgram"];
+    /** Makes the connection of a start check, in place of a real TCP one. */
+    connect?: JigCoreOptions["connect"];
 }
 
 /** Loads jig-core into a fake Pi and starts a session. The state folder must already be set (see `tempState`). */
@@ -96,6 +103,9 @@ export async function start(options: StartOptions = {}): Promise<Harness> {
         ...(options.openPreview === undefined ? {} : { openPreview: options.openPreview as never }),
         ...(options.clock === undefined ? {} : { now: options.clock.date, timers: options.clock.timers }),
         ...(options.gateTimeoutMs === undefined ? {} : { gateTimeoutMs: options.gateTimeoutMs }),
+        ...(options.env === undefined ? {} : { env: options.env }),
+        ...(options.runProgram === undefined ? {} : { runProgram: options.runProgram }),
+        ...(options.connect === undefined ? {} : { connect: options.connect }),
     })(host.pi);
     const api = jig();
     options.plugins?.(api);

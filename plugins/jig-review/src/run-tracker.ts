@@ -5,6 +5,7 @@ import path from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isReviewableWrite } from "./code-path.ts";
 import type { Git } from "./git.ts";
+import { runBases, snapshotReflogs } from "./run-base.ts";
 import { changedBetween, committedSince, snapshotHeads, snapshotWorkspace } from "./run-changes.ts";
 import type { WorkspaceSnapshot } from "./run-changes.ts";
 import { repositoriesUsedBy } from "./used-repos.ts";
@@ -27,12 +28,19 @@ export class RunTracker {
     private changedSinceLastOffer = false;
     private currentTouchedFiles = new Set<string>();
     private lastTouchedFiles: string[] = [];
-    /** Each repository's HEAD when the last agent run started: the touched review starts there, so the run's commits show. */
+    /**
+     * Where the last agent run's touched review starts, per repository: its HEAD when the run started, so the run's commits
+     * show; or, when the run merged, pulled or rebased in other people's commits, a tree that already holds them.
+     */
     private lastRunSince?: Record<string, string>;
+    /** What the last run brought in from elsewhere ("merged origin/develop"); undefined when it brought in nothing. */
+    private lastIncoming?: string[];
     /** The repositories found when the current agent run started and those its tool calls used; undefined outside a run. */
     private runRepositories?: { found: Repository[]; used: Set<string> };
     /** Git state of the repositories when the current agent run started (still being taken); undefined outside a run. */
-    private runStart?: Promise<{ changes?: WorkspaceSnapshot; heads: Record<string, string> } | undefined>;
+    private runStart?: Promise<
+        { changes?: WorkspaceSnapshot; heads: Record<string, string>; reflogs: Record<string, number> } | undefined
+    >;
     private readonly cwd: string;
     private readonly git: Git;
 
@@ -56,9 +64,20 @@ export class RunTracker {
         return this.lastTouchedFiles;
     }
 
-    /** Each repository's HEAD when the last run started. */
+    /** Where the last run's review of each repository starts (see `lastRunSince`). */
     get since(): Record<string, string> | undefined {
         return this.lastRunSince;
+    }
+
+    /**
+     * Why the last run left nothing to review, when it brought in commits from elsewhere and changed nothing else: a line for
+     * the user. Undefined otherwise.
+     */
+    get nothingToReview(): string | undefined {
+        if (this.lastIncoming === undefined || this.lastTouchedFiles.length > 0) return undefined;
+        const what =
+            this.lastIncoming.length > 0 ? this.lastIncoming.join(" and ") : "brought in commits from elsewhere";
+        return `Nothing to review: the run only ${what}.`;
     }
 
     /**
@@ -111,7 +130,11 @@ export class RunTracker {
         this.runStart = Promise.all([
             snapshotWorkspace(this.cwd, () => found, undefined, this.git).catch(() => undefined),
             snapshotHeads(this.cwd, () => found, this.git).catch(() => ({})),
-        ]).then(([changes, heads]) => ({ changes, heads }));
+            snapshotReflogs(
+                found.map((repo) => repo.root),
+                this.git,
+            ).catch(() => ({})),
+        ]).then(([changes, heads, reflogs]) => ({ changes, heads, reflogs }));
     }
 
     /** The run ended: adds the files git shows changed, and keeps the run's touched files for the offer. */
@@ -131,6 +154,7 @@ export class RunTracker {
         this.runStart = undefined;
         this.runRepositories = undefined;
         this.lastRunSince = start?.heads;
+        this.lastIncoming = undefined;
         const before = start?.changes;
         if (before === undefined || used.length === 0 || isHeadless(ctx)) return;
 
@@ -139,7 +163,14 @@ export class RunTracker {
             const usedHeads = Object.fromEntries(
                 Object.entries(start?.heads ?? {}).filter(([root]) => used.some((repo) => repo.root === root)),
             );
-            const committed = await committedSince(usedHeads, this.git);
+            // Commits that came in with a merge, a pull or a rebase are other people's work: the run starts after them.
+            const bases = await runBases(usedHeads, start?.reflogs ?? {}, this.git);
+            const starts = { ...usedHeads };
+            for (const [root, { base }] of bases) starts[root] = base;
+            this.lastRunSince = { ...this.lastRunSince, ...starts };
+            if (bases.size > 0)
+                this.lastIncoming = [...new Set([...bases.values()].flatMap((entry) => entry.incoming))];
+            const committed = await committedSince(starts, this.git);
             for (const file of new Set([...changedBetween(before, after), ...committed])) {
                 if (this.isCodeWrite(file)) {
                     this.changedSinceLastOffer = true;

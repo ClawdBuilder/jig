@@ -139,6 +139,8 @@ function networkFailure(error: unknown, caller: AbortSignal | undefined, deadlin
 
 // ---- the request --------------------------------------------------------------------------------------------------
 
+/** A stop marker: plain characters and line breaks, so that it can be found in bytes read as they arrive. */
+const STOP_AT = /^[\n\u0020-\u007e]{1,100}$/;
 const METHODS: ReadonlySet<string> = new Set(["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]);
 /** What a transport can carry: its contract has these five methods and a text body. */
 const TRANSPORT_METHODS: ReadonlySet<string> = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
@@ -196,11 +198,17 @@ function splitCookies(folded: string | undefined): string[] {
     return folded.split(/,\s*(?=[^;,\s]+=)/).flatMap((cookie) => cookie.split(";")[0]?.trim() ?? []);
 }
 
-async function readBody(response: Response, maxBytes: number): Promise<{ bytes: Uint8Array; truncated: boolean }> {
+async function readBody(
+    response: Response,
+    maxBytes: number,
+    stopAt?: string,
+): Promise<{ bytes: Uint8Array; truncated: boolean }> {
     const reader = response.body?.getReader();
     if (reader === undefined) return { bytes: new Uint8Array(0), truncated: false };
     const chunks: Uint8Array[] = [];
     let size = 0;
+    // The end of what was read, so that a marker split between two chunks is still found.
+    let seen = "";
     for (;;) {
         const { done, value } = await reader.read();
         if (done) return { bytes: Buffer.concat(chunks), truncated: false };
@@ -211,6 +219,14 @@ async function readBody(response: Response, maxBytes: number): Promise<{ bytes: 
         }
         chunks.push(value);
         size += value.byteLength;
+        if (stopAt !== undefined) {
+            const window = seen + Buffer.from(value).toString("latin1");
+            if (window.includes(stopAt)) {
+                await reader.cancel().catch(() => undefined);
+                return { bytes: Buffer.concat(chunks), truncated: false };
+            }
+            seen = window.slice(Math.max(0, window.length - (stopAt.length - 1)));
+        }
     }
 }
 
@@ -492,7 +508,7 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
         };
         try {
             const reply = await untilAborted(send(address.href, init), signal);
-            const { bytes, truncated } = await untilAborted(readBody(reply, maxBytes), signal);
+            const { bytes, truncated } = await untilAborted(readBody(reply, maxBytes, request.stopAt), signal);
             const received: Record<string, string> = {};
             reply.headers.forEach((value, name) => {
                 const lower = name.toLowerCase();
@@ -557,6 +573,9 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
             if (!METHODS.has(request.method as string)) throw invalid("the method is not one that can be sent");
             if (request.auth !== undefined && request.transport !== undefined) {
                 throw invalid("a transport signs in itself, so the request cannot also name a credential");
+            }
+            if (request.stopAt !== undefined && !(typeof request.stopAt === "string" && STOP_AT.test(request.stopAt))) {
+                throw invalid("stopAt must be 1 to 100 plain characters, line breaks allowed");
             }
             if (request.transport !== undefined && !text(request.transport)) {
                 throw invalid("transport must name a registered transport");

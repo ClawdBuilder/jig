@@ -27,8 +27,10 @@ import type { Answer, ErrorKind } from "./records.ts";
 import { createHttp } from "./kit/http.ts";
 import type { JigApi } from "./contract.ts";
 import { createSecrets } from "./secrets.ts";
-import type { Secrets } from "./secrets.ts";
+import type { Secrets, SecretsOptions } from "./secrets.ts";
 import { createSignIn } from "./signin.ts";
+import { createStartChecks } from "./start-checks.ts";
+import type { Connector, StartChecks } from "./start-checks.ts";
 import type { SignIn } from "./signin.ts";
 import { createTransports } from "./transports.ts";
 import { createTunnels } from "./tunnels.ts";
@@ -37,6 +39,7 @@ import type { Transports } from "./transports.ts";
 import { createWatchEngine } from "./watch/engine.ts";
 import type { WatchEngine } from "./watch/engine.ts";
 import { createWatchStore } from "./watch/store.ts";
+import { realTimers } from "./watch/timers.ts";
 import type { Timers } from "./watch/timers.ts";
 
 /** What a test (or an embedding program) can replace. A real Pi session uses the defaults. */
@@ -51,6 +54,12 @@ export interface JigCoreOptions {
     timers?: Timers;
     /** How long one gate may take before the call it checks is denied. Default 10 seconds. */
     gateTimeoutMs?: number;
+    /** Pi's environment, which tells a child agent from the top-level session and where `pass` looks. Default: the process's. */
+    env?: NodeJS.ProcessEnv;
+    /** How the secret backends start their programs (`pass`, ...). Tests pass a fake. Default: jig-core's own exec. */
+    runProgram?: SecretsOptions["run"];
+    /** Makes the connection of a start check. Default: a real TCP connection, closed at once. */
+    connect?: Connector;
 }
 
 /** What jig-core remembers about one call, from the moment it is decided until its record is written. */
@@ -106,6 +115,8 @@ export interface JigState {
     agentDir: () => string;
     /** True once jig.json has been read in this runtime. */
     configLoaded: boolean;
+    /** Pi's environment, read through here so a test can give another. */
+    env: NodeJS.ProcessEnv;
     sessionId: string | undefined;
     /** The screen of the running session, or undefined when it has none (print mode). Set when the session starts. */
     screen: Pick<ExtensionUIContext, "notify"> | undefined;
@@ -135,6 +146,10 @@ export interface JigState {
     /** The merged configuration. Rebuilt when something changes it. */
     policy(): Policy;
     invalidatePolicy(): void;
+    /** The checks of `startChecks`, and what the last run found. */
+    startChecks: StartChecks;
+    /** Stops the background work that the session start began (the store unlock and the checks). Undefined when none runs. */
+    startJobs: AbortController | undefined;
     /** The sandbox that runs `bash`, once a plugin registers one. */
     sandbox: SandboxProvider | undefined;
     /** The lines plugins want `/jig` to show, by plugin name (`status.register`). */
@@ -165,6 +180,7 @@ export const MAX_OPEN_CALLS = 1000;
 
 export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): JigState {
     const now = options.now ?? (() => new Date());
+    const env = options.env ?? process.env;
     const redactor = createRedactor();
     const makeMasker =
         options.createMasker ?? ((dir, date, extraFields) => createMasker(dailyMaskKey(dir, date), { extraFields }));
@@ -197,6 +213,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         configPath: () => "",
         agentDir: () => "",
         configLoaded: false,
+        env,
         sessionId: undefined,
         screen: undefined,
         ticket: undefined,
@@ -208,8 +225,11 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             disabled: () => state.personal.config.secrets.disabledBackends,
             // The user's own commands replace a company's of the same name.
             commands: () => ({ ...state.company.secretCommands, ...state.personal.config.secrets.commands }),
+            pass: () => state.personal.config.secrets.pass,
             agentDir: () => state.agentDir(),
             redactor,
+            env,
+            ...(options.runProgram === undefined ? {} : { run: options.runProgram }),
         }),
         http: undefined as unknown as JigApi["http"],
         signIn: createSignIn({ redactor }),
@@ -270,7 +290,12 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         policy() {
             if (policy === undefined) {
                 const home = homedir();
-                const entries = defaultProtectedPaths({ agentDir: state.agentDir(), home, env: process.env });
+                const entries = defaultProtectedPaths({
+                    agentDir: state.agentDir(),
+                    home,
+                    env,
+                    pass: state.personal.config.secrets.pass,
+                });
                 policy = buildPolicy(state.personal, state.company, { entries, home });
             }
             return policy;
@@ -278,6 +303,11 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         invalidatePolicy() {
             policy = undefined;
         },
+        startChecks: createStartChecks({
+            ...(options.connect === undefined ? {} : { connect: options.connect }),
+            timers: options.timers ?? realTimers,
+        }),
+        startJobs: undefined,
         sandbox: undefined,
         statusLines: new Map(),
         recordsProblem: undefined,

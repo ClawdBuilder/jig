@@ -1,7 +1,7 @@
 // The `pr` tool: pull requests and reviews on GitHub, through gh, and merge requests on GitLab, through glab. The repository's
 // origin decides which, never the call. Reads are allowed. Every write asks the user first, and the text of a write is shown on
 // the review screen before it is sent.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { describeActions } from "./params.ts";
@@ -67,7 +67,7 @@ const ACTION_NAMES = Object.keys(PR_ACTIONS) as (keyof typeof PR_ACTIONS)[];
 
 const PrParams = Type.Object(
     {
-        action: StringEnum(ACTION_NAMES, { description: describeActions(PR_ACTIONS) }),
+        action: stringEnum(ACTION_NAMES, { description: describeActions(PR_ACTIONS) }),
         repo: Type.Optional(
             Type.String({
                 minLength: 1,
@@ -101,10 +101,10 @@ const PrParams = Type.Object(
             }),
         ),
         draft: Type.Optional(Type.Boolean({ description: "create: open it as a draft." })),
-        method: Type.Optional(StringEnum(["merge", "squash", "rebase"] as const, { description: "How to merge." })),
+        method: Type.Optional(stringEnum(["merge", "squash", "rebase"] as const, { description: "How to merge." })),
         auto: Type.Optional(Type.Boolean({ description: "merge: turn on auto-merge instead of merging now." })),
         event: Type.Optional(
-            StringEnum(["comment", "request_changes"] as const, {
+            stringEnum(["comment", "request_changes"] as const, {
                 description: "review: a comment, or a request for changes. Approving is not possible.",
             }),
         ),
@@ -120,7 +120,7 @@ const PrParams = Type.Object(
         ),
         unresolved: Type.Optional(Type.Boolean({ description: "comments: only threads that are not resolved." })),
         state: Type.Optional(
-            StringEnum(["open", "closed", "merged", "all"] as const, {
+            stringEnum(["open", "closed", "merged", "all"] as const, {
                 description: "list: which state. Default open.",
             }),
         ),

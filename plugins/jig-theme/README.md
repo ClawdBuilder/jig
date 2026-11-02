@@ -145,6 +145,7 @@ The footer's colours, context limits, cost decimals and separator are in
 
 ```text
 jig-theme/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      the roles and the 17 colours (roles, palettes), a palette to a theme (build), your palettes on disk
             (config, write, apply), the footer (footer, segments, session, cache, usage, width), answer-text.ts, the /theme command
   themes/   the six as Pi theme files, made by scripts/build-themes.ts

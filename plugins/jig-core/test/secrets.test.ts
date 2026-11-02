@@ -6,7 +6,7 @@ import path from "node:path";
 import { after, afterEach, before, describe, test } from "node:test";
 import type { RunOptions, RunResult } from "../src/contract.ts";
 import { createRedactor, REDACTED } from "../src/redact.ts";
-import { createSecrets, SecretError } from "../src/secrets.ts";
+import { createSecrets, isPassEntry, SecretError } from "../src/secrets.ts";
 import type { SecretsOptions } from "../src/secrets.ts";
 
 type FakeRun = NonNullable<SecretsOptions["run"]>;
@@ -255,6 +255,179 @@ echo "end $1 $2" >> "${log}.timing"
                 .filter((line) => line.startsWith("start")).length,
             2,
         );
+    });
+});
+
+describe("where pass looks: secrets.pass, then Pi's environment, then pass's own defaults", () => {
+    /** A fake runner that records the environment each program was started with. */
+    function recorder() {
+        const seen: Array<{ file: string; args: readonly string[]; env: Record<string, string> | undefined }> = [];
+        const run: FakeRun = async (file, args, options) => {
+            seen.push({ file, args, env: options?.env as Record<string, string> | undefined });
+            return ok("the-secret\n");
+        };
+        return { seen, run };
+    }
+    const resolveWith = async (extra: Partial<SecretsOptions>) => {
+        const { seen, run } = recorder();
+        const { secrets } = setup(["pass"], { run, home: "/home/me", platform: "linux", ...extra });
+        assert.equal(await secrets.resolve("pass:work/token"), "the-secret");
+        assert.equal(seen.length, 1);
+        return seen[0]?.env ?? {};
+    };
+    const environment = {
+        PASSWORD_STORE_DIR: "/from/env/store",
+        GNUPGHOME: "/from/env/gnupg",
+        JIG_NOT_FORWARDED: "secret-from-pi-env",
+    };
+
+    test("the configuration wins over the environment, for each folder on its own", async () => {
+        const both = await resolveWith({
+            env: environment,
+            pass: () => ({ storeDir: "/bound/store", gnupgHome: "/bound/gnupg" }),
+        });
+        assert.equal(both.PASSWORD_STORE_DIR, "/bound/store");
+        assert.equal(both.GNUPGHOME, "/bound/gnupg");
+        const storeOnly = await resolveWith({ env: environment, pass: () => ({ storeDir: "/bound/store" }) });
+        assert.equal(storeOnly.PASSWORD_STORE_DIR, "/bound/store");
+        assert.equal(storeOnly.GNUPGHOME, "/from/env/gnupg");
+        const gnupgOnly = await resolveWith({ env: environment, pass: () => ({ gnupgHome: "~/vault/gnupg" }) });
+        assert.equal(gnupgOnly.PASSWORD_STORE_DIR, "/from/env/store");
+        assert.equal(gnupgOnly.GNUPGHOME, "/home/me/vault/gnupg", "~/ is the home folder");
+    });
+
+    test("without the configuration the environment applies, and without either pass's own defaults do", async () => {
+        const fromEnv = await resolveWith({ env: environment, pass: () => ({}) });
+        assert.equal(fromEnv.PASSWORD_STORE_DIR, "/from/env/store");
+        assert.equal(fromEnv.GNUPGHOME, "/from/env/gnupg");
+        assert.equal((await resolveWith({ env: environment })).PASSWORD_STORE_DIR, "/from/env/store");
+        const neither = await resolveWith({ env: {}, pass: () => ({}) });
+        assert.ok(!("PASSWORD_STORE_DIR" in neither));
+        assert.ok(!("GNUPGHOME" in neither));
+    });
+
+    test("pass still gets only its own variables, and the binding is read again on every call", async () => {
+        let bound: { storeDir?: string } = { storeDir: "/first/store" };
+        const { seen, run } = recorder();
+        const { secrets } = setup(["pass"], { run, env: environment, pass: () => bound });
+        await secrets.resolve("pass:work/token");
+        bound = { storeDir: "/second/store" };
+        await secrets.resolve("pass:work/token");
+        assert.deepEqual(
+            seen.map((call) => call.env?.PASSWORD_STORE_DIR),
+            ["/first/store", "/second/store"],
+        );
+        assert.equal(seen[0]?.env?.LC_ALL, "C");
+        assert.ok(!("JIG_NOT_FORWARDED" in (seen[0]?.env ?? {})));
+    });
+});
+
+describe("the pass store folder and unlocking it", () => {
+    const environment = { PASSWORD_STORE_DIR: "/from/env/store" };
+    const withHome = { home: "/home/me", platform: "linux" as const };
+
+    test("the store folder follows the rule pass is started by: secrets.pass, then the environment, then ~/.password-store", () => {
+        const bound = setup(["pass"], { ...withHome, env: environment, pass: () => ({ storeDir: "~/vault/store" }) });
+        assert.equal(bound.secrets.passStoreDir(), "/home/me/vault/store");
+        assert.equal(setup(["pass"], { ...withHome, env: environment }).secrets.passStoreDir(), "/from/env/store");
+        assert.equal(setup(["pass"], { ...withHome, env: {} }).secrets.passStoreDir(), "/home/me/.password-store");
+    });
+
+    test("the store folder is read again on every call, like the binding it comes from", () => {
+        let bound: { storeDir?: string } = { storeDir: "/first" };
+        const { secrets } = setup(["pass"], { ...withHome, env: {}, pass: () => bound });
+        assert.equal(secrets.passStoreDir(), "/first");
+        bound = {};
+        assert.equal(secrets.passStoreDir(), "/home/me/.password-store");
+    });
+
+    test("an entry name is judged by one rule, for a reference and for the unlock", () => {
+        for (const entry of ["work/token", "a", "dir/sub-dir/x.y@z+1", "_x"])
+            assert.equal(isPassEntry(entry), true, entry);
+        for (const entry of ["", "/abs", "a//b", "a/./b", "../x", "a/..", "-x", "has space", "a\nb", "a/"])
+            assert.equal(isPassEntry(entry), false, JSON.stringify(entry));
+    });
+
+    test("unlocking runs `pass show <entry>` from the same folders, and returns nothing", async () => {
+        const seen: Array<{ file: string; args: readonly string[]; env: Record<string, string> | undefined }> = [];
+        const run: FakeRun = async (file, args, options) => {
+            seen.push({ file, args, env: options?.env as Record<string, string> | undefined });
+            return ok("unlock-only-value\nsecond line\n");
+        };
+        const { secrets } = setup(["pass"], { ...withHome, run, env: environment, pass: () => ({ gnupgHome: "/g" }) });
+        assert.equal(await secrets.unlockPass("work/token"), undefined);
+        assert.deepEqual(
+            seen.map((call) => [call.file, ...call.args]),
+            [["pass", "show", "work/token"]],
+        );
+        assert.equal(seen[0]?.env?.PASSWORD_STORE_DIR, "/from/env/store");
+        assert.equal(seen[0]?.env?.GNUPGHOME, "/g");
+    });
+
+    test("the value it drops is not registered with the redactor, since a short one would blank ordinary words", async () => {
+        const { secrets, redactor } = setup(["pass"], { run: async () => ok("the\n") });
+        await secrets.unlockPass("any/entry");
+        assert.equal(redactor.count(), 0);
+        assert.equal(redactor.text("the quick fox"), "the quick fox");
+    });
+
+    test("it fails with the errors a lookup gives, and never repeats what pass printed", async () => {
+        const failing =
+            (code: number, stderr: string): FakeRun =>
+            async () => ({ code, stdout: "", stderr, timedOut: false });
+        const unlock = (run: FakeRun, entry = "work/token") => setup(["pass"], { run }).secrets.unlockPass(entry);
+        assert.equal(await code(unlock(failing(2, "gpg: decryption failed: No secret key. LEAK-1"))), "locked");
+        assert.equal(
+            await code(unlock(failing(1, "Error: work/token is not in the password store. LEAK-2"))),
+            "missing",
+        );
+        assert.equal(await code(unlock(failing(3, "something else. LEAK-3"))), "unavailable");
+        assert.equal(await code(unlock(async () => ok(""))), "missing", "an empty entry");
+        assert.equal(await code(unlock(async () => ok("x"), "../escape")), "invalid_ref");
+        await assert.rejects(unlock(failing(2, "pinentry. LEAK-4")), (error: Error) => !/LEAK/.test(error.message));
+    });
+
+    test("it obeys the backends: pass turned off or never on is refused before pass runs", async () => {
+        let ran = 0;
+        const run: FakeRun = async () => {
+            ran++;
+            return ok("x");
+        };
+        assert.equal(await code(setup([], { run }).secrets.unlockPass("a/b")), "backend_disabled");
+        const off = createSecrets({
+            backends: () => ["env"],
+            disabled: () => ["pass"],
+            redactor: createRedactor(),
+            run,
+        });
+        await assert.rejects(off.unlockPass("a/b"), /you turned it off in secrets\.disabledBackends/);
+        assert.equal(ran, 0);
+    });
+
+    test("it waits its turn behind other lookups through pass, so one unlock serves the callers that came meanwhile", async () => {
+        const log: string[] = [];
+        let unlocked = false;
+        const run: FakeRun = async (_file, args) => {
+            log.push(`start ${args[1]}`);
+            if (!unlocked) await new Promise((resolve) => setTimeout(resolve, 20)); // the passphrase prompt
+            unlocked = true;
+            log.push(`end ${args[1]}`);
+            return ok("v\n");
+        };
+        const { secrets } = setup(["pass"], { run });
+        await Promise.all([
+            secrets.unlockPass("a/unlock"),
+            secrets.resolve("pass:b/tool"),
+            secrets.resolve("pass:c/tool"),
+        ]);
+        assert.deepEqual(log, [
+            "start a/unlock",
+            "end a/unlock",
+            "start b/tool",
+            "end b/tool",
+            "start c/tool",
+            "end c/tool",
+        ]);
     });
 });
 

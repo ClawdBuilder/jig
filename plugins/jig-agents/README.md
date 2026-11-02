@@ -1,6 +1,6 @@
 # jig-agents: child agents that Jig's rules still govern
 
-**Status: built.** Tested with a fake child that speaks Pi's RPC protocol, and with the stock Pi 1.4 as a real child
+**Status: built.** Tested with a fake child that speaks Pi's RPC protocol, and with the stock Pi 1.5 as a real child
 (this repository's `jig-core` and `jig-agents`, on Pi's own scripted model). No model is called; what only
 a real one can show is in [Not verified](docs/not-verified.md).
 
@@ -256,6 +256,7 @@ An unknown field is an error, as in `jig-core`, and so is `writes` or `tools` un
 
 ```text
 jig-agents/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      index (factory), runtime + start-plan (the session's children; what a start works out), child (one child)
             with child-process, child-questions, child-report and child-types, rpc, forward (questions), limits,
             launch (flags, environment, model), roles + policy (an agent file; configuration laid over it), role-plan +
