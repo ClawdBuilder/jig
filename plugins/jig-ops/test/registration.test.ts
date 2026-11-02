@@ -390,12 +390,12 @@ describe("the package", () => {
     };
 
     test("the manifest loads the plugin after jig-core, and finds the skills of every plugin", () => {
-        const core = manifest.pi.extensions.indexOf("./plugins/jig-core/src/index.ts");
-        const ops = manifest.pi.extensions.indexOf("./plugins/jig-ops/src/index.ts");
+        const core = manifest.pi.extensions.indexOf("./plugins/jig-core/index.ts");
+        const ops = manifest.pi.extensions.indexOf("./plugins/jig-ops/index.ts");
         assert.ok(core === 0 && ops > core, "jig-ops comes after jig-core");
         for (const earlier of ["memory", "git", "lens", "jira", "logs", "api"]) {
             assert.ok(
-                manifest.pi.extensions.indexOf(`./plugins/jig-${earlier}/src/index.ts`) < ops,
+                manifest.pi.extensions.indexOf(`./plugins/jig-${earlier}/index.ts`) < ops,
                 `after jig-${earlier}`,
             );
         }

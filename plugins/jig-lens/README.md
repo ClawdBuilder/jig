@@ -103,7 +103,7 @@ the section when a session starts; a mistake names the key, and the defaults app
 ## Layout
 
 ```text
-jig-lens/
+jig-lens/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows the plugin's name
   src/      the import and /lens (lens, command, scopes), the figures (queries, summary, format, period),
             the viewers (start, viewer), the index (store, import, parse), and usage-*.ts for /lens usage
   viewer/   Grafana provisioning and dashboards, as files; Datasette's metadata and queries

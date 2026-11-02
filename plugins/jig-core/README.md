@@ -125,6 +125,7 @@ on Linux first; any store with a command line works through `cmd:`, see
 
 ```text
 jig-core/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      the hooks (gate, results), classify and decide, gates (the checks plugins add), config, approvals,
             secrets, sign-in, transports, redact, records, exec; mask/ (the masker), watch/ (the engine and its
             tool), kit/ (helpers plugins import)

@@ -179,8 +179,8 @@ test("the package manifest loads the plugin after jig-core and the skills of eve
     const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
         pi: { extensions: string[]; skills: string[] };
     };
-    const core = manifest.pi.extensions.indexOf("./plugins/jig-core/src/index.ts");
-    const git = manifest.pi.extensions.indexOf("./plugins/jig-git/src/index.ts");
+    const core = manifest.pi.extensions.indexOf("./plugins/jig-core/index.ts");
+    const git = manifest.pi.extensions.indexOf("./plugins/jig-git/index.ts");
     assert.ok(core >= 0 && git > core, "jig-git comes after jig-core");
     assert.deepEqual(manifest.pi.skills, ["./plugins/*/skills"]);
 });

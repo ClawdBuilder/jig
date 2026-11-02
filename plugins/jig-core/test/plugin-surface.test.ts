@@ -162,7 +162,7 @@ const EXPECTED: Record<string, Given> = {
     "jig-theme": { tools: {}, commands: ["theme"], sections: ["theme"] },
 };
 
-/** The plugins in the order package.json loads them: jig-core first, then each other plugin's `src/index.ts`. */
+/** The plugins in the order package.json loads them: jig-core first, then each other plugin, by its entry file. */
 function extensions(): Array<{ plugin: string; file: string }> {
     const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
         pi: { extensions: string[] };
