@@ -8,7 +8,7 @@ such as Elasticsearch, MongoDB and Kubernetes, so a fake that is wrong about the
 | | Unit tests | Integration tests |
 |---|---|---|
 | Command | `npm test` | `npm run test:it` |
-| Files | `plugins/*/test/*.test.ts` | `plugins/*/test/it/*.test.ts` |
+| Files | `plugins/*/test/*.test.ts`, `test/*.test.ts` | `plugins/*/test/it/*.test.ts` |
 | Talks to | fakes on `127.0.0.1` | real services |
 | Runs in CI | the `checks` job | the `integration` job |
 
