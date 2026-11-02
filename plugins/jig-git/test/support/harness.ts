@@ -4,6 +4,7 @@
 import type { ExtensionAPI, ExtensionToolContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import type { CallClass, Preview } from "../../../jig-core/src/contract.ts";
 import plugin from "../../src/index.ts";
+import { forgetSshAnswers } from "../../src/origin-host.ts";
 import { forgetDefaultBranches, setWorkingDirectory } from "../../src/repo.ts";
 import { installFakeGh, installFakeGlab } from "./fake-gh.ts";
 import type { FakeGh } from "./fake-gh.ts";
@@ -92,6 +93,7 @@ export function setupHarness(real = false): Harness {
     plugin(pi);
     setWorkingDirectory(sb.workspace);
     forgetDefaultBranches();
+    forgetSshAnswers();
     let counter = 0;
     return {
         sb,
@@ -106,6 +108,7 @@ export function setupHarness(real = false): Harness {
             gh.reset();
             glab.reset();
             if (!real) ssh.reset();
+            forgetSshAnswers();
             announced.length = 0;
             setWorkingDirectory(sb.workspace);
         },
