@@ -78,6 +78,10 @@ a Jenkins job for another environment. So an environment can have its own `job` 
   writes there: a test environment asks, and production is denied before anyone is asked. `watch` stays a local write.
 - **The preview names it:** `Environment: staging (test)`, and the headline ends `in staging`. The environment is part of the
   fingerprint, so the same job approved for one environment is not approved for another.
+- **A trigger says what the environment is pinned to** when it has a [pin](catalog.md#pin): a `Deploys:` row after the job and
+  its last build, such as `Deploys: what main pins: 0.0.0-pr-feature-PROJ-41-1a2b3c4 (PROJ-41)`, read from the control repository
+  when the preview is made. The pinned version is part of the fingerprint, so a pin that moves before the send is "changed since
+  the preview" and nothing is sent. A pin that cannot be read is said in the row, and the trigger is still asked.
 - **Any system that can start a build** is a job: Concourse, Jenkins or GitLab. GitHub Actions has no trigger, so it is refused.
 - **A watch names the environment** in its spec and its title (`the next build of orders-api in staging`).
   - It says nothing about a commit: no `jig-ops:ci-finished`, and no "artifact ready" from an environment's job.

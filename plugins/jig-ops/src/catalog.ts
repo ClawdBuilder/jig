@@ -10,6 +10,8 @@ import { checkArtifacts, checkWatch } from "./ci/settings.ts";
 import type { ArtifactRule, WatchSettings } from "./ci/settings.ts";
 import { checkDeploy } from "./deploy/methods.ts";
 import type { DeployConfig } from "./deploy/methods.ts";
+import { checkPinned } from "./deploy/pin-config.ts";
+import type { PinSource } from "./deploy/pin-config.ts";
 import { checkKubernetes } from "./runtime/kubernetes/config.ts";
 import type { Target } from "./runtime/kubernetes/config.ts";
 import { InputError, isObject, shortList, shown } from "./values.ts";
@@ -23,6 +25,11 @@ export interface Environment {
      */
     name: string;
     deploy?: DeployConfig;
+    /**
+     * Where the version of an environment with no `deploy` (production) is pinned, read only: `deploy status` and
+     * `deploy plan` read it. An environment with a `pin` deploy is read through that.
+     */
+    pinned?: PinSource;
     /** The Kubernetes runtime: where the pods are. */
     kubernetes?: Target;
     /** An https address that answers when the service is healthy. */
@@ -54,7 +61,7 @@ export interface Catalog {
 
 const SECTION_FIELDS: ReadonlySet<string> = new Set(["services", "watch", "artifacts"]);
 const SERVICE_FIELDS: ReadonlySet<string> = new Set(["repo", "ci", "environments"]);
-const ENVIRONMENT_FIELDS: ReadonlySet<string> = new Set(["deploy", "runtime", "health", "job"]);
+const ENVIRONMENT_FIELDS: ReadonlySet<string> = new Set(["deploy", "pinned", "runtime", "health", "job"]);
 /**
  * The runtimes an environment can have. A new one (Docker Compose, ECS) is a folder beside kubernetes/ and a name here.
  */
@@ -121,17 +128,17 @@ function checkEnvironment(
     errors: string[],
 ): Environment | undefined {
     if (!isObject(raw)) {
-        errors.push(`${at}: must be an object with deploy, runtime, health or job`);
+        errors.push(`${at}: must be an object with deploy, pinned, runtime, health or job`);
         return undefined;
     }
     const before = errors.length;
     for (const key of Object.keys(raw)) if (!ENVIRONMENT_FIELDS.has(key)) errors.push(`${at}.${key}: unknown field`);
-    if (raw.deploy === undefined && raw.runtime === undefined && raw.health === undefined && raw.job === undefined) {
-        errors.push(`${at}: must have at least one of deploy, runtime, health and job`);
-    }
+    const has = ["deploy", "pinned", "runtime", "health", "job"].some((key) => raw[key] !== undefined);
+    if (!has) errors.push(`${at}: must have at least one of deploy, pinned, runtime, health and job`);
 
     const job = raw.job === undefined ? undefined : checkJob(raw.job, `${at}.job`, errors);
     const deploy = raw.deploy === undefined ? undefined : checkDeploy(raw.deploy, `${at}.deploy`, errors);
+    const pinned = raw.pinned === undefined ? undefined : checkPinned(raw.pinned, `${at}.pinned`, errors);
     const runtime = raw.runtime === undefined ? undefined : checkRuntime(raw.runtime, `${at}.runtime`, errors);
     let health: string | undefined;
     if (raw.health !== undefined) {
@@ -139,12 +146,19 @@ function checkEnvironment(
         if (problem === undefined) health = raw.health as string;
         else errors.push(`${at}.health: ${problem}`);
     }
-    // Both deploy methods change a cluster, and take the context and the namespace from its runtime.
-    if (raw.deploy !== undefined && raw.runtime === undefined) {
+    // The two methods that run a command change a cluster, and take the context and the namespace from its runtime.
+    // A pin changes a line of a repository, and needs no cluster.
+    if (isObject(raw.deploy) && raw.deploy.method !== "pin" && raw.runtime === undefined) {
         errors.push(
             `${at}.deploy: deploys to a Kubernetes cluster, ` +
                 "so the environment needs runtime.kubernetes (the context and the namespace)",
         );
+    }
+    if (raw.deploy !== undefined && raw.pinned !== undefined) {
+        errors.push(`${at}.pinned: is for an environment with no deploy; a pin deploy is read through itself`);
+    }
+    if (deploy?.method === "pin" && deploy.apply === "job" && raw.job === undefined) {
+        errors.push(`${at}.deploy.apply: "job" needs the environment's job, which deploys what ${deploy.base} pins`);
     }
 
     if (errors.length > before) return undefined;
@@ -152,6 +166,7 @@ function checkEnvironment(
         service,
         name,
         ...(deploy === undefined ? {} : { deploy }),
+        ...(pinned === undefined ? {} : { pinned }),
         ...(runtime === undefined ? {} : { kubernetes: { service, environment: name, ...runtime } }),
         ...(health === undefined ? {} : { health }),
         // The job belongs to this environment: the rules of the environment apply to a call that names it.
@@ -270,17 +285,28 @@ export function describeServices(catalog: Catalog): string {
     );
 }
 
-/**
- * The service and environment a call names. A name nobody configured is invalid input, and the message lists the ones
- * there are, because the model has no other way to learn them. `who` is the tool, so a message starts with its name.
- */
-export function findEnvironment(catalog: Catalog, who: string, service: unknown, environment: unknown): Environment {
+/** The service a call names. A name nobody configured is invalid input, and the message lists the ones there are. */
+export function findService(catalog: Catalog, who: string, service: unknown): Service {
     const found = typeof service === "string" ? catalog.services.get(service) : undefined;
     if (found === undefined) {
         throw new InputError(
             `${who}: no service named ${shown(service, 30)}. Known services: ${describeServices(catalog)}`,
         );
     }
+    return found;
+}
+
+/** Where an environment's version is pinned: its `pin` deploy, or its read-only `pinned`. Undefined when it has none. */
+export function pinOf(env: Environment): PinSource | undefined {
+    return env.deploy?.method === "pin" ? env.deploy : env.pinned;
+}
+
+/**
+ * The service and environment a call names. A name nobody configured is invalid input, and the message lists the ones
+ * there are, because the model has no other way to learn them. `who` is the tool, so a message starts with its name.
+ */
+export function findEnvironment(catalog: Catalog, who: string, service: unknown, environment: unknown): Environment {
+    const found = findService(catalog, who, service);
     const target = typeof environment === "string" ? found.environments.get(environment) : undefined;
     if (target === undefined) {
         throw new InputError(

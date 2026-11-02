@@ -17,6 +17,7 @@ import { classifying, InputError, previewing } from "../values.ts";
 import type { Outcome } from "../values.ts";
 import type { Plan } from "./adapter.ts";
 import type { Announce } from "./artifacts.ts";
+import { pinnedLine, withPinnedLine } from "./pin-line.ts";
 import { parameters, parseCall } from "./params.ts";
 import type { Call } from "./params.ts";
 import { contextFor, CI_KIND } from "./watch.ts";
@@ -65,7 +66,16 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
             call.action === "rerun" ? await adapter.rerun?.(call.params) : await adapter.trigger?.(call.params);
         if (planned === undefined)
             throw new InputError(`ci ${call.action}: ${call.info.label} does not support ${call.action}`);
-        return planned;
+        return call.action === "trigger" ? withPin(planned, call, signal) : planned;
+    }
+
+    /** A trigger in an environment that has a pin says what the environment is pinned to, and the approval covers it. */
+    async function withPin(planned: Plan, call: Call, signal: AbortSignal | undefined): Promise<Plan> {
+        const { name, environment } = call.service;
+        const env =
+            environment === undefined ? undefined : currentCatalog()?.services.get(name)?.environments.get(environment);
+        const pinned = env === undefined ? undefined : await pinnedLine(env, signal);
+        return pinned === undefined ? planned : withPinnedLine(planned, pinned);
     }
 
     async function run(call: Call, toolCallId: string, signal: AbortSignal | undefined): Promise<Outcome> {

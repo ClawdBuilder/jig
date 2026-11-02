@@ -6,8 +6,9 @@ promises when one goes wrong. Back to the [jig-ops overview](../README.md).
 | Parameter | Used by | What it does |
 |---|---|---|
 | `action` | all | `plan`, `run`, `status`, `rollback` or `watch` |
-| `service`, `environment` | all | Names from the [catalog](catalog.md), as for `runtime` |
+| `service`, `environment` | all | Names from the [catalog](catalog.md), as for `runtime`. `status` may leave out `environment` |
 | `version` | `plan`, `run`, `watch` | An image tag: 1 to 128 letters, digits, `.`, `_` and `-`, not starting with `.` or `-` |
+| `ticket`, `values` | `plan`, `run` | Only for a [pin](#pins): the ticket it is made for, and values of its line a call may set |
 | `timeoutMinutes` | `watch` | How long to watch: 1 to 120, 15 by default |
 
 A call can name no release, chart, values file, value, image, context, namespace,
@@ -57,6 +58,8 @@ kubectl set image <workload> <container>=<image>:<version>
 The helm and kubectl commands that only read, to find the version a rollback goes
 back to, are `helm history`, `helm get values` and `kubectl get`.
 
+For an environment with a pin, `version` is checked against the pin's own `version` pattern instead, from end to end.
+
 ## Plan
 
 `deploy plan` reads the rollout and says what runs now, what is asked for and the
@@ -104,6 +107,66 @@ file: they are files on disk. A chart edited after the preview is not noticed.
 
 A rollback is for test environments only: `jig-core` must say the environment is
 `test`, not `local` or `external`.
+
+## Pins
+
+An environment whose `deploy` is a `pin`, or that has a read-only `pinned` entry ([the catalog](catalog.md#pin)), has its version
+in a line of a control repository. `deploy status` and `deploy plan` read it through `gh api`: the file at the branch that
+deploys, the last commit that touched it, the branch tips and the open pull requests. They write nothing, and ask nobody.
+
+### Status
+
+`deploy status {service, environment}` says, per environment: what the branch pins, the ticket that holds it, who changed it last and
+when, the open pull requests that would change it, and, where the environment has a runtime, what the pods run.
+
+```text
+checkout
+- staging: main pins 0.0.0-pr-feature-PROJ-41-1a2b3c4 (PROJ-41), changed by A. Person 2026-11-01 10:10 UTC, PR #88; open pin PR #91 "PROJ-60: deploy checkout 1.4.4 to staging" by bperson; Running: 2 of 2 pods ready on 0.0.0-pr-feature-PROJ-41-1a2b3c4.
+- production: main pins 1.4.2, changed by A. Person 2026-10-28 08:02 UTC, PR #80.
+```
+
+- **Without `environment`** it reads every environment of the service that has a pin, in the catalog's order, and a service with no pin
+  is refused with its environments. GitHub is asked for the open pull requests once per repository and branch.
+- **It is classified in the most restricted environment it reads,** so one answer that includes production is masked as a whole.
+- **The holder** is the ticket the `holder` pattern finds on the first pin's line. Who changed it last is the last commit on `base`
+  that touched that file: its author, date and the `(#12)` a squash merge ends its subject with. A commit that cannot be read leaves
+  the ticket and says so.
+- **Open pin pull requests** are those from a branch in the repository itself (not a fork) that the `branch` template could make for
+  this service and environment. Only one page, the newest 100 open pull requests, is read.
+- **Exactly one line.** A file with no matching line, or two, is refused with the line numbers and never their text. One environment
+  that cannot be read is one line saying why, and the others are still read. Pin files that disagree are named.
+
+### Plan
+
+`deploy plan {service, environment, version, ticket?, values?}` shows what a run would change, without writing:
+
+```text
+Service:       checkout
+Environment:   staging (test)
+Method:        pin, in acme/deploy-control on main
+Holder:        staging is pinned for PROJ-41 (0.0.0-pr-feature-PROJ-41-1a2b3c4, changed by A. Person 2026-11-01 10:10 UTC, PR #88); this replaces it with PROJ-57.
+File:          clusters/staging/checkout/chart.version (line 1)
+Line:          0.0.0-pr-feature-PROJ-41-1a2b3c4 -> 0.0.0-pr-feature-PROJ-57-9f8e7d6
+Branch:        deploy/PROJ-57-staging-checkout (new, from main at 4d5e6f7)
+Pull request:  PROJ-57: deploy checkout 0.0.0-pr-feature-PROJ-57-9f8e7d6 to staging (new)
+Next:          a person merges it; then the staging job applies it.
+```
+
+- **The new line** is the pin's `write` with the version, the ticket and the values filled in. A value a call does not set keeps the
+  current line's. The plan refuses a new line that the pin's own `line` pattern would not read back.
+- **The branch** is new, or exists and would be moved to the head of `base`; **the pull request** is new, or an open one from that
+  branch that would be edited.
+- **Already pinned** to the line a run would write says there is nothing to change, and the branch and pull requests are not read.
+- **A fingerprint** covers the files and their blob shas, the new lines, the heads of `base` and of the branch, the open pull request
+  and the last commit. It is in the result's details, for the run that comes later to compare.
+- **Production** and any environment with no `deploy` get what a plan says elsewhere: a run would be refused, and why, and then
+  what the branch pins now.
+
+### Run and rollback
+
+`deploy run` and `deploy rollback` of a pin are refused, naming the reason, before anyone is asked and before GitHub is read.
+`run` is not available yet; a pin goes back by pinning the previous version, which `run` will do. The change a plan shows is a
+one-line pull request that a person can make by hand meanwhile.
 
 ## No resend
 

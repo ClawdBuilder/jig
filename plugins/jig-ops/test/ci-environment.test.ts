@@ -78,7 +78,7 @@ describe("the job of an environment, in the catalog", () => {
         assert.deepEqual(validateOps(raw), []);
         entry.environments.qa = {};
         assert.deepEqual(validateOps(raw), [
-            "ops.services.orders-api.environments.qa: must have at least one of deploy, runtime, health and job",
+            "ops.services.orders-api.environments.qa: must have at least one of deploy, pinned, runtime, health and job",
         ]);
     });
 

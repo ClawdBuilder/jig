@@ -9,7 +9,7 @@ The `ci` tool works on a `service` from the ops catalog. The catalog says which 
 
 ## A service's CI, and an environment's job
 
-A call without `environment` is about the service's own CI, the one that builds it. A call with `environment` (`ci trigger {service, environment: "staging"}`) is about the CI job of that environment, such as the job that deploys it, and it acts in that environment: a trigger there asks the user, and in production it is refused before anyone is asked. A name with no job is refused with the environments that have one. A push never starts a watch of an environment's job; start it with `ci watch {environment}` after a trigger.
+A call without `environment` is about the service's own CI, the one that builds it. A call with `environment` (`ci trigger {service, environment: "staging"}`) is about the CI job of that environment, such as the job that deploys it, and it acts in that environment: a trigger there asks the user, and in production it is refused before anyone is asked. A name with no job is refused with the environments that have one. When the environment is pinned to a version in a control repository, the trigger's preview has a `Deploys` row saying which: read it before you ask. A push never starts a watch of an environment's job; start it with `ci watch {environment}` after a trigger.
 
 ## After a push, do not poll
 

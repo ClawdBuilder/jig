@@ -27,7 +27,7 @@ error, and so is a field with a value it cannot use.
 A section may also have `watch` and `artifacts`, which are not about one service: see
 [Watching CI](#watching-ci).
 
-An environment has `deploy`, `runtime`, `health` and `job`, and at least one of them.
+An environment has `deploy`, `pinned`, `runtime`, `health` and `job`, and at least one of them.
 
 **An environment's name is the name `jig-core` knows it by.** The rules, the
 masking and the kind of environment (local, external, test or production) come
@@ -163,9 +163,9 @@ environment uses it ([CI jobs](ci.md#a-ci-job-per-environment)).
 ## `deploy`
 
 An object with a `method`. An environment without `deploy` cannot be deployed
-to by the agent, and `production` has none on purpose. Both methods deploy to a
+to by the agent, and `production` has none on purpose. `helm` and `kubectl-image` deploy to a
 cluster, so the environment must also have `runtime.kubernetes`, which gives the
-context and the namespace.
+context and the namespace. A `pin` changes a line of a repository, and needs no cluster.
 
 | Method | Field | Meaning |
 |---|---|---|
@@ -181,10 +181,75 @@ context and the namespace.
   `. _ : / @ + % ~ = -`, up to 200 characters, so that helm cannot read a comma or
   a brace in it. `image.tag` is not allowed: the deploy sets it from the version.
 
-The chart must take the version as `image.tag`. A relative `chart` or
+The chart must take the version as `image.tag`. The `pin` method has its own section, [below](#pin). A relative `chart` or
 `valuesFile` is read from the folder Pi was started in; give an absolute path for
 another. The commands that are built from these fields are in
 [Deploy](deploy.md#the-commands).
+
+## `pin`
+
+A `deploy` with `method: "pin"`: the version of an environment is one line of a file in a control repository (a chart version, a
+Hiera line, an image tag), and a pipeline or the platform applies it from there. This plugin reads the pin today:
+`deploy status`, `deploy plan` and the line a trigger preview shows. `deploy run` and the watch come later, so the writing
+fields (`write`, `ticket`, `values`, `branch`, `title`, `merge`, `apply`) are checked now and not yet used to write.
+
+```json
+{
+  "method": "pin",
+  "repo": "acme/deploy-control",
+  "base": "main",
+  "pins": [{ "file": "clusters/staging/orders-api/chart.version", "line": "^(?<version>\\S+)$", "write": "{version}" }],
+  "version": "^(?:\\d+\\.\\d+\\.\\d+|0\\.0\\.0-pr-[A-Za-z0-9._-]+-[0-9a-f]{7})$",
+  "ticket": "^PROJ-\\d+$",
+  "holder": "(?:^|-)(?<ticket>PROJ-\\d+)(?:-|$)",
+  "branch": "deploy/{ticket}-{environment}-{service}",
+  "title": "{ticket}: deploy {service} {version} to {environment}",
+  "merge": "person",
+  "apply": "job"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `repo`, `base` | The control repository on GitHub (`owner/name`) and the branch that deploys |
+| `pins` | 1 to 4 places, each `{ file, line, write }`. A file appears once |
+| `pins[].line` | Matches exactly one line of the file. A named group `version` is required; others are kept values |
+| `pins[].write` | The new line, with `{version}`, `{ticket}`, `{service}`, `{environment}` and the groups of `line` |
+| `version` | What a version looks like. It must match from end to end, and is checked before anything is read |
+| `ticket` | Optional. The `ticket` parameter's pattern. Required when a template uses `{ticket}` |
+| `values` | Optional. Groups of `line` that a call may set, each with its pattern |
+| `holder` | Optional. A pattern with a group `ticket`, tried on the first pin's current line |
+| `runsAs` | Optional. A pattern with a group `version`: what the runtime reports for a pinned version |
+| `branch`, `title` | Templates of the pull request's branch and title, with the four placeholders |
+| `merge` | `person` (default) or `tool`: who merges the pull request |
+| `apply` | `job`: the environment's CI `job` deploys what `base` pins. `itself`: the platform does |
+
+- **Checked when a session starts:** every pattern compiles, `line` has a group `version`, every placeholder is known, a template
+  that uses `{ticket}` has a `ticket` pattern, `values` names only groups of a `line`, and `apply: "job"` has the environment's `job`.
+- **What may reach GitHub** is checked once: the repository and the branch are plain names, a file path has no `..`, no white space and
+  no leading slash. A call never names any of them.
+- **A version, a ticket and a value** from a call must match their pattern from end to end, and be printable text on one line.
+- **`holder`** is how `deploy status` says who holds an environment. With the example, a line that holds
+  `0.0.0-pr-feature-PROJ-41-1a2b3c4` is held for `PROJ-41`.
+- **`runsAs`** turns a pinned version into what the runtime reports: `1.4.3-0` runs as `1.4.3`. `deploy status` judges the pods by it.
+- **A user's own `deploy`** replaces the company's whole, as for Helm and kubectl.
+
+## `pinned`
+
+The read-only twin of a pin for an environment with no `deploy`, which is how production keeps no `deploy` entry and is still
+read. It has `repo`, `base`, `pins` (each `{ file, line }`), and optionally `version`, `holder` and `runsAs`, with the same meaning.
+An environment cannot have both `deploy` and `pinned`: a pin deploy is read through itself.
+
+```json
+{
+  "repo": "acme/deploy-control",
+  "base": "main",
+  "pins": [{ "file": "clusters/production/orders-api/chart.version", "line": "^(?<version>\\S+)$" }],
+  "holder": "(?:^|-)(?<ticket>PROJ-\\d+)(?:-|$)"
+}
+```
+
+`deploy status` and `deploy plan` read it, with production's answers masked by `jig-core`. Nothing is ever written there.
 
 ## `runtime`
 

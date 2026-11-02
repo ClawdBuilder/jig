@@ -10,6 +10,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `deploy` with a pin (a version line in a control repository): the catalog's `pin` method and a read-only `pinned` entry for production; `deploy status` says what is pinned, for whom, who changed it last and the open pin pull requests; `deploy plan` shows the line a run would change; and a `ci trigger` preview says what the environment is pinned to. Reads only; `deploy run` for a pin comes later.
 - `/lens web`: a page of charts and tables over `jig-lens`'s index, served by Pi on `127.0.0.1` behind a secret link,
   read-only, with nothing to install: cost per day, sessions and tickets, every turn and call of a session with child
   agents nested, tools with p50 and p95 and loops of repeated failures, and your waiting time. It stops when Pi exits, and

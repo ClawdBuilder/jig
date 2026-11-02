@@ -45,7 +45,7 @@ In `~/.pi/agent/jig.json`, under `ops`:
 |---|---|
 | `repo` | Where the code lives, for finding the CI run of a commit |
 | `ci` | The CI system and where it is: GitHub Actions, GitLab CI, Jenkins or Concourse, with its address and sign-in |
-| `environments` | Per environment: its `deploy` method, where it runs (`runtime`), its `health` address and the CI `job` that acts on it |
+| `environments` | Per environment: its `deploy` method (or a read-only `pinned`), where it runs (`runtime`), its `health` address and the CI `job` that acts on it |
 
 - **`production` has no `deploy` on purpose.** Without `deploy`, the agent cannot
   deploy to an environment.
@@ -72,11 +72,13 @@ All fields (and how CI watches poll): [The catalog](docs/catalog.md).
 
 | Action | Kind | What it does |
 |---|---|---|
-| `plan` | read | The versions running now, the one asked for, and the exact command |
+| `plan` | read | The versions running now, the one asked for, and the command; for a pin, the line it would change |
 | `run` | write in the environment | Deploys a version with the environment's method. Asks you, with the plan as the preview |
-| `status` | read | The last deploy run from here, and the rollout |
+| `status` | read | The last deploy run from here and the rollout; for a pin, what it pins, for whom and since when |
 | `rollback` | write in the environment | Back one revision, in a test environment only. Asks you |
 | `watch` | local write | Waits until every pod is ready on the version, one cannot come up, or time runs out |
+
+A **pin** (a version line in a control repository) is read by `deploy status` and `deploy plan`; `deploy run` is not built for it yet ([Deploy](docs/deploy.md#pins)).
 
 ### `ci`
 
@@ -100,7 +102,7 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 | Area | Built | Later, or added by anyone |
 |---|---|---|
 | CI | GitHub Actions, GitLab CI, Jenkins, Concourse | Buildkite, CircleCI |
-| Deploy | Helm, `kubectl set image` | A GitOps pull request, a CI deploy job, Argo CD, Flux, platform CLIs |
+| Deploy | Helm, `kubectl set image`, a version pin in a control repository (reads) | Writing a pin through a pull request, Argo CD, Flux, platform CLIs |
 | Runtime | Kubernetes | Docker Compose, ECS, Cloud Run |
 
 ## Rules
@@ -111,6 +113,8 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 - **Arguments, never a shell.** `gh`, `kubectl` and `helm` get their repository, context,
   namespace, release, chart and values from the catalog, never from the model. So do
   GitLab, Jenkins and Concourse their address, project, team, pipeline and job.
+- **A pin is read through `gh api`,** with the repository, branch and file paths from the catalog, never from a call. Reading it
+  changes nothing; a file whose pattern matches two lines, or none, is refused with the line numbers and not their text.
 - **A few named writes:** `helm upgrade --install`, `helm rollback`, `kubectl set image`,
   `kubectl rollout undo`, and in CI a rerun and a trigger. No delete, scale, arbitrary
   exec or port-forward. A version is checked to be an image tag.
@@ -144,7 +148,7 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 ## Later
 
 - More CI systems (Buildkite, CircleCI), one file each, and artifact rules per service.
-- A GitOps pull request, Argo CD, Flux, ECS, Cloud Run and Docker Compose (Docker access
+- `deploy run` and a watch for a pin (a pull request that changes the version line), Argo CD, Flux, ECS, Cloud Run and Docker Compose (Docker access
   is root, so with care), and a Terraform plan, as a read.
 - One shared catalog for `jig-logs`, `jig-api` and `jig-mongo` too.
 
@@ -153,7 +157,7 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 ```text
 jig-ops/
   index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      index, catalog, values, watch (ops-rollout); runtime/ and deploy/ (kubernetes/, helm, kubectl-image);
+  src/      index, catalog, values, watch (ops-rollout); runtime/ and deploy/ (kubernetes/, helm, kubectl-image, pin-*);
             ci/ (the tool, the adapter interface, an adapter per system with its api and watch, request.ts, ops-ci)
   skills/   ops/ (roll out, check, read events and logs), ci/ (wait without polling, read why it failed)
   test/     fake gh, kubectl and helm on a PATH, fake GitLab, Jenkins and Concourse on 127.0.0.1, a fake jig-core;

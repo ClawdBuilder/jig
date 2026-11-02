@@ -7,10 +7,14 @@ import { checkHelm, helmDeployer } from "./helm.ts";
 import type { HelmDeploy } from "./helm.ts";
 import { checkKubectlImage, kubectlImageDeployer } from "./kubectl-image.ts";
 import type { KubectlImageDeploy } from "./kubectl-image.ts";
+import { checkPin } from "./pin-config.ts";
+import type { PinDeploy } from "./pin-config.ts";
 
-export type DeployConfig = HelmDeploy | KubectlImageDeploy;
+/** A method that changes a cluster by a command, and the pin method, which changes a version line in a repository. */
+export type DeployConfig = HelmDeploy | KubectlImageDeploy | PinDeploy;
+export type CommandDeploy = HelmDeploy | KubectlImageDeploy;
 
-export const METHODS = ["helm", "kubectl-image"] as const;
+export const METHODS = ["helm", "kubectl-image", "pin"] as const;
 
 /** Checks the `deploy` object of an environment and reads it, or adds the problems to `errors`. */
 export function checkDeploy(raw: unknown, at: string, errors: string[]): DeployConfig | undefined {
@@ -23,6 +27,8 @@ export function checkDeploy(raw: unknown, at: string, errors: string[]): DeployC
             return checkHelm(raw, at, errors);
         case "kubectl-image":
             return checkKubectlImage(raw, at, errors);
+        case "pin":
+            return checkPin(raw, at, errors);
         case undefined:
             errors.push(`${at}.method: required, ${METHODS.join(" or ")}`);
             return undefined;
@@ -32,7 +38,8 @@ export function checkDeploy(raw: unknown, at: string, errors: string[]): DeployC
     }
 }
 
-export function deployerOf(config: DeployConfig): Deployer {
+/** The deployer of a method that runs a command. A pin has none: it changes a line of a repository. */
+export function deployerOf(config: CommandDeploy): Deployer {
     switch (config.method) {
         case "helm":
             return helmDeployer(config);

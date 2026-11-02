@@ -22,8 +22,8 @@ gone, so this table cannot drift from the code.
 |---|---|---|
 | `ci/tool.ts` | The `ci` tool: classifies each call (reads at the CI host, writes ask) and previews a rerun or trigger | `index.ts` |
 | `ci/params.ts` | The `ci` parameters, and the checks that turn them into a call; no I/O | `ci/tool.ts` |
-| `deploy/tool.ts` | The `deploy` tool: classifies, previews the exact command, and checks again before it runs | `index.ts` |
-| `deploy/params.ts` | The `deploy` parameters; the version is checked to be an image tag; no I/O | `deploy/actions.ts`, `deploy/tool.ts` |
+| `deploy/tool.ts` | The `deploy` tool: classifies, previews the exact command, checks again before it runs; hands a pin to its reads | `index.ts` |
+| `deploy/params.ts` | The `deploy` parameters; a version is an image tag, or what a pin's pattern says; no I/O | `deploy/actions.ts`, `deploy/pin-plan.ts`, `deploy/tool.ts` and 1 more |
 | `runtime/tool.ts` | The `runtime` tool: every action is a read, in the environment of the catalog | `index.ts` |
 | `runtime/params.ts` | The `runtime` parameters, and the checks that turn them into a call; no I/O | `runtime/tool.ts` |
 
@@ -31,11 +31,12 @@ gone, so this table cannot drift from the code.
 
 | File | What it does | Called by |
 |---|---|---|
-| `catalog.ts` | The `ops` section: each service, its environments, how it deploys, where it runs, its health address, its CI job | most of the tools, `index.ts` and the CI watches |
+| `catalog.ts` | The `ops` section: each service, its environments, how it deploys, where it runs, its health address, its CI job, its pin | most of the tools, `index.ts` and the CI watches |
 | `ci/config.ts` | The `ci` entry of a service: which CI system builds it, and the fields each system has | `catalog.ts`, `ci/adapter.ts`, `ci/adapters.ts` and 5 more |
 | `ci/settings.ts` | How often a CI watch polls, when it gives up, and the rules for "the artifact is ready" | `catalog.ts`, `ci/adapter.ts`, `ci/artifacts.ts` |
 | `runtime/kubernetes/config.ts` | The Kubernetes target of an environment: context, namespace, pod selector, in-pod check | `catalog.ts`, the deploy methods and the runtime files |
 | `deploy/methods.ts` | The deploy methods there are, in one place: the catalog checks them, the tool builds them | `catalog.ts`, `deploy/plan.ts` |
+| `deploy/pin-config.ts` | The `pin` deploy and the read-only `pinned` entry: the repository, the files, the patterns, the templates | `catalog.ts`, `deploy/methods.ts`, `deploy/params.ts` and 3 more |
 
 ### Deploy
 
@@ -47,6 +48,10 @@ gone, so this table cannot drift from the code.
 | `deploy/command.ts` | What a method hands the tool: the command as data, and what a rollback goes back to | `deploy/execute.ts`, `deploy/helm.ts`, `deploy/kubectl-image.ts` and 2 more |
 | `deploy/helm.ts` | The Helm method: `helm upgrade --install`, `helm rollback`; the only module that starts helm | `deploy/execute.ts`, `deploy/methods.ts` |
 | `deploy/kubectl-image.ts` | The kubectl method: `set image` with the tag changed only, and `rollout undo` | `deploy/methods.ts` |
+| `deploy/pin-github.ts` | The reads of a pin from GitHub through `gh api`: a file, the last commit on it, a branch tip, the open pull requests | `deploy/pin-plan.ts`, `deploy/pin-read.ts`, `deploy/pin-status.ts` |
+| `deploy/pin-read.ts` | A pin as it is on the branch that deploys: the one matching line, the holder, who changed it last | `deploy/pin-plan.ts`, `deploy/pin-status.ts` |
+| `deploy/pin-status.ts` | `deploy status` for pins: the pinned version, the holder, the open pin pull requests, what the cluster runs | `deploy/pin-plan.ts`, `deploy/tool.ts` |
+| `deploy/pin-plan.ts` | `deploy plan` for a pin: the file and line a run would change, the holder, the branch and pull request, a fingerprint; reads only | `deploy/tool.ts` |
 | `deploy/records.ts` | What this session ran, kept in memory for `deploy status` | `deploy/actions.ts`, `deploy/tool.ts` |
 | `watch.ts` | The `ops-rollout` watch: waits until every pod is ready on the version | `deploy/actions.ts`, `index.ts` |
 
@@ -73,6 +78,7 @@ gone, so this table cannot drift from the code.
 | `ci/jenkins.ts` | The Jenkins adapter: builds, stages and console logs; trigger with a crumb | `ci/adapters.ts` |
 | `ci/concourse.ts` | The Concourse adapter: a job's builds, their inputs and logs; start the job; no rerun | `ci/adapters.ts` |
 | `ci/environment.ts` | The environment a call names: how a preview and a watch's title say so | `ci/concourse.ts`, `ci/gitlab.ts`, `ci/jenkins.ts` |
+| `ci/pin-line.ts` | The "Deploys" line of a trigger preview: what the environment is pinned to, read now, and part of the fingerprint | `ci/tool.ts` |
 | `ci/model.ts` | What a CI system says about a check, in one shape with four buckets: pass, fail, pending, skipped | the four CI adapters and their watches |
 | `ci/logs.ts` | Job logs from any CI system: cleaned, cut down, and scrubbed of anything credential-shaped | the adapters and watches that show a log |
 | `ci/lost.ts` | A write whose reply was lost: one read says what the system shows, and it is never sent again | `ci/concourse.ts`, `ci/github-actions.ts`, `ci/gitlab.ts` and 1 more |
@@ -96,7 +102,7 @@ gone, so this table cannot drift from the code.
 |---|---|---|
 | `runtime/kubernetes/kubectl.ts` | The only module that builds kubectl arguments and starts kubectl | the deploy and runtime files that start kubectl |
 | `runtime/kubernetes/failure.ts` | Turns the complaint of kubectl or helm into the one line a person can act on | `deploy/actions.ts`, `deploy/helm.ts`, `runtime/kubernetes/inpod.ts`, `runtime/kubernetes/kubectl.ts` |
-| `ci/gh.ts` | GitHub through `gh`, which keeps its own sign-in; a lost write is read once | `ci/github-actions.ts`, `ci/github-checks.ts` |
+| `ci/gh.ts` | GitHub through `gh`, which keeps its own sign-in; a lost write is read once | `ci/github-actions.ts`, `ci/github-checks.ts`, `deploy/pin-github.ts` |
 | `ci/github-checks.ts` | What GitHub says about a commit, a run, tags and releases, with ETags to save requests | `ci/github-actions.ts`, `ci/github-watch.ts`, `ci/watch.ts` |
 | `ci/gitlab-api.ts` | GitLab's REST API: the requests, what the replies hold, and job status as four words | `ci/gitlab-watch.ts`, `ci/gitlab.ts` |
 | `ci/jenkins-api.ts` | Jenkins' remote access API: the requests, the replies, and results as four words | `ci/jenkins-watch.ts`, `ci/jenkins.ts` |
@@ -141,5 +147,21 @@ The agent deploys `1.4.3` of `orders-api` to `staging`, which the catalog says u
 
 A failed command is an error that says why (`runtime/kubernetes/failure.ts` turns the complaint of helm or kubectl into
 one line), and the plan is not run a second time.
+
+## How a read flows: `deploy status` of a pin
+
+The agent asks what `staging` of `checkout` is pinned to; the catalog gives it a `pin` deploy.
+
+1. **The class.** `classify` in `deploy/tool.ts` reads the input with `parseCall` (`deploy/params.ts`). `pinOf` in `catalog.ts` finds the
+   environment's pin, so the call is a `PinCall` and not one about a cluster. It is a read in `staging`; without `environment` it would
+   be classified in the most restricted environment that has a pin.
+2. **The action.** `execute` calls `statusPinAction` in `deploy/pin-status.ts`, one environment after the other.
+3. **The file.** `readPinned` asks `readPins` (`deploy/pin-read.ts`) for each pin file. That calls `fileAt` in `deploy/pin-github.ts`,
+   which starts `gh api` through `apiGet` in `ci/gh.ts`, and `matchLine` finds the one line the pin's pattern matches.
+4. **The holder.** `readHolder` finds the ticket on that line and asks `lastCommit` who changed the file last.
+5. **The rest.** The open pull requests are read once per repository and branch, and the pods too where the environment has a runtime.
+6. **The answer.** One line per environment. A pin that cannot be read is one line saying why.
+
+`deploy plan` follows the same files, then `planPin` in `deploy/pin-plan.ts` adds the branch tips and the pull request list.
 
 Back to the [jig-ops overview](../README.md).

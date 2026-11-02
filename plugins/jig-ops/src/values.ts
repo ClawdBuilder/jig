@@ -148,3 +148,8 @@ export function linesOf(text: string): string[] {
     if (lines[lines.length - 1] === "") lines.pop();
     return lines;
 }
+
+/** `2026-11-01 09:12 UTC`: a time in ms, to the minute. */
+export function utc(ms: number): string {
+    return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}

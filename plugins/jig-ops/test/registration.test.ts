@@ -348,7 +348,8 @@ describe("what the deploy tool says about itself", () => {
             for (const name of names) used.add(name.replace(/\?$/, ""));
         }
         assert.deepEqual([...Object.keys(schema.properties)].sort(), ["action", ...used].sort());
-        assert.deepEqual(schema.required, ["action", "service", "environment"]);
+        // `environment` is optional because `status` of a service reads every environment that has a pin.
+        assert.deepEqual(schema.required, ["action", "service"]);
         assert.equal(schema.additionalProperties, false);
         assert.deepEqual(schema.properties.action?.enum, [...DEPLOY_ACTIONS]);
         assert.equal(
