@@ -72,8 +72,8 @@ Each plugin's README has the full table of its tool's actions.
   (`jig-review`).
 - **`subagent`:** `start`, `status`, `message`, `stop` (`jig-agents`).
 
-`jig-ops` has one adapter per system: `ci` has GitHub Actions, GitLab CI and
-Jenkins, `deploy` has Helm and `kubectl set image`, and `runtime` has
+`jig-ops` has one adapter per system: `ci` has GitHub Actions, GitLab CI,
+Jenkins and Concourse, `deploy` has Helm and `kubectl set image`, and `runtime` has
 Kubernetes. `jig-git` keeps git, pull requests and merge requests (GitHub and
 GitLab), reviews and releases. CI and the
 watch that waits for it are in `jig-ops`, and the two meet in one event,
@@ -131,7 +131,7 @@ repository:
   Everyone else runs scripts with `bash`, in the sandbox.
 
 A CI system is generic, so it is an adapter of `jig-ops`: GitHub Actions,
-GitLab CI and Jenkins are built, and Buildkite or CircleCI would be one more
+GitLab CI, Jenkins and Concourse are built, and Buildkite or CircleCI would be one more
 file. A system that only one employer uses, or that is reachable only through a
 company's sign-in, comes as a sign-in service or a transport from the company
 plugin.

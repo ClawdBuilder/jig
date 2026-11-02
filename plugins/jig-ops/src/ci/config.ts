@@ -6,17 +6,19 @@
 //     "auth": { "token": "pass:ci/gitlab" } }
 //   { "system": "jenkins", "url": "https://jenkins.example.com", "job": "orders/build",
 //     "auth": { "user": "ci-bot", "token": "pass:ci/jenkins" } }
+//   { "system": "concourse", "url": "https://ci.example.com", "team": "main", "pipeline": "deploy",
+//     "job": "orders-api-staging", "auth": { "token": "cmd:fly-main" }, "signInHint": "fly -t main login" }
 //
 // A credential is only ever a reference to a secret. An error about it never repeats the value: a mistake there may
 // well be the secret itself, pasted by hand.
 import { isObject, shown } from "../values.ts";
 
-export const CI_SYSTEMS = ["github-actions", "gitlab", "jenkins"] as const;
+export const CI_SYSTEMS = ["github-actions", "gitlab", "jenkins", "concourse"] as const;
 export type CiSystem = (typeof CI_SYSTEMS)[number];
 
 /** How a request to a CI server signs in. A secret is a reference, resolved when the request is made. */
 export type CiAuth =
-    /** GitLab: a token sent in the `PRIVATE-TOKEN` header. */
+    /** GitLab: a token sent in the `PRIVATE-TOKEN` header. Concourse: a token sent as a bearer. */
     | { kind: "token"; token: string }
     /** Jenkins: a user and an API token, sent with HTTP basic authentication. */
     | { kind: "basic"; user: string; token: string }
@@ -57,13 +59,27 @@ export interface JenkinsConfig extends Common {
     required: readonly string[];
 }
 
-export type CiConfig = GithubActionsConfig | GitlabConfig | JenkinsConfig;
+export interface ConcourseConfig extends Common {
+    system: "concourse";
+    url: string;
+    team: string;
+    pipeline: string;
+    /** The job in that pipeline. A call never names it. */
+    job: string;
+    /** A token (sent as a bearer), a sign-in service or a transport. */
+    auth: CiAuth;
+    /** The command that renews the login, shown when Concourse refuses it. Jig never runs it. */
+    signInHint?: string;
+}
+
+export type CiConfig = GithubActionsConfig | GitlabConfig | JenkinsConfig | ConcourseConfig;
 
 const COMMON_FIELDS = ["system", "environment"];
 const FIELDS: Readonly<Record<CiSystem, readonly string[]>> = {
     "github-actions": [...COMMON_FIELDS, "workflow"],
     gitlab: [...COMMON_FIELDS, "url", "project", "auth", "required"],
     jenkins: [...COMMON_FIELDS, "url", "job", "auth", "required"],
+    concourse: [...COMMON_FIELDS, "url", "team", "pipeline", "job", "auth", "signInHint"],
 };
 
 const CONTROL = /[\u0000-\u001f\u007f]/;
@@ -72,6 +88,9 @@ const WORKFLOW = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const GITLAB_PROJECT = /^(?:\d{1,12}|[A-Za-z0-9_.-]{1,100}(?:\/[A-Za-z0-9_.-]{1,100}){1,19})$/;
 /** Folders and a job, as Jenkins names them. A name may hold a space; it never starts with a dot. */
 const JENKINS_JOB = /^[A-Za-z0-9_-][A-Za-z0-9 _.-]{0,99}(?:\/[A-Za-z0-9_-][A-Za-z0-9 _.-]{0,99}){0,9}$/;
+/** A team, pipeline or job of Concourse. It becomes one part of a path, and never starts with a dot or a dash. */
+const CONCOURSE_NAME = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$/;
+const MAX_HINT_CHARS = 200;
 /** The shape of a secret reference (`pass:...`, `env:...`, `op://...`), without knowing which backends exist. */
 const SECRET_REFERENCE = /^[a-z][a-z0-9+.-]*:\S+$/;
 const SERVICE_NAME_CHARS = 100;
@@ -185,6 +204,17 @@ function checkAuth(raw: unknown, jenkins: boolean, at: string, errors: string[])
     return token === undefined ? undefined : { kind: "basic", user, token };
 }
 
+/** A team, a pipeline or a job of Concourse, by its name. */
+function checkConcourseName(value: unknown, at: string, what: string, errors: string[]): string | undefined {
+    if (value === undefined) {
+        errors.push(`${at}: required, the ${what} name`);
+        return undefined;
+    }
+    if (typeof value === "string" && CONCOURSE_NAME.test(value)) return value;
+    errors.push(`${at}: must be a ${what} name: letters, digits, . _ - (not starting with a dot or a dash)`);
+    return undefined;
+}
+
 function checkRequired(raw: unknown, at: string, what: string, errors: string[]): readonly string[] {
     if (raw === undefined) return [];
     if (!Array.isArray(raw) || raw.length > MAX_REQUIRED || !raw.every((item) => text(item, 200))) {
@@ -197,6 +227,43 @@ function checkRequired(raw: unknown, at: string, what: string, errors: string[])
 /** Whether the address is one a credential may be sent to: a transport carries its own, so it may be plain http. */
 function secureUrl(auth: unknown): boolean {
     return !(isObject(auth) && auth.transport !== undefined);
+}
+
+/** The rest of a Concourse entry: the team, pipeline and job it names, and the hint for renewing the login. */
+function checkConcourse(
+    raw: Record<string, unknown>,
+    at: string,
+    more: { environment?: string },
+    url: string | undefined,
+    auth: CiAuth | undefined,
+    before: number,
+    errors: string[],
+): ConcourseConfig | undefined {
+    const team = checkConcourseName(raw.team, `${at}.team`, "team", errors);
+    const pipeline = checkConcourseName(raw.pipeline, `${at}.pipeline`, "pipeline", errors);
+    const job = checkConcourseName(raw.job, `${at}.job`, "job", errors);
+    let signInHint: string | undefined;
+    if (raw.signInHint !== undefined) {
+        if (text(raw.signInHint, MAX_HINT_CHARS)) signInHint = raw.signInHint;
+        else {
+            errors.push(
+                `${at}.signInHint: must be the command that renews the login, one line of at most ` +
+                    `${MAX_HINT_CHARS} characters`,
+            );
+        }
+    }
+    if (errors.length > before || url === undefined || auth === undefined) return undefined;
+    if (team === undefined || pipeline === undefined || job === undefined) return undefined;
+    return {
+        system: "concourse",
+        ...more,
+        url,
+        team,
+        pipeline,
+        job,
+        auth,
+        ...(signInHint === undefined ? {} : { signInHint }),
+    };
 }
 
 /**
@@ -257,6 +324,7 @@ export function checkCi(raw: unknown, at: string, repo: string | undefined, erro
         if (errors.length > before || url === undefined || auth === undefined) return undefined;
         return { system: kind, ...more, url, project: raw.project as string, auth, required };
     }
+    if (kind === "concourse") return checkConcourse(raw, at, more, url, auth, before, errors);
     if (raw.job === undefined) errors.push(`${at}.job: required, the job with its folders, such as orders/build`);
     else if (typeof raw.job !== "string" || !JENKINS_JOB.test(raw.job)) {
         errors.push(`${at}.job: must be a job name with its folders, such as orders/build`);

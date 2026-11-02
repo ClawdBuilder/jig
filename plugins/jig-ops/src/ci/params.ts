@@ -40,7 +40,8 @@ export const parameters = Type.Object(
         run_id: Type.Optional(
             Type.Integer({
                 minimum: 1,
-                description: "A GitHub run, a GitLab pipeline or a Jenkins build number, as runs lists them.",
+                description:
+                    "A GitHub run, a GitLab pipeline or a Jenkins or Concourse build number, as runs lists them.",
             }),
         ),
         required_only: Type.Optional(Type.Boolean({ description: "status: only the required checks or jobs." })),
@@ -48,7 +49,8 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 30,
-                description: "runs: queued, in_progress, completed, success, failure ...",
+                description:
+                    "runs: queued, in_progress, completed, success, failure ... (Concourse: succeeded, failed, ...)",
             }),
         ),
         limit: Type.Optional(

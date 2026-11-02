@@ -38,6 +38,8 @@ export interface Answer {
     hang?: boolean;
     /** Break the connection without an answer. */
     reset?: boolean;
+    /** Send the reply and keep the connection open, as an event stream does: the client has to let go. */
+    keepOpen?: boolean;
 }
 
 /** Answers request `number`, counting from 1. */
@@ -80,7 +82,9 @@ export async function startServer(responder: Responder): Promise<FakeServer> {
                 };
                 if (answer.cookies !== undefined) headers["set-cookie"] = answer.cookies;
                 res.writeHead(answer.status ?? 200, headers);
-                res.end(answer.text ?? JSON.stringify(answer.json ?? {}));
+                const body = answer.text ?? JSON.stringify(answer.json ?? {});
+                if (answer.keepOpen) res.write(body);
+                else res.end(body);
             } catch (error) {
                 res.writeHead(500, { "content-type": "application/json" });
                 res.end(JSON.stringify({ message: `fake server error: ${String(error)}` }));

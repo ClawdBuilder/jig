@@ -128,6 +128,20 @@ export function jenkinsCi(more: Raw = {}): Raw {
     };
 }
 
+/** The `ci` entry of a Concourse job whose token is the secret `env:CONCOURSE_TOKEN`. */
+export function concourseCi(more: Raw = {}): Raw {
+    return {
+        system: "concourse",
+        url: CI_URL,
+        team: "main",
+        pipeline: "deploy",
+        job: "orders-api-staging",
+        auth: { token: "env:CONCOURSE_TOKEN" },
+        signInHint: "fly -t main login",
+        ...more,
+    };
+}
+
 /** A copy of the default section where orders-api has this `ci` entry, and the other settings given. */
 export function withCi(ci: Raw, more: Raw = {}): Raw {
     const raw = section(more);

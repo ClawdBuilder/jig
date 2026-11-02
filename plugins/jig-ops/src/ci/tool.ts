@@ -23,7 +23,7 @@ import { contextFor, CI_KIND } from "./watch.ts";
 import type { CiWatchOptions } from "./watch.ts";
 
 const DESCRIPTION =
-    "CI for a service from the ops catalog, on GitHub Actions, GitLab CI or Jenkins: status, runs, run, log, " +
+    "CI for a service from the ops catalog, on GitHub Actions, GitLab CI, Jenkins or Concourse: status, runs, run, log, " +
     "rerun (asks), trigger (asks), and watch, which waits in the background until a finish line and reports once.";
 
 type Input = Readonly<Record<string, unknown>>;
@@ -145,7 +145,7 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
             label: "CI",
             description: DESCRIPTION,
             promptSnippet:
-                "ci: status, runs, log, rerun, trigger and watch for a service's CI (GitHub Actions, GitLab, Jenkins)",
+                "ci: status, runs, log, rerun, trigger and watch for a service's CI (GitHub Actions, GitLab, Jenkins, Concourse)",
             promptGuidelines: [
                 "ci: a push or pull request starts a watch by itself for a catalog service; do not poll with status.",
                 "ci: rerun and trigger ask the user. When a reply is lost, check once and never send again.",

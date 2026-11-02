@@ -44,8 +44,8 @@ If a test environment is refused as production, this is the setting to add.
 
 ## `ci`
 
-An object with a `system`, one of `github-actions`, `gitlab` and `jenkins`, and the
-fields of that system. An unknown system or field is an error that names it. What
+An object with a `system`, one of `github-actions`, `gitlab`, `jenkins` and `concourse`, and
+the fields of that system. An unknown system or field is an error that names it. What
 the tool does with them is in [CI](ci.md).
 
 | System | Field | Meaning |
@@ -61,12 +61,30 @@ the tool does with them is in [CI](ci.md).
 | | `job` | The job with its folders, such as `orders/build`. A name may hold a space |
 | | `auth` | A `user` with a `token`, a `signIn` service or a `transport` |
 | | `required` | Optional. Up to 20 pipeline stage names that a `required` watch waits for |
+| `concourse` | `url` | As for GitLab |
+| | `team`, `pipeline`, `job` | Where the job is: letters, digits, `.`, `_`, `-`, not starting with a dot or a dash |
+| | `auth` | A `token` (sent as a bearer), a `signIn` service or a `transport` |
+| | `signInHint` | Optional. Up to 200 characters, one line: the command that renews the login, shown when it is refused |
 
 - **`environment`:** without it, the CI host is `external`. A name `jig-core` does
   not know counts as production.
 - **`url`** may have a path (`https://host/gitlab`).
 - **`auth`** is `{ "token": "<secret reference>" }` (for Jenkins `{ "user": "<name>", "token": "<secret reference>" }`),
   `{ "signIn": "<service>" }` or `{ "transport": "<name>" }`.
+- **A Concourse entry** has no `required`: a build has no stages to name. The token is a secret reference, here a
+  command you declare that prints only the token `fly login` wrote:
+
+```json
+{
+  "system": "concourse",
+  "url": "https://ci.example.com",
+  "team": "main",
+  "pipeline": "deploy",
+  "job": "orders-api-staging",
+  "auth": { "token": "cmd:fly-main" },
+  "signInHint": "fly -t main login"
+}
+```
 
 A token is a secret reference such as `pass:ci/gitlab`; one pasted by hand is an
 error that never repeats it. With a transport, the address may be plain `http`:

@@ -13,6 +13,8 @@ import { SYSTEMS } from "./adapters.ts";
 import type { CiContext } from "./adapter.ts";
 import type { Announce } from "./artifacts.ts";
 import { announceFinished } from "./finished.ts";
+import { describeConcourse } from "./concourse-watch.ts";
+import type { ConcourseSpec } from "./concourse-watch.ts";
 import type { GithubState } from "./github-checks.ts";
 import { describeSpec as describeGithub } from "./github-watch.ts";
 import type { GithubSpec } from "./github-watch.ts";
@@ -24,7 +26,7 @@ import type { JenkinsSpec } from "./jenkins-watch.ts";
 export const CI_KIND = "ops-ci";
 
 /** What a CI watch watches. Plain JSON, because it is saved with the watch. */
-export type CiSpec = GithubSpec | GitlabSpec | JenkinsSpec;
+export type CiSpec = GithubSpec | GitlabSpec | JenkinsSpec | ConcourseSpec;
 /** What the watch remembers between polls. Plain JSON. */
 export type CiState = GithubState | PlainState;
 
@@ -44,6 +46,8 @@ export function describeSpec(spec: CiSpec): string {
             return describeGitlab(spec);
         case "jenkins":
             return describeJenkins(spec);
+        case "concourse":
+            return describeConcourse(spec);
     }
 }
 

@@ -4,6 +4,13 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure
+  (such as `cmd:` reading what `fly login` saved); Jig never signs in. A paused pipeline or a job closed to manual starts is
+  refused before anyone is asked.
+- `jig-core` requests can stop at a marker in the reply, for a stream that never closes on its own.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added

@@ -47,6 +47,11 @@ const reply = await jig().http.request(
   `truncated: true`; no request is ever refused for size here, a plugin that
   wants a refusal checks `truncated`. `binary` is true when the first 4 KiB hold
   a NUL byte.
+- **A reply that never ends can be stopped at a marker.** An event stream may keep
+  the connection open after its last event. `stopAt: "\nevent: end\n"` (1 to 100
+  plain characters) stops reading as soon as the reply holds that text and lets the
+  connection go. The text is in the body and `truncated` is false. A transport
+  hands over its whole reply, so it ignores `stopAt`.
 - **The credential is removed from the reply.** A server may echo what it was
   sent, so every credential that went out (a value of 8 characters or more) is
   replaced by `[redacted]` in the body, the headers and the cookies, as it is,

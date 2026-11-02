@@ -1,7 +1,7 @@
 # CI: the `ci` tool
 
 How the `ci` tool looks at a service's CI, changes it and waits for it, on GitHub
-Actions, GitLab CI or Jenkins. Back to the [jig-ops overview](../README.md). The
+Actions, GitLab CI, Jenkins or Concourse. Back to the [jig-ops overview](../README.md). The
 catalog fields it reads are in [The catalog](catalog.md#ci).
 
 A call names a `service` from the catalog, and the catalog says which CI system
@@ -16,15 +16,15 @@ the check. An action it does not have, or a parameter that action does not take,
 is invalid input: the call is blocked before anyone is asked, and the message
 names the adapter and says what it does have.
 
-| Action | GitHub Actions | GitLab CI | Jenkins |
-|---|---|---|---|
-| `status` | checks of a pull request, branch or commit; `required_only` | the pipeline of a branch, commit or id, its jobs counted | the last build or one by number, its stages counted |
-| `runs` | workflow runs, by branch, commit or state | pipelines, by branch, commit or status | builds, by result |
-| `run` | one run's jobs and steps, and its artifacts | one pipeline's jobs, with why one failed | one build's stages |
-| `log` | a failed job's log | a failed job's log | the console of the last failed build, or of one |
-| `rerun` | the failed jobs, or the whole run | the failed jobs of a pipeline | not offered |
-| `trigger` | not offered | a pipeline on a `ref`, with variables | a build, with parameters |
-| `watch` | the six finish lines below | a pipeline, or named jobs | a build, or named stages |
+| Action | GitHub Actions | GitLab CI | Jenkins | Concourse |
+|---|---|---|---|---|
+| `status` | checks of a pull request, branch or commit; `required_only` | the pipeline of a branch, commit or id, its jobs counted | the last build or one by number, its stages counted | the newest build or one by number, and whether the job is paused |
+| `runs` | workflow runs, by branch, commit or state | pipelines, by branch, commit or status | builds, by result | builds, by status; at most 20 |
+| `run` | one run's jobs and steps, and its artifacts | one pipeline's jobs, with why one failed | one build's stages | one build, and the versions of its inputs |
+| `log` | a failed job's log | a failed job's log | the console of the last failed build, or of one | a finished build's log; the last failed one, or one |
+| `rerun` | the failed jobs, or the whole run | the failed jobs of a pipeline | not offered | not offered |
+| `trigger` | not offered | a pipeline on a `ref`, with variables | a build, with parameters | the job, with no ref and no parameters |
+| `watch` | the six finish lines below | a pipeline, or named jobs | a build, or named stages | one build to its end |
 
 - **Why Jenkins has no `rerun`.** Its remote API has none: rebuilding is a plugin,
   and a build that took a password as a parameter cannot be rebuilt from what the
@@ -32,6 +32,8 @@ names the adapter and says what it does have.
 - **Why GitHub Actions has no `trigger`.** Starting a workflow by hand can deploy,
   and deploys have their own tool and their own rules. The catalog's `workflow`
   narrows `runs` to one workflow.
+- **Why Concourse has no `rerun`, `ref` or `parameters`.** A job runs what its pipeline pins. Starting the job again is
+  `trigger`, and a build has no branch or commit of its own to name.
 - **GitLab retries failed jobs only.** To run everything again, `trigger` on the
   same `ref`.
 - **A log is capped and scrubbed.** At most 400 lines, the tail or the lines that
@@ -58,6 +60,8 @@ names the adapter and says what it does have.
   a cancelled call may mean that the CI system did what it was asked. The tool
   then reads once and tells the model what it found. It never sends the request
   again, so one `rerun` cannot become two.
+- **Concourse is started with one POST and no body.** The job's builds are read first: the newest is the baseline, and a
+  read that fails means nothing is sent. A paused job or pipeline is refused before anyone is asked.
 - **Jenkins needs a crumb for a POST.** It is requested from
   `/crumbIssuer/api/json` before anything is sent; a server with no crumb issuer
   answers 404 and none is used. The session cookie the crumb is tied to goes back
@@ -65,19 +69,46 @@ names the adapter and says what it does have.
 
 ## Signing in
 
-`gitlab` and `jenkins` entries have an `auth`, exactly one of:
+`gitlab`, `jenkins` and `concourse` entries have an `auth`, exactly one of:
 
 | Form | What it does |
 |---|---|
 | `{ "token": "pass:ci/gitlab" }` | GitLab: the secret is sent as the `PRIVATE-TOKEN` header |
+| `{ "token": "cmd:fly-main" }` | Concourse: the secret is sent as `Authorization: Bearer` |
 | `{ "user": "ci-bot", "token": "pass:ci/jenkins" }` | Jenkins: user and API token, HTTP basic authentication |
 | `{ "signIn": "corp" }` | A sign-in service a company plugin registered supplies the headers of each request |
 | `{ "transport": "corp" }` | A transport carries the request and signs it in itself. The address may then be plain `http` |
 
 A secret is a reference, resolved when the request is made, and an error about it
-never repeats the value. Direct requests need an `https` address. A redirect is
+never repeats the value. Each request reads the reference again, so a call after you renew a login works. Direct requests need an `https` address. A redirect is
 never followed, because it would carry the credential to an address the catalog
 never named. A GitHub Actions entry signs in with `gh`, which keeps its own login.
+
+## Concourse
+
+Concourse runs a job in a pipeline of a team, and the catalog names all three, so a call never does. A job runs what
+its pipeline pins; it has no commit, branch or stage of its own.
+
+- **Requests.** `GET /api/v1/teams/{team}/pipelines/{pipeline}` and `.../jobs/{job}` (paused or not), `.../jobs/{job}/builds`
+  with `limit`, `.../builds/{number}`, `GET /api/v1/builds/{id}`, `/resources` and `/events`, and one write:
+  `POST .../jobs/{job}/builds` with no body.
+- **A build is checked to be the catalog's.** The `team_name`, `pipeline_name` and `job_name` of every build read must match,
+  so a number cannot reach another job. A build in a shape this plugin does not know is refused.
+- **Buckets.** `succeeded` is pass; `failed`, `errored` and `aborted` are fail; `pending` and `started` are pending.
+- **The log** is rendered from `/events`: the text of each `log` event, a line for each `status` and `error`, the usual
+  400-line cap, terminal sequences out and anything credential-shaped replaced. A running build's stream does not end, so it
+  is not opened: `log` says "still running; its log comes with `ci watch`".
+- **Trigger is sent once.** If the reply is lost, the job's builds are read once. A newer build is "Started #N"; none is
+  "Not started as far as Concourse shows now; it may still appear". A second POST is never sent.
+- **Watch.** The kind is `ops-ci`; the spec holds the service, never an address. It polls one build, found by its number, as
+  the first one after the newest build at the start, or (after a push) after the first poll. Its end message carries the last
+  40 lines of a failed build's log. `jig-ops:ci-finished` is published when the watch has a commit, as for Jenkins.
+
+**Signing in is yours.** `fly login` writes a token that `jig-core` can read through a secret reference, such as
+`cmd:fly-main` for a small command you declare that prints only that token. Jig never runs `fly login`.
+- **When Concourse refuses the login** (HTTP 401 or 403), the message says to renew it with the command in the entry's
+  `signInHint`, in your terminal, and to run the call again.
+- **When the reference cannot be read** (no login, another server, expired), the message gives the command's reason and the same hint.
 
 ## Watching CI
 
@@ -108,13 +139,13 @@ reads where the catalog says. It was `jig-git`'s `github` kind.
    unless `ops.watch.stallMinutes` and `ops.watch.timeoutMinutes` say otherwise.
    Open watches survive a restart.
 
-| Finish | GitHub Actions | GitLab CI | Jenkins |
-|---|---|---|---|
-| `required` (default) | The checks branch protection requires, or every check when none is required | The jobs in `required` of the entry, else the whole pipeline | The stages in `required`, else the whole build |
-| `check` | One named check; skipped is a failure | One named job | One named stage |
-| `run` | One run; the first failed job ends it | The pipeline; the first failed job ends it | The build |
-| `approved`, `merged` | A pull request state | not offered | not offered |
-| `comment`, `tag`, `release` | A bot comment, a new tag or release matching `pattern` | not offered | not offered |
+| Finish | GitHub Actions | GitLab CI | Jenkins | Concourse |
+|---|---|---|---|---|
+| `required` (default) | The checks branch protection requires, or every check when none is required | The jobs in `required` of the entry, else the whole pipeline | The stages in `required`, else the whole build | not offered |
+| `check` | One named check; skipped is a failure | One named job | One named stage | not offered |
+| `run` | One run; the first failed job ends it | The pipeline; the first failed job ends it | The build | The build; the default |
+| `approved`, `merged` | A pull request state | not offered | not offered | not offered |
+| `comment`, `tag`, `release` | A bot comment, a new tag or release matching `pattern` | not offered | not offered | not offered |
 
 - **GitLab finds the pipeline** by its id, by the full commit id, or, with only a
   branch, as the newest one when the watch starts (or the first one created after
