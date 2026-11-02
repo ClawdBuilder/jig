@@ -38,11 +38,12 @@ describe("the requests the adapters make", () => {
     test("only ever read, or POST: no other method exists", () => {
         assert.match(code("ci/request.ts"), /method: "GET" \| "POST"/);
         assert.deepEqual(where(/["'`](?:PUT|PATCH|DELETE)["'`]/), []);
-        assert.deepEqual(where(/method: "POST"/), ["ci/gitlab-api.ts", "ci/jenkins-api.ts"]);
+        assert.deepEqual(where(/method: "POST"/), ["ci/concourse-api.ts", "ci/gitlab-api.ts", "ci/jenkins-api.ts"]);
     });
 
     test("name where the credential comes from in that file only: a header name of a sign-in is written once, and no value is built", () => {
         assert.deepEqual(where(/PRIVATE-TOKEN/), ["ci/request.ts"]);
+        assert.deepEqual(where(/\bbearer:/), ["ci/request.ts"]);
         assert.deepEqual(where(/basic: \{ user:/), ["ci/request.ts"]);
         assert.deepEqual(where(/authorization:\s*`/i), []);
         assert.deepEqual(
@@ -77,9 +78,29 @@ describe("the writes", () => {
         assert.ok(code("ci/jenkins.ts").indexOf("await api.crumb()") < code("ci/jenkins.ts").indexOf("api.start("));
     });
 
+    test("Concourse has one, sent once: the start of the job, with no body", () => {
+        assert.equal(occurrences("ci/concourse.ts", /api\.trigger\(/g), 1);
+        assert.match(code("ci/concourse-api.ts"), /method: "POST", path: `\$\{job\}\/builds` \}/);
+        assert.deepEqual(
+            where(/\.trigger\(\)/).filter((file) => file.startsWith("ci/")),
+            ["ci/concourse.ts"],
+        );
+    });
+
     test("none is sent again by a retry loop: the adapters have no loop around a send", () => {
-        for (const file of ["ci/gitlab.ts", "ci/jenkins.ts", "ci/github-actions.ts", "ci/request.ts", "ci/lost.ts"]) {
-            assert.doesNotMatch(code(file), /\b(?:while|for)\s*\([^)]*\)\s*\{[^}]*(?:post|start|ghWrite)\(/, file);
+        for (const file of [
+            "ci/gitlab.ts",
+            "ci/jenkins.ts",
+            "ci/concourse.ts",
+            "ci/github-actions.ts",
+            "ci/request.ts",
+            "ci/lost.ts",
+        ]) {
+            assert.doesNotMatch(
+                code(file),
+                /\b(?:while|for)\s*\([^)]*\)\s*\{[^}]*(?:post|start|trigger|ghWrite)\(/,
+                file,
+            );
         }
     });
 
@@ -90,7 +111,7 @@ describe("the writes", () => {
     });
 
     test("every send ends a lost reply with one read and no second send", () => {
-        for (const file of ["ci/gitlab.ts", "ci/jenkins.ts", "ci/github-actions.ts"])
+        for (const file of ["ci/gitlab.ts", "ci/jenkins.ts", "ci/concourse.ts", "ci/github-actions.ts"])
             assert.match(code(file), /afterLostReply\(/, file);
         assert.doesNotMatch(code("ci/lost.ts"), /post|start|ghWrite|send/);
     });
@@ -105,7 +126,12 @@ describe("the watch", () => {
     });
 
     test("reads the catalog when it polls: no spec field holds an address, a project or a credential", () => {
-        for (const file of ["ci/github-watch.ts", "ci/gitlab-watch.ts", "ci/jenkins-watch.ts"]) {
+        for (const file of [
+            "ci/github-watch.ts",
+            "ci/gitlab-watch.ts",
+            "ci/jenkins-watch.ts",
+            "ci/concourse-watch.ts",
+        ]) {
             const interfaces = code(file).match(/export interface \w+Spec \{[^}]*\}/s)?.[0] ?? "";
             assert.ok(interfaces.length > 0, file);
             assert.doesNotMatch(interfaces, /\b(?:url|project|job|repo|token|auth)\b/, file);

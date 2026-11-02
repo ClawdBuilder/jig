@@ -1,6 +1,6 @@
 # jig-agents: child agents that Jig's rules still govern
 
-**Status: built.** Tested with a fake child that speaks Pi's RPC protocol, and with the stock Pi 1.4 as a real child
+**Status: built.** Tested with a fake child that speaks Pi's RPC protocol, and with the stock Pi 1.5 as a real child
 (this repository's `jig-core` and `jig-agents`, on Pi's own scripted model). No model is called; what only
 a real one can show is in [Not verified](docs/not-verified.md).
 

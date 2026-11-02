@@ -32,6 +32,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `gates.ts` | Checks that other plugins register; a gate can make a decision stricter and never looser | `gate.ts`, `state.ts` |
 | `environments.ts` | The names a call can act in, and which are test and which are production | `config.ts` |
 | `protected-paths.ts` | The files Pi's own file tools may not touch: credentials, Pi's settings, Jig's state | `commands.ts`, `config.ts` and 2 more |
+| `loaded-code.ts` | The code Pi loads at its next start with no sandbox: the local packages and extensions of its settings, guarded | `state.ts` |
 
 ### Asking you
 
@@ -111,6 +112,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/http-error.ts` | The one error a request throws | `kit/http.ts`, `kit/oauth.ts` |
 | `kit/abort.ts` | Waiting for work that may ignore its signal | `kit/http.ts` |
 | `kit/role-policy.ts` | The policy a role gives its child agent in `JIG_ROLE_POLICY`: written, read, and checked | `jig-agents`, `jig-sandbox`; no file here |
+| `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |
 | `kit/ports.ts` | For a tunnel that starts a program: a really free port, a test that it answers, a wait | a company plugin keeps a copy; no file here |
 | `kit/values.ts` | Small stateless helpers that plugins share, such as the invalid-input error | `config.ts`, `kit/http.ts`, `kit/oauth.ts`, the watch files |

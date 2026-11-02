@@ -1,5 +1,5 @@
 // The `git` tool: the local repository, and the remote write that goes with it (push).
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { planClone } from "./clone.ts";
@@ -67,12 +67,12 @@ const flag = (description: string) => Type.Optional(Type.Boolean({ description }
 
 const GitParams = Type.Object(
     {
-        action: StringEnum(ACTION_NAMES, { description: describeActions(GIT_ACTIONS) }),
+        action: stringEnum(ACTION_NAMES, { description: describeActions(GIT_ACTIONS) }),
         repo: string(
             "A folder in the workspace, or an absolute path inside a work tree. Omit it for the repo Pi runs in. clone: owner/name.",
         ),
         operation: Type.Optional(
-            StringEnum(["create", "switch", "delete", "list", "add", "remove", "push", "pop", "drop"] as const, {
+            stringEnum(["create", "switch", "delete", "list", "add", "remove", "push", "pop", "drop"] as const, {
                 description:
                     "branch: create, switch, delete. worktree: list, add, remove. stash: push, list, pop, drop.",
             }),
@@ -88,13 +88,13 @@ const GitParams = Type.Object(
         revs: strings("cherry_pick: the commits to apply, oldest first."),
         range: string("A revision range such as a..b."),
         against: Type.Optional(
-            StringEnum(["working", "staged", "base"] as const, {
+            stringEnum(["working", "staged", "base"] as const, {
                 description:
                     "diff: working tree vs HEAD (default), staged changes, or vs the merge base with the base.",
             }),
         ),
         format: Type.Optional(
-            StringEnum(["summary", "names", "patch", "oneline", "full"] as const, {
+            stringEnum(["summary", "names", "patch", "oneline", "full"] as const, {
                 description: "diff, show: summary (default), names or patch. log: oneline (default) or full.",
             }),
         ),
@@ -209,6 +209,7 @@ export const gitTool: JigTool = buildTool({
     promptSnippet: "Local git: status, diff, commit, branch, push",
     promptGuidelines: [
         "Use the git tool for git, not bash: the shell has no GitHub credentials. Check status before you commit, and read the jig-git skill for the order of work.",
+        "A promise to report on CI later needs a watch, because nothing else wakes you: the last line of a push result says how you will hear, and with no watch the user has to ask.",
     ],
     parameters: GitParams,
     table: GIT_ACTIONS,

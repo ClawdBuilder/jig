@@ -31,7 +31,7 @@ gone, so this table cannot drift from the code.
 
 | File | What it does | Called by |
 |---|---|---|
-| `catalog.ts` | The `ops` section: each service, its environments, how it deploys, where it runs, its health address | most of the tools, `index.ts` and the CI watches |
+| `catalog.ts` | The `ops` section: each service, its environments, how it deploys, where it runs, its health address, its CI job | most of the tools, `index.ts` and the CI watches |
 | `ci/config.ts` | The `ci` entry of a service: which CI system builds it, and the fields each system has | `catalog.ts`, `ci/adapter.ts`, `ci/adapters.ts` and 5 more |
 | `ci/settings.ts` | How often a CI watch polls, when it gives up, and the rules for "the artifact is ready" | `catalog.ts`, `ci/adapter.ts`, `ci/artifacts.ts` |
 | `runtime/kubernetes/config.ts` | The Kubernetes target of an environment: context, namespace, pod selector, in-pod check | `catalog.ts`, the deploy methods and the runtime files |
@@ -71,9 +71,11 @@ gone, so this table cannot drift from the code.
 | `ci/github-actions.ts` | The GitHub Actions adapter: checks, runs, logs, rerun, watch, through `gh` | `ci/adapters.ts`, `ci/autowatch.ts` |
 | `ci/gitlab.ts` | The GitLab adapter: pipelines, jobs and logs through the REST API; rerun and trigger | `ci/adapters.ts` |
 | `ci/jenkins.ts` | The Jenkins adapter: builds, stages and console logs; trigger with a crumb | `ci/adapters.ts` |
-| `ci/model.ts` | What a CI system says about a check, in one shape with four buckets: pass, fail, pending, skipped | the three CI adapters and their watches |
+| `ci/concourse.ts` | The Concourse adapter: a job's builds, their inputs and logs; start the job; no rerun | `ci/adapters.ts` |
+| `ci/environment.ts` | The environment a call names: how a preview and a watch's title say so | `ci/concourse.ts`, `ci/gitlab.ts`, `ci/jenkins.ts` |
+| `ci/model.ts` | What a CI system says about a check, in one shape with four buckets: pass, fail, pending, skipped | the four CI adapters and their watches |
 | `ci/logs.ts` | Job logs from any CI system: cleaned, cut down, and scrubbed of anything credential-shaped | the adapters and watches that show a log |
-| `ci/lost.ts` | A write whose reply was lost: one read says what the system shows, and it is never sent again | `ci/github-actions.ts`, `ci/gitlab.ts`, `ci/jenkins.ts` |
+| `ci/lost.ts` | A write whose reply was lost: one read says what the system shows, and it is never sent again | `ci/concourse.ts`, `ci/github-actions.ts`, `ci/gitlab.ts` and 1 more |
 
 ### CI watches
 
@@ -82,8 +84,9 @@ gone, so this table cannot drift from the code.
 | `ci/watch.ts` | The `ops-ci` watch kind: waits until a CI run ends, whatever the system | `ci/adapter.ts`, `ci/autowatch.ts`, `ci/finished.ts` and 2 more |
 | `ci/autowatch.ts` | Starts a watch by itself when `jig-git` announces a push for a repository in the catalog | `index.ts` |
 | `ci/github-watch.ts` | The GitHub half of the CI watch: what to poll, and when it is done | `ci/github-actions.ts`, `ci/watch.ts` |
-| `ci/gitlab-watch.ts` | The GitLab half: a pipeline that finished, or the jobs that must pass | `ci/autowatch.ts`, `ci/gitlab.ts`, `ci/jenkins-watch.ts`, `ci/watch.ts` |
+| `ci/gitlab-watch.ts` | The GitLab half: a pipeline that finished, or the jobs that must pass | `ci/autowatch.ts`, `ci/concourse-watch.ts`, `ci/gitlab.ts` and 2 more |
 | `ci/jenkins-watch.ts` | The Jenkins half: a build that finished, or the stages that must pass | `ci/autowatch.ts`, `ci/jenkins.ts`, `ci/watch.ts` |
+| `ci/concourse-watch.ts` | The Concourse half: one build, found by number or as the next one, followed to its end | `ci/autowatch.ts`, `ci/concourse.ts`, `ci/watch.ts` |
 | `ci/artifacts.ts` | "The artifact is ready": the rules of `ops.artifacts`, tested when a watch has passed | `ci/adapter.ts`, `ci/finished.ts`, `ci/github-checks.ts` and 5 more |
 | `ci/finished.ts` | Publishes `jig-ops:ci-finished` when a CI watch reaches its finish line | `ci/watch.ts` |
 
@@ -97,8 +100,10 @@ gone, so this table cannot drift from the code.
 | `ci/github-checks.ts` | What GitHub says about a commit, a run, tags and releases, with ETags to save requests | `ci/github-actions.ts`, `ci/github-watch.ts`, `ci/watch.ts` |
 | `ci/gitlab-api.ts` | GitLab's REST API: the requests, what the replies hold, and job status as four words | `ci/gitlab-watch.ts`, `ci/gitlab.ts` |
 | `ci/jenkins-api.ts` | Jenkins' remote access API: the requests, the replies, and results as four words | `ci/jenkins-watch.ts`, `ci/jenkins.ts` |
-| `ci/request.ts` | The one request function of the HTTP adapters: direct over HTTPS, or through a company transport | `ci/gitlab-api.ts`, `ci/gitlab.ts`, `ci/http.ts` and 2 more |
-| `ci/http.ts` | Reading a CI server's reply: what a status means to the person who has to fix it | `ci/gitlab-api.ts`, `ci/gitlab.ts`, `ci/jenkins-api.ts`, `ci/jenkins.ts` |
+| `ci/concourse-api.ts` | Concourse's REST API: the requests, builds checked to be the job's, and the words for a login | `ci/concourse-watch.ts`, `ci/concourse.ts` |
+| `ci/concourse-events.ts` | A build's event stream as plain text: the output of its steps, its statuses and errors | `ci/concourse-api.ts` |
+| `ci/request.ts` | The one request function of the HTTP adapters: direct over HTTPS, or through a company transport | `ci/concourse-api.ts`, `ci/gitlab-api.ts`, `ci/gitlab.ts` and 3 more |
+| `ci/http.ts` | Reading a CI server's reply: what a status means to the person who has to fix it | `ci/concourse-api.ts`, `ci/gitlab-api.ts`, `ci/gitlab.ts` and 3 more |
 
 ### Helpers
 

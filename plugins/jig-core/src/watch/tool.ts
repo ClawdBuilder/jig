@@ -1,6 +1,6 @@
 // The `watch` tool: jig-core's own tool. It lists and stops the watches of every plugin. Plugins start watches from
 // their own tools, such as a CI check, so there is no "start" here.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../kit/schema.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { JigApi } from "../contract.ts";
@@ -9,7 +9,7 @@ import { LIST_WINDOW_MS } from "./engine.ts";
 import { formatAge } from "./format.ts";
 
 const parameters = Type.Object({
-    action: StringEnum(["list", "stop"] as const, { description: "list shows the watches; stop cancels one" }),
+    action: stringEnum(["list", "stop"] as const, { description: "list shows the watches; stop cancels one" }),
     id: Type.Optional(Type.String({ description: "For stop: the id of the watch, as list shows it" })),
 });
 

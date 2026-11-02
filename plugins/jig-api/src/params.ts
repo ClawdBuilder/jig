@@ -1,7 +1,7 @@
 // The parameters of the `api` tool. One flat object, because several model providers reject a top-level union. ACTIONS says
 // which parameters each action takes; the schema's action list, the usage lines in errors and the checks in parseCall all
 // come from it, so they cannot drift apart.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { MAX_TIMEOUT_SEC } from "./config.ts";
 import { METHODS } from "./engine/plan.ts";
@@ -52,7 +52,7 @@ function describeActions(): string {
 }
 
 export const parameters = Type.Object({
-    action: StringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
+    action: stringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
     collection: Type.Optional(
         Type.String({ description: "A collection's name, to narrow a request or folder, or to call as one" }),
     ),
@@ -76,7 +76,7 @@ export const parameters = Type.Object({
             },
         ),
     ),
-    method: Type.Optional(StringEnum(METHODS, { description: "call: GET, HEAD and OPTIONS read; the others write" })),
+    method: Type.Optional(stringEnum(METHODS, { description: "call: GET, HEAD and OPTIONS read; the others write" })),
     url: Type.Optional(Type.String({ description: "call: the whole address, on a host of the environment" })),
     body: Type.Optional(Type.Unknown({ description: "call: a JSON body, at most 256 KiB. Not for GET" })),
     headers: Type.Optional(

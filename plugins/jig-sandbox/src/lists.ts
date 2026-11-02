@@ -69,7 +69,7 @@ export const GROUPS = {
     git: { reason: "git runs it outside the sandbox", way: BY_HAND, floor: false },
     pi: {
         reason: "Pi and Jig load it outside the sandbox, so a write there could change what they do",
-        way: "Use the edit and write tools for files in the project; settings are the user's to change.",
+        way: "Use the edit and write tools for files in the project, unless they refuse the path as guarded; settings and loaded packages are the user's to change with !.",
         floor: false,
     },
     hooks: { reason: "git runs hooks outside the sandbox", way: BY_HAND, floor: false },
@@ -286,3 +286,46 @@ export const GIT_SUBSECTION_KEYS: ReadonlyMap<string, ReadonlySet<string>> = new
     ["gpg", new Set(["program"])],
     ["includeif", new Set(["path"])],
 ]);
+
+/**
+ * Output that gives away a block the sandbox makes without a record of it. A signature counts only in the output of a command that
+ * failed, and the line it earns says the failure "looks like" the sandbox: the tool's own words are a good guide, not proof.
+ * Each pattern was recorded from the real tool inside the sandbox, except Docker's and Go's, which are the tools' documented text.
+ */
+export interface FailureSignature {
+    /** What the sandbox does that makes this fail, in `it ... (detail)` form: the line says "this failure looks like the sandbox: <reason>". */
+    reason: string;
+    /** Any of these in the output is a sign of it. */
+    patterns: readonly RegExp[];
+    /** Output that rules the sign out, such as a Python traceback that shows a raw socket. */
+    unless?: RegExp;
+}
+
+/** The first signature that matches wins, so the more specific one is listed first. Keep this list small. */
+export const FAILURE_SIGNATURES: readonly FailureSignature[] = [
+    {
+        reason: "it makes no Unix socket (JVM attach, as JMockit and some profilers and agents use, needs one)",
+        // The JDK's own message, old and new: "Unable to open socket file: target process not responding or HotSpot VM not loaded".
+        patterns: [/Unable to open socket file|AttachNotSupportedException:[^\n]*HotSpot VM not loaded/],
+    },
+    {
+        reason: "it makes no Unix socket (Docker's daemon is reached through one)",
+        patterns: [/Cannot connect to the Docker daemon at unix:\/\//],
+    },
+    {
+        reason: "it makes no Unix socket (the program tried to make or reach one)",
+        patterns: [
+            // Python: the socket call itself fails with no path in the message (a failed file operation names its path).
+            /_socket\.socket\.__init__\([^\n]*\n(?:[^\n]*\n){0,3}?PermissionError: \[Errno 1\] Operation not permitted(?!:)/,
+            // Node: `connect EPERM /path`, `listen EPERM: operation not permitted /path`. A TCP address does not start with a slash.
+            /\bconnect EPERM [./]\S*/,
+            /\blisten EPERM: operation not permitted [./]\S*/,
+            // socat names the domain: socket(1, ...) is AF_UNIX. OpenBSD nc names the path.
+            /socat\[\d+\] E socket\(1, \d+, \d+\): Operation not permitted/,
+            /^nc: [./]\S*: Operation not permitted$/m,
+            // Go: `dial unix /path: socket: operation not permitted`.
+            /\bdial unix \S+: (?:socket|connect): operation not permitted/i,
+        ],
+        unless: /SOCK_RAW|AF_PACKET|AF_NETLINK|AF_BLUETOOTH|AF_CAN\b/,
+    },
+];

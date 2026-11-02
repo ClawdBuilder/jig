@@ -192,10 +192,10 @@ describe("a catalog that is refused", () => {
             "ops.services.svc: must be an object with environments",
         ]);
         assert.deepEqual(validateOps(only({})), [
-            "ops.services.svc.environments.staging: must have at least one of deploy, runtime and health",
+            "ops.services.svc.environments.staging: must have at least one of deploy, runtime, health and job",
         ]);
         assert.deepEqual(validateOps(only("x")), [
-            "ops.services.svc.environments.staging: must be an object with deploy, runtime or health",
+            "ops.services.svc.environments.staging: must be an object with deploy, runtime, health or job",
         ]);
     });
 
@@ -223,13 +223,13 @@ describe("a catalog that is refused", () => {
         const billing = (raw.services as Record<string, Raw>).billing as Raw;
         billing.ci = { workflow: "build.yml" };
         assert.deepEqual(validateOps(raw), [
-            "ops.services.billing.ci.system: required, the CI system: github-actions, gitlab, jenkins",
+            "ops.services.billing.ci.system: required, the CI system: github-actions, gitlab, jenkins, concourse",
         ]);
         billing.ci = "github-actions";
         assert.match(validateOps(raw)[0] ?? "", /^ops\.services\.billing\.ci: must be an object with a system/);
         billing.ci = { system: "Github Actions" };
         assert.deepEqual(validateOps(raw), [
-            "ops.services.billing.ci.system: unknown CI system; the systems there are: github-actions, gitlab, jenkins",
+            "ops.services.billing.ci.system: unknown CI system; the systems there are: github-actions, gitlab, jenkins, concourse",
         ]);
     });
 

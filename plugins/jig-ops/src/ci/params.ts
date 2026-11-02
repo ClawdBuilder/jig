@@ -4,7 +4,7 @@
 //
 // What a call may carry depends on the action and on the CI system of the service, so the rows of the adapter's table
 // are the check: a parameter the action does not take is refused, and so is an action the system does not have.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { findCiService, notSetUp } from "../catalog.ts";
 import type { Catalog, CiService } from "../catalog.ts";
@@ -21,11 +21,19 @@ export const MAX_PARAMETERS = 20;
 
 export const parameters = Type.Object(
     {
-        action: StringEnum(CI_ACTIONS, { description: "status, runs, run, log, rerun, trigger or watch" }),
+        action: stringEnum(CI_ACTIONS, { description: "status, runs, run, log, rerun, trigger or watch" }),
         service: Type.String({
             description:
                 "A service from the ops catalog that has a ci entry. An unknown name is refused with the known ones",
         }),
+        environment: Type.Optional(
+            Type.String({
+                minLength: 1,
+                maxLength: 40,
+                description:
+                    "An environment of the service that has a CI job: the call acts in it. Default: the service's own ci.",
+            }),
+        ),
         number: Type.Optional(Type.Integer({ minimum: 1, description: "A pull request number (GitHub Actions)." })),
         branch: Type.Optional(
             Type.String({
@@ -40,7 +48,8 @@ export const parameters = Type.Object(
         run_id: Type.Optional(
             Type.Integer({
                 minimum: 1,
-                description: "A GitHub run, a GitLab pipeline or a Jenkins build number, as runs lists them.",
+                description:
+                    "A GitHub run, a GitLab pipeline or a Jenkins or Concourse build number, as runs lists them.",
             }),
         ),
         required_only: Type.Optional(Type.Boolean({ description: "status: only the required checks or jobs." })),
@@ -48,7 +57,8 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 30,
-                description: "runs: queued, in_progress, completed, success, failure ...",
+                description:
+                    "runs: queued, in_progress, completed, success, failure ... (Concourse: succeeded, failed, ...)",
             }),
         ),
         limit: Type.Optional(
@@ -95,7 +105,7 @@ export const parameters = Type.Object(
             ),
         ),
         finish: Type.Optional(
-            StringEnum(FINISHES, {
+            stringEnum(FINISHES, {
                 description:
                     "watch: when it ends. required (default), check (the one in check), run (run_id); " +
                     "GitHub also approved, merged, comment, tag, release.",
@@ -259,7 +269,12 @@ function rowCheck(
     const row: ActionRow = rowOf(info, service.name, action);
     const takes = [...(row.required ?? []), ...(row.optional ?? [])];
     const extra = Object.keys(input).filter(
-        (name) => present(input[name]) && name !== "action" && name !== "service" && !takes.includes(name),
+        (name) =>
+            present(input[name]) &&
+            name !== "action" &&
+            name !== "service" &&
+            name !== "environment" &&
+            !takes.includes(name),
     );
     if (extra.length > 0) {
         throw new InputError(
@@ -287,7 +302,12 @@ export function parseCall(input: Readonly<Record<string, unknown>>, catalog: Cat
             `ci ${action} needs service. Services with a ci entry: ${known === "" ? "none have one" : known}`,
         );
     }
-    const service = findCiService(catalog, "ci", input.service);
+    const service = findCiService(
+        catalog,
+        "ci",
+        input.service,
+        present(input.environment) ? input.environment : undefined,
+    );
     const info = SYSTEMS[service.ci.system];
     return { action, service, info, params: rowCheck(action, service, info, input) };
 }

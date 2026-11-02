@@ -6,13 +6,15 @@ import type { Outcome } from "../values.ts";
 
 /**
  * `look` reads the system once and returns the success text when the change is there, or undefined when it is not.
- * `where` names the system for the message.
+ * `where` names the system for the message. `absent` is what the model reads when the check shows nothing, for a system
+ * where a change may still appear a little later.
  */
 export async function afterLostReply(
     what: string,
     why: string,
     where: string,
     look: () => Promise<string | undefined>,
+    absent?: string,
 ): Promise<Outcome> {
     let found: string | undefined;
     try {
@@ -25,8 +27,10 @@ export async function afterLostReply(
     }
     if (found === undefined) {
         throw new Error(
-            `${what}: the reply was lost (${why}) and one check shows it did not go through. ` +
-                "Nothing was sent twice; run it again if you still want it.",
+            absent === undefined
+                ? `${what}: the reply was lost (${why}) and one check shows it did not go through. ` +
+                      "Nothing was sent twice; run it again if you still want it."
+                : `${what}: the reply was lost (${why}). ${absent} Nothing was sent twice.`,
         );
     }
     return {

@@ -70,6 +70,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
 function startSession(state: JigState, ctx: ExtensionContext): void {
     state.sessionId = ctx.sessionManager.getSessionId();
     state.screen = ctx.hasUI ? ctx.ui : undefined;
+    state.workingDir = ctx.cwd;
     loadPersonalConfig(state);
     // Watches saved by this session before Pi was closed start polling again.
     state.watches.begin(state.sessionId);

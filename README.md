@@ -52,7 +52,7 @@ Jig needs Pi 1.4 or later and Node.js 22.19 or later. It is tested with:
 
 | Pi | Node | Checked |
 |---|---|---|
-| 1.4.0 | 24, 26 | 2026-11-01 |
+| 1.5.0 | 24, 26 | 2026-11-02 |
 
 A weekly run tries the newest Pi too, so a release that breaks Jig is seen early. [Compatibility](docs/compatibility.md)
 says what that covers and which names Jig keeps stable for company plugins.

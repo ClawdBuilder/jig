@@ -1,4 +1,4 @@
-// The one request function of the CI adapters that speak HTTP (GitLab and Jenkins). A request is described by the
+// The one request function of the CI adapters that speak HTTP (GitLab, Jenkins and Concourse). A request is described by the
 // adapter, and it travels one of two ways: straight to the CI server over HTTPS, or through a transport that a company
 // plugin registered. Everything above this file builds the same request and reads the same reply, so the adapters never
 // know which way it went, nor how the sign-in works.
@@ -32,6 +32,8 @@ export interface Request {
     body?: string;
     /** The most bytes of the reply that are read. A bigger reply is refused. Default: 4 MiB. */
     maxBytes?: number;
+    /** For a reply that never ends (an event stream): stop reading when it holds this text. */
+    stopAt?: string;
 }
 
 export interface Reply {
@@ -58,7 +60,7 @@ export interface SenderOptions {
  * A write that ends this way is never sent again (see `lostReply` in the adapters).
  */
 export class RequestFailure extends Error {
-    readonly kind: "timeout" | "connection_lost" | "too_large" | "unreachable";
+    readonly kind: "timeout" | "connection_lost" | "too_large" | "unreachable" | "auth";
     constructor(kind: RequestFailure["kind"], message: string) {
         super(message);
         this.name = "RequestFailure";
@@ -77,10 +79,14 @@ function headersOf(request: Request): Record<string, string> {
 }
 
 /** Where the credential of a request comes from: a secret reference, a sign-in service, or a transport that holds it. */
-function how(auth: CiAuth): { auth: HttpAuth } | { transport: string } {
+function how(http: CiHttp): { auth: HttpAuth } | { transport: string } {
+    const auth = http.auth;
     switch (auth.kind) {
         case "token":
-            return { auth: { header: { name: "PRIVATE-TOKEN", value: auth.token } } };
+            // GitLab has a header of its own; Concourse takes the token as a bearer.
+            return http.system === "concourse"
+                ? { auth: { bearer: auth.token } }
+                : { auth: { header: { name: "PRIVATE-TOKEN", value: auth.token } } };
         case "basic":
             return { auth: { basic: { user: auth.user, password: auth.token } } };
         case "signIn":
@@ -93,7 +99,7 @@ function how(auth: CiAuth): { auth: HttpAuth } | { transport: string } {
 
 export function sender(http: CiHttp, options: SenderOptions = {}): Send {
     const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
-    const signs = how(http.auth);
+    const signs = how(http);
     // One signal for every request of the call, so that a secret is read once for a call of several requests.
     const call = AbortSignal.any(options.signal === undefined ? [] : [options.signal]);
 
@@ -107,6 +113,7 @@ export function sender(http: CiHttp, options: SenderOptions = {}): Send {
                     method: request.method,
                     headers: headersOf(request),
                     ...(request.body === undefined ? {} : { body: request.body }),
+                    ...(request.stopAt === undefined ? {} : { stopAt: request.stopAt }),
                     ...signs,
                     timeoutMs,
                     maxBytes,
@@ -147,6 +154,9 @@ function describe(error: unknown, timeoutMs: number): unknown {
             `cannot reach the CI server${named}: check the url in the catalog, the network and the certificate`,
         );
     }
-    // A credential that could not be read, a transport that failed or is not registered: jig-core's own words.
+    // A credential that could not be read: the store or the command said why, in its own words. An adapter that knows
+    // how the user renews it can add that.
+    if (error.code === "auth_failed") return new RequestFailure("auth", error.message);
+    // A transport that failed or is not registered: jig-core's own words.
     return new Error(error.message);
 }
