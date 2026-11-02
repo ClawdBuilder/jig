@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Changed
+
+- The Herdr Work panel's Outputs list shows only files outside git repositories (ticket notes, plans, reports); a line under it counts the files changed in repositories and opens the Changes section. `jig-session` adds `repo` to each output (the working tree's root, or null) and caps the two kinds separately.
+
 ### Added
 
 - `workflow test` picks the JDK a Gradle build needs from its files (the wrapper's Gradle version, the build's Java level, and each installed JDK's `release` file), so no repository needs its own `JAVA_HOME`; a configured one still wins, and the result says which JDK ran and why.

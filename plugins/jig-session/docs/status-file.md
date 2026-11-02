@@ -47,7 +47,7 @@ A write happens only when the content changed, so `updatedAt` is the time of the
     "since": "2026-01-02T09:58:00.000Z",
     "prs": []
   },
-  "outputs": [{ "path": "/work/orders-api/src/login.ts", "action": "edited", "at": "2026-01-02T10:04:31.000Z" }],
+  "outputs": [{ "path": "/work/orders-api/src/login.ts", "action": "edited", "at": "2026-01-02T10:04:31.000Z", "repo": "/work/orders-api" }],
   "recent": [{ "at": "2026-01-02T10:04:31.000Z", "tool": "edit", "decision": "allow", "outcome": "ok" }],
   "contextDetail": {
     "window": 200000, "used": 25485, "usedFrom": "pi", "reserve": 16384, "free": 158131,
@@ -87,7 +87,10 @@ waiting call.
   the workflow file is missing. `prs` are its readings, one per repository: `{ repo, branch?, number?, state?, draft?, url?,
   checks?: { pass, fail, pending, total }, at?, error? }`.
 - **`outputs`:** absolute paths of successful `edit` and `write` calls; `action` is `created` for a `write` to a new file,
-  else `edited`.
+  else `edited`. `repo` is the absolute root of the git working tree that holds the path (the nearest folder above it with a
+  `.git` folder, or a `.git` file as a worktree has), or `null` for a file outside any repository, such as a ticket's notes.
+  It is found by looking at the file system, never by running git. The 50-entry cap applies to each kind, so edits in
+  repositories cannot push ticket files out. A file written by an older version has no `repo`; read that as unknown.
 - **`recent`:** `decision` is jig-core's `allow`, `ask` or `deny`, `answer` your reply when it asked (`allow`,
   `allow-session`, `decline`). `outcome` is `running`, `ok`, `error`, or `blocked` when denied or declined.
 - **`contextDetail`:** `{ window, used, usedFrom, reserve, free, parts, tools, skills, files }`. `parts` holds `messages`,
