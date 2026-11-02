@@ -46,7 +46,7 @@ so this table cannot drift from the code.
 | File | What it does | Called by |
 |---|---|---|
 | `rules.ts` | The rules as data: which paths are hidden, locked or ask-first (a read-only agent's home and working folders are locked), and what the runtime is told | `ask.ts`, `audit.ts` and 5 more |
-| `lists.ts` | The exact lists of hidden, locked and ask-first paths, with the reason for each group | `gitconfig.ts`, `rules.ts` |
+| `lists.ts` | The exact lists of hidden, locked and ask-first paths, with the reason for each group, and the tool messages that give away a block | `gitconfig.ts`, `rules.ts` |
 | `repos.ts` | The repositories the sandbox watches: hooks locked, configuration audited | `audit.ts`, `rules.ts` |
 | `files.ts` | The file system as the rules look at it, so a test can give them a machine that does not exist | `audit.ts`, `index.ts` and 6 more |
 | `pathing.ts` | Small POSIX path helpers for the rules | `ask.ts`, `audit.ts` and 6 more |
@@ -60,7 +60,7 @@ so this table cannot drift from the code.
 | `aftermath.ts` | What follows a command: the audit of what it created, and the lines that say which rule stopped it | `background/after-end.ts`, `background/tasks-deps.ts` and 2 more |
 | `audit.ts` | What the runtime cannot prevent, undone and reported: files planted where no rule could reach | `aftermath.ts` |
 | `gitconfig.ts` | A git configuration read just enough to find settings that run a program or redirect a remote | `audit.ts`, `repos.ts` |
-| `explain.ts` | Reads a block back from the command's own error lines and matches it to a rule | `aftermath.ts` |
+| `explain.ts` | Reads a block back from the command's own error lines and matches it to a rule; names a failure that looks like the sandbox | `aftermath.ts` |
 | `ask.ts` | Asking you about a write to an ask-first folder, after the command, inside the waiting call | `aftermath.ts`, `index.ts` |
 | `allowed.ts` | What you allowed: folders and hosts, for the session or always | `ask.ts`, `commands.ts` and 4 more |
 | `output.ts` | Makes a command's output safe to show: no terminal control sequences, no credential values | `background/capture.ts`, `bash.ts` |
@@ -123,7 +123,8 @@ The agent runs `npm test` with `bash`. Steps 6 and 9 differ by network mode; the
    otherwise asks you through `network/ask-host.ts`. The command waits for the answer.
 10. **After.** When the command ends, `prepared.finish()` collects the runtime's violations. `Aftermath.after` runs
     `audit.ts` (what the command planted where no rule could stop it is undone and reported), `explain.ts` (a block is
-    read back from the command's own error lines and matched to a rule) and, for a refused write under an ask-first
+    read back from the command's own error lines and matched to a rule, and, for a command that failed, a tool message
+    that only looks like a block is named) and, for a refused write under an ask-first
     folder, `ask.ts`, which asks you inside the waiting call.
 11. **The lines.** The `[sandbox]` lines that say which rule stopped the command go after its output. `jig-core` then
     redacts, masks and caps the result as for any tool, and records the call.

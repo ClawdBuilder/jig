@@ -30,6 +30,9 @@ export async function afterEnd(
             ctx,
             snapshot,
             violations,
+            // A task that was stopped did not fail on its own, whatever code the signal left.
+            exitCode: task.killReason === undefined ? task.exitCode : undefined,
+            background: true,
         });
     } catch (error) {
         task.sandboxLines = [
