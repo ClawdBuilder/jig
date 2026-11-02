@@ -5,6 +5,8 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 ## Contents
 
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
+- [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
+- [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
 - [2026-11-01: guards a person would not see break](#2026-11-01-guards-a-person-would-not-see-break)
 - [2026-11-01: a role only narrows, and the child enforces it](#2026-11-01-a-role-only-narrows-and-the-child-enforces-it)
@@ -77,6 +79,80 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
+
+**Decided**
+- **Two start-up jobs are settings in the user's `jig.json`.** `startChecks` lists TCP checks, and
+  `secrets.pass.unlockAtStart` asks for the pass store to be unlocked. `jig-core` runs both inside Pi when a session
+  starts, so they work however Pi was started: from a terminal, a launcher, a shortcut or an IDE.
+- **A start check is one TCP connection and nothing else.** Each check connects to its host and port and closes at
+  once, with a limit of 3 seconds. The checks run in parallel, none is retried, nothing is sent, and nothing is
+  started, stopped or signed in to. A failure is one notice for the user, with the check's own hint.
+- **The unlock opens one entry through the secret resolver.** Jig finds one `*.gpg` entry in the store `pass` uses and
+  has `pass` decrypt it, in turn with the other lookups, so a tool that asks meanwhile waits for it and finds the
+  store open. gpg-agent shows its own prompt, and Jig never asks for, sees or keeps the passphrase. It drops the value at
+  once and does not register it with the redactor.
+- **Both run only in the top-level session with a screen.** There is nobody to tell in print mode, and a child agent is
+  one of many that a parent started. `jig-agents` marks a child with `PI_SUBAGENT_ID`, and that is the signal used.
+- **They run in the background and tell the user, never the model.** The session start does not wait for them and
+  cannot fail on them. A notice never holds a value, an entry name or what `pass` printed.
+- **`startChecks` is `jig-core`'s own section,** like `rules`, so only the user's file can set it. `/jig` lists the checks
+  with their last result.
+
+**Why**
+- A launcher script runs only when Pi is started through it. A check or an unlock kept there disappears when Pi starts
+  another way, and the user is left to find out why. It is the reasoning that put the store folder in `jig.json`.
+- Which hosts must answer, and whether a store is unlocked, are facts about one user's machine and network. They are the
+  user's to write down, not a script's to decide.
+- A passphrase prompt in the middle of a task interrupts it and is easy to miss. At the start of a session the user is
+  there to answer it.
+- Telling the user costs nothing, and doing more would not be Jig's place. The VPN client and the password store each
+  have an owner, and a tool that needs the host or the store still fails with a clear error.
+
+**Rejected**
+- **A launcher script that hard-codes a company host or unlocks a store.** It decides for the user, and it is skipped when
+  Pi starts another way.
+- **A company plugin adding start checks.** It would decide which hosts a user's machine probes. A company plugin can
+  neither register a `startChecks` section nor give it defaults.
+- **Retrying, or acting on a failed check.** A retry turns one notice into traffic and delay. Starting a VPN or signing
+  in to anything would be control of software that Jig has no business with. The user reads the notice and fixes it.
+
+## 2026-11-02: an optional launcher, with nothing a company decides
+
+A user who wants Pi to survive a closed terminal window needed a `pi` command that starts it inside tmux. The one the author used also
+checked a VPN, unlocked a password store and set a company's folders. This entry keeps the first part, in `bin/`, and drops the rest.
+
+**Decided**
+- **`bin/pi` is a launcher you may use, and Jig does not need it.** It finds Pi, repairs a dead WSL interop socket, starts an
+  interactive session in its own tmux server (`-L jig`), and reattaches to a detached session started in the same folder. A print run
+  or a subcommand goes straight to Pi.
+- **It sets nothing of the user's.** No agent folder, no password store, no profile, no default. Pi's own defaults apply, and a
+  personal shim at `~/.local/bin/pi` exports what a user wants and runs the launcher. It never signs in and never touches the network.
+- **Pi inside tmux sees the environment of the terminal that started it.** Every exported variable is passed on except the ones that
+  describe the terminal or the shell (`TERM`, `TMUX`, `SHLVL`, `PWD` and a few more). A variable an earlier terminal left in the tmux
+  server, which this one does not set, is removed from the session.
+- **The values travel in the tmux client's environment, and only names go on the command line.** tmux's `update-environment` setting
+  copies the variables it names from the client's environment into a new session and removes those the client lacks, which does
+  both halves of the rule above. The setting is put back to tmux's own list as soon as the session exists.
+
+**Why**
+- **A launcher that decides is a company plugin in disguise.** A VPN host, a password store and an agent folder are one company's
+  choices. Nothing in this repository names a company ([AGENTS.md](../AGENTS.md)), and the launcher is no exception.
+- **A warm start in a launcher only runs when the launcher does.** A Pi started from another tool, a script or an editor skipped it
+  without a word. The same checks as settings of `jig.json` (`startChecks`, `secrets.pass.unlockAtStart`) run inside Pi, however
+  Pi started, and the user's own file says what they are.
+- **`tmux new-session -e NAME=value` puts every value in a command line.** Measured with tmux 3.4 on Linux: the value is in
+  `/proc/<pid>/cmdline` of the tmux client for as long as the session is attached, readable by every other process of the machine.
+  Passing every exported variable that way would have put cloud keys and tokens there.
+
+**Rejected**
+- **A warm start in the launcher** (a network probe, a password-store unlock). It is skipped when Pi starts another way, and it decided
+  for the user what to check and what to unlock.
+- **A list of variable prefixes to forward.** Every new tool needed an entry, and a missing one only showed as a setting that did not
+  reach Pi inside tmux. "Everything except the terminal's own" has no list to keep up.
+- **`-e NAME=value` for the variables,** and `env -u NAME` for the ones to remove, for the reason above. Names alone are safe on a
+  command line.
 
 ## 2026-11-02: where the secret store is, and who types secrets
 

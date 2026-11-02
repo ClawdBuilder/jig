@@ -248,6 +248,68 @@ describe("secrets.pass: where pass looks", () => {
     });
 });
 
+describe("secrets.pass.unlockAtStart", () => {
+    const stores = (pass: unknown) => personal({ secrets: { pass } });
+
+    test("is off unless it is true, and true or false sits beside the folders", () => {
+        assert.equal(personal({}).config.secrets.pass.unlockAtStart, undefined);
+        assert.equal(stores({}).config.secrets.pass.unlockAtStart, undefined);
+        assert.equal(stores({ unlockAtStart: false }).config.secrets.pass.unlockAtStart, false);
+        const loaded = stores({ storeDir: "~/pass", unlockAtStart: true });
+        assert.deepEqual(loaded.problems, []);
+        assert.deepEqual(loaded.config.secrets.pass, { storeDir: "~/pass", unlockAtStart: true });
+    });
+
+    test("anything but true or false is an error that names the key and does not repeat the value", () => {
+        for (const value of ["yes", "true", 1, 0, null, [true], { on: true }]) {
+            const loaded = stores({ unlockAtStart: value });
+            assert.deepEqual(
+                loaded.problems.map((problem) => [problem.key, problem.message]),
+                [["secrets.pass.unlockAtStart", "must be true or false"]],
+                JSON.stringify(value),
+            );
+            assert.deepEqual(loaded.config.secrets.pass, {}, "the file falls back to the defaults");
+        }
+        assert.deepEqual(
+            stores({ unlockAtstart: true }).problems.map((problem) => problem.key),
+            ["secrets.pass.unlockAtstart"],
+        );
+    });
+});
+
+describe("startChecks", () => {
+    const checks = (value: unknown) => personal({ startChecks: value });
+
+    test("is an empty list by default, and takes checks with a name, a tcp address and a hint", () => {
+        assert.deepEqual(personal({}).config.startChecks, []);
+        assert.deepEqual(checks([]).config.startChecks, []);
+        const loaded = checks([
+            { name: "VPN", tcp: "vpn.example.com:443", hint: "connect your VPN client" },
+            { name: "Orders API", tcp: "api.staging.example.com:8443" },
+        ]);
+        assert.deepEqual(loaded.problems, []);
+        assert.deepEqual(loaded.config.startChecks, [
+            {
+                name: "VPN",
+                tcp: "vpn.example.com:443",
+                host: "vpn.example.com",
+                port: 443,
+                hint: "connect your VPN client",
+            },
+            { name: "Orders API", tcp: "api.staging.example.com:8443", host: "api.staging.example.com", port: 8443 },
+        ]);
+    });
+
+    test("one wrong check makes the whole file fall back to the defaults, as for every jig-core setting", () => {
+        const loaded = checks([{ name: "VPN", tcp: "vpn.example.com:443" }, { name: "x" }]);
+        assert.deepEqual(
+            loaded.problems.map((problem) => problem.key),
+            ["startChecks[1].tcp"],
+        );
+        assert.deepEqual(loaded.config.startChecks, []);
+    });
+});
+
 describe("secret commands and the cmd and file backends", () => {
     test("`secrets.commands` names a command as a program and its arguments, and the backends list has cmd and file", () => {
         const loaded = personal({

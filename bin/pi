@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# An optional launcher for Pi with Jig. An interactive session starts inside its own tmux, so closing the terminal window only
+# detaches it and the next `pi` in the same folder offers to reattach. Print mode and subcommands run Pi directly.
+#   --no-tmux  / JIG_NO_TMUX=1   stay out of tmux
+#   --new      / JIG_NEW=1       never reattach: always start a new Pi
+# In a herdr terminal there is no tmux (herdr keeps the terminal alive and shows Pi as an agent); JIG_TMUX=1 brings it back.
+# PI_BIN overrides the Pi executable (default: the first `pi` on PATH that resolves into Pi's own npm package, so a shim called
+# `pi` that runs this launcher is skipped).
+# Pi inside tmux sees this terminal's environment, as if it had been started here (see session_names below).
+# The launcher never signs in to anything and never touches the network. It sets no variable of yours: it exports JIG_HOME (the
+# folder bin/tmux.conf reads for the clipboard helper), and on WSL it may replace a dead WSL_INTEROP.
+# Needs bash 4.4 or later.
+#
+# For tests only: JIG_FORCE_INTERACTIVE=1 treats stdin and stdout as terminals, and JIG_TTY names the file the reattach menu is
+# read from instead of /dev/tty. JIG_INTEROP_PROBE and JIG_INTEROP_FALLBACK stand in for the Windows probe and the distro's socket.
+set -u
+say() { printf 'jig: %s\n' "$*" >&2; }
+
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+home="$(dirname "$(dirname "$self")")"
+# bin/tmux.conf reads it for the clipboard helper's path.
+export JIG_HOME="$home"
+
+pi_bin="${PI_BIN:-}"
+if [ -z "$pi_bin" ]; then
+    while IFS= read -r candidate; do
+        case "$(readlink -f "$candidate")" in */@earendil-works/pi-coding-agent/*) pi_bin="$candidate"; break ;; esac
+    done < <(type -ap pi)
+    [ -n "$pi_bin" ] || { say "Pi is not installed: npm install -g @earendil-works/pi-coding-agent"; exit 127; }
+elif ! command -v "$pi_bin" >/dev/null; then
+    say "PI_BIN ($pi_bin) is not an executable"; exit 127
+fi
+
+tmux=1 fresh=0 args=()
+for arg in "$@"; do
+    case "$arg" in
+        --no-tmux) tmux=0 ;;
+        --new) fresh=1 ;;
+        *) args+=("$arg") ;;
+    esac
+done
+[ "${JIG_NO_TMUX:-}" = 1 ] && tmux=0
+[ "${JIG_NEW:-}" = 1 ] && fresh=1
+# herdr keeps its terminals alive and lists the agents running in them by the program in front, which inside tmux is tmux, not
+# Pi. So in a herdr terminal (HC_TERMINAL_ID) there is no tmux unless JIG_TMUX=1 asks for it.
+[ -n "${HC_TERMINAL_ID:-}" ] && [ "${JIG_TMUX:-}" != 1 ] && tmux=0
+
+# Interactive means a terminal, no print mode and no subcommand.
+interactive=1
+{ [ -t 0 ] && [ -t 1 ]; } || interactive=0
+[ "${JIG_FORCE_INTERACTIVE:-}" = 1 ] && interactive=1
+case "${args[0]:-}" in install|remove|uninstall|update|list|config|auth|mcp) interactive=0 ;; esac
+for arg in "${args[@]}"; do case "$arg" in -p|--print|--mode|-h|--help|-v|--version|--list-models|--export) interactive=0 ;; esac; done
+
+# WSL: a long-lived terminal (a tmux server, for one) can hold the interop socket of a session that is gone. Windows programs
+# (a browser for a sign-in, the clipboard) then hang and fail with "UtilAcceptVsock: accept4 failed 110". A live socket answers
+# in well under a second; a dead one is replaced by the distro's own, which lives as long as WSL.
+fix_interop() {
+    local probe="${JIG_INTEROP_PROBE:-/mnt/c/Windows/System32/cmd.exe}" fallback="${JIG_INTEROP_FALLBACK:-/run/WSL/1_interop}"
+    [ -n "${WSL_INTEROP:-}" ] && [ "$WSL_INTEROP" != "$fallback" ] && [ -x "$probe" ] && [ -e "$fallback" ] || return 0
+    timeout 2 "$probe" /c exit </dev/null >/dev/null 2>&1 && return 0
+    say "Windows interop socket $WSL_INTEROP does not answer; using $fallback"
+    export WSL_INTEROP="$fallback"
+}
+[ "$interactive" = 1 ] && fix_interop
+
+# After tmux returns: a Pi still running (window closed or detached) can be reattached.
+after_tmux() {
+    if tmux -L jig has-session -t "=$1" 2>/dev/null; then
+        say "Pi is still running ($1); run \`pi\` in this folder to reattach"
+    fi
+}
+
+attach_to() {
+    local status
+    tmux -L jig attach -t "=$1"; status=$?
+    after_tmux "$1"; exit "$status"
+}
+
+when() { date -d "@$1" '+%b %d %H:%M' 2>/dev/null || printf '%s' "$1"; }
+
+# Detached sessions of Jig's server that were started in $PWD, newest activity first, as "<activity> <name>". Sessions open
+# in a window (attached) are never candidates. @jig_cwd is set from inside the session (below).
+detached_here() {
+    local attached activity name cwd
+    tmux -L jig list-sessions -F '#{session_attached} #{session_activity} #{session_name} #{@jig_cwd}' 2>/dev/null |
+        while read -r attached activity name cwd; do
+            if [ "$attached" = 0 ] && [ "$cwd" = "$PWD" ]; then printf '%s %s\n' "$activity" "$name"; fi
+        done | sort -rn
+}
+
+# Reattaches (and does not return) when the user wants a Pi that is still running here.
+reattach() {
+    local found=() i choice tty="${JIG_TTY:-/dev/tty}"
+    mapfile -t found < <(detached_here)
+    case ${#found[@]} in
+        0) return ;;
+        1)
+            say "reattaching to the Pi still running here (${found[0]#* }, last active $(when "${found[0]%% *}")); \`pi --new\` starts another"
+            attach_to "${found[0]#* }"
+            ;;
+    esac
+    say "Pis still running in this folder (\`pi --new\` skips this):"
+    for i in "${!found[@]}"; do
+        printf '  %d) %s  last active %s\n' "$((i + 1))" "${found[$i]#* }" "$(when "${found[$i]%% *}")" >&2
+    done
+    # Opened once, so a menu read from a file advances line by line as a terminal does.
+    { exec 9<"$tty"; } 2>/dev/null || return
+    while :; do
+        printf 'Reattach to which? [1-%d, n or Enter = new session] ' "${#found[@]}" >&2
+        IFS= read -r choice <&9 || [ -n "$choice" ] || choice=n
+        case "$choice" in
+            ""|n|N) exec 9<&-; return ;;
+            *[!0-9]*) ;;
+            *) if [ "$choice" -ge 1 ] && [ "$choice" -le "${#found[@]}" ]; then exec 9<&-; attach_to "${found[$((choice - 1))]#* }"; fi ;;
+        esac
+        say "not a choice"
+    done
+}
+
+# Variables a session does not take from this terminal: those that describe the terminal or the shell rather than the user's
+# setup, and the marker this launcher sets itself. tmux sets TMUX, TMUX_PANE and TERM (tmux-256color, from bin/tmux.conf) in
+# every pane; the others belong to the outer terminal or to a shell that is not the one in the pane, so a copy would be wrong or
+# stale. COLORTERM is not in the list: tmux does not set it, and bin/tmux.conf turns 24-bit colour on for every outer terminal,
+# so Pi inside needs the value this terminal has.
+skipped_variable() {
+    case "$1" in
+        TMUX|TMUX_PANE|TERM|TERM_PROGRAM|TERM_PROGRAM_VERSION|SHLVL|PWD|OLDPWD|_|LINES|COLUMNS|JIG_TMUX_SESSION) return 0 ;;
+    esac
+    return 1
+}
+
+# Pi inside tmux sees this terminal's environment, as if started here. A session otherwise inherits the environment of whichever
+# terminal first started the server, so a variable this terminal sets would be missing and another terminal's would show.
+# tmux's `update-environment` is made for this: a new session copies the variables it names from the environment of the tmux
+# client, which is this process's, and removes those the client does not have. So the names are every variable this launcher
+# exports (copied) and every one the server holds from an earlier terminal (removed unless this terminal sets it).
+# Only names go on the command line, which other processes on the machine can read. The values travel in the client's
+# environment, through tmux's socket. `tmux new-session -e NAME=value` would put every value in argv.
+session_names=()
+declare -A named=()
+add_session_name() {
+    [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || return 0
+    skipped_variable "$1" && return 0
+    [ -z "${named[$1]+x}" ] || return 0
+    named[$1]=1; session_names+=("$1")
+}
+collect_session_names() {
+    local name line
+    while IFS= read -r name; do add_session_name "$name"; done < <(compgen -e)
+    # `-NAME` lines are variables the server already hides from new sessions.
+    while IFS= read -r line; do
+        case "$line" in ""|-*) continue ;; esac
+        add_session_name "${line%%=*}"
+    done < <(tmux -L jig show-environment -g 2>/dev/null)
+}
+
+# Start inside Jig's own tmux server (-L jig, bin/tmux.conf); inside tmux this script runs again.
+if [ "$interactive" = 1 ] && [ "$tmux" = 1 ] && [ -z "${TMUX:-}" ] && command -v tmux >/dev/null; then
+    if [ "$fresh" = 0 ]; then
+        case "${#args[@]}:${args[0]:-}" in 0:|1:-c|1:--continue) reattach ;; esac
+    fi
+    folder="${PWD##*/}"; [ -n "$folder" ] || folder=root
+    name="pi-$(printf %s "$folder" | tr -c 'A-Za-z0-9_-' '-' | cut -c1-24)-$$"
+    collect_session_names
+    # tmux reads an argument that ends in `;` as the end of a command; a backslash before the `;` keeps it as text.
+    session_args=()
+    for arg in "${args[@]}"; do
+        case "$arg" in *\;) arg="${arg%;}\\;" ;; esac
+        session_args+=("$arg")
+    done
+    # One command line for tmux: name the variables, start the session, then put tmux's own list back so a later attach to any
+    # session does not apply this one.
+    tmux -L jig -f "$JIG_HOME/bin/tmux.conf" \
+        set-option -g update-environment "${session_names[*]}" \; \
+        new-session -s "$name" -c "$PWD" -e "JIG_TMUX_SESSION=$name" -- "$self" "${session_args[@]}" \; \
+        set-option -gu update-environment
+    status=$?
+    after_tmux "$name"; exit $status
+fi
+
+# Inside a Jig session: record the folder so a later `pi` here can find this session once it is detached.
+if [ "$interactive" = 1 ] && [ "$tmux" = 1 ] && [ -n "${JIG_TMUX_SESSION:-}" ] \
+    && [ -n "${TMUX:-}" ] && [ "$(basename "${TMUX%%,*}")" = jig ]; then
+    tmux set-option @jig_cwd "$PWD" 2>/dev/null || true
+fi
+
+exec "$pi_bin" "${args[@]}"
