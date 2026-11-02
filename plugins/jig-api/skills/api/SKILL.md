@@ -51,6 +51,10 @@ The reason names what to change. The common ones:
 - `does not run in Prod ... allowProductionReads`, `no server is mapped to it`, `no environment named`: the spec is not set up for that environment. Tell the user what to add; do not run it elsewhere.
 - `has not been fetched yet: run /api refresh`: a Postman cloud collection has no local copy. Only the user can run `/api refresh`; ask them.
 
+## Finding a Postman environment's id
+
+To map a Postman environment in the configuration, use `api postman-environments` (with `collection` when there are several Postman cloud collections, and `workspace` to narrow). It lists names and ids only, with the key the configuration already names. Never fetch an environment with another tool, such as the Postman CLI with `--json`: that brings its secret values into your context.
+
 ## When a write gets no answer
 
 A write that times out or loses its connection may still have gone through. The tool then says the outcome is unknown, and it never sends the write again. Run a read of the resource to see whether the change is there. Do not repeat the write until you have read the result.

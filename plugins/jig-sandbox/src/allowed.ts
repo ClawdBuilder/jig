@@ -1,8 +1,9 @@
 // What the user allowed: ask-first folders and, in the `ask` network mode, hosts; each for this session or always. "Always" is
 // kept in `<agent folder>/jig-sandbox/allowed.json`, a folder the sandbox locks and Pi's file tools guard, so the agent cannot
 // approve itself by writing the file.
-import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { replaceFileDurably } from "../../jig-core/src/kit/files.ts";
 import { parsePattern } from "./network/hosts.ts";
 
 export interface AllowedFile {
@@ -79,10 +80,8 @@ export function createAllowed(agentDir: () => string): Allowed {
     const write = (value: AllowedFile): void => {
         const here = file();
         mkdirSync(path.dirname(here), { recursive: true, mode: 0o700 });
-        const temporary = `${here}.${process.pid}.tmp`;
-        writeFileSync(temporary, serialize(value), { mode: 0o600 });
-        chmodSync(temporary, 0o600);
-        renameSync(temporary, here);
+        // Synced before and after the rename, so a crash cannot leave the file empty.
+        replaceFileDurably(here, serialize(value), 0o600);
     };
     const matches = (item: string, what: string): boolean =>
         item === what || item.endsWith(`/${what.replace(/^~\//, "")}`);

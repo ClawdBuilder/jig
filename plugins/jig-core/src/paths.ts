@@ -4,7 +4,6 @@
 //
 // This module does not import Pi: `index.ts` passes Pi's agent folder in, which keeps the unit tests of the small
 // modules from loading all of Pi.
-import { randomBytes } from "node:crypto";
 import {
     chmodSync,
     closeSync,
@@ -13,13 +12,13 @@ import {
     mkdirSync,
     openSync,
     readdirSync,
-    renameSync,
     rmdirSync,
     unlinkSync,
     writeSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import { replaceFileDurably } from "./kit/files.ts";
 
 export const CONFIG_FILE_NAME = "jig.json";
 
@@ -77,21 +76,11 @@ export function createPrivateFile(file: string, data: string): void {
     }
 }
 
-/** Writes a private file in one step. The data goes to a new temporary file next to it, which then takes the place
- *  of the file, so a reader (or a crash) never sees half of one. For files that are written again and again. */
+/** Writes a private file in one step. The data goes to a new temporary file next to it, which is synced to disk and
+ *  then takes the place of the file, and the folder is synced after, so a reader (or a crash, or a killed machine)
+ *  never sees half of one or an empty one. For files that are written again and again. */
 export function replacePrivateFile(file: string, data: string): void {
-    const temp = `${file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-    createPrivateFile(temp, data);
-    try {
-        renameSync(temp, file);
-    } catch (error) {
-        try {
-            unlinkSync(temp);
-        } catch {
-            // Gone already.
-        }
-        throw error;
-    }
+    replaceFileDurably(file, data, 0o600);
 }
 
 /** Deletes the regular files directly in `dir` that were last changed more than `maxAgeDays` ago, and returns how

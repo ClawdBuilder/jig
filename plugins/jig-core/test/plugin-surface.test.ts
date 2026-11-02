@@ -34,7 +34,11 @@ const EXPECTED: Record<string, Given> = {
         commands: ["ps", "sandbox"],
         sections: ["sandbox"],
     },
-    "jig-memory": { tools: {}, commands: ["ticket"], sections: ["memory"] },
+    "jig-memory": {
+        tools: { ticket: ["add-check", "close-check", "list-checks", "save-evidence"] },
+        commands: ["ticket"],
+        sections: ["memory"],
+    },
     "jig-workflow": {
         tools: { workflow: ["advance", "back", "bind", "list", "scenario", "start", "status", "submit-plan", "test"] },
         commands: ["workflow"],
@@ -114,7 +118,7 @@ const EXPECTED: Record<string, Given> = {
     },
     "jig-logs": { tools: { logs: [] }, commands: [], sections: ["logs"] },
     "jig-api": {
-        tools: { api: ["call", "list", "run", "run-folder", "show"] },
+        tools: { api: ["call", "list", "postman-environments", "run", "run-folder", "show"] },
         commands: ["api"],
         sections: ["api"],
     },

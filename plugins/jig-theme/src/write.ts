@@ -5,9 +5,10 @@
 // deleted, only when it is absent or its hash is still the one recorded. A file that changed since (you edited it), a file
 // that is not in the record (you wrote it), and anything that is not a plain file (a link into your dotfiles) is left as
 // it is and said once.
-import { createHash, randomBytes } from "node:crypto";
-import { type Stats, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { type Stats, lstatSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
+import { replaceFileDurably } from "../../jig-core/src/kit/files.ts";
 import { build, derive, themeText } from "./build.ts";
 import type { PaletteSpec } from "./config.ts";
 import { PALETTE_NAME } from "./config.ts";
@@ -64,14 +65,8 @@ function look(file: string): Look {
 
 /** Written beside the file and moved over it, so Pi, which watches the folder, never reads half a theme. */
 function writeAtomic(file: string, text: string, mode: number): void {
-    const temp = `${file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-    try {
-        writeFileSync(temp, text, { mode, flag: "wx" });
-        renameSync(temp, file);
-    } catch (error) {
-        rmSync(temp, { force: true });
-        throw error;
-    }
+    // Synced before and after the rename, so a crash cannot leave a theme that is empty.
+    replaceFileDurably(file, text, mode);
 }
 
 const failure = (error: unknown): string => String((error as NodeJS.ErrnoException)?.code ?? "error");

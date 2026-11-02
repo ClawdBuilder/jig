@@ -10,6 +10,11 @@ with mode 0700. Files are created with mode 0600 and starting text: a notes
 template, an index header, a `plan.md` heading, and a `ticket.json` with an
 empty `repositories` list. A file that exists is never overwritten.
 
+Every file the plugin writes is synced to disk before it takes its name, and a
+file it replaces is written beside it, synced, renamed over it, and the folder is
+synced (`jig-core`'s `kit/files.ts`). A crash, even of the whole machine, leaves
+the old text or the new, never an empty file.
+
 A key is a plain folder name: a letter or digit, then letters, digits, `_`, `.`
 or `-`, at most 64 characters. The words `close`, `recall` and `off` are
 commands, so `/ticket` cannot activate a ticket with one of those keys.
@@ -42,8 +47,13 @@ because the session already holds them.
 ## The notes message
 
 When a ticket becomes active, and after each compaction, `notes.md` is sent as a
-message, with the folder above it. It is appended without starting a turn. A
-message over 16 KB is cut, and says where the rest is.
+message, with the folder and today's date above it and the
+[open checks](handoff.md#open-checks) below it. It is appended without starting a
+turn. A message over 16 KB is cut, and says where the rest is.
+
+Today's date is the local date of this machine's clock, such as `2026-11-02`. A
+heading the agent adds should carry it, not a date copied from an earlier heading.
+The history files the plugin writes are headed with the local date and time too.
 
 ## The `## Now` block
 
@@ -55,9 +65,15 @@ the lines after the top again and replaces that line.
 
 ## Reminders
 
-Every tool result counts, Pi's file tools included, until `notes.md` changes.
-The fifteenth result carries a reminder line that names `## Now`. A change
-restarts the count, and the edit that made the change does not count.
+Every tool result counts, Pi's file tools included, until the `## Now` block
+changes. The fifteenth result carries a reminder line that names `## Now`,
+today's date, and how many checks are open.
+- **Only `## Now` counts.** An edit elsewhere in `notes.md`, such as a new
+  decision, does not restart the count: `## Now` can go stale under a busy file.
+- **The block** is the `## Now` heading and its lines up to the next `#` or `##`
+  heading; a `###` heading inside it is part of it.
+- **A change restarts the count,** and the edit that made the change does not
+  count.
 
 ## Evidence
 
@@ -71,6 +87,25 @@ of up to 8 KB; a longer text is cut and the file says so.
 - **A tool name that is not a plain name** is written as `unnamed`.
 - **A result that cannot be saved** is a warning, and the tool's result is not
   changed.
+- **Results of the `ticket` tool** are not saved again. Text the user pasted is
+  saved by its `save-evidence` action, with the index line
+  `- <time> | pasted | <label> | <file>` (see [Handoff](handoff.md#pasted-evidence)).
+
+## Empty files
+
+When a ticket becomes active, and when a session restores it, its folder is
+searched for files that are empty (0 bytes) and were changed in the last 7 days.
+Such a file is a sign that a write was cut short, for example by a shell redirect
+when the machine was killed.
+- **The agent gets a message, and you get a warning,** such as `These files are
+  empty, possibly cut short by a crash or an unfinished write:
+  remove-services/data.csv (changed 19:15). Check before using them.`
+- **At most 10 files are named,** newest first, and the rest are counted.
+- **Not searched:** `evidence/`, because the plugin writes those files itself,
+  synced, and a tool that printed nothing is a real empty result; `.tmp` files,
+  the leftovers of a write whose file is intact; and links, which are never
+  followed.
+- **Nothing is repaired.** Only a person knows what the file should hold.
 
 ## Known gap
 

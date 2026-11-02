@@ -58,11 +58,14 @@ to their local copy and says what changed.
 | `run` | depends on the request | Runs one saved request in an environment, with variables |
 | `run-folder` | the strictest of its requests | Runs a folder in order, stopping at the first failure |
 | `call` | depends on the method | An ad-hoc request where you allowed it. Off by default, never production |
+| `postman-environments` | read | The names and ids of the Postman environments a key can see, never their values |
 
 - **`list`** can filter by text, and says whether each request reads.
 - **`run`:** `GET`, `HEAD` and `OPTIONS` read; other methods write, unless the
   request is in `reads`.
 - **`run-folder`** gives one line per request.
+- **`postman-environments`** uses a Postman cloud collection's key, to find the id to map
+  ([Listing environments](docs/postman-cloud.md#listing-environments)).
 
 A request's name is its action, so a rule can name one request:
 `{ "tool": "api", "action": "Create order", "environment": "staging", "decision": "allow" }`.

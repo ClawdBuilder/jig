@@ -9,7 +9,8 @@ How a Postman collection (format v2.1; v2.0 reads alike) and its environment fil
 ```
 
 A collection kept in a Postman workspace is read the same way, from a local copy that `/api refresh` fetches
-([Postman cloud](postman-cloud.md)). The environment's name is the one given here, not the `name` inside the file.
+([Postman cloud](postman-cloud.md)). To find the id of an environment kept there, the `postman-environments` action lists names
+and ids, never values ([Listing environments](postman-cloud.md#listing-environments)). The environment's name is the one given here, not the `name` inside the file.
 
 The folder the collection file is in is the **collection folder**: a file a request uploads must sit inside it (see
 [Safety](safety.md#files)). Nothing is read until a call needs it, and the files are read again for every call, so an export that

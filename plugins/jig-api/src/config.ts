@@ -6,7 +6,7 @@ import { isObject, shown } from "./engine/values.ts";
 import type { Collection } from "./model.ts";
 import { checkReference } from "./reference.ts";
 import { SOURCES } from "./sources/index.ts";
-import type { Refresher } from "./sources/source.ts";
+import type { EnvironmentLister, Refresher } from "./sources/source.ts";
 
 /** A collection as configured: what to call it and how to read it. */
 export interface ConfiguredCollection {
@@ -16,6 +16,8 @@ export interface ConfiguredCollection {
     load(): Collection;
     /** Set when the collection is a local copy of something fetched (Postman's cloud): what `/api refresh` runs. */
     refresher?: Refresher;
+    /** Set when the collection's service can list its environments by name and id (Postman's cloud). */
+    environmentLister?: EnvironmentLister;
 }
 
 /** What a collection's environment name means to jig-core's rules, and how its requests get to the network. */
@@ -101,7 +103,14 @@ function checkCollection(name: string, raw: unknown, errors: string[]): Configur
     const config = source.check(raw, at, errors);
     if (config === undefined) return undefined;
     const refresher = source.refresher?.(config, name);
-    return { name, kind, load: () => source.load(config, name), ...(refresher === undefined ? {} : { refresher }) };
+    const environmentLister = source.environmentLister?.(config, name);
+    return {
+        name,
+        kind,
+        load: () => source.load(config, name),
+        ...(refresher === undefined ? {} : { refresher }),
+        ...(environmentLister === undefined ? {} : { environmentLister }),
+    };
 }
 
 function checkCollections(raw: unknown, errors: string[]): Map<string, ConfiguredCollection> | undefined {

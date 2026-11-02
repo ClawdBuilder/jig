@@ -168,6 +168,11 @@ talks to Pi.
 - **`kit/abort.ts`:** `untilAborted(work, signal)` rejects with the signal's
   reason when it fires, even if `work` ignores its signal. It always observes
   `work`, so a late failure is never an unhandled rejection.
+- **`kit/files.ts`:** writing a file so that a crash, a power cut or a killed virtual machine cannot leave it
+  empty. `createFileDurably(file, data, mode?)` makes a new file (`EEXIST` when it exists) and syncs it before
+  closing; `replaceFileDurably(file, data, mode?)` writes a synced temporary file beside the file, renames it over
+  the file and syncs the folder; `syncFolder(dir)` is that last step, and ignores a file system that cannot sync a
+  folder (`EINVAL` and the like). The mode is `0600` unless given.
 - **`kit/ports.ts`:** what a tunnel that starts a program needs, using nothing but
   `127.0.0.1`. A company plugin copies it whole, as it does `client.ts`.
   - **`freePort()`** gives a port nothing listens on: a listener that was just

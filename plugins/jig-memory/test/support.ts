@@ -4,9 +4,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { TestContext } from "node:test";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { publishJig, withdrawJig } from "../../jig-core/src/client.ts";
-import type { JigApi } from "../../jig-core/src/contract.ts";
+import type { JigApi, ToolDeclaration } from "../../jig-core/src/contract.ts";
 import { type CardFront, type CardSections, renderCard } from "../src/card.ts";
 import factory from "../src/index.ts";
 import { ticketPaths } from "../src/store.ts";
@@ -52,6 +52,10 @@ export interface FakeJig {
     reads: string[];
     /** The check each plugin registered for its section, by section name. */
     checks: Map<string, (raw: unknown) => readonly string[]>;
+    /** The tools declared, by name. */
+    declared: Map<string, ToolDeclaration>;
+    /** Every text given to mask.text, in order. The fake masks an email address as `email#1`. */
+    masked: string[];
 }
 
 /** `sections` is what jig.json holds, by section name: a section that is absent is undefined here. */
@@ -59,8 +63,19 @@ export function fakeJig(sections: Record<string, unknown>): FakeJig {
     const tickets: Array<string | undefined> = [];
     const reads: string[] = [];
     const checks = new Map<string, (raw: unknown) => readonly string[]>();
+    const declared = new Map<string, ToolDeclaration>();
+    const masked: string[] = [];
     const api = {
         version: 1,
+        declareTool: (declaration: ToolDeclaration) => {
+            declared.set(declaration.tool, declaration);
+        },
+        mask: {
+            text: (input: string) => {
+                masked.push(input);
+                return input.replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "email#1");
+            },
+        },
         setTicket: (key: string | undefined) => {
             tickets.push(key);
         },
@@ -74,7 +89,7 @@ export function fakeJig(sections: Record<string, unknown>): FakeJig {
             },
         },
     };
-    return { api: api as unknown as JigApi, tickets, reads, checks };
+    return { api: api as unknown as JigApi, tickets, reads, checks, declared, masked };
 }
 
 /** Publishes a fake jig-core for the rest of the test, the way jig-core itself does at start-up. */
@@ -113,6 +128,7 @@ export class FakePi {
         [];
     readonly events = new Map<string, Handler[]>();
     readonly commands = new Map<string, (args: string, ctx: ExtensionContext) => Promise<void>>();
+    readonly tools = new Map<string, ToolDefinition>();
     readonly ctx: ExtensionContext;
 
     constructor(cwd: string, log: LogEntry[] = []) {
@@ -137,6 +153,38 @@ export class FakePi {
 
     on(event: string, handler: Handler): void {
         this.events.set(event, [...(this.events.get(event) ?? []), handler]);
+    }
+
+    registerTool(tool: ToolDefinition): void {
+        this.tools.set(tool.name, tool);
+    }
+
+    /**
+     * Runs the `ticket` tool as Pi would: its execute, then every tool_result handler with what it returned. Returns what
+     * the model would read, and whether it is an error.
+     */
+    async tool(input: Record<string, unknown>, name = "ticket"): Promise<{ text: string; isError: boolean }> {
+        const tool = this.tools.get(name);
+        if (tool === undefined) throw new Error(`no tool ${name}`);
+        let result: { content: Array<{ type: string; text?: string }>; details?: unknown; isError: boolean };
+        try {
+            const done = await tool.execute("call", input as never, undefined, undefined, this.ctx as never);
+            result = {
+                content: done.content as Array<{ type: string; text?: string }>,
+                details: done.details,
+                isError: false,
+            };
+        } catch (error) {
+            return { text: error instanceof Error ? error.message : String(error), isError: true };
+        }
+        for (const handler of this.events.get("tool_result") ?? []) {
+            const change = handler(
+                { type: "tool_result", toolName: name, toolCallId: "call", input, ...result },
+                this.ctx,
+            ) as Partial<typeof result> | undefined;
+            if (change !== undefined) result = { ...result, ...change };
+        }
+        return { text: result.content.map((part) => part.text ?? "").join("\n"), isError: result.isError };
     }
 
     registerCommand(name: string, options: { handler: (args: string, ctx: ExtensionContext) => Promise<void> }): void {

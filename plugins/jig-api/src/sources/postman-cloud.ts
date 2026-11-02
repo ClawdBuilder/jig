@@ -5,21 +5,19 @@
 //
 // The copy is `<state>/api/postman-cloud/<id>.json`, private to the user (0600). It holds the collection as the API returns it
 // (collection format v2.1) and each environment as the API returns it, except that the value of a secret variable is not
-// kept. The API key is never in the copy, in a message or in an error.
+// kept. The API key is never in the copy, in a message or in an error. The calls to the API itself are in postman-api.ts.
 // API: https://learning.postman.com/api-docs/api-reference/collections/get-collection (and .../environments/get-environment)
-import fs from "node:fs";
 import path from "node:path";
-import { LostReplyError, NotSentError } from "../engine/wire.ts";
-import { sealed } from "../engine/plan.ts";
-import type { Plan } from "../engine/plan.ts";
-import { isObject, oneLine, shortList } from "../engine/values.ts";
+import { replaceFileDurably } from "../../../jig-core/src/kit/files.ts";
+import { isObject, shortList } from "../engine/values.ts";
 import { pathOf } from "../model.ts";
 import type { Collection, Environment, Problem, SavedRequest } from "../model.ts";
 import { checkReference } from "../reference.ts";
 import { apiStateDir, makePrivateDir } from "../state.ts";
 import { readFailure, readText, whyNotRead } from "./files.ts";
+import { fetchJson, listEnvironments } from "./postman-api.ts";
 import { collectionFrom, environmentFrom } from "./postman.ts";
-import type { RefreshDeps, RefreshReport, Refresher, Source } from "./source.ts";
+import type { RefreshReport, Refresher, Source } from "./source.ts";
 
 export interface CloudConfig {
     /** The collection's unique id, `<owner>-<uuid>`. */
@@ -34,17 +32,12 @@ export interface CloudConfig {
     signIn?: string;
 }
 
-/** The hosts of the Postman API, by region. A key is sent to these and to nothing else. */
-const API_HOSTS = { us: "https://api.postman.com", eu: "https://api.eu.postman.com" } as const;
 /** As large as a collection file may be elsewhere. */
 const MAX_BYTES = 32 * 1024 * 1024;
 const MAX_ENVIRONMENTS = 20;
 const ID = /^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/;
 const NAME = /^[^\u0000-\u001f\u007f]{1,60}$/;
 const FIELDS: ReadonlySet<string> = new Set(["cloud", "apiKey", "environments", "region", "transport", "signIn"]);
-/** The shape of a Postman API key, removed from anything a message could repeat from a transport. */
-const KEY_SHAPE = /PMAK-[A-Za-z0-9-]{10,}/g;
-
 // ---------------------------------------------------------------------------------------------------------------------
 // Configuration
 
@@ -184,14 +177,10 @@ function readCopy(id: string, problems?: Problem[]): Copy | undefined {
     return undefined;
 }
 
-/** Writes the copy so that nobody else can read it, and so that a reader never sees half of it. */
+/** Writes the copy so that nobody else can read it, and so that a reader, or a crash, never sees half of it or an empty one. */
 function writeCopy(id: string, copy: Copy): void {
     const directory = makePrivateDir("postman-cloud");
-    const file = path.join(directory, `${id}.json`);
-    const temporary = path.join(directory, `${id}.json.${process.pid}.tmp`);
-    fs.writeFileSync(temporary, JSON.stringify(copy), { mode: 0o600, flag: "w" });
-    fs.chmodSync(temporary, 0o600);
-    fs.renameSync(temporary, file);
+    replaceFileDurably(path.join(directory, `${id}.json`), JSON.stringify(copy), 0o600);
 }
 
 /** A request that uploads a file cannot be run from a copy: the files are not in it. */
@@ -248,76 +237,6 @@ function load(config: CloudConfig, name: string): Collection {
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Fetching
-
-/** What the service answered, in a few words that never repeat its own: a key can be echoed in an error, a message can be long. */
-function whyStatus(status: number): string {
-    if (status === 401 || status === 403) return `the API key was not accepted (HTTP ${status})`;
-    if (status === 400 || status === 404)
-        return `the service does not know it (HTTP ${status}): check the id, and that the key can see it`;
-    if (status === 429) return "the service asked for fewer requests (HTTP 429): try again in a minute";
-    if (status >= 500) return `the service failed (HTTP ${status})`;
-    return `the service answered HTTP ${status}`;
-}
-
-type Fetched = { ok: true; value: unknown } | { ok: false; reason: string };
-
-/** Any text that could hold a key, with the key's shape removed and cut short. */
-const cleaned = (text: string): string => oneLine(text.replace(KEY_SHAPE, "[redacted]"), 120);
-
-/** How the fetch is carried: by the company's transport or sign-in service if one is named, else by the network. */
-function carriedBy(config: CloudConfig): Plan["signIn"] {
-    if (config.transport !== undefined) return { kind: "transport", name: config.transport };
-    if (config.signIn !== undefined) return { kind: "service", name: config.signIn };
-    return { kind: "none" };
-}
-
-async function fetchJson(
-    config: CloudConfig,
-    name: string,
-    route: string,
-    deps: RefreshDeps,
-    signal: AbortSignal | undefined,
-): Promise<Fetched> {
-    const base = deps.serviceUrl ?? API_HOSTS[config.region];
-    const plan: Plan = sealed({
-        label: `api refresh ${name}`,
-        system: `api:${name}`,
-        request: "refresh",
-        collection: name,
-        environment: "Postman cloud",
-        jigEnvironment: "external",
-        method: "GET",
-        url: `${base}${route}`,
-        // The key is a secret piece: it is read when the request is sent, and removed from whatever comes back.
-        headers: [["X-API-Key", [{ secret: "apiKey", reference: config.apiKey }]]],
-        body: undefined,
-        signIn: carriedBy(config),
-        timeoutSec: deps.timeoutSec,
-        allowPlainLocal: deps.allowPlainLocal,
-        maxAnswerBytes: MAX_BYTES,
-    });
-    try {
-        const { answer } = await deps.http.send(plan, signal);
-        if (answer.status !== 200) return { ok: false, reason: whyStatus(answer.status) };
-        if (answer.cut) return { ok: false, reason: `the answer is larger than ${MAX_BYTES / (1024 * 1024)} MiB` };
-        if (answer.binary) return { ok: false, reason: "the answer is not text" };
-        try {
-            return { ok: true, value: JSON.parse(answer.text) as unknown };
-        } catch {
-            return { ok: false, reason: "the answer is not JSON" };
-        }
-    } catch (error) {
-        if (error instanceof NotSentError) return { ok: false, reason: `${cleaned(error.message)} (nothing was sent)` };
-        if (error instanceof LostReplyError) {
-            const reason =
-                error.reason === "timeout"
-                    ? `no answer within ${deps.timeoutSec} s`
-                    : `no answer (${cleaned(error.message)})`;
-            return { ok: false, reason };
-        }
-        return { ok: false, reason: "it failed" };
-    }
-}
 
 /** An environment as the API returns it, without the value of a secret. Also the names of the secrets that had one. */
 function withoutSecretValues(environment: Record<string, unknown>): {
@@ -410,7 +329,10 @@ function refresher(config: CloudConfig, name: string): Refresher {
         async run(deps, signal): Promise<RefreshReport> {
             const before = readCopy(config.cloud);
             const kept = before === undefined ? "Nothing was saved." : "The local copy was not changed.";
-            const got = await fetchJson(config, name, `/collections/${config.cloud}`, deps, signal);
+            const got = await fetchJson(config, name, `/collections/${config.cloud}`, deps, signal, {
+                request: "refresh",
+                maxBytes: MAX_BYTES,
+            });
             if (!got.ok)
                 return { lines: [`${name}: could not fetch the collection: ${got.reason}. ${kept}`], failed: true };
             const collection = isObject(got.value) ? got.value.collection : undefined;
@@ -422,7 +344,10 @@ function refresher(config: CloudConfig, name: string): Refresher {
             let failed = false;
             const environments: Record<string, unknown> = {};
             for (const [label, id] of config.environments) {
-                const fetched = await fetchJson(config, name, `/environments/${id}`, deps, signal);
+                const fetched = await fetchJson(config, name, `/environments/${id}`, deps, signal, {
+                    request: "refresh",
+                    maxBytes: MAX_BYTES,
+                });
                 const environment = fetched.ok && isObject(fetched.value) ? fetched.value.environment : undefined;
                 if (!fetched.ok || !isObject(environment) || !Array.isArray(environment.values)) {
                     failed = true;
@@ -466,4 +391,7 @@ export const postmanCloud: Source<CloudConfig> = {
     check,
     load,
     refresher: (config, name) => refresher(config, name),
+    environmentLister: (config, name) => ({
+        list: (workspace, deps, signal) => listEnvironments(config, name, workspace, deps, signal),
+    }),
 };
