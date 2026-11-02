@@ -1,7 +1,7 @@
 // The git actions that reach the remote: fetch, which only reads it, and push, the one that changes it. A push shows the
 // commits it will send, and sends only what was shown. A push whose reply is lost is checked once with `ls-remote` and
 // never repeated.
-import { announcePushed } from "./events.ts";
+import { announcePushed, followLine } from "./events.ts";
 import { checkBranch, checkRemote } from "./names.ts";
 import type { Call, Planned } from "./previews.ts";
 import { digest, readOnly } from "./previews.ts";
@@ -160,13 +160,13 @@ export async function planPush(params: PushParams, call: Call): Promise<Planned>
                     );
                 landed = true;
             }
-            await announcePushed({ repo, settings, branch, sha, signal });
+            const follow = followLine(await announcePushed({ repo, settings, branch, sha, signal }));
             const note =
                 lostWhy === undefined
                     ? ""
                     : ` (The reply was lost (${lostWhy}); one check shows ${remote} has it. Nothing was sent twice.)`;
             return {
-                text: `Pushed ${branch} (${short}) from ${repo.name} to ${remote}${force ? " with --force-with-lease" : ""}; upstream set.${note}`,
+                text: `Pushed ${branch} (${short}) from ${repo.name} to ${remote}${force ? " with --force-with-lease" : ""}; upstream set.${note}${follow === undefined ? "" : `\n${follow}`}`,
                 facts: { commits: pending },
                 details: { branch, sha, pushed: pending, force },
             };

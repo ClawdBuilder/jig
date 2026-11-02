@@ -111,3 +111,20 @@ test("the protected-branch rule is the same on GitLab: the default branch and gi
     assert.deepEqual(pushedEvents(), []);
     assert.equal(h.glab.calls().length, 0);
 });
+
+test("the last line of the push result speaks of the merge request, and of the checks of the push when there is none", async () => {
+    const withMr = unpushed("feature/f1", "acme", "gitlab.com");
+    h.glab.on("api", { json: [mr({ iid: 42 }, `acme/${withMr.name}`)] });
+    const text = ok(await h.call("git", { action: "push", repo: withMr.name }));
+    assert.equal(text.split("\n").length, 2);
+    assert.match(
+        text.split("\n")[1] ?? "",
+        /^To hear when the checks of merge request 42 finish, start a watch: the ci tool's watch action wakes you /,
+    );
+    const without = unpushed("feature/f2", "acme", "gitlab.com");
+    h.glab.on("api", { json: [] });
+    assert.match(
+        ok(await h.call("git", { action: "push", repo: without.name })).split("\n")[1] ?? "",
+        /^To hear when the checks of this push finish, start a watch: /,
+    );
+});
