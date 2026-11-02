@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { localDate, localTime } from "../src/notes.ts";
 import { ensureTicket, isSafeKey, mentionedTickets, settleNotes, stampOf, ticketPaths } from "../src/store.ts";
 import { tempFolder } from "./support.ts";
 
@@ -42,7 +43,9 @@ test("notes over the limit move their older ## Now lines to history, keep the to
     const settled = settleNotes(folder, "ACME-1", now);
     const historyFile = path.join(paths.history, "2026-10-30T10-15-00.123Z.md");
     assert.equal(read(paths.notes), settled, "the file on disk is what is returned");
-    assert.match(read(historyFile), /^# Moved from ## Now at 2026-10-30T10:15:00\.123Z\n\n- finding \d+: .*\n/);
+    // The heading carries the local date and time, from the clock, and the exact time.
+    const heading = `# Moved from ## Now on ${localDate(now)} at ${localTime(now)} (2026-10-30T10:15:00.123Z)`;
+    assert.ok(read(historyFile).startsWith(`${heading}\n\n- finding `), read(historyFile).slice(0, 80));
     assert.match(read(historyFile), /- finding 39: /);
     assert.doesNotMatch(read(historyFile), /- finding 0: /);
     assert.match(

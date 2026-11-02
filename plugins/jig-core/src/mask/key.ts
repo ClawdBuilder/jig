@@ -1,15 +1,7 @@
 import { randomBytes } from "node:crypto";
-import {
-    chmodSync,
-    linkSync,
-    mkdirSync,
-    readFileSync,
-    readdirSync,
-    renameSync,
-    unlinkSync,
-    writeFileSync,
-} from "node:fs";
+import { chmodSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { createFileDurably, syncFolder } from "../kit/files.ts";
 import { MaskError } from "./error.ts";
 
 const KEY_BYTES = 32;
@@ -72,14 +64,17 @@ export function dailyMaskKey(stateDir: string, now: Date = new Date()): Uint8Arr
     // processes start the day together the first link wins and both use its key.
     const fresh = randomBytes(KEY_BYTES);
     const temp = `${file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-    writeFileSync(temp, fresh, { mode: 0o600, flag: "wx" });
+    // Synced before it is linked, so a crash cannot leave a key file that is empty.
+    createFileDurably(temp, fresh, 0o600);
     try {
         linkSync(temp, file);
+        syncFolder(dir);
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
         const winner = readKey(file);
         if (winner !== undefined) return winner;
         renameSync(temp, file); // the existing file is damaged: replace it
+        syncFolder(dir);
         return new Uint8Array(fresh);
     } finally {
         try {

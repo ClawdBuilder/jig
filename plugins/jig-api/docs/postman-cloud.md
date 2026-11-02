@@ -54,6 +54,26 @@ orders: fetched the collection and 1 environment
 - A collection of up to 32 MiB is fetched; the usual limit on an answer does not apply to it.
 - Without a name it refreshes every Postman cloud collection. A collection read from files has nothing to fetch.
 
+## Listing environments
+
+To map an environment you need its id. The `postman-environments` action of the `api` tool lists the environments the key of a
+Postman cloud collection can see, so neither you nor the agent has to fetch one to learn its id:
+
+```text
+Postman environments the key can see, with the key of orders: 2 (names and ids only; values are never fetched)
+- Production | 12345678-0b1c2d3e-0000-4000-8000-000000000001 | owner 12345678
+- Staging | 12345678-5daabc50-8451-43f6-922d-96b403b4f28e | owner 12345678 | updated 2026-10-30T10:15:00.000Z
+```
+
+- **Names and ids only.** It calls the API's list of environments, whose answer has no variables, and reads only each one's name,
+  id (the `uid`), owner and update time. A value is never fetched, kept or shown.
+- **The key is the collection's:** `collection` names the Postman cloud collection whose `apiKey`, `region`, `transport` or
+  `signIn` to use; it can be left out when there is one. `jig-core` reads and attaches the key, as for a refresh.
+- **`workspace`** narrows the list to one workspace by its id. Without it, the list is every environment the key can see, up to 200.
+- **A read outside the machine,** so it runs without asking, and nothing is saved.
+
+Another way to find an id, such as the Postman CLI with `--json`, prints the environment's values too; prefer this action.
+
 ## A collection access key is not used
 
 Postman can give a read-only key for one collection, which goes in the address (`?access_key=...`). An address ends up in logs and in

@@ -4,7 +4,7 @@
 // The script is the same one for both programs. What it answers is written to `world.json` by `answer()`; each call it gets
 // is appended to `calls.jsonl` with the program, its argument list, what arrived on standard input, and the one environment
 // variable the programs are given (the kubeconfig).
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -127,7 +127,10 @@ process.stdin.on("end", () => {
     const list = Array.isArray(answers) ? answers : [answers];
     const reply = list[Math.min(counts[key] || 0, list.length - 1)];
     counts[key] = (counts[key] || 0) + 1;
-    fs.writeFileSync(countFile, JSON.stringify(counts));
+    // Replaced whole (temp file, then rename): fake programs run at once, and one may read while another writes.
+    const temp = countFile + "." + process.pid;
+    fs.writeFileSync(temp, JSON.stringify(counts));
+    fs.renameSync(temp, countFile);
     const respond = () => {
         const out = reply.stdout === undefined ? "" : typeof reply.stdout === "string" ? reply.stdout : JSON.stringify(reply.stdout);
         process.stdout.write((reply.echoStdin ? stdin : "") + out + (reply.extraBytes ? "x".repeat(reply.extraBytes) : ""));
@@ -160,7 +163,8 @@ export function installFakePrograms(): FakePrograms {
         bin,
         env: { FAKE_PROGRAMS_DIR: dir },
         answer(world) {
-            writeFileSync(path.join(dir, "world.json"), JSON.stringify(world));
+            writeFileSync(path.join(dir, "world.json.tmp"), JSON.stringify(world));
+            renameSync(path.join(dir, "world.json.tmp"), path.join(dir, "world.json"));
             rmSync(path.join(dir, "counts.json"), { force: true });
         },
         calls: () => all().filter((call) => call.program === "kubectl"),

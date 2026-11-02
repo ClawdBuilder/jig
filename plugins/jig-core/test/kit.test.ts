@@ -1,7 +1,11 @@
 // The helpers plugins share from `src/kit/`: small, stateless, and the same for every plugin that imports them.
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, test } from "node:test";
 import { untilAborted } from "../src/kit/abort.ts";
+import { createFileDurably, replaceFileDurably, syncFolder } from "../src/kit/files.ts";
 import { printable, stringOf } from "../src/kit/text.ts";
 import { InputError, isObject } from "../src/kit/values.ts";
 
@@ -81,5 +85,58 @@ describe("untilAborted", () => {
         await untilAborted(Promise.resolve(1), controller.signal);
         // Aborting afterwards changes nothing and throws nothing.
         controller.abort();
+    });
+});
+
+describe("durable files", () => {
+    const folder = (t: { after(fn: () => void): void }): string => {
+        const dir = mkdtempSync(path.join(os.tmpdir(), "jig-kit-files-"));
+        t.after(() => rmSync(dir, { recursive: true, force: true }));
+        return dir;
+    };
+
+    test("createFileDurably writes a new file with its mode, and refuses one that exists", (t) => {
+        const dir = folder(t);
+        const file = path.join(dir, "a.txt");
+        createFileDurably(file, "hello\n", 0o640);
+        assert.equal(readFileSync(file, "utf8"), "hello\n");
+        assert.equal(statSync(file).mode & 0o777, 0o640);
+        assert.throws(() => createFileDurably(file, "again"), { code: "EEXIST" });
+        assert.equal(readFileSync(file, "utf8"), "hello\n");
+    });
+
+    test("createFileDurably writes bytes whole, however large", (t) => {
+        const file = path.join(folder(t), "big.bin");
+        const bytes = new Uint8Array(3 * 1024 * 1024).map((_, n) => n % 251);
+        createFileDurably(file, bytes);
+        assert.deepEqual(new Uint8Array(readFileSync(file)), bytes);
+        assert.equal(statSync(file).mode & 0o777, 0o600, "private by default");
+    });
+
+    test("replaceFileDurably replaces the file and leaves no temporary file", (t) => {
+        const dir = folder(t);
+        const file = path.join(dir, "state.json");
+        writeFileSync(file, "old");
+        replaceFileDurably(file, "new");
+        assert.equal(readFileSync(file, "utf8"), "new");
+        assert.deepEqual(readdirSync(dir), ["state.json"]);
+    });
+
+    test("replaceFileDurably that cannot rename leaves the old file and removes its temporary file", (t) => {
+        const dir = folder(t);
+        const taken = path.join(dir, "taken");
+        // A folder with something in it cannot be replaced by a file.
+        createFileDurably(path.join(dir, "keep"), "x");
+        mkdirSync(taken);
+        createFileDurably(path.join(taken, "inside"), "x");
+        assert.throws(() => replaceFileDurably(taken, "new"));
+        assert.deepEqual(readdirSync(dir).sort(), ["keep", "taken"]);
+        assert.deepEqual(readdirSync(taken), ["inside"]);
+    });
+
+    test("syncFolder syncs a folder, and a missing folder is an error", (t) => {
+        const dir = folder(t);
+        syncFolder(dir);
+        assert.throws(() => syncFolder(path.join(dir, "missing")), { code: "ENOENT" });
     });
 });

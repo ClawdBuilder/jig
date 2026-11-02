@@ -187,7 +187,9 @@ describe("the network in open mode is the machine's own", { skip }, () => {
     before(async () => {
         world = await makeWorld();
         server = net.createServer((socket) => {
-            socket.on("data", () => socket.end("HTTP/1.0 200 OK\r\n\r\nlocal-server-says-hello\n"));
+            // Answer once: on a slow machine the request can arrive in two pieces, and a second end() is a write after end.
+            socket.once("data", () => socket.end("HTTP/1.0 200 OK\r\n\r\nlocal-server-says-hello\n"));
+            socket.on("error", () => {});
         });
         await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
         port = (server.address() as net.AddressInfo).port;

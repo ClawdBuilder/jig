@@ -19,7 +19,7 @@ fails when a file of `src/` is missing here or a file listed here is gone, so th
 
 | File | What it does | Called by |
 |---|---|---|
-| `tool.ts` | The `api` tool: classify and preview a call, run `list`, `show`, `run`, `run-folder`, `call` | `index.ts`, `refresh.ts` |
+| `tool.ts` | The `api` tool: classify and preview a call, run `list`, `show`, `run`, `run-folder`, `call`, `postman-environments` | `index.ts`, `refresh.ts` |
 | `params.ts` | The parameters, as one flat object; the action list, usage lines and checks all come from one table | `tool.ts` |
 | `ad-hoc.ts` | The checks on an ad-hoc `call`, the one request the agent writes itself | `planning.ts` |
 | `show.ts` | What `list` and `show` print: the saved requests, and one request in full | `tool.ts` |
@@ -70,6 +70,7 @@ fails when a file of `src/` is missing here or a file listed here is gone, so th
 | `sources/postman-body.ts` | A Postman request body read as a body with its content type | `sources/postman-request.ts` |
 | `sources/postman-values.ts` | The small readers every Postman part uses: text, descriptions, key-value lists | `sources/postman-auth.ts`, `sources/postman-body.ts` and 2 more |
 | `sources/postman-cloud.ts` | A Postman workspace fetched with an API key to a local copy that is read like an export | `sources/index.ts` |
+| `sources/postman-api.ts` | One GET of the Postman API with the key; the list of environments, names and ids only | `sources/postman-cloud.ts`, `tool.ts` |
 | `sources/http-file.ts` | `.http` files of JetBrains, VS Code and Visual Studio kept in a folder in git | `sources/index.ts` |
 | `sources/bruno.ts` | Bruno: checks the configuration and loads a collection folder, in either of Bruno's formats | `sources/index.ts` |
 | `sources/bruno-tree.ts` | The folder as a tree of requests and folders, put in Bruno's order and built level by level | `sources/bruno.ts` |

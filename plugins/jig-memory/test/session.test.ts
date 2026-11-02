@@ -48,7 +48,7 @@ test("a message that names a ticket activates it: folder, jig-core, a recorded e
     assert.deepEqual(sent?.message.details, { key: "ACME-12" });
     assert.match(
         sent?.message.content ?? "",
-        /^\[ticket ACME-12\] Active\. Folder: .*ACME-12\/ \(notes\.md, evidence\/index\.md\)\.\n\n# ACME-12\n/,
+        /^\[ticket ACME-12\] Active\. Folder: .*ACME-12\/ \(notes\.md, evidence\/index\.md\)\. Today is \d{4}-\d{2}-\d{2}\.\n\n# ACME-12\n/,
     );
     assert.equal(
         pi.notices.at(-1)?.text,
@@ -122,7 +122,10 @@ test("/ticket shows the active ticket, sets one explicitly, and off clears it; a
     await pi.command("ACME-1");
     assert.deepEqual(jig.tickets, ["ACME-1"]);
     await pi.command("");
-    assert.equal(pi.notices.at(-1)?.text, `Ticket ACME-1: notes ${tickets(folder).notes}, 0 saved results.`);
+    assert.equal(
+        pi.notices.at(-1)?.text,
+        `Ticket ACME-1: notes ${tickets(folder).notes}, 0 saved results, 0 open checks.`,
+    );
     await pi.command("off");
     assert.deepEqual(jig.tickets, ["ACME-1", undefined]);
     assert.deepEqual(
@@ -212,7 +215,7 @@ test("the fifteenth tool result carries a reminder to update ## Now, and the cou
     assert.equal(fifteenth.content[0]?.text, "r15", "the tool's own text is kept");
     assert.match(
         fifteenth.content.at(-1)?.text ?? "",
-        /^\[ticket ACME-3\] 15 tool results since notes\.md last changed: update the ## Now block in .*ACME-3\/notes\.md/,
+        /^\[ticket ACME-3\] 15 tool results since the ## Now block of notes\.md last changed: update it in .*ACME-3\/notes\.md/,
     );
     for (let n = 16; n < 30; n++) assert.equal(changed(pi.result("bash", `r${n}`)), undefined, `result ${n}`);
     assert.ok(changed(pi.result("bash", "r30")), "the next reminder, fifteen results later");
@@ -231,6 +234,21 @@ test("a change to notes.md restarts the count, and the edit that made it does no
     for (let n = 1; n < 15; n++)
         assert.equal(changed(pi.result("bash", "output")), undefined, `after the edit, result ${n}`);
     assert.ok(changed(pi.result("bash", "output")), "the fifteenth result after the edit");
+});
+
+test("an edit elsewhere in notes.md does not restart the count: only a change to ## Now does", (t) => {
+    const folder = tempFolder(t);
+    useJig(t, { memory: { ticketPattern: PATTERN, folder } });
+    const pi = loadPlugin("/work");
+    pi.start();
+    pi.input("look at ACME-3");
+    const notes = ticketPaths(folder, "ACME-3").notes;
+    for (let n = 0; n < 10; n++) pi.result("bash", "output");
+    writeFileSync(notes, `${read(notes)}- Decided to keep the queue.\n`);
+    for (let n = 11; n < 15; n++) assert.equal(changed(pi.result("bash", "output")), undefined, `result ${n}`);
+    const reminder = changed(pi.result("bash", "output"));
+    assert.ok(reminder, "a decision added below ## Now does not count as keeping it current");
+    assert.match(reminder.content.at(-1)?.text ?? "", /Today is \d{4}-\d{2}-\d{2}\.$/);
 });
 
 test("a result of a tool other than Pi's file tools is evidence while the ticket is active, with its action", (t) => {
@@ -295,9 +313,14 @@ test("after a compaction the current notes come back as a message, and the syste
     assert.deepEqual(sent?.options, { triggerTurn: false });
     assert.match(
         sent?.message.content ?? "",
-        /^\[ticket ACME-7\] Still active after compaction; current notes follow\. Folder: .*ACME-7\/ \(notes\.md, evidence\/index\.md\)\.\n\n# ACME-7\n\n## Now\nStatus: root cause found/,
+        /^\[ticket ACME-7\] Still active after compaction; current notes follow\. Folder: .*ACME-7\/ \(notes\.md, evidence\/index\.md\)\. Today is \d{4}-\d{2}-\d{2}\.\n\n# ACME-7\n\n## Now\nStatus: root cause found/,
     );
-    assert.equal(pi.events.has("before_agent_start"), false, "no hook changes the system prompt");
+    for (const result of pi.fire("before_agent_start", { messageType: "user", prompt: "go on" }))
+        assert.equal(
+            (result as { systemPrompt?: unknown } | undefined)?.systemPrompt,
+            undefined,
+            "never the system prompt",
+        );
     assert.deepEqual(jig.tickets, ["ACME-7"], "a compaction does not change the ticket");
 });
 

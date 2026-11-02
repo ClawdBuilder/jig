@@ -2,6 +2,7 @@
 // cloud. A source is two functions and a name; nothing else in the plugin knows a file format.
 import type { Http } from "../engine/http.ts";
 import type { Collection } from "../model.ts";
+import type { EnvironmentList } from "./postman-api.ts";
 
 /** What a refresh needs from the plugin: the sending engine, so a transport or a sign-in service carries the fetch, and the
  *  settings that govern any call. */
@@ -22,6 +23,11 @@ export interface RefreshReport {
 /** A collection that is kept as a local copy of something fetched. `/api refresh` fetches it again. */
 export interface Refresher {
     run(deps: RefreshDeps, signal?: AbortSignal): Promise<RefreshReport>;
+}
+
+/** A source kept in a service whose key can list the environments there (Postman's cloud): names and ids, never values. */
+export interface EnvironmentLister {
+    list(workspace: string | undefined, deps: RefreshDeps, signal?: AbortSignal): Promise<EnvironmentList>;
 }
 
 export interface Source<Config = unknown> {
@@ -56,4 +62,7 @@ export interface Source<Config = unknown> {
 
     /** Set by a source that fetches: what `/api refresh` runs for this collection. */
     refresher?(config: Config, name: string): Refresher;
+
+    /** Set by a source whose service can list its environments: what the `postman-environments` action runs. */
+    environmentLister?(config: Config, name: string): EnvironmentLister;
 }

@@ -18,7 +18,8 @@ export type Param =
     | "url"
     | "body"
     | "headers"
-    | "timeoutSec";
+    | "timeoutSec"
+    | "workspace";
 
 interface ActionSpec {
     required: readonly Param[];
@@ -31,6 +32,7 @@ export const ACTIONS = {
     run: { required: ["request", "environment"], optional: ["collection", "folder", "variables", "timeoutSec"] },
     "run-folder": { required: ["folder", "environment"], optional: ["collection", "variables", "timeoutSec"] },
     call: { required: ["environment", "method", "url"], optional: ["collection", "body", "headers", "timeoutSec"] },
+    "postman-environments": { required: [], optional: ["collection", "workspace", "timeoutSec"] },
 } as const satisfies Record<string, ActionSpec>;
 
 export type ActionName = keyof typeof ACTIONS;
@@ -89,6 +91,12 @@ export const parameters = Type.Object({
             },
         ),
     ),
+    workspace: Type.Optional(
+        Type.String({
+            description:
+                "postman-environments: a Postman workspace id, to list only its environments. Default: all the key can see",
+        }),
+    ),
     timeoutSec: Type.Optional(
         Type.Integer({
             minimum: 1,
@@ -127,9 +135,19 @@ export type Call =
           body?: unknown;
           headers?: unknown;
           timeoutSec?: unknown;
-      };
+      }
+    | { action: "postman-environments"; collection?: string; workspace?: string; timeoutSec?: number };
 
-const TEXT_PARAMS: readonly Param[] = ["collection", "folder", "request", "text", "environment", "method", "url"];
+const TEXT_PARAMS: readonly Param[] = [
+    "collection",
+    "folder",
+    "request",
+    "text",
+    "environment",
+    "method",
+    "url",
+    "workspace",
+];
 
 const present = (value: unknown): boolean => value !== undefined && value !== null;
 

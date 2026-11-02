@@ -32,6 +32,10 @@ export interface Source<Config = unknown> {
 
     /** Optional. For a source that keeps a local copy of something fetched: what `/api refresh` runs for the collection. */
     refresher?(config: Config, name: string): Refresher;
+
+    /** Optional. For a source whose service can list its environments by name and id, never their values: what the
+     *  `postman-environments` action runs. */
+    environmentLister?(config: Config, name: string): EnvironmentLister;
 }
 ```
 
