@@ -6,6 +6,7 @@
 // on GitLab (which may have groups: `platform/payments/orders-api`); `sha` is the full id of the pushed head, and `pr` is the
 // open pull request or merge request of the branch, when there is one. Nothing is published for a remote that is on neither,
 // because there is no project to name.
+import { jig } from "../../jig-core/src/client.ts";
 import { gitlabHome } from "./forge.ts";
 import type { GitlabHome } from "./forge.ts";
 import { gh, ghJson, repoFlags } from "./github.ts";
@@ -84,29 +85,77 @@ async function openMergeRequest(
     }
 }
 
+/** What `announcePushed` found out, for the line that tells the agent how it will hear about the checks. */
+export interface Announcement {
+    /** Whether the event went out: origin is on GitHub or GitLab, and the bus took it. */
+    published: boolean;
+    forge?: "github" | "gitlab";
+    /** The open pull request or merge request of the branch. */
+    pr?: number;
+    /** The watches that opened while the event was published: whoever listens started them for this push. */
+    watches: Array<{ id: string; title: string }>;
+}
+
+/** The ids of the watches that are open now, or none when `jig-core` has no watches to list. */
+function openWatches(): Map<string, string> {
+    try {
+        return new Map(
+            jig()
+                .watches.list()
+                .filter((watch) => watch.status !== "done")
+                .map((watch) => [watch.id, watch.title]),
+        );
+    } catch {
+        return new Map();
+    }
+}
+
 /**
- * Publishes `jig-git:pushed` for a head that is on the remote. Returns whether it was published. A listener that fails does
+ * Publishes `jig-git:pushed` for a head that is on the remote, and says what came of it. A listener that fails does
  * not undo the push: the event is a notice, and the push result does not depend on who reads it.
  */
-export async function announcePushed(push: Push): Promise<boolean> {
+export async function announcePushed(push: Push): Promise<Announcement> {
     const { repo, settings, branch, sha, signal } = push;
     const remote = await githubRepo(repo, settings, signal);
     let name: string;
     let pr: number | undefined;
+    let forge: "github" | "gitlab";
     if (remote) {
+        forge = "github";
         name = remote.slug;
         pr = push.pr ?? (await openPullRequest(repo, settings, branch, signal));
     } else {
         const home = await gitlabHome(repo, settings, signal);
-        if (!home) return false;
+        if (!home) return { published: false, watches: [] };
+        forge = "gitlab";
         name = home.path;
         pr = push.pr ?? (await openMergeRequest(repo, home, branch, signal));
     }
     const payload: Pushed = { repo: name, branch, sha, ...(pr === undefined ? {} : { pr }) };
+    const before = openWatches();
     try {
         publish(PUSHED_EVENT, payload);
     } catch {
-        return false;
+        return { published: false, forge, ...(pr === undefined ? {} : { pr }), watches: [] };
     }
-    return true;
+    const watches = [...openWatches()].filter(([id]) => !before.has(id)).map(([id, title]) => ({ id, title }));
+    return { published: true, forge, ...(pr === undefined ? {} : { pr }), watches };
+}
+
+/**
+ * The last line of a push result: how the agent will hear how the checks end. A watch that a listener started for this push
+ * is named; when there is none, the line says what starts one and that a promise to look later needs it. Nothing is said when
+ * the push was not announced, because there is no project whose checks could be watched.
+ */
+export function followLine(announcement: Announcement): string | undefined {
+    if (!announcement.published) return undefined;
+    const [first] = announcement.watches;
+    if (first !== undefined) {
+        const more = announcement.watches.length > 1 ? ` and ${announcement.watches.length - 1} more` : "";
+        return `A watch is running for this push: ${first.title} (watch ${first.id})${more}. It wakes you when it ends, so do not poll.`;
+    }
+    const request = announcement.forge === "gitlab" ? "merge request" : "pull request";
+    const what =
+        announcement.pr === undefined ? "the checks of this push" : `the checks of ${request} ${announcement.pr}`;
+    return `To hear when ${what} finish, start a watch: the ci tool's watch action wakes you (pr watch wakes you for new comments only). Without one, do not promise to look later: the user has to ask you.`;
 }
