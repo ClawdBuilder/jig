@@ -2,6 +2,7 @@
 // and the tool to Pi. Nothing is read or sent until a call is made.
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { withJig } from "../../jig-core/src/client.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { validateJira } from "./config.ts";
 import { createTool } from "./tool.ts";
 import type { JiraOptions } from "./tool.ts";
@@ -16,7 +17,7 @@ export function jigJira(options: JiraOptions = {}): ExtensionFactory {
             api.config.registerSection("jira", validateJira, { replace: ["auth"] });
             api.declareTool({ tool: "jira", plugin: "jig-jira", classify: tool.classify, preview: tool.preview });
         });
-        pi.registerTool(tool.definition);
+        registerJigTool(pi, tool.definition);
     };
 }
 

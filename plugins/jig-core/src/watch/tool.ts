@@ -1,6 +1,7 @@
 // The `watch` tool: jig-core's own tool. It lists and stops the watches of every plugin. Plugins start watches from
 // their own tools, such as a CI check, so there is no "start" here.
 import { stringEnum } from "../kit/schema.ts";
+import { registerJigTool } from "../kit/tools.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { JigApi } from "../contract.ts";
@@ -43,7 +44,7 @@ export function registerWatchTool(pi: ExtensionAPI, api: JigApi, engine: WatchEn
         },
     });
 
-    pi.registerTool<typeof parameters, WatchToolDetails>({
+    registerJigTool<typeof parameters, WatchToolDetails>(pi, {
         name: "watch",
         label: "Watch",
         description: DESCRIPTION,

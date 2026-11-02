@@ -42,6 +42,8 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
   the browser. With `"always"` it also opens once, as soon as the screen appears, so the plan is beside the terminal when you
   start reading. The browser only shows: you still answer in Pi. Any other value is an error. See
   [Approval screens](approval-screens.md).
+- **`tools.deferred`:** names of Jig tools to keep out of the model's context until Pi's `tool_search` finds them, such as
+  `{ "tools": { "deferred": ["mongo", "deploy"] } }`. See [Deferred tools](#deferred-tools).
 - **`startChecks`:** a list of at most 16 checks, each `{ "name": "VPN", "tcp":
   "vpn.example.com:443", "hint": "connect your VPN client" }`. See
   [At session start](#at-session-start).
@@ -92,6 +94,28 @@ company plugin can neither set `startChecks` nor add a host to it.
     such as `pass` not being installed, is left for the tool that needs the store.
 - **`/jig` lists the checks** with the last result of each: `reachable`, `not reachable` or `not run` (it has not
   finished, or this session does not run them). It also says that the store is unlocked at start.
+
+## Deferred tools
+
+Each tool's description is sent to the model at session start. A tool named in `tools.deferred` is registered with Pi's
+`deferred` exposure instead: the model does not see it until Pi's `tool_search` finds it by its name or description and
+activates it, one extra step when it is needed.
+
+```json
+{ "tools": { "deferred": ["mongo", "logs", "deploy", "runtime"] } }
+```
+
+- **Only Jig's tools.** Pi's own (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`, `tool_search`, `codemode`) are an
+  error here. A name that no loaded plugin declared is a warning at session start, said once, and the rest still applies.
+- **`tool_search` is switched on for you** when at least one Jig tool is deferred (Pi registers it off). When Pi has no
+  `tool_search` (`-builtin:tool-search` in its settings), no tool is deferred, and session start says so.
+- **A resumed or reloaded session keeps what it loaded:** a deferred tool that the session's transcript shows active stays active.
+- **A workflow stage can bring tools in** while the work is in it (`jig-workflow`'s [stage tools](../../jig-workflow/docs/files.md#stage-tools)).
+- **A company plugin may give a default** with `config.addSectionDefaults("tools", { deferred: [...] })`; your own list
+  replaces it, and `[]` defers nothing.
+
+Plugins register their tools through `registerJigTool` from the kit (`kit/tools.ts`), a drop-in for `pi.registerTool`, so a
+company plugin's own tools can be deferred the same way.
 
 ## The `/jig` commands
 

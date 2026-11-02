@@ -88,6 +88,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `start-jobs.ts` | What a session start sets going in the background (the unlock and the checks), in the top-level interactive session only | `index.ts` |
 | `start-unlock.ts` | Gets the pass store unlocked at start (`secrets.pass.unlockAtStart`), and tells you only what you can use | `start-jobs.ts` |
+| `tool-exposure.ts` | The `tools` section (`tools.deferred`): its check, the warning for a name no plugin declared, and `tool_search` switched on | `state.ts`, `index.ts` |
 | `start-checks.ts` | The `startChecks` list of `jig.json`: what it accepts, and the one TCP connection each check makes | `config.ts`, `start-jobs.ts` and 2 more |
 
 ### What other plugins use
@@ -117,6 +118,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |
 | `kit/ports.ts` | For a tunnel that starts a program: a really free port, a test that it answers, a wait | a company plugin keeps a copy; no file here |
+| `kit/tools.ts` | `registerJigTool`: registers a plugin's tool, and again as `deferred` at session start when `tools.deferred` names it | every plugin's entry, `watch/tool.ts`, `tool-exposure.ts` |
 | `kit/values.ts` | Small stateless helpers that plugins share, such as the invalid-input error | `config.ts`, `kit/http.ts`, `kit/oauth.ts`, the watch files |
 
 ### Watches (watch/)

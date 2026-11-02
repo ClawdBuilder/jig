@@ -41,7 +41,7 @@ One JSON file per workflow, named after it, such as `~/.pi/agent/workflows/featu
 
 A hold denies the listed calls, with a reason that names the condition, until it holds. `write`, `edit`,
 `git` and `pr` are held only in the work's bound repositories. Three finished examples (`feature`,
-`bugfix`, `investigation`) are in [`examples/`](examples/); every field is in [Files](docs/files.md).
+`bugfix`, `investigation`) are in [`examples/`](examples/); every field, a stage's `tools` included, is in [Files](docs/files.md).
 
 ## Conditions
 
@@ -141,7 +141,7 @@ jig-workflow/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi sh
   src/        index.ts (the factory), runtime.ts (the session), config.ts, definition.ts + load.ts (workflow files),
               store.ts (workflow.json), ticket.ts + repos.ts, conditions.ts + sources.ts + listeners.ts + forge.ts (evidence),
               plan.ts, tests.ts + environment.ts + java.ts + outside.ts (test runs), gate.ts (holds), tool.ts + actions.ts (one
-              file for each family: action-start, -plan, -tests, -stages, -support), commands.ts, status.ts, host.ts
+              file for each family: action-start, -plan, -tests, -stages, -support), commands.ts, status.ts, host.ts, stage-tools.ts
   skills/     workflow/SKILL.md: how to take work through its workflow
   examples/   feature.json, bugfix.json, investigation.json
   test/       one file per module; world.ts runs a whole session through the real jig-core

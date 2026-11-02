@@ -39,6 +39,8 @@ import { createTransports } from "./transports.ts";
 import { createTunnels } from "./tunnels.ts";
 import type { Tunnels } from "./tunnels.ts";
 import type { Transports } from "./transports.ts";
+import { TOOLS_SECTION } from "./kit/tools.ts";
+import { validateToolsSection } from "./tool-exposure.ts";
 import { createWatchEngine } from "./watch/engine.ts";
 import type { WatchEngine } from "./watch/engine.ts";
 import { createWatchStore } from "./watch/store.ts";
@@ -165,6 +167,8 @@ export interface JigState {
     recordsProblem: string | undefined;
     /** Problems from loading that are not configuration, such as a plugin whose start-up callback threw. */
     startupProblems: string[];
+    /** What session start already said about `tools.deferred`, so each warning comes once (src/tool-exposure.ts). */
+    toolWarnings: { unknown?: string; noSearch?: boolean };
 }
 
 /** A key for checking field names only. Nothing is ever masked with it. */
@@ -213,7 +217,8 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             invalid: new Set(),
         },
         company: emptyAdditions(),
-        sectionChecks: new Map(),
+        // jig-core's own section that is checked like a plugin's, so a company plugin can give defaults for it.
+        sectionChecks: new Map([[TOOLS_SECTION, validateToolsSection]]),
         sectionDefaults: new Map(),
         sectionReplace: new Map(),
         sectionOneOf: new Map(),
@@ -328,6 +333,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         statusLines: new Map(),
         recordsProblem: undefined,
         startupProblems: [],
+        toolWarnings: {},
     };
     state.http = createHttp({
         secrets: state.secrets,

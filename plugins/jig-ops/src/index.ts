@@ -3,6 +3,7 @@
 // a cluster or a CI server until a call is made.
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { withJig } from "../../jig-core/src/client.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { OPS_REPLACE, validateOps } from "./catalog.ts";
 import { createAutoWatch, listenForPushes } from "./ci/autowatch.ts";
 import { createCiTool } from "./ci/tool.ts";
@@ -35,9 +36,9 @@ export function jigOps(options: OpsOptions = {}): ExtensionFactory {
             registerRolloutWatch(api, options);
             registerCiWatch(api, announce, options);
         });
-        pi.registerTool(runtime.definition);
-        pi.registerTool(deploy.definition);
-        pi.registerTool(ci.definition);
+        registerJigTool(pi, runtime.definition);
+        registerJigTool(pi, deploy.definition);
+        registerJigTool(pi, ci.definition);
         listenForPushes(pi, createAutoWatch(options.now));
     };
 }

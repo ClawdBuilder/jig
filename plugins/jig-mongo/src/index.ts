@@ -2,6 +2,7 @@
 // tool goes to Pi. Nothing is read from a database, a secret store or a bastion host until a call is made.
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { withJig } from "../../jig-core/src/client.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { MONGO_REPLACE, statusLines, validateMongo } from "./config.ts";
 import { createTool } from "./tool.ts";
 import type { MongoOptions } from "./tool.ts";
@@ -19,7 +20,7 @@ export function jigMongo(options: MongoOptions = {}): ExtensionFactory {
             // `/jig` says when the index check is off for a production connection: that is the user's choice, and it is shown.
             api.status?.register("jig-mongo", statusLines);
         });
-        pi.registerTool(tool.definition);
+        registerJigTool(pi, tool.definition);
         // The connections and the SSH forwards end with the session.
         pi.on("session_shutdown", () => {
             void tool.shutdown();

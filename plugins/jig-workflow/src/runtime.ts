@@ -13,6 +13,8 @@ import type { Stage } from "./definition.ts";
 import type { Host } from "./host.ts";
 import { loadWorkflows } from "./load.ts";
 import type { Loaded, LoadedWorkflow, WorkflowFolder } from "./load.ts";
+import { STAGE_TOOLS_ENTRY, StageTools } from "./stage-tools.ts";
+import type { StageInPlay, ToolHost } from "./stage-tools.ts";
 import { readState, statePath, updateState } from "./store.ts";
 import type { ReadState, WorkflowState } from "./store.ts";
 import { activeTicket, readBound, ticketPaths, ticketsFolder } from "./ticket.ts";
@@ -35,6 +37,8 @@ export class Runtime {
     ctx: ExtensionContext | undefined;
     loaded: Loaded = { workflows: new Map(), failures: [], disabled: [] };
     settings: WorkflowSettings = settingsFrom(undefined);
+    /** The tools the current stage switched on (stage-tools.ts). */
+    readonly stageTools = new StageTools();
     private readonly seen = new Map<string, { tool: string; error: boolean }>();
     private readonly guarded = new Set<string>();
 
@@ -107,6 +111,49 @@ export class Runtime {
     /** Guards a ticket's state file. */
     guardState(ticket: string): void {
         this.guard([statePath(this.paths(ticket).dir)]);
+    }
+
+    // ---- the stage's tools ------------------------------------------------------------------------------------------------
+
+    /** The active ticket's stage and the tools it names, or undefined when there is no started workflow. */
+    stageInPlay(): StageInPlay | undefined {
+        const ticket = this.activeTicket();
+        if (ticket === undefined) return undefined;
+        const read = this.work(ticket).read;
+        if (read.kind !== "state") return undefined;
+        const stage = this.definition(read.state)?.workflow.stages.find(
+            (candidate) => candidate.id === read.state.stage,
+        );
+        if (stage === undefined) return undefined;
+        return { key: `${ticket} ${read.state.workflow} ${stage.id}`, stage: stage.id, tools: stage.tools ?? [] };
+    }
+
+    /** Switches the stage's tools on, and the last stage's off: at session start, before a prompt, and after a stage moves. */
+    syncStageTools(starting = false): void {
+        const host = this.toolHost();
+        if (host === undefined) return;
+        try {
+            this.stageTools.sync(host, this.stageInPlay(), starting);
+        } catch {
+            // The tools stay as they are; the stage and its holds do not depend on them.
+        }
+    }
+
+    /** Pi's tool set and the session, as the stage tools need them; undefined when this Pi cannot change the tool set. */
+    private toolHost(): ToolHost | undefined {
+        const { pi, ctx } = this;
+        if (ctx === undefined || typeof pi.getActiveTools !== "function" || typeof pi.setActiveTools !== "function")
+            return undefined;
+        return {
+            toolNames: () => pi.getAllTools().flatMap((tool) => (tool.exposure === "hidden" ? [] : [tool.name])),
+            activeTools: () => pi.getActiveTools(),
+            setActiveTools: (names) => pi.setActiveTools(names),
+            entries: () => ctx.sessionManager.getBranch(),
+            save: (data) => pi.appendEntry(STAGE_TOOLS_ENTRY, data),
+            notify: (text) => {
+                if (ctx.hasUI) ctx.ui.notify(text, "warning");
+            },
+        };
     }
 
     // ---- the ticket -------------------------------------------------------------------------------------------------------

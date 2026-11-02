@@ -178,7 +178,9 @@ describe("through the API", () => {
                 name,
             );
         }
-        assert.equal(state.sectionChecks.size, 0);
+        // jig-core's own `tools` section is checked like a plugin's, and a plugin cannot take it either.
+        assert.throws(() => api.config.registerSection("tools", () => []), /"tools" is jig-core's section/);
+        assert.deepEqual([...state.sectionChecks.keys()], ["tools"]);
     });
 
     test("a section needs a name and a check", () => {
@@ -216,10 +218,10 @@ describe("through the API", () => {
     test("a plugin that loaded before jig-core registers its section as soon as jig-core publishes the API", () => {
         const { state, api, file } = setup({ git: { timeout: 5 } });
         withJig((early) => early.config.registerSection("git", gitCheck));
-        assert.equal(state.sectionChecks.size, 0, "not yet: jig-core has not published");
+        assert.equal(state.sectionChecks.has("git"), false, "not yet: jig-core has not published");
         try {
             publishJig(api);
-            assert.equal(state.sectionChecks.size, 1);
+            assert.equal(state.sectionChecks.has("git"), true);
             loadPersonalConfig(state, file);
             assert.deepEqual(api.config.section("git"), { timeout: 5 });
         } finally {
