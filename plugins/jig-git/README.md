@@ -149,6 +149,7 @@ listener that fails never undoes the push. The details are in
 
 ```text
 jig-git/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      git.ts, pr.ts and release.ts (the three tools); the actions (git-read, git-branch + git-changes +
             git-integrate with git-guards for the local writes, git-remote, clone, pr-read, pr-write); the comment watch (pr-watch, pr-watch-tool); github.ts, gitlab.ts and the GitLab
             actions (gitlab-pr-read, gitlab-pr-write, gitlab-release, gitlab-watch); forge.ts and repo.ts; config.ts,

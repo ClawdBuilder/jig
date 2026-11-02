@@ -38,9 +38,9 @@ test("the extension is listed in the package, last, after jig-core, and every li
         pi: { extensions: string[]; themes: string[] };
     };
     const listed = manifest.pi.extensions;
-    assert.ok(listed.includes("./plugins/jig-theme/src/index.ts"));
-    assert.equal(listed.at(-1), "./plugins/jig-theme/src/index.ts");
-    assert.ok(listed.indexOf("./plugins/jig-core/src/index.ts") < listed.indexOf("./plugins/jig-theme/src/index.ts"));
+    assert.ok(listed.includes("./plugins/jig-theme/index.ts"));
+    assert.equal(listed.at(-1), "./plugins/jig-theme/index.ts");
+    assert.ok(listed.indexOf("./plugins/jig-core/index.ts") < listed.indexOf("./plugins/jig-theme/index.ts"));
     for (const extension of listed) assert.ok(existsSync(path.join(ROOT, extension)), extension);
     assert.deepEqual(manifest.pi.themes, ["./plugins/jig-theme/themes/*.json"]);
 });

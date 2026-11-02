@@ -65,8 +65,10 @@ Then start Pi and run `/jig`: it shows the rules in force and anything that
 needs fixing. Each plugin's README says what it needs in `~/.pi/agent/jig.json`
 and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
 
-To load only some plugins, filter the package in Pi's settings. Keep `jig-core`
-first in the list, because every other plugin needs it:
+To load only some plugins, filter the package in Pi's settings. Name each plugin by
+its entry file, `plugins/<name>/index.ts` (a filter that names `src/index.ts`
+matches nothing). Keep `jig-core` first in the list, because every other plugin
+needs it:
 
 ```json
 {
@@ -74,9 +76,9 @@ first in the list, because every other plugin needs it:
     {
       "source": "git:github.com/Dev-Mriganka/jig",
       "extensions": [
-        "plugins/jig-core/src/index.ts",
-        "plugins/jig-sandbox/src/index.ts",
-        "plugins/jig-git/src/index.ts"
+        "plugins/jig-core/index.ts",
+        "plugins/jig-sandbox/index.ts",
+        "plugins/jig-git/index.ts"
       ]
     }
   ]

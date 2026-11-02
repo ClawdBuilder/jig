@@ -148,6 +148,7 @@ An action or parameter the CI system of the service lacks is refused, naming the
 
 ```text
 jig-ops/
+  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      index, catalog, values, watch (ops-rollout); runtime/ and deploy/ (kubernetes/, helm, kubectl-image);
             ci/ (the tool, the adapter interface, an adapter per system with its api and watch, request.ts, ops-ci)
   skills/   ops/ (roll out, check, read events and logs), ci/ (wait without polling, read why it failed)
