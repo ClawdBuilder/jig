@@ -3,7 +3,7 @@
 //
 // The checks read the call as plain data and do not trust the schema to have run: a call can arrive from a test, or
 // from another tool, without passing through Pi's own validation.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { backendOf } from "./backends/index.ts";
 import type { Target } from "./config.ts";
@@ -71,7 +71,7 @@ export const logsParameters = Type.Object(
         ),
         size: Type.Optional(Type.Integer({ minimum: 1, maximum: MAX_SIZE, description: "Hits to fetch. Default 50." })),
         order: Type.Optional(
-            StringEnum(["asc", "desc"] as const, {
+            stringEnum(["asc", "desc"] as const, {
                 description: "asc (default): the oldest hits of the window. desc: the newest.",
             }),
         ),

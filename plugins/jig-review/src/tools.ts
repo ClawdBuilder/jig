@@ -1,6 +1,6 @@
 // The two tools the agent has for the review loop. Both only change this plugin's own files, so jig-core classifies them
 // as local writes (see index.ts). Neither can approve: approving needs the user.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { ReviewRecord, ReviewResolution } from "./types.ts";
@@ -45,7 +45,7 @@ export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandle
             "Record how the agent addressed interactive review comments. Include addressedLocations for changed diff lines. If code changed, beforeAfter must be a small unified diff snippet, not a prose explanation.",
         parameters: Type.Object({
             commentIds: Type.Array(Type.String({ minLength: 1, maxLength: 100 }), { maxItems: 200 }),
-            kind: StringEnum(["fixed", "answered", "wont-fix"] as const),
+            kind: stringEnum(["fixed", "answered", "wont-fix"] as const),
             summary: Type.String({ maxLength: 10_000 }),
             addressedLocations: Type.Optional(
                 Type.Array(
@@ -53,7 +53,7 @@ export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandle
                         body: Type.Optional(Type.String({ maxLength: 5000 })),
                         filePath: Type.String({ maxLength: 1000 }),
                         line: Type.Number(),
-                        side: Type.Optional(StringEnum(["old", "new"] as const)),
+                        side: Type.Optional(stringEnum(["old", "new"] as const)),
                     }),
                     { maxItems: 200 },
                 ),
