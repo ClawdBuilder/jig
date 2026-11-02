@@ -25,6 +25,10 @@ changes, the other changes in the same commit. Tests read the tool tables of
   `docs/code-map.md`: every file of `src/` with what it does and who calls it, and one call followed through
   the files. When you add, rename or remove a file in one of them, change its map in the same commit; a test
   fails when they disagree. A source file over 500 lines is reported as a warning: split it by job.
+- **The launcher is not a plugin.** `bin/pi`, with `bin/tmux.conf` and `bin/clipboard-copy`, is the optional `pi` command. The "Starting
+  Pi" section of `README.md` is its specification, and `test/launcher.test.ts` fails when that section misses a flag or variable the
+  script reads. The tests run a fake Pi and tmux in a closed world (`test/support/launcher-world.ts`) and start nothing real. It stays
+  generic like everything here: it sets none of the user's settings, runs no checks at start, and never signs in.
 - **Docs.** Write them by [Writing the docs](docs/writing.md): open with what
   it is and why, short paragraphs and table cells (about 350 and 100
   characters), lists with bold lead-ins, generic examples, tagged code blocks.
