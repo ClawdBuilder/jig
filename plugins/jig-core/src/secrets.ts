@@ -21,7 +21,8 @@ import { errorMessage } from "./errors.ts";
 import { run as defaultRun } from "./exec.ts";
 import type { RunOptions, RunResult } from "./contract.ts";
 import { SECRET_BACKENDS } from "./config.ts";
-import type { SecretBackend } from "./config.ts";
+import type { PassBinding, SecretBackend } from "./config.ts";
+import { expandProtected } from "./protected-paths.ts";
 import type { Redactor } from "./redact.ts";
 
 export type SecretErrorCode = "invalid_ref" | "backend_disabled" | "missing" | "locked" | "unavailable";
@@ -56,6 +57,8 @@ export interface SecretsOptions {
     timeoutMs?: number;
     /** The commands `cmd:<name>` may run: the user's and the company's, by name. Read on every call. */
     commands?: () => Readonly<Record<string, readonly string[]>>;
+    /** The folders `secrets.pass` of `jig.json` binds `pass` to. Read on every call. They win over Pi's environment. */
+    pass?: () => PassBinding;
     /** Pi's agent folder, which a `file:` reference may not read from. Read on every call. Empty when not known. */
     agentDir?: () => string;
     /** The home folder, for `file:~/...`. Default: the user's. */
@@ -159,9 +162,16 @@ export function createSecrets(options: SecretsOptions): Secrets {
         if (!PASS_ENTRY.test(entry) || entry.split("/").some((part) => part === "" || part === "." || part === "..")) {
             throw new SecretError("invalid_ref", "a pass: entry uses letters, digits and . _ @ + - / only");
         }
+        // What `secrets.pass` of jig.json binds comes first, then Pi's environment, then pass's own defaults.
+        const bound = options.pass?.() ?? {};
+        const configured: Record<string, string | undefined> = {
+            PASSWORD_STORE_DIR:
+                bound.storeDir === undefined ? undefined : expandProtected(bound.storeDir, home, platform),
+            GNUPGHOME: bound.gnupgHome === undefined ? undefined : expandProtected(bound.gnupgHome, home, platform),
+        };
         const passEnv: Record<string, string> = { LC_ALL: "C" };
         for (const name of PASS_ENV) {
-            const value = env[name];
+            const value = configured[name] ?? env[name];
             if (value !== undefined) passEnv[name] = value;
         }
         const result = await runBackend("pass", ["show", entry], passEnv, signal);

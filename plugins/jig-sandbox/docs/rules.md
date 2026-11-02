@@ -13,6 +13,10 @@ two cannot disagree: a company plugin's additions apply, and so does your `prote
 The lists below are what `jig-sandbox` adds to it. `/sandbox` shows each rule with its
 source: built in, `jig-core`, your section, the project, `PATH`.
 
+A credential store that an environment variable moves, such as `PASSWORD_STORE_DIR` or `GNUPGHOME`, and the
+folders `secrets.pass` binds `pass` to, are `jig-core`'s protected paths too, so they are hidden where they really are
+([the list](../../../docs/permissions.md#protected-paths)).
+
 **Credential stores and logins**
 - `~/.ssh`, `~/.gnupg`, `~/.password-store`
 - `~/.aws`, `~/.azure`, `~/.config/gcloud`, `~/.kube`

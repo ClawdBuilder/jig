@@ -76,6 +76,7 @@ All fields are optional.
 | `secrets.backends` | `["pass"]` | Which backends may resolve secret references |
 | `secrets.disabledBackends` | none | Backends to keep off, even ones a company plugin turned on |
 | `secrets.commands` | none | The commands that `cmd:<name>` may run, by name |
+| `secrets.pass` | none | Where `pass` looks: `storeDir` and `gnupgHome`, each absolute or `~/...` |
 | `records.retentionDays` | 90 | Days record files are kept, from 1 to 3650 |
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
 
@@ -97,8 +98,9 @@ rather than guessing. So is a wrong type or value.
 ```
 
 It needs Pi 1.4 or later, a secret backend if a Jig tool needs secrets (`pass`
-on Linux first), and a sandbox for `bash`, which [`jig-sandbox`](../jig-sandbox/README.md)
-is. Without one, `/jig` and session start say plainly that `bash` is not sandboxed.
+on Linux first; any store with a command line works through `cmd:`, see
+[Secrets](../../docs/secrets.md#other-stores)), and a sandbox for `bash`, which
+[`jig-sandbox`](../jig-sandbox/README.md) is. Without one, `/jig` and session start say plainly that `bash` is not sandboxed.
 
 ## Company part (in the company plugin)
 
