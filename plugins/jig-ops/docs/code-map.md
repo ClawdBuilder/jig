@@ -51,6 +51,7 @@ gone, so this table cannot drift from the code.
 | `deploy/pin-github.ts` | The reads of a pin from GitHub through `gh api`: a file, the last commit on it, a branch tip, the open pull requests | `deploy/pin-plan.ts`, `deploy/pin-read.ts`, `deploy/pin-status.ts` |
 | `deploy/pin-read.ts` | A pin as it is on the branch that deploys: the one matching line, the holder, who changed it last | `deploy/pin-plan.ts`, `deploy/pin-status.ts` |
 | `deploy/pin-status.ts` | `deploy status` for pins: the pinned version, the holder, the open pin pull requests, what the cluster runs | `deploy/pin-plan.ts`, `deploy/tool.ts` |
+| `deploy/pin-plan.ts` | `deploy plan` for a pin: the file and line a run would change, the holder, the branch and pull request, a fingerprint; reads only | `deploy/tool.ts` |
 | `deploy/records.ts` | What this session ran, kept in memory for `deploy status` | `deploy/actions.ts`, `deploy/tool.ts` |
 | `watch.ts` | The `ops-rollout` watch: waits until every pod is ready on the version | `deploy/actions.ts`, `index.ts` |
 

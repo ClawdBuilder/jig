@@ -21,6 +21,7 @@ import { planAction, rollbackAction, runAction, statusAction, watchAction } from
 import type { Context } from "./actions.ts";
 import { parameters, parseCall } from "./params.ts";
 import type { Call, PinCall } from "./params.ts";
+import { planPinAction } from "./pin-plan.ts";
 import { statusPinAction } from "./pin-status.ts";
 import { planRollback, planRun, refusal } from "./plan.ts";
 import { createRecords } from "./records.ts";
@@ -103,7 +104,7 @@ export function createDeployTool(options: DeployOptions = {}): DeployTool {
                 case "status":
                     return statusPinAction(call, { signal });
                 case "plan":
-                    throw new InputError("deploy plan for the pin method is not available yet");
+                    return planPinAction(call, jig().environments.kindOf(call.env.name), { signal });
                 default:
                     throw new InputError(`deploy ${call.action} is refused: ${PIN_RUN}`);
             }
