@@ -4,7 +4,7 @@
 // standing in for /dev/tty).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, readFileSync, rmSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { LAUNCHER, REPO, makeWorld, sawPi } from "./support/launcher-world.ts";
@@ -254,6 +254,19 @@ describe("the WSL interop socket", () => {
         );
     });
 
+    test("a shell started over SSH has no socket: it gets the distro's, quietly and without a probe", async () => {
+        const fallback = socket();
+        const result = await world.run([], {
+            ...TERMINAL,
+            JIG_NO_TMUX: "1",
+            JIG_INTEROP_PROBE: probe(1),
+            JIG_INTEROP_FALLBACK: fallback,
+        });
+        assert.equal(sawPi(result.stdout).env.WSL_INTEROP, fallback);
+        assert.equal(result.stderr, "");
+        assert.deepEqual(world.calls("probe"), []);
+    });
+
     test("a socket that answers stays", async () => {
         const result = await world.run([], {
             ...TERMINAL,
@@ -302,6 +315,64 @@ describe("the WSL interop socket", () => {
         });
         assert.equal(clientEnv(world).WSL_INTEROP, fallback);
         assert.ok(launch(world).names.includes("WSL_INTEROP"));
+    });
+});
+
+describe("copy on select (bin/clipboard-copy)", () => {
+    const helper = path.join(REPO, "bin", "clipboard-copy");
+    const bash = spawnSync("sh", ["-c", "command -v bash"], { encoding: "utf8" }).stdout.trim();
+    /** A PATH with only the programs the helper needs, so a clipboard program installed here never answers instead. */
+    function onlyBasics(): string {
+        const dir = path.join(world.root, "basics");
+        mkdirSync(dir, { recursive: true });
+        for (const name of ["cat", "grep", "iconv"]) {
+            const found = spawnSync("sh", ["-c", `command -v ${name}`], { encoding: "utf8" }).stdout.trim();
+            if (!existsSync(path.join(dir, name))) symlinkSync(found, path.join(dir, name));
+        }
+        return dir;
+    }
+    function copy(text: string, env: Record<string, string>) {
+        return spawnSync(bash, [helper], { input: text, encoding: "utf8", env: { PATH: onlyBasics(), ...env } });
+    }
+    /** A clip.exe that keeps what it got and the interop socket it was given. */
+    const fakeClip = (exit = 0) => {
+        const dir = path.join(world.root, "windows");
+        return world.file(
+            "windows/clip.exe",
+            `#!/bin/sh\ncat > "${dir}/clipboard"\nprintf '%s' "\${WSL_INTEROP:-}" > "${dir}/interop"\nexit ${exit}\n`,
+            0o755,
+        );
+    };
+    const got = (clip: string, name: string) => readFileSync(path.join(path.dirname(clip), name));
+
+    test("on WSL without clip.exe on the PATH or an interop socket (an SSH shell) it still copies, as UTF-16LE", () => {
+        const clip = fakeClip();
+        const socket = world.file("run/WSL/1_interop", "");
+        const result = copy("héllo", { JIG_WSL: "1", JIG_CLIP_EXE: clip, JIG_INTEROP_FALLBACK: socket });
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(got(clip, "clipboard").toString("utf16le"), "héllo");
+        assert.equal(got(clip, "interop").toString(), socket);
+    });
+
+    test("a socket the shell already has is kept", () => {
+        const clip = fakeClip();
+        const socket = world.file("run/WSL/1_interop", "");
+        copy("x", {
+            JIG_WSL: "1",
+            JIG_CLIP_EXE: clip,
+            JIG_INTEROP_FALLBACK: socket,
+            WSL_INTEROP: "/run/WSL/7_interop",
+        });
+        assert.equal(got(clip, "interop").toString(), "/run/WSL/7_interop");
+    });
+
+    test("a copy that fails says so, instead of looking copied", () => {
+        const failing = copy("x", { JIG_WSL: "1", JIG_CLIP_EXE: fakeClip(1), JIG_INTEROP_FALLBACK: "/no/socket" });
+        assert.equal(failing.status, 1);
+        assert.match(failing.stderr, /not copied: clip\.exe failed/);
+        const nothing = copy("x", { JIG_WSL: "0" });
+        assert.equal(nothing.status, 1);
+        assert.match(nothing.stderr, /not copied: no clipboard program/);
     });
 });
 

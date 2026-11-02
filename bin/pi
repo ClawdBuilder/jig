@@ -55,9 +55,15 @@ for arg in "${args[@]}"; do case "$arg" in -p|--print|--mode|-h|--help|-v|--vers
 # WSL: a long-lived terminal (a tmux server, for one) can hold the interop socket of a session that is gone. Windows programs
 # (a browser for a sign-in, the clipboard) then hang and fail with "UtilAcceptVsock: accept4 failed 110". A live socket answers
 # in well under a second; a dead one is replaced by the distro's own, which lives as long as WSL.
+# A shell started over SSH (herdr's terminals start that way) has no socket at all: it gets the distro's, without a probe.
 fix_interop() {
     local probe="${JIG_INTEROP_PROBE:-/mnt/c/Windows/System32/cmd.exe}" fallback="${JIG_INTEROP_FALLBACK:-/run/WSL/1_interop}"
-    [ -n "${WSL_INTEROP:-}" ] && [ "$WSL_INTEROP" != "$fallback" ] && [ -x "$probe" ] && [ -e "$fallback" ] || return 0
+    [ -x "$probe" ] && [ -e "$fallback" ] || return 0
+    if [ -z "${WSL_INTEROP:-}" ]; then
+        export WSL_INTEROP="$fallback"
+        return 0
+    fi
+    [ "$WSL_INTEROP" != "$fallback" ] || return 0
     timeout 2 "$probe" /c exit </dev/null >/dev/null 2>&1 && return 0
     say "Windows interop socket $WSL_INTEROP does not answer; using $fallback"
     export WSL_INTEROP="$fallback"

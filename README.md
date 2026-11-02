@@ -118,14 +118,17 @@ The launcher removes these flags before Pi sees the arguments. What it reads bes
 | `PI_BIN` | The Pi executable. Default: the first `pi` on the PATH that is Pi's own npm install, not a shim |
 | `HC_TERMINAL_ID` | Set by herdr in its terminals. There the launcher skips tmux, because herdr keeps the terminal alive |
 | `JIG_TMUX` | `1` uses tmux in a herdr terminal too |
-| `WSL_INTEROP` | On WSL, replaced by the distro's own socket when the one in use does not answer |
+| `WSL_INTEROP` | On WSL, set to the distro's own socket when it is missing (a shell started over SSH, such as a herdr terminal) or when the one in use does not answer |
 
 The launcher exports one variable, `JIG_HOME`, the folder `bin/` is in, which `bin/tmux.conf` reads. When no Pi is found it exits 127.
 
 A run that is not interactive (no terminal, a print or help flag, or a subcommand such as `install`, `list` or `config`) starts Pi
 directly. Otherwise:
 - **Interop repair (WSL).** If the Windows interop socket does not answer a 2 second probe, the launcher switches to the distro's own, so
-  a browser or the clipboard does not hang.
+  a browser or the clipboard does not hang. A shell started over SSH has no socket at all; it gets the distro's, with no probe.
+- **Copy on select.** Releasing a mouse selection in Jig's tmux copies it with [`bin/clipboard-copy`](bin/clipboard-copy): Windows'
+  `clip.exe` on WSL (found by its full path, since an SSH shell has no Windows folders on its PATH), else `wl-copy`, `xclip` or
+  `pbcopy`. When none works, tmux shows "Not copied" and why, instead of looking copied.
 - **tmux.** It starts its own server (`tmux -L jig -f bin/tmux.conf`), so your own tmux is never changed. The session is named
   `pi-<folder>-<pid>` and runs the launcher again inside. When tmux returns and the session is still there, it says how to come back.
 - **Reattach.** Before it starts a session, `pi` and `pi -c` look for detached sessions started in this folder. One is reattached with
