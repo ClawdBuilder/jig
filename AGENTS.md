@@ -29,10 +29,10 @@ changes, the other changes in the same commit. Tests read the tool tables of
   argument value). Other programs read it; change the format only as its README says (a new `schema` for a removal).
 - **`herdr/` is not a plugin.** The top-level `herdr/` folder holds files for the Herdr desktop app (layouts, mods, themes,
   keys), copied into the app's folder by `herdr/scripts/install.ts`; Pi never loads it, its mods are plain JavaScript for
-  that app, and they approve nothing. Its Work panel reads `jig-session`'s files. `herdr/mods/jig-tabs/main.js` is derived
-  from Herdr's `tabs` mod (Apache-2.0): keep its header. After a change to a `jig-theme` palette or to
+  that app, and they approve nothing. Its Work panel reads `jig-session`'s files. `herdr/mods/jig-tabs/main.js` and
+  `herdr/mods/jig-files/main.js` are derived from Herdr's `tabs` and `files` mods (Apache-2.0): keep their headers. After a change to a `jig-theme` palette or to
   `herdr/mods/jig-theme-sync/convert.js`, run `node herdr/scripts/build-themes.ts`; a test fails when the committed themes
-  are out of date. Never copy a file of the Triage mods (EUPL-1.2) into it: the layout only names them. `npm test` runs
+  are out of date. Write the other mods in your own words: never copy code from a mod under another licence (EUPL, GPL). `npm test` runs
   `herdr/test/` too.
 - **Docs.** Write them by [Writing the docs](docs/writing.md): open with what
   it is and why, short paragraphs and table cells (about 350 and 100
