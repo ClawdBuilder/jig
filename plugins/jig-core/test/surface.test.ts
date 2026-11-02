@@ -140,6 +140,7 @@ describe("the API", () => {
 
     test("the jig.json sections jig-core owns are these, and a plugin cannot take them", () => {
         assert.deepEqual([...OWN_SECTIONS].sort(), [
+            "approvals",
             "classify",
             "environments",
             "protectedPaths",

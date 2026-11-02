@@ -20,7 +20,10 @@ const keys = {
 };
 
 /** A review screen with a plain theme, and what it did. */
-function screen(preview: Preview, options: { rows?: number; open?: () => Promise<string> } = {}) {
+function screen(
+    preview: Preview,
+    options: { rows?: number; open?: () => Promise<string>; openAtStart?: boolean } = {},
+) {
     const answers: Answer[] = [];
     const terminal = fakeTerminal(options.rows ?? 24);
     const component = createReviewScreen(
@@ -28,6 +31,7 @@ function screen(preview: Preview, options: { rows?: number; open?: () => Promise
             header: "git · push · external · write",
             preview,
             openInBrowser: options.open ?? (async () => "opened in the browser"),
+            ...(options.openAtStart === undefined ? {} : { openAtStart: options.openAtStart }),
         },
         terminal.tui as never,
         terminal.theme as never,
@@ -150,6 +154,74 @@ describe("opening the browser", () => {
         assert.deepEqual(answers, []);
         component.handleInput?.("y");
         assert.deepEqual(answers, ["allow"]);
+    });
+});
+
+describe("opening the browser as the screen appears", () => {
+    const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+    test("openAtStart opens the preview once, shows how it went, and does not answer", async () => {
+        let opened = 0;
+        const { component, answers } = screen(
+            { summary: "s", body: "b" },
+            {
+                openAtStart: true,
+                open: async () => {
+                    opened += 1;
+                    return "opened in the browser: http://localhost:1/preview/x.html";
+                },
+            },
+        );
+        assert.match(component.render(120).join("\n"), /opening the preview in the browser/);
+        await tick();
+        component.render(120);
+        component.render(120);
+        assert.equal(opened, 1, "drawing the screen again does not open it again");
+        assert.match(component.render(120).join("\n"), /opened in the browser: http:\/\/localhost:1\/preview\/x\.html/);
+        assert.deepEqual(answers, []);
+    });
+
+    test("a failure is on the status line, and y, s and n still answer", async () => {
+        for (const [key, expected] of [
+            ["y", "allow"],
+            ["s", "allow-session"],
+            ["n", "decline"],
+        ] as const) {
+            const { component, answers } = screen(
+                { summary: "s" },
+                {
+                    openAtStart: true,
+                    open: async () => {
+                        throw new Error("no launcher");
+                    },
+                },
+            );
+            await tick();
+            assert.match(component.render(100).join("\n"), /could not open the browser: no launcher/);
+            component.handleInput?.(key);
+            assert.deepEqual(answers, [expected]);
+        }
+    });
+
+    test("without openAtStart, or with it false, nothing opens until o", async () => {
+        for (const openAtStart of [undefined, false]) {
+            let opened = 0;
+            const { component } = screen(
+                { summary: "s" },
+                {
+                    ...(openAtStart === undefined ? {} : { openAtStart }),
+                    open: async () => {
+                        opened += 1;
+                        return "ok";
+                    },
+                },
+            );
+            component.render(80);
+            await tick();
+            assert.equal(opened, 0);
+            component.handleInput?.("o");
+            assert.equal(opened, 1);
+        }
     });
 });
 

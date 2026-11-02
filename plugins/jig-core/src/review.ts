@@ -3,7 +3,8 @@
 //   y        allow
 //   s        allow for this session
 //   n, Esc   decline
-//   o        open the rendered preview in the browser (the browser only shows; the answer is given here)
+//   o        open the rendered preview in the browser (the browser only shows; the answer is given here); with the
+//            setting `approvals.openInBrowser: "always"` it also opens once as the screen appears
 //   up, down, PgUp, PgDn, Home, End   scroll
 //
 // It is a component for `ctx.ui.custom`, so it exists only in the terminal interface. Other hosts use a plain selector
@@ -21,6 +22,8 @@ export interface ReviewOptions {
     preview: Preview;
     /** Opens the rendered preview in the browser and says how it went. */
     openInBrowser: () => Promise<string>;
+    /** Opens it as soon as the screen appears, once, as if `o` had been pressed (the setting `approvals.openInBrowser`). */
+    openAtStart?: boolean;
 }
 
 /** Only what the screen uses of Pi's terminal interface and theme, so tests can pass small fakes. */
@@ -92,6 +95,26 @@ export function createReviewScreen(
         top = Math.min(Math.max(0, to), Math.max(0, bodyLines - height));
     }
 
+    /** Asks for the preview in the browser and shows how it went. The question stays open whatever happens. */
+    function openPreview(): void {
+        status = "opening the preview in the browser...";
+        tui.requestRender();
+        const show = (message: string): void => {
+            status = message;
+            tui.requestRender();
+        };
+        // Writing the page can fail too (a full disk, say), and so can the launcher: both are said on the status line.
+        void options.openInBrowser().then(show, (error: unknown) => {
+            show(`could not open the browser: ${errorMessage(error)}`);
+        });
+    }
+
+    // With the setting "always", the preview opens once, as the screen appears. The screen is built once per question.
+    if (options.openAtStart === true) {
+        status = "opening the preview in the browser...";
+        queueMicrotask(openPreview);
+    }
+
     return {
         render(width) {
             const { summary, body } = layout(width);
@@ -121,22 +144,7 @@ export function createReviewScreen(
             if (matchesKey(data, "s")) return answer("allow-session");
             if (matchesKey(data, "n") || matchesKey(data, "escape") || matchesKey(data, "ctrl+c"))
                 return answer("decline");
-            if (matchesKey(data, "o")) {
-                status = "opening the preview in the browser...";
-                tui.requestRender();
-                void options.openInBrowser().then(
-                    (message) => {
-                        status = message;
-                        tui.requestRender();
-                    },
-                    // Writing the page can fail too (a full disk, say). The question stays open.
-                    (error: unknown) => {
-                        status = `could not open the browser: ${errorMessage(error)}`;
-                        tui.requestRender();
-                    },
-                );
-                return;
-            }
+            if (matchesKey(data, "o")) return openPreview();
             const { summary, body } = cached ?? { summary: [], body: [] };
             const height = viewport(summary.length);
             const page = Math.max(1, height - 1);

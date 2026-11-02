@@ -60,6 +60,10 @@ export interface PassBinding {
     unlockAtStart?: boolean;
 }
 
+/** When a review screen opens its preview in the browser: when the user presses `o`, or as soon as it appears. */
+export const OPEN_IN_BROWSER_MODES = ["on-key", "always"] as const;
+export type OpenInBrowser = (typeof OPEN_IN_BROWSER_MODES)[number];
+
 export interface JigConfig {
     environments: Record<string, EnvironmentConfig>;
     rules: Rule[];
@@ -73,6 +77,7 @@ export interface JigConfig {
     };
     records: { retentionDays: number };
     spill: { retentionDays: number };
+    approvals: { openInBrowser: OpenInBrowser };
     /** TCP checks made when a session starts. Only the user's file sets them, never a company plugin. */
     startChecks: StartCheck[];
 }
@@ -86,6 +91,7 @@ export function defaultConfig(): JigConfig {
         secrets: { backends: ["pass"], disabledBackends: [], commands: {}, pass: {} },
         records: { retentionDays: 90 },
         spill: { retentionDays: 7 },
+        approvals: { openInBrowser: "on-key" },
         startChecks: [],
     };
 }
@@ -99,6 +105,7 @@ export const OWN_SECTIONS: readonly string[] = [
     "secrets",
     "records",
     "spill",
+    "approvals",
     "startChecks",
 ];
 
@@ -227,6 +234,8 @@ export function parseConfig(
     if (value.secrets !== undefined) config.secrets = parseSecrets(value.secrets, fail);
     if (value.records !== undefined) config.records = parseRetention(value.records, "records", fail, config.records);
     if (value.spill !== undefined) config.spill = parseRetention(value.spill, "spill", fail, config.spill);
+    if (value.approvals !== undefined)
+        config.approvals = parseApprovals(value.approvals, "approvals", fail, config.approvals);
     if (value.startChecks !== undefined) config.startChecks = parseStartChecks(value.startChecks, "startChecks", fail);
 
     return {
@@ -651,6 +660,26 @@ function parseRetention(
         return fallback;
     }
     return { retentionDays: days };
+}
+
+function parseApprovals(
+    raw: unknown,
+    path: string,
+    fail: Fail,
+    fallback: JigConfig["approvals"],
+): JigConfig["approvals"] {
+    if (!isObject(raw)) {
+        fail(path, "must be an object");
+        return fallback;
+    }
+    knownFields(raw, ["openInBrowser"], path, fail);
+    const mode = raw.openInBrowser;
+    if (mode === undefined) return fallback;
+    if (typeof mode !== "string" || !(OPEN_IN_BROWSER_MODES as readonly string[]).includes(mode)) {
+        fail(at(path, "openInBrowser"), `must be "on-key" or "always"`);
+        return fallback;
+    }
+    return { openInBrowser: mode as OpenInBrowser };
 }
 
 // ---- what company plugins add ------------------------------------------------------------------------------------

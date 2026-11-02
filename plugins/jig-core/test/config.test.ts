@@ -42,6 +42,7 @@ describe("loading the file", () => {
         assert.deepEqual(loaded.config.secrets.backends, ["pass"]);
         assert.equal(loaded.config.records.retentionDays, 90);
         assert.equal(loaded.config.spill.retentionDays, 7);
+        assert.equal(loaded.config.approvals.openInBrowser, "on-key");
     });
 
     test("a valid file loads, with a byte-order mark tolerated", () => {
@@ -55,6 +56,7 @@ describe("loading the file", () => {
                 secrets: { backends: ["pass", "env"] },
                 records: { retentionDays: 30 },
                 spill: { retentionDays: 3 },
+                approvals: { openInBrowser: "always" },
             })}`,
         );
         const loaded = loadConfigFile(file);
@@ -65,6 +67,7 @@ describe("loading the file", () => {
         assert.deepEqual(loaded.config.secrets.backends, ["pass", "env"]);
         assert.equal(loaded.config.records.retentionDays, 30);
         assert.equal(loaded.config.spill.retentionDays, 3);
+        assert.equal(loaded.config.approvals.openInBrowser, "always");
     });
 
     test("invalid JSON is an error that names the file and does not quote the text", () => {
@@ -111,6 +114,7 @@ describe("an unknown field is an error", () => {
             ["secrets.backend", { secrets: { backend: ["pass"] } }],
             ["records.keepDays", { records: { keepDays: 3 } }],
             ["spill.keepDays", { spill: { keepDays: 3 } }],
+            ["approvals.openInBrowser2", { approvals: { openInBrowser2: "always" } }],
         ] as const) {
             const loaded = personal(value);
             assert.ok(
@@ -146,6 +150,10 @@ describe("an unknown field is an error", () => {
         bad({ secrets: { commands: { gh: ["gh", ""] } } }, "secrets.commands.gh");
         bad({ secrets: { commands: { gh: ["gh", 3] } } }, "secrets.commands.gh");
         bad({ secrets: { commands: { gh: ["gh", "a\nb"] } } }, "secrets.commands.gh");
+        bad({ approvals: { openInBrowser: "sometimes" } }, "approvals.openInBrowser");
+        bad({ approvals: { openInBrowser: true } }, "approvals.openInBrowser");
+        bad({ approvals: { openInBrowser: "Always" } }, "approvals.openInBrowser");
+        bad({ approvals: "always" }, "approvals");
         bad({ records: { retentionDays: 0 } }, "records.retentionDays");
         bad({ records: { retentionDays: 1.5 } }, "records.retentionDays");
         bad({ classify: [{ tool: "t", param: "p", environment: "e", effect: "read" }] }, "classify[0]");
@@ -159,6 +167,13 @@ describe("an unknown field is an error", () => {
         );
         bad({ environments: { qa: { kind: "staging" } } }, "environments.qa.kind");
         bad([], "(file)");
+    });
+
+    test("a bad approvals setting leaves the defaults, like every other error in the file", () => {
+        const loaded = personal({ approvals: { openInBrowser: "sometimes" } });
+        assert.equal(loaded.config.approvals.openInBrowser, "on-key");
+        assert.equal(personal({ approvals: {} }).problems.length, 0);
+        assert.equal(personal({ approvals: { openInBrowser: "on-key" } }).problems.length, 0);
     });
 
     test("production masking cannot be turned off, and the built-in environments cannot be redefined", () => {

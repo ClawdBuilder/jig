@@ -151,3 +151,50 @@ describe("the o key, with the real server", () => {
         assert.deepEqual(given(), []);
     });
 });
+
+describe('the setting approvals.openInBrowser: "always"', () => {
+    test("opens the preview once as the screen appears, and the question stays open", async () => {
+        let address = "";
+        let page = { status: 0, body: "" };
+        await ask(
+            { approvals: { openInBrowser: "always" } },
+            screen(async () => {
+                [address = ""] = await opened(1);
+                page = await fetchPage(address);
+                return ["y"];
+            }),
+        );
+        assert.equal(page.status, 200);
+        assert.match(page.body, /Comment on PR 7/);
+        await sleep(200);
+        assert.equal(given().length, 1, "once");
+    });
+
+    test("opens once for each question", async () => {
+        harness = await start({
+            config: { approvals: { openInBrowser: "always" } },
+            mode: "tui",
+            ui: { custom: screen(async () => ["y"]) },
+            env: { ...process.env, BROWSER: path.join(scratch, "browser") },
+            plugins: declare,
+        });
+        await harness.call({ tool: "fake", input: {} });
+        await harness.call({ tool: "fake", input: {} });
+        const addresses = await opened(2);
+        assert.equal(addresses.length, 2);
+        assert.notEqual(addresses[0], addresses[1]);
+    });
+
+    test("pressing o as well opens it again, as it always did", async () => {
+        await ask(
+            { approvals: { openInBrowser: "always" } },
+            screen(async (component) => {
+                await opened(1);
+                component.handleInput?.("o");
+                await opened(2);
+                return ["y"];
+            }),
+        );
+        assert.equal((await opened(2)).length, 2);
+    });
+});

@@ -34,7 +34,8 @@ before it gave:
   for it, in the terminal interface. A scrollable preview (up and down, PgUp
   and PgDn, Home and End).
   - `y` allows, `s` allows for the session, `n` or Esc declines, `o` opens the
-    rendered preview in the browser.
+    rendered preview in the browser. With `approvals.openInBrowser` set to `"always"` in `jig.json`, it also opens
+    once, as the screen appears.
   - The status line says how it went: the address that was opened, or why it could not be (the launcher failed, or
     there is none). The question stays open either way.
   - The browser only shows: the page has no script and no form, and the answer is always given in Pi.

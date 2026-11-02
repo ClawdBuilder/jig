@@ -15,6 +15,7 @@
 // shown one at a time.
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { ApprovalKind, Preview } from "./contract.ts";
+import type { OpenInBrowser } from "./config.ts";
 import { createReviewScreen } from "./review.ts";
 import type { Answer } from "./records.ts";
 
@@ -62,6 +63,8 @@ export interface ApprovalsOptions {
     now?: () => number;
     /** Shows the rendered preview in the browser (the `o` key). The default writes the page and opens it. */
     openPreview?: (preview: Preview, header: string) => Promise<string>;
+    /** Whether a review screen opens its preview as soon as it appears ("always") or on the `o` key. Read for each question. */
+    openInBrowser?: () => OpenInBrowser;
 }
 
 export function createApprovals(options: ApprovalsOptions = {}): Approvals {
@@ -118,6 +121,7 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
                         header: request.header,
                         preview: request.preview,
                         openInBrowser: () => openPreview(request.preview, request.header),
+                        openAtStart: options.openInBrowser?.() === "always",
                     },
                     tui,
                     theme,

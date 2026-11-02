@@ -31,6 +31,19 @@ function pressing(...keys: string[]): NonNullable<FakeUiScript["custom"]> {
         });
 }
 
+/** Like `pressing`, but the keys come after a short wait, so anything the screen does as it appears has happened first. */
+function pressingLater(...keys: string[]): NonNullable<FakeUiScript["custom"]> {
+    return (factory) =>
+        new Promise((resolve) => {
+            const terminal = fakeTerminal();
+            const component = factory(terminal.tui, terminal.theme, terminal.keybindings, resolve) as Component;
+            component.render(80);
+            setTimeout(() => {
+                for (const key of keys) component.handleInput?.(key);
+            }, 20);
+        });
+}
+
 describe("a dialog question", () => {
     test("shows the header and the summary, and offers three answers", async () => {
         const { ctx, log } = context({ select: () => "Allow" });
@@ -155,6 +168,100 @@ describe("the review screen", () => {
         const result = await approvals.ask(ctx, review);
         assert.equal(result.answer, "allow");
         assert.deepEqual(opened, [[review.preview, HEADER]]);
+    });
+
+    test('with the setting "always" the preview opens once as the screen appears, without the key', async () => {
+        const opened: Array<[Preview, string]> = [];
+        const approvals = createApprovals({
+            openPreview: async (preview, header) => {
+                opened.push([preview, header]);
+                return "opened in the browser";
+            },
+            openInBrowser: () => "always",
+        });
+        // A screen that stays open for a moment before y, as a person reading it would.
+        const { ctx } = context({ custom: pressingLater("y") }, "tui");
+        const result = await approvals.ask(ctx, review);
+        assert.equal(result.answer, "allow");
+        assert.deepEqual(opened, [[review.preview, HEADER]]);
+    });
+
+    test('"always" opens once for each question, and "on-key" never opens without the key', async () => {
+        let count = 0;
+        const approvals = createApprovals({
+            openPreview: async () => {
+                count += 1;
+                return "ok";
+            },
+            openInBrowser: () => "always",
+        });
+        for (let index = 0; index < 3; index += 1)
+            await approvals.ask(context({ custom: pressingLater("y") }, "tui").ctx, review);
+        assert.equal(count, 3);
+
+        let onKey = 0;
+        const quiet = createApprovals({
+            openPreview: async () => {
+                onKey += 1;
+                return "ok";
+            },
+            openInBrowser: () => "on-key",
+        });
+        await quiet.ask(context({ custom: pressingLater("y") }, "tui").ctx, review);
+        await createApprovals({
+            openPreview: async () => {
+                onKey += 1;
+                return "ok";
+            },
+        }).ask(context({ custom: pressingLater("y") }, "tui").ctx, review);
+        assert.equal(onKey, 0);
+    });
+
+    test('"always" says on the screen when the browser could not be opened, and y/s/n still answer', async () => {
+        let shown = "";
+        const approvals = createApprovals({
+            openPreview: async () =>
+                "could not open the browser: no launcher (the address is http://localhost:1/preview/x.html)",
+            openInBrowser: () => "always",
+        });
+        const { ctx } = context(
+            {
+                custom: (factory) =>
+                    new Promise((resolve) => {
+                        const terminal = fakeTerminal();
+                        const component = factory(
+                            terminal.tui,
+                            terminal.theme,
+                            terminal.keybindings,
+                            resolve,
+                        ) as Component;
+                        setTimeout(() => {
+                            shown = component.render(200).join("\n");
+                            component.handleInput?.("s");
+                        }, 30);
+                    }),
+            },
+            "tui",
+        );
+        assert.equal((await approvals.ask(ctx, review)).answer, "allow-session");
+        assert.match(shown, /could not open the browser: no launcher/);
+    });
+
+    test('"always" does nothing for a dialog, and for hosts without the screen', async () => {
+        let count = 0;
+        const approvals = createApprovals({
+            openPreview: async () => {
+                count += 1;
+                return "ok";
+            },
+            openInBrowser: () => "always",
+        });
+        await approvals.ask(
+            context({ select: () => "Allow" }, "tui").ctx,
+            request({ kind: "dialog", preview: review.preview }),
+        );
+        await approvals.ask(context({ select: () => "Allow" }, "rpc").ctx, review);
+        assert.equal(count, 0);
     });
 
     test("a run that is aborted while the screen is open closes it", async () => {

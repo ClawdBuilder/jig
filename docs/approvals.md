@@ -43,14 +43,16 @@ supply, not because its address is secret.
 | Kind | When | What you see | How you answer |
 |---|---|---|---|
 | Dialog | short, one-line confirmations | the action in one line | `y` or `n` |
-| Review screen | long previews: diffs, Jira text, PR descriptions | a scrollable, coloured preview; `o` opens it rendered in the browser (a page on `localhost`) | `y` approves, `n` or Esc declines |
+| Review screen | long previews: diffs, Jira text, PR descriptions | a scrollable, coloured preview; `o` opens it rendered in the browser (a page on `localhost`; `approvals.openInBrowser: "always"` opens it at once) | `y` approves, `n` or Esc declines |
 | Form | decisions with more than yes or no, such as choosing an option or filling a field | several questions on one screen, with options and free text | submit or cancel |
 
 A rule can choose which kind its calls use. For example, Jira comments use
 the review screen with a rendered preview.
 
 The rendered page comes from a small server on this machine (`127.0.0.1`, a random port, an unguessable address per
-page, closed with the session). It shows the preview and takes nothing back: it has no route that answers a question. See [Approval screens](../plugins/jig-core/docs/approval-screens.md).
+page, closed with the session). It shows the preview and takes nothing back: it has no route that answers a question. The
+setting `approvals.openInBrowser` is `"on-key"` (the default) or `"always"`, which opens the page once as the review
+screen appears. See [Approval screens](../plugins/jig-core/docs/approval-screens.md).
 
 The form screen will be built on `@adeildo/pi-ask-questions`, on trial. It is a
 deliberate port of `@juicesharp/rpiv-ask-user-question`'s question format into a

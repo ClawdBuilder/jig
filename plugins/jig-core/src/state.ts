@@ -249,6 +249,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             now: () => Date.now(),
             openPreview:
                 options.openPreview ?? ((preview, header) => openPreview(preview, header, { server: previews, env })),
+            openInBrowser: () => state.personal.config.approvals.openInBrowser,
         }),
         gates: createGates(options.gateTimeoutMs === undefined ? {} : { timeoutMs: options.gateTimeoutMs }),
         watches: createWatchEngine({
