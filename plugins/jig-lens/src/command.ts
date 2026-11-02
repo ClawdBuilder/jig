@@ -13,13 +13,15 @@ export type Command =
     /** The interactive view of cost and tokens from Pi's own session files. */
     | { kind: "usage-view" }
     | { kind: "viewer"; viewer: Viewer }
+    /** The page this session serves on 127.0.0.1. */
+    | { kind: "web" }
     | { kind: "rebuild" }
     | { kind: "status" }
     /** Something was wrong with the arguments. `problem` says what, when there is more to say than the usage. */
     | { kind: "usage"; problem?: string };
 
 export const USAGE =
-    "Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | grafana | datasette | rebuild | status]";
+    "Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | web | grafana | datasette | rebuild | status]";
 
 /** The commands that show a summary. */
 export type SummaryCommand = Extract<Command, { kind: "summary" | "ticket" | "session" | "days" }>;
@@ -43,6 +45,7 @@ export const WORDS: ReadonlyArray<readonly [word: string, what: string]> = [
     ["days", `the last N days, 1 to ${MAX_DAYS}`],
     ["compare", "conditions side by side, the last 30 days or days N"],
     ["usage", "cost and tokens from Pi's session files, by period and model"],
+    ["web", "open the built-in page: charts, sessions, tools, your time"],
     ["grafana", "open the Grafana dashboards"],
     ["datasette", "open the Datasette tables"],
     ["rebuild", "make the index again"],
@@ -63,6 +66,7 @@ export function parseCommand(args: string): Command {
         case "grafana":
         case "datasette":
             return rest.length === 0 ? { kind: "viewer", viewer: word } : usage(`/lens ${word} takes no arguments.`);
+        case "web":
         case "rebuild":
         case "status":
             return rest.length === 0 ? { kind: word } : usage(`/lens ${word} takes no arguments.`);

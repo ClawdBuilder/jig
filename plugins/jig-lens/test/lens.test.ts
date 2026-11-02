@@ -23,6 +23,7 @@ test("/lens status before anything was imported says there is no index yet", asy
                 "Viewer: none running at http://127.0.0.1:3300 (/lens grafana or /lens datasette starts one)",
                 `Index: none yet at ${r.where.index}. It is made when an agent run ends, and by /lens.`,
                 "Last import: never",
+                "Page: not running (/lens web starts it)",
             ].join("\n"),
         },
     ]);
@@ -40,7 +41,7 @@ test("/lens status gives the viewer's address and state, the index size, the las
     assert.match(lines[1] ?? "", INDEX_LINE);
     assert.equal(lines[2], "Last import: 2026-10-30 12:00:00 UTC");
     assert.equal(lines[3], "Skipped lines: none");
-    assert.equal(lines.length, 4);
+    assert.equal(lines.length, 5);
 });
 
 test("/lens status counts the lines that could not be read, by file", async (t) => {
@@ -452,7 +453,7 @@ test("/lens rebuild makes a new index when the old one cannot be read", async (t
     assert.equal(readStatus(r.where.index)?.calls, 14);
     const status = (await r.pi.lens("status"))[0]?.text.split("\n") ?? [];
     assert.match(status[1] ?? "", INDEX_LINE);
-    assert.equal(status.length, 4, "and the failure that was told before is not repeated");
+    assert.equal(status.length, 5, "and the failure that was told before is not repeated");
 });
 
 test("/lens rebuild with no index yet makes one, and counts the lines it skipped", async (t) => {
@@ -475,7 +476,7 @@ test("an unknown word shows the usage, and does nothing else", async (t) => {
     assert.deepEqual(notices, [
         {
             level: "warning",
-            text: "Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | grafana | datasette | rebuild | status]",
+            text: "Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | web | grafana | datasette | rebuild | status]",
         },
     ]);
     assert.deepEqual([r.spawned, r.opened, r.probes], [[], [], []]);
@@ -507,21 +508,23 @@ test("the command is /lens, with completions for its words", (t) => {
         "days",
         "compare",
         "usage",
+        "web",
         "grafana",
         "datasette",
         "rebuild",
         "status",
     ]);
     assert.deepEqual(words("u"), ["usage"]);
+    assert.deepEqual(words("w"), ["web"]);
     assert.deepEqual(words("r"), ["rebuild"]);
     assert.deepEqual(words("st"), ["status"]);
     assert.deepEqual(words("d"), ["days", "datasette"]);
     assert.equal(command.getArgumentCompletions?.("x"), null);
 });
 
-test("the import is hooked to the end of an agent run, and to nothing else", (t) => {
+test("the import is hooked to the end of an agent run, and the page's stop to the end of the session", (t) => {
     const r = rig(t);
-    assert.deepEqual([...r.pi.handlers.keys()], ["agent_end"]);
+    assert.deepEqual([...r.pi.handlers.keys()], ["agent_end", "session_shutdown"]);
 });
 
 // ---- the lens section of jig.json -----------------------------------------------------------------------------------

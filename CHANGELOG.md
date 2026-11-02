@@ -10,6 +10,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `/lens web`: a page of charts and tables over `jig-lens`'s index, served by Pi on `127.0.0.1` behind a secret link,
+  read-only, with nothing to install: cost per day, sessions and tickets, every turn and call of a session with child
+  agents nested, tools with p50 and p95 and loops of repeated failures, and your waiting time. It stops when Pi exits, and
+  `/lens status` reports it. It is now the recommended viewer; Grafana and Datasette are optional extras.
 - `approvals.openInBrowser` in `jig.json`: `"always"` opens a review screen's preview in the browser as soon as the screen appears (once per question); the default `"on-key"` keeps the `o` key.
 - `workflow test` picks the JDK a Gradle build needs from its files (the wrapper's Gradle version, the build's Java level, and each installed JDK's `release` file), so no repository needs its own `JAVA_HOME`; a configured one still wins, and the result says which JDK ran and why.
 - `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure

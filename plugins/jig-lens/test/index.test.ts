@@ -15,7 +15,7 @@ test("the default export is the factory Pi loads, and it only registers", () => 
     const pi = new FakePi();
     factory(pi.api);
     assert.deepEqual([...pi.commands.keys()], ["lens"]);
-    assert.deepEqual([...pi.handlers.keys()], ["agent_end"]);
+    assert.deepEqual([...pi.handlers.keys()], ["agent_end", "session_shutdown"]);
     assert.deepEqual([...pi.renderers.keys()], ["jig-lens-summary"]);
     assert.deepEqual([pi.notices, pi.entries, pi.sent], [[], [], []]);
 });
@@ -24,7 +24,7 @@ test("lens() makes a factory that registers the command, the import and the rend
     const pi = new FakePi();
     lens()(pi.api);
     assert.deepEqual([...pi.commands.keys()], ["lens"]);
-    assert.deepEqual([...pi.handlers.keys()], ["agent_end"]);
+    assert.deepEqual([...pi.handlers.keys()], ["agent_end", "session_shutdown"]);
     assert.deepEqual([...pi.renderers.keys()], ["jig-lens-summary"]);
 });
 

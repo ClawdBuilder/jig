@@ -32,6 +32,26 @@ export interface ModelNameBook {
     readonly size: number;
 }
 
+/**
+ * A short form of a model id that no plugin named: the provider and the last part of the path. An ARN
+ * (`arn:<partition>:<service>:<region>:<account>:<type>/<id>`) becomes `<service> <id>`, so neither the region nor the
+ * account number is shown; `provider/model` becomes `model`; anything else is kept as it is.
+ */
+export function shortModelId(id: string): string {
+    const arn = /^arn:[^:]*:([^:]+):[^:]*:[^:]*:(.+)$/.exec(id);
+    if (arn !== null) {
+        const last = arn[2]?.split(/[/:]/).pop() ?? "";
+        return last === "" ? (arn[1] ?? id) : `${arn[1]} ${last}`;
+    }
+    const last = id.split("/").pop() ?? "";
+    return last === "" ? id : last;
+}
+
+/** What to show for a recorded model id: the name a plugin gave it, else its short form. */
+export function modelLabel(id: string, names?: ModelNames): string {
+    return names?.("", id)?.model ?? shortModelId(id);
+}
+
 export function createModelNames(): ModelNameBook {
     const known = new Map<string, Shown>();
     return {
