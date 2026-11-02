@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="690" viewBox="0 0 1000 690" role="img" aria-label="The round trip of a switch, top to bottom. 1: the Context panel in Herdr writes requests/&lt;id&gt;.json in the state dir, with printf to a temporary file and mv. 2: every 2 seconds jig-session takes the file by renaming it, reads it once and removes it. 3: it turns tools on or off with pi.setActiveTools. 4: in the before_agent_start hook, at your next prompt, it leaves the skills that are off out of the prompt. 5: it saves the switches with pi.appendEntry, so a reload or resume keeps them. 6: a reload runs /session-reload through pi.sendUserMessage when the agent is idle. 7: it writes the answer as lastRequest in its status file. 8: the panel reads that every 2 seconds and stops drawing the switch dimmed. Tools change from the model's next request and skills from your next prompt; a request already sent is untouched. A request approves nothing: jig-core's rules still decide every call." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <rect x="0.5" y="0.5" width="999" height="689" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
+  <defs>
+    <marker id="sessswitch-head-c08326" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C08326"/></marker>
+    <marker id="sessswitch-head-5c9cab" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5C9CAB"/></marker>
+    <marker id="sessswitch-head-1d3b4d" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
+  </defs>
+  <!-- the four actors -->
+  <rect x="30" y="24" width="200" height="56" rx="6" fill="#C08326"/>
+  <text x="130" y="49" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">Context panel</text>
+  <text x="130" y="68" font-size="12.5" fill="#FFFFFF" text-anchor="middle">a mod in the Herdr app</text>
+  <rect x="280" y="24" width="200" height="56" rx="6" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="2"/>
+  <text x="380" y="49" font-size="16" fill="#1A1F1D" font-weight="700" text-anchor="middle">&lt;state dir&gt;</text>
+  <text x="380" y="68" font-size="12.5" fill="#1A1F1D" text-anchor="middle">files on the agent's machine</text>
+  <rect x="530" y="24" width="200" height="56" rx="6" fill="#5C9CAB"/>
+  <text x="630" y="49" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-session</text>
+  <text x="630" y="68" font-size="12.5" fill="#FFFFFF" text-anchor="middle">a Pi extension</text>
+  <rect x="770" y="24" width="200" height="56" rx="6" fill="#1D3B4D"/>
+  <text x="870" y="49" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">Pi</text>
+  <text x="870" y="68" font-size="12.5" fill="#FFFFFF" text-anchor="middle">the agent</text>
+  <!-- lifelines -->
+  <path d="M130 80 V560 M380 80 V560 M630 80 V560 M870 80 V560" fill="none" stroke="#D2D9D3" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <!-- 1: the panel writes the request -->
+  <path d="M130 130 H378" fill="none" stroke="#C08326" stroke-width="2.6" marker-end="url(#sessswitch-head-c08326)"/>
+  <text x="255" y="122" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">1  requests/&lt;id&gt;.json</text>
+  <text x="255" y="148" font-size="12" fill="#3A4440" text-anchor="middle">sh: printf to .tmp, then mv</text>
+  <!-- 2: jig-session takes it -->
+  <path d="M380 190 H628" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#sessswitch-head-5c9cab)"/>
+  <text x="505" y="182" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">2  every 2 s: take by rename</text>
+  <text x="505" y="208" font-size="12" fill="#3A4440" text-anchor="middle">read once, then removed</text>
+  <!-- 3 to 6: what jig-session asks of Pi -->
+  <path d="M630 250 H868" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#sessswitch-head-5c9cab)"/>
+  <text x="750" y="242" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">3  pi.setActiveTools(names)</text>
+  <text x="750" y="268" font-size="12" fill="#3A4440" text-anchor="middle">tools on or off</text>
+  <path d="M630 310 H868" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#sessswitch-head-5c9cab)"/>
+  <text x="750" y="302" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">4  before_agent_start hook</text>
+  <text x="750" y="328" font-size="12" fill="#3A4440" text-anchor="middle">skills off, from your next prompt</text>
+  <path d="M630 370 H868" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#sessswitch-head-5c9cab)"/>
+  <text x="750" y="362" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">5  pi.appendEntry(switches)</text>
+  <text x="750" y="388" font-size="12" fill="#3A4440" text-anchor="middle">kept through reload and resume</text>
+  <path d="M630 430 H868" fill="none" stroke="#5C9CAB" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#sessswitch-head-5c9cab)"/>
+  <text x="750" y="422" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">6  /session-reload, if asked</text>
+  <text x="750" y="448" font-size="12" fill="#3A4440" text-anchor="middle">pi.sendUserMessage, when idle</text>
+  <!-- 7: the answer -->
+  <path d="M630 490 H382" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#sessswitch-head-5c9cab)"/>
+  <text x="505" y="482" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">7  status file: lastRequest</text>
+  <text x="505" y="508" font-size="12" fill="#3A4440" text-anchor="middle">{ id, ok, message }</text>
+  <!-- 8: the panel reads it -->
+  <path d="M380 540 H132" fill="none" stroke="#1D3B4D" stroke-width="2.6" marker-end="url(#sessswitch-head-1d3b4d)"/>
+  <text x="255" y="532" font-size="13" fill="#1A1F1D" font-weight="700" text-anchor="middle">8  read every 2 s</text>
+  <text x="255" y="558" font-size="12" fill="#3A4440" text-anchor="middle">the switch is no longer dimmed</text>
+  <!-- what holds across the round trip -->
+  <rect x="20" y="582" width="960" height="40" fill="#1D3B4D"/>
+  <text x="34" y="607" font-size="13" fill="#FFFFFF"><tspan font-weight="700">Not at once: </tspan>tools from the model's next request, skills from your next prompt · a request already sent is untouched · other sessions keep theirs</text>
+  <rect x="20" y="630" width="960" height="40" fill="#4E7A58"/>
+  <text x="34" y="655" font-size="13" fill="#FFFFFF"><tspan font-weight="700">A request approves nothing: </tspan>jig-core's rules still decide every call, so a tool turned on is as allowed or denied as before</text>
+</svg>

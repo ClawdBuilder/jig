@@ -195,8 +195,9 @@ company plugin supplies, and the order of building.
 ## The Herdr app
 
 [`herdr/`](herdr/README.md) is not a plugin: it is a layout and mods for the [Herdr](https://herdr.dev) desktop app, copied
-into the app's folder by a script. Its Work panel shows the Pi session in focus from `jig-session`'s file (ticket, stages,
-pull requests, changed files, recent calls), beside the changes of every repository, a review tab and the Jig palette.
+into the app's folder by a script. Its Work and Context panels show the Pi session in focus from `jig-session`'s file (ticket,
+stages, pull requests, changed files, recent calls, what fills the context), beside the changes, history, pull requests and
+worktrees of every repository, and the window follows the Jig palette. [How it works](herdr/docs/how-it-works.md).
 
 ## Read in this order
 
