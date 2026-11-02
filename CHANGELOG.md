@@ -10,6 +10,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   (such as `cmd:` reading what `fly login` saved); Jig never signs in. A paused pipeline or a job closed to manual starts is
   refused before anyone is asked.
 - `jig-core` requests can stop at a marker in the reply, for a stream that never closes on its own.
+- A service's environment can name its own CI job (`environments.<name>.job`), and `ci` takes an `environment`: "build orders-api for staging" runs that environment's job. A write in a test environment asks; one in production is refused before asking.
 
 ## [0.2.0] - 2026-11-02
 

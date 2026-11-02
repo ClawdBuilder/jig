@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
 - [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
 - [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
@@ -52,6 +53,29 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: an environment can have its own CI job, and a `ci` call can name it
+
+A service has one build CI, but the jobs that deploy it differ by environment, and so may the CI system. A Concourse job per
+environment is the case that asked for it; a Jenkins job that differs by environment is the same case.
+
+**Decided**
+- **`environments.<e>.job` is a `ci` entry,** for any system that can start a build (Concourse, Jenkins, GitLab). GitHub Actions has no
+  trigger, so it is refused. An environment may have only a `job`.
+- **Every `ci` action takes `environment`.** With it the call uses that job; without it, the service's `ci`.
+- **A call that names an environment acts in it.** The job carries the environment's name, so the rules of that environment decide:
+  reads are reads there, `trigger` and `rerun` are writes there, a test environment asks and production is denied before anyone is
+  asked. `watch` stays a local write.
+- **The environment is in the fingerprint and the preview.** The same job approved for one environment is not approved for another.
+- **A job never starts a watch on a push,** and its watch says nothing about a commit: no `jig-ops:ci-finished`, no "artifact
+  ready". A push means "a commit was built"; a deploy job does not say that.
+- **A user's own `auth` for a job replaces the company's whole** (`services.*.environments.*.job.auth` joins the `replace` keys).
+
+**Why**
+- **The environment already decides the rules.** Deriving the environment of a call from the job keeps one mapping, as the catalog
+  does for `deploy`.
+- **A second tool or a second service entry per environment** would have repeated the repository, the artifact rules and the
+  service's name, and a call could not say "staging" at all.
 
 ## 2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker
 

@@ -31,7 +31,7 @@ gone, so this table cannot drift from the code.
 
 | File | What it does | Called by |
 |---|---|---|
-| `catalog.ts` | The `ops` section: each service, its environments, how it deploys, where it runs, its health address | most of the tools, `index.ts` and the CI watches |
+| `catalog.ts` | The `ops` section: each service, its environments, how it deploys, where it runs, its health address, its CI job | most of the tools, `index.ts` and the CI watches |
 | `ci/config.ts` | The `ci` entry of a service: which CI system builds it, and the fields each system has | `catalog.ts`, `ci/adapter.ts`, `ci/adapters.ts` and 5 more |
 | `ci/settings.ts` | How often a CI watch polls, when it gives up, and the rules for "the artifact is ready" | `catalog.ts`, `ci/adapter.ts`, `ci/artifacts.ts` |
 | `runtime/kubernetes/config.ts` | The Kubernetes target of an environment: context, namespace, pod selector, in-pod check | `catalog.ts`, the deploy methods and the runtime files |
@@ -72,6 +72,7 @@ gone, so this table cannot drift from the code.
 | `ci/gitlab.ts` | The GitLab adapter: pipelines, jobs and logs through the REST API; rerun and trigger | `ci/adapters.ts` |
 | `ci/jenkins.ts` | The Jenkins adapter: builds, stages and console logs; trigger with a crumb | `ci/adapters.ts` |
 | `ci/concourse.ts` | The Concourse adapter: a job's builds, their inputs and logs; start the job; no rerun | `ci/adapters.ts` |
+| `ci/environment.ts` | The environment a call names: how a preview and a watch's title say so | `ci/concourse.ts`, `ci/gitlab.ts`, `ci/jenkins.ts` |
 | `ci/model.ts` | What a CI system says about a check, in one shape with four buckets: pass, fail, pending, skipped | the four CI adapters and their watches |
 | `ci/logs.ts` | Job logs from any CI system: cleaned, cut down, and scrubbed of anything credential-shaped | the adapters and watches that show a log |
 | `ci/lost.ts` | A write whose reply was lost: one read says what the system shows, and it is never sent again | `ci/concourse.ts`, `ci/github-actions.ts`, `ci/gitlab.ts` and 1 more |

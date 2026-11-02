@@ -77,7 +77,8 @@ async function pollCi(
     // A saved watch is read from a file, so the system in it is checked before it is used.
     if (!Object.hasOwn(SYSTEMS, spec.system))
         throw new Error(`a watch of CI system ${JSON.stringify(spec.system)} cannot be polled`);
-    const service = findCiService(catalog, "ci watch", spec.service);
+    const environment = spec.system === "github-actions" ? undefined : spec.environment;
+    const service = findCiService(catalog, "ci watch", spec.service, environment);
     if (service.ci.system !== spec.system) {
         throw new Error(
             `${spec.service} now uses ${service.ci.system} for CI, so this ${spec.system} watch cannot go on`,

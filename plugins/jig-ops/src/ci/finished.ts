@@ -36,6 +36,8 @@ export function announceFinished(
     done: WatchResult,
 ): void {
     if (service.repo === undefined || spec.sha === undefined) return;
+    // The CI of an environment deploys or checks it. It says nothing about whether a commit built.
+    if (spec.system !== "github-actions" && spec.environment !== undefined) return;
     if (done.outcome !== "passed" && done.outcome !== "failed") return;
     const branch = spec.system === "github-actions" ? spec.branch : spec.system === "gitlab" ? spec.ref : undefined;
     const pr = spec.system === "github-actions" ? spec.pr : undefined;

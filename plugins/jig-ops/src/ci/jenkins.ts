@@ -10,6 +10,7 @@ import type { Outcome } from "../values.ts";
 import type { CiService } from "../catalog.ts";
 import type { JenkinsConfig } from "./config.ts";
 import type { ActionTable, CiAdapter, CiContext, CiSystemInfo, Params, Plan, WatchPlan } from "./adapter.ts";
+import { environmentOf, inEnvironment } from "./environment.ts";
 import { httpFailure } from "./http.ts";
 import { buildCheck, jenkinsApi, resultOf, stageCheck } from "./jenkins-api.ts";
 import type { Build, JenkinsApi, Stage } from "./jenkins-api.ts";
@@ -149,8 +150,10 @@ function jenkins(service: CiService, ctx: CiContext): CiAdapter {
             entries.length === 0
                 ? "none (a plain build)"
                 : entries.map(([key, value]) => `${key}=${value.slice(0, 80)}`).join(", ");
+        const environment = environmentOf(service);
         const body = [
             `Service:    ${service.name} (Jenkins job ${job})`,
+            ...(environment === undefined ? [] : [`Environment: ${environment}`]),
             `Parameters: ${shownParameters}`,
             `Next build number: ${before.nextBuildNumber ?? "unknown"}` +
                 (before.inQueue ? "; a build is already waiting in the queue" : ""),
@@ -162,12 +165,14 @@ function jenkins(service: CiService, ctx: CiContext): CiAdapter {
             preview: {
                 summary:
                     `start a build of ${job}` +
-                    (entries.length > 0 ? ` with ${plural(entries.length, "parameter")}` : ""),
+                    (entries.length > 0 ? ` with ${plural(entries.length, "parameter")}` : "") +
+                    inEnvironment(service),
                 body,
                 format: "text",
                 fingerprint: digest(
                     "ci trigger",
                     service.name,
+                    service.environment ?? null,
                     job,
                     entries,
                     before.nextBuildNumber ?? null,
@@ -239,6 +244,7 @@ function jenkins(service: CiService, ctx: CiContext): CiAdapter {
                 );
         }
         const spec: JenkinsSpec = { system: "jenkins", service: service.name, finish, since: ctx.now() };
+        if (service.environment !== undefined) spec.environment = service.environment;
         if (params.run_id !== undefined) {
             spec.build = (await buildOf(params)).number;
         } else {

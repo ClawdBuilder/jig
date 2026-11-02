@@ -45,7 +45,7 @@ In `~/.pi/agent/jig.json`, under `ops`:
 |---|---|
 | `repo` | Where the code lives, for finding the CI run of a commit |
 | `ci` | The CI system and where it is: GitHub Actions, GitLab CI, Jenkins or Concourse, with its address and sign-in |
-| `environments` | Per environment: its `deploy` method, where it runs (`runtime`) and its `health` address |
+| `environments` | Per environment: its `deploy` method, where it runs (`runtime`), its `health` address and the CI `job` that acts on it |
 
 - **`production` has no `deploy` on purpose.** Without `deploy`, the agent cannot
   deploy to an environment.
@@ -92,6 +92,9 @@ All fields (and how CI watches poll): [The catalog](docs/catalog.md).
 
 An action or parameter the CI system of the service lacks is refused, naming the adapter ([CI](docs/ci.md)).
 
+Every action takes an `environment`. The call then acts on that environment's CI `job` (a Concourse job that deploys it, say)
+and in that environment: reads are reads there, a `trigger` is a write there, and production is denied ([CI jobs](docs/ci.md#a-ci-job-per-environment)).
+
 ## Adapters
 
 | Area | Built | Later, or added by anyone |
@@ -104,7 +107,7 @@ An action or parameter the CI system of the service lacks is refused, naming the
 
 - **Reads run.** Reruns, triggers, deploys and rollbacks ask you. Writes to production
   are denied by the floor, and production reads are masked. The CI host is `external`
-  unless the catalog names its environment.
+  unless the catalog names its environment, or the call names one with a `job`.
 - **Arguments, never a shell.** `gh`, `kubectl` and `helm` get their repository, context,
   namespace, release, chart and values from the catalog, never from the model. So do
   GitLab, Jenkins and Concourse their address, project, team, pipeline and job.
@@ -135,8 +138,8 @@ An action or parameter the CI system of the service lacks is refused, naming the
 
 - its service catalog, test environments and "artifact ready" rules; later, its deploy
   methods, and sign-in services, transports and token commands for CI servers behind a VPN or proxy.
-- Your `ops` section is laid over its defaults, so you write only what you change. A CI `auth` and a
-  `deploy` entry of yours replace the company's whole, and the rest merges key by key.
+- Your `ops` section is laid over its defaults, so you write only what you change. A CI `auth`, the `auth` of an
+  environment's `job` and a `deploy` entry of yours replace the company's whole, and the rest merges key by key.
 
 ## Later
 

@@ -24,7 +24,9 @@ export interface CiWorld {
 
 export interface CiWorldOptions {
     /** The `ci` entry of orders-api. */
-    ci: Raw;
+    ci?: Raw;
+    /** The whole `ops` section, instead of the default one with `ci` in it. */
+    section?: Raw;
     /** Other settings of the `ops` section. */
     ops?: Raw;
     responder: Responder;
@@ -44,7 +46,7 @@ export async function ciWorld(t: TestContext, options: CiWorldOptions): Promise<
     const transport = options.transport === undefined ? undefined : fakeTransport(options.responder);
     const h = setupHarness({ fetch: options.fetch ?? routeTo(server), timeoutMs: options.timeoutMs ?? 20_000 });
     t.after(() => h.close());
-    h.configure(withCi(options.ci, options.ops));
+    h.configure(options.section ?? withCi(options.ci ?? {}, options.ops));
     for (const [reference, value] of Object.entries(options.secrets ?? {})) h.jig.secrets.set(reference, value);
     if (transport !== undefined && options.transport !== undefined) h.jig.transports.set(options.transport, transport);
     return {

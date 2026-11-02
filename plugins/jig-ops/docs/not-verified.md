@@ -210,6 +210,13 @@ What the tests could not settle:
 - **A real Concourse in CI.** It needs a database and a privileged worker, so the `integration` job does not run one. A check
   against a quickstart Concourse, with a local user, would settle every item above.
 
+### CI jobs per environment
+
+What the tests could not settle:
+- **The review screen** of a preview with the environment line, and the masking of a production read through a job, were not
+  seen in the terminal. The fake `jig-core` answers the kind of an environment as the real one does.
+- **A job on a real server.** An environment's job is the same adapter as a service's `ci`, and the same open items apply to it.
+
 ### GitHub Actions, as `jig-git`'s `checks` tool left it
 
 - **The escape-sequence check of `gh`.** `gh` 2.97 refuses to print a job log, which holds colour codes, unless given
