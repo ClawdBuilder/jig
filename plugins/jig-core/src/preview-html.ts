@@ -1,7 +1,9 @@
 // A preview rendered as a web page, for reading in the browser (the `o` key on the review screen).
 //
-// The browser only shows. The page has no script and no form, nothing in it can answer the question, and there is no
-// server: the page is a file under `<state>/previews/` that the browser opens directly. Approval stays in Pi.
+// The browser only shows. The page has no script and no form, and nothing in it can answer the question. It is served
+// to the browser by a small local server (src/preview-server.ts) at an address on `localhost`, which works wherever the
+// browser can reach this machine, a Windows browser under WSL included. Only when that server cannot start is the page
+// written as a file under `<state>/previews/` and opened by its file address. Approval stays in Pi.
 //
 // The text in a preview can come from the model (a pull request description it wrote), so it is treated as untrusted:
 // raw HTML in it is shown as text, links are kept only for http, https and mailto, images are shown as their
@@ -16,6 +18,10 @@ import type { Preview } from "./contract.ts";
 import { errorMessage } from "./errors.ts";
 import { resolveProgram } from "./exec.ts";
 import { createPrivateFile, privateDir, removeOldFiles, stateDir } from "./paths.ts";
+import type { PreviewServer } from "./preview-server.ts";
+
+/** What the page may load: nothing from outside, only its own inline style. The server sends it as a header too. */
+export const PAGE_POLICY = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
 
 export function escapeHtml(text: string): string {
     return text
@@ -110,7 +116,7 @@ export function renderPreviewPage(preview: Preview, header: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="${PAGE_POLICY}">
 <title>${escapeHtml(preview.summary)}</title>
 <style>${STYLE}</style>
 </head>
@@ -169,17 +175,59 @@ const launchDetached: Launch = (program, args) =>
         });
     });
 
-/** Opens a page in the browser and says how it went, in a line the review screen can show. */
+/** The launcher's error message when it cannot start, else undefined. */
+async function launchBrowser(target: string, launch: Launch, env: NodeJS.ProcessEnv): Promise<string | undefined> {
+    const { program, args } = browserCommand(target, env);
+    try {
+        await launch(program, args);
+        return undefined;
+    } catch (error) {
+        return errorMessage(error);
+    }
+}
+
+const isWebAddress = (target: string): boolean => /^https?:\/\//i.test(target);
+
+/**
+ * Opens a page in the browser and says how it went, in a line the review screen can show. `target` is an http address,
+ * or the path of a file (opened by its file address). The launcher starting is all that can be known: the line says the
+ * browser was asked, and gives the address so the user can open it by hand.
+ */
 export async function openInBrowser(
-    file: string,
+    target: string,
     launch: Launch = launchDetached,
     env: NodeJS.ProcessEnv = process.env,
 ): Promise<string> {
-    const { program, args } = browserCommand(pathToFileURL(file).href, env);
+    const address = isWebAddress(target) ? target : pathToFileURL(target).href;
+    const failure = await launchBrowser(address, launch, env);
+    return failure === undefined
+        ? `opened in the browser: ${address}`
+        : `could not open the browser: ${failure} (the address is ${address})`;
+}
+
+export interface OpenPreviewDeps {
+    server: PreviewServer;
+    launch?: Launch;
+    env?: NodeJS.ProcessEnv;
+}
+
+/**
+ * The `o` key: serves the preview over http and opens it. When the server cannot listen, it falls back to a file under
+ * the state folder, and the line says so, because a browser on another system (a Windows one under WSL) may not find it.
+ */
+export async function openPreview(preview: Preview, header: string, deps: OpenPreviewDeps): Promise<string> {
+    const launch = deps.launch ?? launchDetached;
+    const env = deps.env ?? process.env;
+    let address: string;
     try {
-        await launch(program, args);
-        return "opened in the browser";
-    } catch (error) {
-        return `could not open the browser: ${errorMessage(error)}`;
+        address = await deps.server.serve(renderPreviewPage(preview, header));
+    } catch (serverError) {
+        const file = pathToFileURL(writePreviewPage(preview, header)).href;
+        const why = `the local preview server could not start: ${errorMessage(serverError)}`;
+        const failure = await launchBrowser(file, launch, env);
+        return failure === undefined
+            ? `opened the page as a file, not over http (${why}): ${file}`
+            : `could not open the browser: ${failure} (${why}; the file is ${file})`;
     }
+    return openInBrowser(address, launch, env);
 }

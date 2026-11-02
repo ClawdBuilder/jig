@@ -23,6 +23,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Fixed
 
+- The `o` key on the review screen opens the preview over `http://localhost` from a small server on this machine, not as a file, so it opens in a Windows browser under WSL; it says which address it opened, and why when it could not (the launcher failed, or the server could not start and a file was used).
 - The local packages Pi loads from its settings (and the extension files it loaded) are guarded: the sandboxed `bash` cannot change code that runs unsandboxed at the next start, and Pi's file tools refuse to write it.
 
 ## [0.2.0] - 2026-11-02

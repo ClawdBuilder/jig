@@ -35,8 +35,14 @@ before it gave:
   and PgDn, Home and End).
   - `y` allows, `s` allows for the session, `n` or Esc declines, `o` opens the
     rendered preview in the browser.
-  - The browser only shows: the page is a local file with no script and no
-    form, and the answer is always given in Pi.
+  - The status line says how it went: the address that was opened, or why it could not be (the launcher failed, or
+    there is none). The question stays open either way.
+  - The browser only shows: the page has no script and no form, and the answer is always given in Pi.
+  - The page is served by a small server on `127.0.0.1` (a random port, started by the first preview, closed when the
+    session ends) and opened at `http://localhost:<port>/preview/<random>.html`. It serves only pages Jig wrote, answers
+    404 to everything else, and takes GET and HEAD only. A file address does not work for a Windows browser under WSL;
+    an address on `localhost` does. If the server cannot start, the page is written as a file and opened by its file
+    address, and the status line says so.
 - **Form:** shown with Pi's selector in this version.
 - **Hosts without the terminal interface (RPC)** use the selector for every
   kind. A review question then shows the first 20 lines of the body in it, and

@@ -41,7 +41,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `approvals.ts` | Asking inside the waiting call: dialog, review screen or form, one question at a time | `gate.ts`, `state.ts` |
 | `review.ts` | The review screen: a scrollable preview you approve with a key | `approvals.ts` |
 | `preview.ts` | The one-line summary and the body of what a call will do, from the tool or from the call itself | `gate.ts` |
-| `preview-html.ts` | A long preview as a local page you can read (the `o` key); it shows and never answers | `index.ts`, `state.ts` |
+| `preview-html.ts` | A long preview as a page you can read in the browser (the `o` key); it shows and never answers | `index.ts`, `state.ts` |
+| `preview-server.ts` | The server on `127.0.0.1` that serves those pages to the browser, started by the first preview, closed with the session | `preview-html.ts`, `state.ts`, `index.ts` |
 
 ### Protecting what comes back
 
@@ -156,7 +157,7 @@ The agent asks for `git push` of a branch. These are the steps, in order.
    reverse.
 5. **Ask.** The decision is `ask`, so `askUser` in `gate.ts` builds the preview (`preview.ts` calls `jig-git`'s own
    preview: the commits that would be sent) and `approvals.ts` puts the question to you. A long preview uses
-   `review.ts`; `preview-html.ts` can show it in the browser, which only shows. You answer `y` in Pi. A `n` blocks the
+   `review.ts`; `preview-html.ts` can show it in the browser (through `preview-server.ts`), which only shows. You answer `y` in Pi. A `n` blocks the
    call, with your reason.
 6. **Announce.** `announce` tells other plugins about the decision on the event bus. The call is remembered in
    `state.ts` with its class, its decision and the preview you approved, which the tool can read back.

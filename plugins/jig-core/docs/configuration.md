@@ -364,4 +364,5 @@ such as `git`, `lens` or `memory`.
 - **`JIG_CONDITION`:** a value that does not fit is left out of the records and shown as a configuration problem when
   the session starts. A child agent gets the parent's value.
 - **`BROWSER`:** a name, optionally with arguments, and `%s` for the address.
-  The default is `xdg-open`, or `open` on macOS.
+  The default is `xdg-open`, or `open` on macOS. The address is `http://localhost:<port>/preview/...`, served by Jig on
+  this machine only, so a browser on the other side of WSL can open it.
