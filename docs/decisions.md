@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
 - [2026-11-01: guards a person would not see break](#2026-11-01-guards-a-person-would-not-see-break)
@@ -48,6 +49,31 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker
+
+Teams that deploy with Concourse start a job by hand, and read its builds, the way a Jenkins team does. `ci` gains an adapter for it.
+
+**Decided**
+- **`concourse` is the fourth CI system** of `jig-ops`: `status`, `runs`, `run`, `log`, `trigger` and `watch`, with no `rerun`. The
+  catalog names the team, the pipeline and the job; a call names none of them. `trigger` has no `ref` and no `parameters`, because a job
+  runs what its pipeline pins. A paused job or pipeline is refused before anyone is asked.
+- **Every build read is checked to be the catalog's.** Its team, pipeline and job must match, so a number cannot reach another job.
+- **The login is a secret reference, sent as a bearer.** `fly login` writes a token for the person; a command the company declares
+  prints only that token, and the entry says `{ "token": "cmd:<name>" }`. Jig never signs in: no `fly login`, no browser, no
+  `~/.flyrc` read by a plugin. When Concourse refuses the login, or the reference cannot be read, the message names the command in
+  `signInHint`, for the user to run in their own terminal.
+- **`HttpRequest.stopAt` is a stop marker.** Concourse writes an `end` event and then keeps the stream open until the client goes (read in
+  its source). The request stops reading when the reply holds the marker and lets the connection go. The contract only grows.
+
+**Why**
+- **A broker or a `fly curl` transport was the alternative to a reference.** Both need a program of ours to hold a session. A reference
+  is read again for each request, so the call after the user's login works, and `jig-core` keeps the value from the plugin.
+- **Without a marker, `ci log` waits for the time limit** on a finished build, and every failed watch carries no log.
+
+**Rejected**
+- **A plugin that runs `fly login` on a 401.** It signs in for the user, which no plugin does.
+- **A `file:` selector in `jig-core`** for the token in `~/.flyrc`. A company's reader command does the same with no new backend.
 
 ## 2026-11-02: an optional launcher, with nothing a company decides
 
