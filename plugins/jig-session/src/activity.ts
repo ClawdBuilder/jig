@@ -1,0 +1,119 @@
+// What the session did, for the panel: the files its edit and write calls changed (paths only), and its recent tool calls
+// with the decision jig-core took on each (tool and action names only, never an argument's value).
+import { existsSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import type { DecisionEvent } from "../../jig-core/src/contract.ts";
+
+export const MAX_OUTPUTS = 50;
+export const MAX_RECENT = 15;
+/** The tools whose successful calls make an output: Pi's own file tools. */
+export const FILE_TOOLS = new Set(["edit", "write"]);
+
+export interface Output {
+    /** Absolute. */
+    path: string;
+    action: "created" | "edited";
+    at: string;
+}
+
+export interface Recent {
+    at: string;
+    tool: string;
+    action?: string;
+    /** jig-core's decision; absent when no decision was published for the call. */
+    decision?: "allow" | "ask" | "deny";
+    /** Your answer, when the call asked. */
+    answer?: "allow" | "allow-session" | "decline";
+    outcome: "running" | "ok" | "error" | "blocked";
+}
+
+/** A path as Pi's file tools take it (relative to the folder, `~/`, or with a leading `@`), made absolute. */
+export function absolute(given: string, cwd: string): string {
+    let p = given.startsWith("@") ? given.slice(1) : given;
+    if (p === "~") p = os.homedir();
+    else if (p.startsWith("~/")) p = path.join(os.homedir(), p.slice(2));
+    return path.resolve(cwd, p);
+}
+
+const NAME = /^[A-Za-z0-9_.:/-]{1,80}$/;
+const clip = (value: unknown): string | undefined =>
+    typeof value === "string" && NAME.test(value) ? value : undefined;
+
+export class Activity {
+    outputs: Output[] = [];
+    recent: Recent[] = [];
+    /** The file calls between their start and their end: the path and whether the file was there before. */
+    private readonly pending = new Map<string, { path: string; existed: boolean; tool: string }>();
+    private readonly byId = new Map<string, Recent>();
+    private readonly now: () => Date;
+
+    constructor(now: () => Date = () => new Date()) {
+        this.now = now;
+    }
+
+    reset(): void {
+        this.outputs = [];
+        this.recent = [];
+        this.pending.clear();
+        this.byId.clear();
+    }
+
+    private entry(toolCallId: string, tool: string): Recent {
+        let found = this.byId.get(toolCallId);
+        if (found === undefined) {
+            found = { at: this.now().toISOString(), tool: clip(tool) ?? "tool", outcome: "running" };
+            this.byId.set(toolCallId, found);
+            this.recent.unshift(found);
+            for (const dropped of this.recent.splice(MAX_RECENT)) {
+                for (const [id, value] of this.byId) if (value === dropped) this.byId.delete(id);
+            }
+        }
+        return found;
+    }
+
+    /** A call starts. Returns true: the recent list changed. */
+    started(toolCallId: string, tool: string): boolean {
+        this.entry(toolCallId, tool);
+        return true;
+    }
+
+    /** The call's arguments, after jig-core and the other plugins looked at them: for a file tool, its path. */
+    called(toolCallId: string, tool: string, input: unknown, cwd: string): void {
+        if (!FILE_TOOLS.has(tool)) return;
+        const given = (input as { path?: unknown } | undefined)?.path;
+        if (typeof given !== "string" || given === "" || given.includes("\0")) return;
+        const file = absolute(given, cwd);
+        this.pending.set(toolCallId, { path: file, existed: existsSync(file), tool });
+    }
+
+    /** jig-core's decision on a call. Returns whether the recent list changed. */
+    decided(event: unknown): boolean {
+        const e = event as Partial<DecisionEvent> | undefined;
+        if (typeof e?.toolCallId !== "string" || typeof e.tool !== "string") return false;
+        const entry = this.entry(e.toolCallId, e.tool);
+        const action = clip(e.action);
+        if (action !== undefined) entry.action = action;
+        if (e.decision === "allow" || e.decision === "ask" || e.decision === "deny") entry.decision = e.decision;
+        if (e.answer === "allow" || e.answer === "allow-session" || e.answer === "decline") entry.answer = e.answer;
+        if (entry.decision === "deny" || entry.answer === "decline") entry.outcome = "blocked";
+        return true;
+    }
+
+    /** A call ended. Returns whether the outputs changed. */
+    ended(toolCallId: string, tool: string, isError: boolean): boolean {
+        const entry = this.entry(toolCallId, tool);
+        if (entry.outcome !== "blocked") entry.outcome = isError ? "error" : "ok";
+        const file = this.pending.get(toolCallId);
+        this.pending.delete(toolCallId);
+        if (file === undefined || isError) return false;
+        const before = this.outputs.find((o) => o.path === file.path);
+        const action: Output["action"] =
+            before?.action === "created" || (file.tool === "write" && !file.existed) ? "created" : "edited";
+        this.outputs = [
+            { path: file.path, action, at: this.now().toISOString() },
+            ...this.outputs.filter((o) => o.path !== file.path),
+        ].slice(0, MAX_OUTPUTS);
+        return true;
+    }
+}
