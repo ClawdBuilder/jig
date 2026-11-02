@@ -16,15 +16,27 @@ export interface NotesMessage {
     notes: string;
     /** Why the notes come now, such as "Active." */
     lead: string;
+    /** Today's local date, `2026-11-02`, so a heading the agent writes is dated by the clock. */
+    today: string;
+    /** The open checks, as `openChecksText` words them, after the notes. */
+    checks?: string | undefined;
 }
 
-/** `[ticket KEY] <lead> Folder: <folder>/ (notes.md, evidence/index.md).`, a blank line, then the notes. */
+/**
+ * `[ticket KEY] <lead> Folder: <folder>/ (notes.md, evidence/index.md). Today is <date>.`, a blank line, the notes, and the
+ * open checks when there are any.
+ */
 export function notesMessage(input: NotesMessage): string {
-    const head = `[ticket ${input.key}] ${input.lead} Folder: ${input.folder}/ (notes.md, evidence/index.md).`;
+    const head = `[ticket ${input.key}] ${input.lead} Folder: ${input.folder}/ (notes.md, evidence/index.md). Today is ${input.today}.`;
     const body = input.notes.trim() === "" ? "(notes.md is empty)" : clipBytes(input.notes, NOTES_IN_MESSAGE, CUT);
-    return `${head}\n\n${body}`;
+    return input.checks === undefined ? `${head}\n\n${body}` : `${head}\n\n${body}\n\n${input.checks}`;
 }
 
-export function reminderText(key: string, notesFile: string): string {
-    return `[ticket ${key}] ${REMIND_AFTER} tool results since notes.md last changed: update the ## Now block in ${notesFile} (status, next step, open questions).`;
+/** The reminder, with today's date for a new heading and the number of open checks when there are any. */
+export function reminderText(key: string, notesFile: string, today: string, openChecks = 0): string {
+    const checks =
+        openChecks === 0
+            ? ""
+            : ` ${openChecks === 1 ? "1 check is" : `${openChecks} checks are`} still open (ticket list-checks).`;
+    return `[ticket ${key}] ${REMIND_AFTER} tool results since the ## Now block of notes.md last changed: update it in ${notesFile} (status, next step, open questions). Today is ${today}.${checks}`;
 }

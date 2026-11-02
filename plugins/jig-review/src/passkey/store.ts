@@ -12,9 +12,9 @@
 //   - A key entry is ignored when its public key does not load, is not ES256 or RS256, or when its stored fingerprint is not
 //     the SHA-256 of that key. That fingerprint is what the user confirmed, so an entry with another key under it (or
 //     with no `confirmedAt`) was never confirmed. A later write drops ignored entries.
-import { randomBytes } from "node:crypto";
-import { chmodSync, lstatSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { replaceFileDurably } from "../../../jig-core/src/kit/files.ts";
 import { fingerprintOf, publicKeyFromSpki, WebAuthnError } from "./webauthn.ts";
 import type { Algorithm } from "./webauthn.ts";
 
@@ -141,21 +141,8 @@ export class PasskeyStore {
         const dir = path.dirname(this.file);
         mkdirSync(dir, { recursive: true, mode: 0o700 });
         chmodSync(dir, 0o700);
-        const temporary = `${this.file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-        try {
-            writeFileSync(temporary, `${JSON.stringify({ version: 1, passkeys }, null, 2)}\n`, {
-                flag: "wx",
-                mode: 0o600,
-            });
-            renameSync(temporary, this.file);
-        } catch (error) {
-            try {
-                unlinkSync(temporary);
-            } catch {
-                // nothing was written
-            }
-            throw error;
-        }
+        // Synced before and after the rename, so a crash cannot leave passkeys.json empty.
+        replaceFileDurably(this.file, `${JSON.stringify({ version: 1, passkeys }, null, 2)}\n`, 0o600);
     }
 }
 

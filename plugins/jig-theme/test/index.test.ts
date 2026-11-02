@@ -45,14 +45,19 @@ test("the extension is listed in the package, last, after jig-core, and every li
     assert.deepEqual(manifest.pi.themes, ["./plugins/jig-theme/themes/*.json"]);
 });
 
-test("it reaches jig-core only through its client, the way plugins are meant to", () => {
+test("it reaches jig-core only through its client and kit, the way plugins are meant to", () => {
     let found = 0;
     for (const name of readdirSync(SRC)) {
         for (const match of readFileSync(path.join(SRC, name), "utf8").matchAll(
             /from "(\.\.\/\.\.\/jig-core\/[^"]+)"/g,
         )) {
             found++;
-            assert.equal(match[1], "../../jig-core/src/client.ts", `${name} imports ${match[1]}`);
+            const target = match[1] ?? "";
+            assert.ok(
+                target === "../../jig-core/src/client.ts" ||
+                    /^\.\.\/\.\.\/jig-core\/src\/kit\/[a-z-]+\.ts$/.test(target),
+                `${name} imports ${target}`,
+            );
         }
     }
     assert.ok(found >= 1);

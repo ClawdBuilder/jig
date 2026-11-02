@@ -2,7 +2,7 @@
 
 **Status: ticket folders, cards and recall built.** Tested against a fake `jig-core`
 and a fake Pi, not yet in a real Pi session. The memory keeper is design (see
-[Later](#later)).
+[Later](docs/later.md)).
 
 `jig-memory` keeps what the agent learns about a [ticket](../../docs/glossary.md#tickets-and-workflows)
 in files that outlive the session, sums a closed ticket up in a short
@@ -29,12 +29,26 @@ Each ticket has a folder outside every repository:
 | `evidence/` | Tool results captured while the ticket is active, masked like everything else, with an index |
 | `ticket.json` | The repositories bound to the ticket |
 | `workflow.json` | The state of the ticket's workflow, written only by `jig-workflow` |
+| `checks.json` | The open checks, and the closed ones with their outcome ([Handoff](docs/handoff.md#the-checks-file)) |
 | `card.md` | The card, written at close (see [Cards](docs/cards.md)) |
 
 The folder of all tickets also holds `.cards.json`, an index of the cards that
-recall reads and rebuilds by itself. This scope has no model-callable tools. The
-agent uses Pi's file tools, and this plugin captures evidence through
-`jig-core`'s events.
+recall reads and rebuilds by itself. The agent writes notes with Pi's file tools,
+and this plugin captures evidence through `jig-core`'s events. Every file it
+writes is synced to disk before it takes its name, so a killed machine never
+leaves one empty.
+
+## Tool: `ticket`
+
+The handoff record of the active ticket: what the user ran and pasted, and what
+the agent said it would do before the next step ([Handoff](docs/handoff.md)).
+
+| Action | Kind | What it does |
+|---|---|---|
+| `save-evidence` | local write | Saves text the user pasted, such as a run's output, to `evidence/`, masked |
+| `add-check` | local write | Adds an open check: something to do before the next step |
+| `list-checks` | read | The open checks, and how many are closed |
+| `close-check` | local write | Closes a check by its number, with what was found or done |
 
 ## Commands
 
@@ -54,7 +68,12 @@ agent uses Pi's file tools, and this plugin captures evidence through
 - **Notes as a message.** After a compaction, the notes come back as a message,
   never in the system prompt, so the prompt cache stays valid.
 - **Reminders.** The agent is reminded to update `## Now` when many results
-  arrive without a notes change.
+  arrive without a change to `## Now` itself, and is told today's date.
+- **Open checks** are shown with every prompt until closed. Before the agent
+  hands you a command for the next step, it closes or names each one.
+- **Empty files.** When a ticket becomes active or is restored, files in its
+  folder that are empty and changed in the last 7 days are named to the agent
+  and to you. Nothing is repaired.
 - **Cards.** The plugin fills the front matter from the notes and evidence; the
   agent writes Problem, Cause and Fix, each up to 400 characters, and the plugin
   rejects a card that lacks one or has one too long (see [Cards](docs/cards.md)).
@@ -76,42 +95,12 @@ plugin's rules. An error names the key, and the plugin then uses its defaults.
 | `recall.max` | `3` | Most cards in one recall message, from 1 to 10 |
 | `recall.minScore` | `2` | The score a card needs; see [Recall](docs/recall.md#the-threshold) |
 
-- **`ticketPattern`:** a key must not touch a letter or digit on either side.
-  Without a pattern, only `/ticket KEY` activates a ticket.
-- **`folder`:** the default is under `XDG_DATA_HOME` when that is set. An empty
-  or relative `XDG_DATA_HOME` is ignored.
-- **`recall`:** an object. `/ticket recall` works with `enabled` false; only the
-  automatic run at activation stops.
-
-```json
-{
-  "memory": {
-    "ticketPattern": "[A-Z][A-Z0-9]+-\\d+",
-    "folder": "~/work/tickets",
-    "recall": { "max": 2, "minScore": 3 }
-  }
-}
-```
+Field notes and an example: [Configure](docs/configure.md).
 
 ## Company part (in the company plugin)
 
 - the ticket key patterns;
 - where ticket folders live.
-
-## Later
-
-- **A memory keeper** that proposes organizational and personal facts at ticket
-  close. You approve the exact text of every one.
-- **Ticket text from `jig-jira`.** Recall uses the activating message only,
-  because `jig-jira` does not publish an issue's summary and description on
-  Pi's event bus. If it ever does, recall can use them too.
-- **Files and keyword search first.** Embeddings or a graph come only after a
-  recall test built from real tickets shows misses. The test in
-  `test/recall-eval/` uses invented tickets, so it cannot show that yet.
-
-![Memory in five steps: write, consolidate, index, retrieve and use, with bands for protecting every write, keeping it small and measuring recall](../../docs/img/memory-steps.svg)
-
-*Memory in five steps, from notes while the agent works to a short message at the start of a later ticket. Lookup is keys and keyword search over plain files; embeddings or a graph wait for a measured miss. In this plugin the agent writes the card, not a memory keeper.*
 
 ## Layout
 
@@ -120,10 +109,12 @@ jig-memory/
   index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
   src/      index.ts (the factory), session.ts (the active ticket, its events and /ticket),
             store.ts (the ticket folder), notes.ts (the ## Now rule), evidence.ts,
+            tool.ts (the ticket tool), checks.ts (checks.json), empty-files.ts,
             message.ts (the notes message and the reminder), clip.ts, config.ts,
             extract.ts (keys, identifiers, error lines), card.ts (the card file),
             material.ts (what a ticket holds), cards.ts (the .cards.json index),
             bm25.ts (keyword search), recall.ts (scoring and its message), close.ts
+  skills/   ticket-memory/SKILL.md: dating notes, keeping ## Now current, pasted evidence, open checks
   test/     one file per module, support.ts (a fake jig-core and a fake Pi), and
             recall-eval/ (invented cards and queries, and the recall measure)
   docs/     the detail pages below
@@ -131,8 +122,12 @@ jig-memory/
 
 ## More detail
 
+- [Configure](docs/configure.md): each field of the `memory` section, with an example
+- [Later](docs/later.md): what is not built yet, and why
 - [How it behaves](docs/behaviour.md): folders, activation, the notes message,
-  the `## Now` block, reminders, evidence, and a known gap
+  the `## Now` block, reminders, evidence, empty files, and a known gap
+- [Handoff](docs/handoff.md): the `ticket` tool, pasted evidence, open checks and
+  the `checks.json` file other programs read
 - [Cards](docs/cards.md): the file, what the plugin fills, what the agent writes,
   how a close runs and what is rejected
 - [Recall](docs/recall.md): when it runs, the score, the threshold, the message,

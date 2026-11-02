@@ -1,10 +1,11 @@
 // The ticket folder on disk: <folder>/<KEY>/ holds notes.md (what is known, kept by the agent), plan.md (the plan that
 // jig-workflow asks you to approve), evidence/ (the saved results and index.md), history/ (the older lines of ## Now),
-// ticket.json (the repositories bound to the ticket) and, after a close, card.md. Folders are 0700 and files 0600,
-// because the notes and the evidence hold what the tools returned.
-import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+// ticket.json (the repositories bound to the ticket), checks.json (the open checks, once there is one) and, after a close,
+// card.md. Folders are 0700 and files 0600, because the notes and the evidence hold what the tools returned. Every file is
+// written synced (jig-core's kit/files.ts), so a machine that is killed mid-write never leaves one of them empty.
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { createFileDurably, replaceFileDurably } from "../../jig-core/src/kit/files.ts";
 import { historyText, notesTemplate, tidyNow } from "./notes.ts";
 
 export const FOLDER_MODE = 0o700;
@@ -20,6 +21,8 @@ export interface TicketPaths {
     ticket: string;
     /** card.md: made at close, not at activation. */
     card: string;
+    /** checks.json: the open checks, made when the first one is added. */
+    checks: string;
     evidence: string;
     index: string;
     history: string;
@@ -38,6 +41,7 @@ export function ticketPaths(folder: string, key: string): TicketPaths {
         plan: path.join(dir, "plan.md"),
         ticket: path.join(dir, "ticket.json"),
         card: path.join(dir, "card.md"),
+        checks: path.join(dir, "checks.json"),
         evidence,
         index: path.join(evidence, "index.md"),
         history: path.join(dir, "history"),
@@ -96,10 +100,11 @@ export function readText(file: string): string {
     }
 }
 
-/** Writes a file that does not exist yet. Returns false, and changes nothing, when it does. */
+/** Writes a file that does not exist yet, synced to disk before it is closed. Returns false, and changes nothing, when
+ *  it exists. */
 export function createFile(file: string, content: string): boolean {
     try {
-        writeFileSync(file, content, { flag: "wx", mode: FILE_MODE });
+        createFileDurably(file, content, FILE_MODE);
         return true;
     } catch (error) {
         if (errorCode(error) === "EEXIST") return false;
@@ -107,16 +112,10 @@ export function createFile(file: string, content: string): boolean {
     }
 }
 
-/** Replaces a file through a temporary file beside it, so a crash leaves the old text or the new, never a cut one. */
+/** Replaces a file through a synced temporary file beside it, and syncs the folder after the rename, so a crash, even of
+ *  the whole machine, leaves the old text or the new, never a cut or empty one. */
 export function replaceFile(file: string, content: string): void {
-    const temp = `${file}.${randomBytes(4).toString("hex")}.tmp`;
-    try {
-        writeFileSync(temp, content, { flag: "wx", mode: FILE_MODE });
-        renameSync(temp, file);
-    } catch (error) {
-        rmSync(temp, { force: true });
-        throw error;
-    }
+    replaceFileDurably(file, content, FILE_MODE);
 }
 
 function errorCode(error: unknown): unknown {

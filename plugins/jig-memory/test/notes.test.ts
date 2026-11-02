@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NOW_KEEP, NOW_LIMIT, notesTemplate, tidyNow } from "../src/notes.ts";
+import { localDate, localTime, NOW_KEEP, NOW_LIMIT, notesTemplate, nowBlock, tidyNow } from "../src/notes.ts";
 
 /** A ## Now block of `count` findings, each about 60 bytes, under a status line. */
 function longNow(count: number): string {
@@ -59,4 +59,21 @@ test("### subheadings belong to the block, and a # title ends it", () => {
     assert.ok(tidied !== undefined);
     assert.match(tidied.notes, /### Detail/, "the ### line stays in the top of the block");
     assert.match(tidied.notes, /\n# Title\nafter\n$/, "the title and what follows it are untouched");
+});
+
+test("the ## Now block is its heading and its lines, up to the next heading of level one or two", () => {
+    const notes = "# ACME-1\n\n## Now\nStatus: new\n### Detail\n- a\n\n## Decisions\n- keep\n";
+    assert.equal(nowBlock(notes), "## Now\nStatus: new\n### Detail\n- a");
+    assert.equal(
+        nowBlock(notes.replace("- keep", "- keep\n- another")),
+        nowBlock(notes),
+        "a change below does not count",
+    );
+    assert.equal(nowBlock("# ACME-1\n\nno block\n"), "");
+});
+
+test("the local date and time come from the clock in this machine's time zone", () => {
+    const when = new Date(2026, 10, 2, 9, 5);
+    assert.equal(localDate(when), "2026-11-02");
+    assert.equal(localTime(when), "09:05");
 });
