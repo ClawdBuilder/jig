@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-01: guards a person would not see break](#2026-11-01-guards-a-person-would-not-see-break)
 - [2026-11-01: a role only narrows, and the child enforces it](#2026-11-01-a-role-only-narrows-and-the-child-enforces-it)
 - [2026-10-31: every dependency is on its latest stable release, pinned, and kept there by Dependabot](#2026-10-31-every-dependency-is-on-its-latest-stable-release-pinned-and-kept-there-by-dependabot)
@@ -46,6 +47,42 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: an optional launcher, with nothing a company decides
+
+A user who wants Pi to survive a closed terminal window needed a `pi` command that starts it inside tmux. The one the author used also
+checked a VPN, unlocked a password store and set a company's folders. This entry keeps the first part, in `bin/`, and drops the rest.
+
+**Decided**
+- **`bin/pi` is a launcher you may use, and Jig does not need it.** It finds Pi, repairs a dead WSL interop socket, starts an
+  interactive session in its own tmux server (`-L jig`), and reattaches to a detached session started in the same folder. A print run
+  or a subcommand goes straight to Pi.
+- **It sets nothing of the user's.** No agent folder, no password store, no profile, no default. Pi's own defaults apply, and a
+  personal shim at `~/.local/bin/pi` exports what a user wants and runs the launcher. It never signs in and never touches the network.
+- **Pi inside tmux sees the environment of the terminal that started it.** Every exported variable is passed on except the ones that
+  describe the terminal or the shell (`TERM`, `TMUX`, `SHLVL`, `PWD` and a few more). A variable an earlier terminal left in the tmux
+  server, which this one does not set, is removed from the session.
+- **The values travel in the tmux client's environment, and only names go on the command line.** tmux's `update-environment` setting
+  copies the variables it names from the client's environment into a new session and removes those the client lacks, which does
+  both halves of the rule above. The setting is put back to tmux's own list as soon as the session exists.
+
+**Why**
+- **A launcher that decides is a company plugin in disguise.** A VPN host, a password store and an agent folder are one company's
+  choices. Nothing in this repository names a company ([AGENTS.md](../AGENTS.md)), and the launcher is no exception.
+- **A warm start in a launcher only runs when the launcher does.** A Pi started from another tool, a script or an editor skipped it
+  without a word. The same checks as settings of `jig.json` (`startChecks`, `secrets.pass.unlockAtStart`) run inside Pi, however
+  Pi started, and the user's own file says what they are.
+- **`tmux new-session -e NAME=value` puts every value in a command line.** Measured with tmux 3.4 on Linux: the value is in
+  `/proc/<pid>/cmdline` of the tmux client for as long as the session is attached, readable by every other process of the machine.
+  Passing every exported variable that way would have put cloud keys and tokens there.
+
+**Rejected**
+- **A warm start in the launcher** (a network probe, a password-store unlock). It is skipped when Pi starts another way, and it decided
+  for the user what to check and what to unlock.
+- **A list of variable prefixes to forward.** Every new tool needed an entry, and a missing one only showed as a setting that did not
+  reach Pi inside tmux. "Everything except the terminal's own" has no list to keep up.
+- **`-e NAME=value` for the variables,** and `env -u NAME` for the ones to remove, for the reason above. Names alone are safe on a
+  command line.
 
 ## 2026-11-01: guards a person would not see break
 

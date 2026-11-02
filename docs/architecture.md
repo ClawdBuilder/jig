@@ -138,6 +138,7 @@ jig (this repository, generic)
   jig-theme  the look: palettes as Pi themes, a footer, the answer colour; no tools
   jig-sandbox the sandbox around the agent's bash, and the bash tool that replaces Pi's
   jig-agents tool: child agents, each a separate Pi with the same plugins; their questions come to your screen, their limits are counted in the parent
+  bin/       the optional `pi` launcher (not a plugin; Pi never loads it): own tmux, reattach, the terminal's environment; see Starting Pi in the README
 
 company plugin (separate, private repository)
   the company's environments, sign-in service, internal tools and backends
