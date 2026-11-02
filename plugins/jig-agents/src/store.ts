@@ -1,19 +1,10 @@
 // What the plugin keeps on disk, in jig-core's state folder: one run folder per child, `agents/<session>/<child>/`, with `meta.json`
 // (who the child is and which process runs it), `system-prompt.md` and `report.md`. The meta file is how a later session finds a child
 // that outlived its parent. Pi's own session files are not touched.
-import {
-    chmodSync,
-    existsSync,
-    mkdirSync,
-    readdirSync,
-    readFileSync,
-    renameSync,
-    rmSync,
-    statSync,
-    writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { replaceFileDurably } from "../../jig-core/src/kit/files.ts";
 
 /** `$JIG_STATE_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/jig`: jig-core's rule, repeated, because a plugin never imports its modules. */
 export function stateDir(env: NodeJS.ProcessEnv = process.env): string {
@@ -102,10 +93,9 @@ export function privateFolder(dir: string): void {
     }
 }
 
+/** Synced, renamed into place, its folder synced: a crash leaves the old file or the new, never an empty one. */
 function atomicWrite(file: string, text: string): void {
-    const temporary = `${file}.${process.pid}.tmp`;
-    writeFileSync(temporary, text, { mode: 0o600 });
-    renameSync(temporary, file);
+    replaceFileDurably(file, text, 0o600);
 }
 
 export function writeMeta(dir: string, meta: Meta): void {

@@ -222,6 +222,7 @@ describe("what plugins import", () => {
         const modules = readdirSync(kit).sort();
         assert.deepEqual(modules, [
             "abort.ts",
+            "files.ts",
             "http-error.ts",
             "http.ts",
             "oauth.ts",
@@ -233,6 +234,7 @@ describe("what plugins import", () => {
         ]);
         const expected: Record<string, string[]> = {
             "abort.ts": ["untilAborted"],
+            "files.ts": ["createFileDurably", "replaceFileDurably", "syncFolder"],
             "http-error.ts": ["HttpError", "isHttpError"],
             "http.ts": [
                 "DEFAULT_MAX_BYTES",

@@ -5,6 +5,7 @@
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
 import type { CallClass, Preview } from "../../jig-core/src/contract.ts";
+import { checkTimeout } from "./ad-hoc.ts";
 import { loadCatalog } from "./catalog.ts";
 import { settingsOf } from "./config.ts";
 import type { ApiSettings } from "./config.ts";
@@ -21,6 +22,9 @@ import type { Call } from "./params.ts";
 import { planCall, planRequest } from "./planning.ts";
 import type { PlanContext } from "./planning.ts";
 import { listText, readsOf, showText } from "./show.ts";
+import { WORKSPACE_ID } from "./sources/postman-api.ts";
+import type { EnvironmentList } from "./sources/postman-api.ts";
+import type { EnvironmentLister } from "./sources/source.ts";
 
 export interface ApiOptions extends HttpOptions {
     /** For tests: where the Postman API is, in place of its hosts. */
@@ -28,8 +32,8 @@ export interface ApiOptions extends HttpOptions {
 }
 
 const DESCRIPTION =
-    "Run your team's saved API requests by name, filling only their variables: list, show, run, run-folder. " +
-    "call sends an ad-hoc request where allowed. The tool signs in. A non-2xx answer is a result.";
+    "Run saved API requests by name, filling only their variables: list, show, run, run-folder; call for an ad-hoc one " +
+    "where allowed; postman-environments for ids. The tool signs in; non-2xx is a result.";
 
 export interface ApiTool {
     definition: ToolDefinition<typeof parameters>;
@@ -82,6 +86,58 @@ interface Prepared {
     environment: string;
     /** `Orders/Smoke` for a folder; undefined for one request. */
     folder?: string;
+}
+
+/** The Postman cloud collection whose key lists the environments: the one named, or the only one. */
+function listerOf(
+    settings: ApiSettings,
+    call: Extract<Call, { action: "postman-environments" }>,
+): { name: string; lister: EnvironmentLister } {
+    checkTimeout(call.timeoutSec, settings.timeoutSec);
+    if (call.workspace !== undefined && !WORKSPACE_ID.test(call.workspace)) {
+        throw new InputError("workspace: must be the id of a Postman workspace (letters, digits and -)");
+    }
+    const listers = [...settings.collections.values()].flatMap((collection) =>
+        collection.environmentLister === undefined
+            ? []
+            : [{ name: collection.name, lister: collection.environmentLister }],
+    );
+    const how = 'add one under api.collections as { "postman": { "cloud": "<id>", "apiKey": "<secret reference>" } }';
+    if (call.collection !== undefined) {
+        const found = listers.find((each) => each.name === call.collection);
+        if (found !== undefined) return found;
+        const names = listers.map((each) => each.name).join(", ") || "none";
+        throw new InputError(
+            `${call.collection} is not a Postman cloud collection. Postman cloud collections: ${names}`,
+        );
+    }
+    const [only, ...others] = listers;
+    if (only === undefined) throw new InputError(`No collection is a Postman cloud collection: ${how}`);
+    if (others.length > 0) {
+        const names = listers.map((each) => each.name).join(", ");
+        throw new InputError(
+            `Several Postman cloud collections (${names}): name the one whose key to use in collection`,
+        );
+    }
+    return only;
+}
+
+/** The environments as the model reads them: one line each, with the name, the id and what else identifies it. */
+function environmentsText(name: string, workspace: string | undefined, list: EnvironmentList): string {
+    if (!list.ok) return `Could not list the Postman environments with the key of ${name}: ${list.reason}.`;
+    const where = workspace === undefined ? "the key can see" : `in workspace ${workspace}`;
+    const count = list.environments.length + list.more;
+    const head = `Postman environments ${where}, with the key of ${name}: ${count} (names and ids only; values are never fetched)`;
+    const lines = list.environments.map((entry) =>
+        [
+            `- ${entry.name} | ${entry.id}`,
+            ...(entry.owner === undefined ? [] : [`owner ${entry.owner}`]),
+            ...(entry.updatedAt === undefined ? [] : [`updated ${entry.updatedAt}`]),
+        ].join(" | "),
+    );
+    const more = list.more > 0 ? [`... and ${list.more} more; give workspace to narrow the list`] : [];
+    const use = `To use one, add it to api.collections.${name}.postman.environments as { "Staging": "<id>" }, then /api refresh ${name}.`;
+    return [head, ...lines, ...more, ...(count === 0 ? [] : ["", use])].join("\n");
 }
 
 /** Plans every request the call sends. Throws an InputError for anything invalid. */
@@ -212,6 +268,10 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                 case "show":
                     requiredSettings();
                     return { action: call.action, environment: "local", effect: "read" };
+                case "postman-environments":
+                    // A read of the Postman API, outside the machine; the collection is found now, so a wrong one blocks.
+                    listerOf(requiredSettings(), call);
+                    return { action: call.action, environment: "external", effect: "read" };
                 default: {
                     // The call is planned in full, so that anything invalid is found now and blocks the call without asking.
                     const prepared = prepare(contextOf(), call);
@@ -224,6 +284,10 @@ export function createTool(options: ApiOptions = {}): ApiTool {
             try {
                 const call = parseCall(input);
                 if (call.action === "list" || call.action === "show") return { summary: `api ${call.action}` };
+                if (call.action === "postman-environments") {
+                    const { name } = listerOf(requiredSettings(), call);
+                    return { summary: `api postman-environments with the key of ${name}: names and ids only` };
+                }
                 const prepared = prepare(contextOf(), call);
                 return prepared.folder === undefined
                     ? previewOf(prepared.plans[0] as Plan)
@@ -258,6 +322,25 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                     return text(showText(ctx.catalog, ctx.settings, request, call.environment), {
                         action: "show",
                         request: request.name,
+                    });
+                }
+
+                if (call.action === "postman-environments") {
+                    const settings = requiredSettings();
+                    const { name, lister } = listerOf(settings, call);
+                    const deps = {
+                        http,
+                        timeoutSec: checkTimeout(call.timeoutSec, settings.timeoutSec),
+                        allowPlainLocal: settings.allowPlainLocal,
+                        serviceUrl: options.postmanApi,
+                    };
+                    const list = await lister.list(call.workspace, deps, signal);
+                    if (!list.ok) throw new Error(environmentsText(name, call.workspace, list));
+                    jig().addFacts(toolCallId, { environments: list.environments.length + list.more });
+                    return text(environmentsText(name, call.workspace, list), {
+                        action: "postman-environments",
+                        collection: name,
+                        environments: list.environments.length + list.more,
                     });
                 }
 

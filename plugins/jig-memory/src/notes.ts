@@ -18,9 +18,35 @@ export function notesTemplate(key: string): string {
     return `# ${key}\n\n## Now\nStatus: new\nNext:\nOpen questions:\n\n## Decisions\n`;
 }
 
-/** A history file: the lines that left ## Now, with the time they left. */
+/** A history file: the lines that left ## Now, with the local date and time they left, and the exact time. */
 export function historyText(moved: string, when: Date): string {
-    return `# Moved from ## Now at ${when.toISOString()}\n\n${moved}\n`;
+    return `# Moved from ## Now on ${localDate(when)} at ${localTime(when)} (${when.toISOString()})\n\n${moved}\n`;
+}
+
+/** The date on this machine's clock, in its time zone: `2026-11-02`. A heading the plugin writes uses it, and the agent is
+ *  told it, so a note is dated by the clock and not by an earlier heading. */
+export function localDate(when: Date): string {
+    const two = (value: number) => String(value).padStart(2, "0");
+    return `${when.getFullYear()}-${two(when.getMonth() + 1)}-${two(when.getDate())}`;
+}
+
+/** The time on this machine's clock: `19:15`. */
+export function localTime(when: Date): string {
+    const two = (value: number) => String(value).padStart(2, "0");
+    return `${two(when.getHours())}:${two(when.getMinutes())}`;
+}
+
+/**
+ * The ## Now block as it is: its heading and the lines up to the next `#` or `##` heading, or "" when there is none.
+ * The reminder compares this, so an edit elsewhere in notes.md does not count as keeping ## Now current.
+ */
+export function nowBlock(notes: string): string {
+    const lines = notes.split("\n");
+    const start = lines.findIndex((line) => NOW.test(line));
+    if (start < 0) return "";
+    let end = start + 1;
+    while (end < lines.length && !SECTION.test(lines[end] ?? "")) end++;
+    return lines.slice(start, end).join("\n").replace(/\r/g, "").trimEnd();
 }
 
 /**

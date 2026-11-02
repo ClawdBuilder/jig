@@ -45,6 +45,47 @@ export function saveEvidence(folder: string, key: string, call: EvidenceCall, no
     return line;
 }
 
+/** Bytes of pasted text kept in one file. More is refused, not cut: a run's output cut short is worse than none. Under
+ *  jig-core's cap on a result, which the text passes through on its way here. */
+export const PASTED_LIMIT = 48 * 1024;
+/** A label: a few words of letters, digits, spaces, `-` and `_`. */
+const LABEL = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/;
+
+/** Why a label cannot be used, or undefined when it can. */
+export function labelProblem(label: string): string | undefined {
+    return LABEL.test(label)
+        ? undefined
+        : "label: 1 to 40 letters, digits, spaces, - or _, starting with a letter or digit, such as batch-3-output";
+}
+
+/** Why a pasted text cannot be saved, or undefined when it can. */
+export function pastedProblem(text: string): string | undefined {
+    if (text.trim() === "") return "text: empty; paste the output to save";
+    const bytes = Buffer.byteLength(text);
+    if (bytes > PASTED_LIMIT) {
+        return `text: ${bytes} bytes; at most ${PASTED_LIMIT}. Save it in parts, each with its own label`;
+    }
+    return undefined;
+}
+
+/**
+ * Saves text the user pasted, such as the output of a run they did themselves, as evidence: one file named by the time
+ * and the label, and one index line, `- <time> | pasted | <label> | <file>`. The caller passes the text as jig-core left
+ * it: masked, with secrets removed. Returns the file name.
+ */
+export function savePasted(folder: string, key: string, label: string, text: string, now: Date = new Date()): string {
+    const problem = labelProblem(label) ?? pastedProblem(text);
+    if (problem !== undefined) throw new TypeError(problem);
+    const paths = ticketPaths(folder, key);
+    const name = `${[stampOf(now), "pasted", slug(label), randomBytes(3).toString("hex")].join("-")}.txt`;
+    mkdirSync(paths.evidence, { recursive: true, mode: FOLDER_MODE });
+    if (!createFile(path.join(paths.evidence, name), text.endsWith("\n") ? text : `${text}\n`)) {
+        throw new Error(`${name} already exists`);
+    }
+    appendFileSync(paths.index, `- ${now.toISOString()} | pasted | ${slug(label)} | ${name}\n`, { mode: FILE_MODE });
+    return name;
+}
+
 /** Results saved for the ticket: the lines of evidence/index.md. */
 export function indexCount(folder: string, key: string): number {
     return readText(ticketPaths(folder, key).index)

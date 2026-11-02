@@ -17,8 +17,8 @@ function refuses(work: () => unknown, pattern: RegExp): void {
 }
 
 describe("the actions", () => {
-    test("are list, show, run, run-folder and call, and each says what it needs", () => {
-        assert.deepEqual([...ACTION_NAMES], ["list", "show", "run", "run-folder", "call"]);
+    test("are list, show, run, run-folder, call and postman-environments, and each says what it needs", () => {
+        assert.deepEqual([...ACTION_NAMES], ["list", "show", "run", "run-folder", "call", "postman-environments"]);
         assert.equal(usage("list"), "Usage: api list {collection?, folder?, text?}");
         assert.equal(usage("show"), "Usage: api show {request, collection?, folder?, environment?}");
         assert.equal(
@@ -58,7 +58,7 @@ describe("the actions", () => {
     test("an unknown action is refused with the actions there are", () => {
         refuses(
             () => parseCall({ action: "fly" }),
-            /^api: unknown action "fly"; use one of list, show, run, run-folder, call$/,
+            /^api: unknown action "fly"; use one of list, show, run, run-folder, call, postman-environments$/,
         );
         refuses(() => parseCall({}), /^api: unknown action undefined;/);
         refuses(() => parseCall({ action: "constructor" }), /unknown action/);

@@ -16,15 +16,24 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   files, the compaction buffer, free space), a switch for each tool and skill of that session, and Reload. `jig-session`
   writes the figures into its status file and takes the switches from a request file; `/session-reload` reloads when idle.
 - A service's environment can name its own CI job (`environments.<name>.job`), and `ci` takes an `environment`: "build orders-api for staging" runs that environment's job. A write in a test environment asks; one in production is refused before asking.
+- `ticket` tool (`jig-memory`): `save-evidence` keeps output the user pasted in the ticket's evidence, masked; `add-check`,
+  `list-checks` and `close-check` keep open checks in `checks.json`, shown with every prompt until closed.
+- When a ticket becomes active or is restored, files in its folder that are empty and changed in the last 7 days are named to the
+  agent and to you, as a sign of a write cut short by a crash.
+- `api postman-environments`: the names and ids of the Postman environments a cloud collection's key can see, never their values.
 
 ### Changed
 
 - After a push, the result says how the agent will hear when CI finishes (a running `ci` watch, or the call that starts one), and the model is told that a promise to report on CI needs a watch.
 - A command that fails because the sandbox makes no Unix socket (a JVM attaching to itself, Docker, a socket tool) says so in one line, and how to run it outside with the user's approval.
+- The `## Now` reminder stops only when `## Now` itself changes, not at any edit of `notes.md`, and the notes message and the
+  reminder say today's local date.
 
 ### Fixed
 
 - The `o` key on the review screen opens the preview over `http://localhost` from a small server on this machine, not as a file, so it opens in a Windows browser under WSL; it says which address it opened, and why when it could not (the launcher failed, or the server could not start; off WSL a file is then used, and under WSL, or with a Windows program as the opener, none is, because Windows warns about a network file).
+- Files Jig writes for itself (its state, ticket notes and evidence, the Postman copy, themes, passkeys, the sandbox's lists) are
+  synced to disk before they take their name, so a killed machine no longer leaves one empty. `kit/files.ts` holds the helper.
 - The local packages Pi loads from its settings (and the extension files it loaded) are guarded: the sandboxed `bash` cannot change code that runs unsandboxed at the next start, and Pi's file tools refuse to write it.
 
 ## [0.2.0] - 2026-11-02

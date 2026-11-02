@@ -8,14 +8,13 @@ import {
     mkdirSync,
     readdirSync,
     readFileSync,
-    renameSync,
     rmdirSync,
     rmSync,
     statSync,
     unlinkSync,
-    writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { replaceFileDurably } from "../../../jig-core/src/kit/files.ts";
 import type { ProcessPort } from "./process.ts";
 
 export const OWNER_FILE = "owner.pid";
@@ -49,10 +48,9 @@ export function ensureSessionFolder(agentDir: string, sessionId: string): string
     return ensureFolder(sessionFolder(agentDir, sessionId));
 }
 
+/** Synced, renamed into place, its folder synced: a crash leaves the old file or the new, never an empty one. */
 function writeAtomic(file: string, text: string): void {
-    const temporary = `${file}.${process.pid}.tmp`;
-    writeFileSync(temporary, text, { mode: 0o600 });
-    renameSync(temporary, file);
+    replaceFileDurably(file, text, 0o600);
 }
 
 export interface ManifestEntry {

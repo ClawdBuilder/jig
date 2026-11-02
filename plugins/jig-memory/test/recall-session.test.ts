@@ -57,7 +57,12 @@ test("a new ticket that shares a name with a card gets one recall message, after
         sent?.message.content ?? "",
         /\n {2}Cause: OrderMapper\.toDto read the customer's name without a null check\.\n {2}Fix: The mapper returns an empty name/,
     );
-    assert.equal(pi.events.has("before_agent_start"), false, "never the system prompt");
+    for (const result of pi.fire("before_agent_start", { messageType: "user", prompt: "go on" }))
+        assert.equal(
+            (result as { systemPrompt?: unknown } | undefined)?.systemPrompt,
+            undefined,
+            "never the system prompt",
+        );
 });
 
 test("the message names every card that passes, best first, and nothing about the ones that do not", (t) => {

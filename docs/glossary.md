@@ -118,7 +118,7 @@ is refused and you see the new preview.
 |---|---|
 | **Ticket** | A unit of work in an issue tracker, such as `PROJ-123`. |
 | **Ticket folder** | A folder for one ticket, outside every repository: notes, plan, evidence and bound repositories. |
-| **Evidence** | Tool results saved in the ticket folder while the ticket is active, masked like everything else. In a workflow, the result of a test run, a plan approval, a review or a scenario, saved against the commit or plan it is about. |
+| **Evidence** | Tool results, and text the user pasted, saved in the ticket folder while the ticket is active, masked like everything else. In a workflow, the result of a test run, a plan approval, a review or a scenario, saved against the commit or plan it is about. |
 | **Bound repository** | A repository listed in a ticket's `ticket.json`: a workflow's holds, tests and reviews apply there. |
 | **Workflow state** | `workflow.json` in the ticket folder: the stage and each result with the commit or plan it is about. Only `jig-workflow` writes it. |
 | **Workflow** | A named, ordered list of stages that you or a company plugin define in a file. |
@@ -128,6 +128,7 @@ is refused and you see the new preview.
 | **Gate** | A check a plugin registers with `jig-core`. It sees each call after the rules and can only make the decision stricter. `jig-workflow` holds calls with one. |
 | **Acceptance scenario** | A numbered check in a ticket's plan. A pass needs evidence. |
 | **Checker agent** | A read-only agent in a fresh context that reviews a change before you do. Planned. |
+| **Open check** | Something the agent said it would do before the next step, kept in `checks.json` and shown with every prompt until closed. |
 | **Card** | A short summary of a closed ticket: problem, cause, fix, repositories, identifiers and error lines. |
 | **Recall** | Finding earlier tickets related to a new one, and handing the agent their cards. |
 | **Recall test** | Invented cards and queries that measure how many right cards recall returns, and how many wrong ones. |
