@@ -192,10 +192,10 @@ describe("a catalog that is refused", () => {
             "ops.services.svc: must be an object with environments",
         ]);
         assert.deepEqual(validateOps(only({})), [
-            "ops.services.svc.environments.staging: must have at least one of deploy, runtime, health and job",
+            "ops.services.svc.environments.staging: must have at least one of deploy, pinned, runtime, health and job",
         ]);
         assert.deepEqual(validateOps(only("x")), [
-            "ops.services.svc.environments.staging: must be an object with deploy, runtime, health or job",
+            "ops.services.svc.environments.staging: must be an object with deploy, pinned, runtime, health or job",
         ]);
     });
 
@@ -278,15 +278,15 @@ describe("the deploy method of an environment", () => {
     const deploy = (change: Raw) => validateOps(withDeploy("orders-api", "staging", change));
     const at = "ops.services.orders-api.environments.staging.deploy";
 
-    test("has a method, helm or kubectl-image", () => {
+    test("has a method, helm, kubectl-image or pin", () => {
         assert.deepEqual(validateOps(withEnvironment("orders-api", "staging", { deploy: {} })), [
-            `${at}.method: required, helm or kubectl-image`,
+            `${at}.method: required, helm or kubectl-image or pin`,
         ]);
         assert.deepEqual(validateOps(withEnvironment("orders-api", "staging", { deploy: { method: "ansible" } })), [
-            `${at}.method: must be helm or kubectl-image`,
+            `${at}.method: must be helm or kubectl-image or pin`,
         ]);
         assert.deepEqual(validateOps(withEnvironment("orders-api", "staging", { deploy: "helm" })), [
-            `${at}: must be an object with a method: helm or kubectl-image`,
+            `${at}: must be an object with a method: helm or kubectl-image or pin`,
         ]);
     });
 

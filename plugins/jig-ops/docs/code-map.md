@@ -36,6 +36,7 @@ gone, so this table cannot drift from the code.
 | `ci/settings.ts` | How often a CI watch polls, when it gives up, and the rules for "the artifact is ready" | `catalog.ts`, `ci/adapter.ts`, `ci/artifacts.ts` |
 | `runtime/kubernetes/config.ts` | The Kubernetes target of an environment: context, namespace, pod selector, in-pod check | `catalog.ts`, the deploy methods and the runtime files |
 | `deploy/methods.ts` | The deploy methods there are, in one place: the catalog checks them, the tool builds them | `catalog.ts`, `deploy/plan.ts` |
+| `deploy/pin-config.ts` | The `pin` deploy and the read-only `pinned` entry: the repository, the files, the patterns, the templates | `catalog.ts`, `deploy/methods.ts`, `deploy/params.ts` and 3 more |
 
 ### Deploy
 

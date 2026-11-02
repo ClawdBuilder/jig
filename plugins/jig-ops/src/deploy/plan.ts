@@ -153,6 +153,7 @@ function build(inputs: PlanInputs): Plan {
 export async function planRun(env: Environment, version: string, kube: Kube, kind: EnvironmentKind): Promise<Plan> {
     const deploy = env.deploy;
     if (deploy === undefined) throw new Error(`${env.service} in ${env.name} has no deploy method`);
+    if (deploy.method === "pin") throw new Error(`${env.service} in ${env.name} deploys by a pin, not a command`);
     const { rollout } = await look(kube, undefined);
     const command = await deployerOf(deploy).deploy(kube, version);
     return build({ action: "run", env, kube, kind, command, rollout, to: version, version });
@@ -162,6 +163,7 @@ export async function planRun(env: Environment, version: string, kube: Kube, kin
 export async function planRollback(env: Environment, kube: Kube, kind: EnvironmentKind): Promise<Plan> {
     const deploy = env.deploy;
     if (deploy === undefined) throw new Error(`${env.service} in ${env.name} has no deploy method`);
+    if (deploy.method === "pin") throw new Error(`${env.service} in ${env.name} deploys by a pin, not a command`);
     const { rollout } = await look(kube, undefined);
     const back = await deployerOf(deploy).rollback(kube);
     const to =
