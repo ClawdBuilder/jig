@@ -98,6 +98,16 @@ paths.
   - *Secret*, where `gh`, `glab` and `gcloud` keep their files when they are not
     in the home folder: inside `$XDG_CONFIG_HOME` when it is set, and on Windows
     inside `%APPDATA%`.
+  - *Secret*, where an environment variable moves a store out of its usual place. Pi's own
+    environment is read when the session starts:
+    - the path in `PASSWORD_STORE_DIR`, `GNUPGHOME`, `AWS_CONFIG_FILE`, `AWS_SHARED_CREDENTIALS_FILE`,
+      `GH_CONFIG_DIR`, `GLAB_CONFIG_DIR` or `CLOUDSDK_CONFIG`;
+    - each file in `KUBECONFIG`, which is a list split on `:` (`;` on Windows);
+    - `config.json` inside the folder in `DOCKER_CONFIG`.
+
+    A value counts when it is absolute or starts with `~/`. An empty or relative value is ignored, and so is one
+    that would protect the whole home folder, a folder above it, or `/`. `/jig rules` names the variable beside
+    each such path.
   - *Guarded* (readable, not writable): the whole agent folder (`~/.pi/agent`,
     or where `PI_CODING_AGENT_DIR` points).
 - **How a path is matched.** `~` is expanded, a relative path starts from Pi's

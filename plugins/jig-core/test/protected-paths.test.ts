@@ -6,8 +6,8 @@ import path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import { buildPolicy, emptyAdditions, parseConfig } from "../src/config.ts";
 import type { LoadedConfig } from "../src/config.ts";
-import { checkFileTool, defaultProtectedPaths } from "../src/protected-paths.ts";
-import type { CheckContext, ProtectedPath } from "../src/protected-paths.ts";
+import { checkFileTool, defaultProtectedPaths, relocatedStores } from "../src/protected-paths.ts";
+import type { CheckContext, Env, ProtectedPath } from "../src/protected-paths.ts";
 import { start } from "./support/harness.ts";
 import type { Harness, StartOptions } from "./support/harness.ts";
 import { rawRecords, tempState } from "./support/state.ts";
@@ -46,7 +46,7 @@ before(() => {
 });
 after(() => rmSync(root, { recursive: true, force: true }));
 
-function context(overrides: Partial<CheckContext> = {}, env: { XDG_CONFIG_HOME?: string } = {}): CheckContext {
+function context(overrides: Partial<CheckContext> = {}, env: Env = {}): CheckContext {
     const platform = overrides.platform;
     return {
         entries: defaultProtectedPaths({
@@ -167,6 +167,165 @@ describe("the defaults", () => {
         const entries = defaultProtectedPaths({ agentDir: "", home, env: {} });
         assert.ok(entries.some((entry) => entry.shown === "~/.ssh"));
         assert.ok(!entries.some((entry) => entry.kind === "guarded"));
+    });
+});
+
+describe("stores that the environment moves", () => {
+    const moved = (env: Env, platform?: NodeJS.Platform, homeFolder = home) =>
+        relocatedStores(env, homeFolder, platform);
+    const pathsOf = (entries: readonly ProtectedPath[]) => entries.map((item) => item.path);
+
+    test("each variable names a secret default, and says in `shown` which variable did", () => {
+        const cases: Array<[variable: string, value: string, protectedPath: string]> = [
+            ["PASSWORD_STORE_DIR", "/srv/pass", "/srv/pass"],
+            ["GNUPGHOME", "/srv/gpg", "/srv/gpg"],
+            ["AWS_CONFIG_FILE", "/srv/aws/config", "/srv/aws/config"],
+            ["AWS_SHARED_CREDENTIALS_FILE", "/srv/aws/credentials", "/srv/aws/credentials"],
+            ["KUBECONFIG", "/srv/kube/config", "/srv/kube/config"],
+            ["GH_CONFIG_DIR", "/srv/gh", "/srv/gh"],
+            ["GLAB_CONFIG_DIR", "/srv/glab", "/srv/glab"],
+            ["CLOUDSDK_CONFIG", "/srv/gcloud", "/srv/gcloud"],
+            ["DOCKER_CONFIG", "/srv/docker", "/srv/docker/config.json"],
+        ];
+        for (const [variable, value, protectedPath] of cases) {
+            assert.deepEqual(
+                moved({ [variable]: value }),
+                [
+                    {
+                        path: protectedPath,
+                        shown: `${protectedPath} (from ${variable})`,
+                        kind: "secret",
+                        source: "default",
+                    },
+                ],
+                variable,
+            );
+        }
+    });
+
+    test("a path under the home folder is shown with ~, and `~/` is read as the home folder", () => {
+        const expected = [`${home}/vault/pass`];
+        assert.deepEqual(pathsOf(moved({ PASSWORD_STORE_DIR: `${home}/vault/pass` })), expected);
+        assert.deepEqual(pathsOf(moved({ PASSWORD_STORE_DIR: "~/vault/pass" })), expected);
+        assert.deepEqual(
+            moved({ PASSWORD_STORE_DIR: "~/vault/pass" }).map((item) => item.shown),
+            ["~/vault/pass (from PASSWORD_STORE_DIR)"],
+        );
+    });
+
+    test("a variable that is unset or empty, and one that is not on the list, protects nothing", () => {
+        assert.deepEqual(moved({}), []);
+        assert.deepEqual(moved({ PASSWORD_STORE_DIR: undefined, GNUPGHOME: "", KUBECONFIG: "" }), []);
+        assert.deepEqual(moved({ PATH: "/usr/bin", HOME: home, PASSWORD_STORE_DIR_OLD: "/srv/pass" }), []);
+    });
+
+    test("a relative value is ignored, because it depends on where the tool runs", () => {
+        for (const value of ["pass", "./pass", "../pass", "~other/pass", " /srv/pass"]) {
+            assert.deepEqual(moved({ PASSWORD_STORE_DIR: value, GH_CONFIG_DIR: value }), [], value);
+        }
+    });
+
+    test("KUBECONFIG is a list of files: each absolute one counts, and the empty and relative ones do not", () => {
+        const value = ["/srv/kube/one", "", "relative/two", "~/kube/three", "/srv/kube/four"].join(path.delimiter);
+        assert.deepEqual(pathsOf(moved({ KUBECONFIG: value })), [
+            "/srv/kube/one",
+            `${home}/kube/three`,
+            "/srv/kube/four",
+        ]);
+        for (const entry of moved({ KUBECONFIG: value })) assert.match(entry.shown, / \(from KUBECONFIG\)$/);
+    });
+
+    test("only KUBECONFIG is a list: another variable is one path, whatever it contains", () => {
+        assert.deepEqual(pathsOf(moved({ GNUPGHOME: "/srv/a:/srv/b" })), ["/srv/a:/srv/b"]);
+    });
+
+    test("on Windows the list is split on `;` and paths are compared without regard to case", () => {
+        const winHome = "C:\\Users\\hp";
+        const entries = moved({ KUBECONFIG: "D:\\k\\one;D:\\k\\two;relative" }, "win32", winHome);
+        assert.deepEqual(pathsOf(entries), ["D:\\k\\one", "D:\\k\\two"]);
+        assert.deepEqual(moved({ GNUPGHOME: "c:\\users\\HP" }, "win32", winHome), []);
+        assert.deepEqual(pathsOf(moved({ GNUPGHOME: "C:\\Users\\hp\\gnupg" }, "win32", winHome)), [
+            "C:\\Users\\hp\\gnupg",
+        ]);
+    });
+
+    test("the root, the home folder and a folder above it are never protected", () => {
+        const above = path.dirname(home);
+        for (const value of ["/", home, `${home}/`, `${home}/sub/..`, "~", "~/", above, path.dirname(above)]) {
+            for (const variable of ["PASSWORD_STORE_DIR", "GNUPGHOME", "GH_CONFIG_DIR", "KUBECONFIG"]) {
+                assert.deepEqual(moved({ [variable]: value }), [], `${variable}=${value}`);
+            }
+        }
+        assert.deepEqual(moved({ GNUPGHOME: "/" }, undefined, ""), [], "also when the home folder is not known");
+    });
+
+    test("DOCKER_CONFIG protects the file that holds the login, so the home folder as its value is fine", () => {
+        assert.deepEqual(pathsOf(moved({ DOCKER_CONFIG: home })), [`${home}/config.json`]);
+        assert.deepEqual(pathsOf(moved({ DOCKER_CONFIG: "/" })), ["/config.json"]);
+    });
+
+    test("they are part of the defaults, after the built-in ones, and the agent folder stays last", () => {
+        const entries = defaultProtectedPaths({ agentDir: agent, home, env: { PASSWORD_STORE_DIR: "/srv/pass" } });
+        const places = pathsOf(entries);
+        assert.ok(places.indexOf("/srv/pass") > places.indexOf(`${home}/.pypirc`));
+        assert.equal(entries.at(-1)?.path, agent);
+        assert.equal(entries.at(-1)?.kind, "guarded");
+        assert.ok(!pathsOf(defaultProtectedPaths({ agentDir: agent, home, env: {} })).includes("/srv/pass"));
+        assert.ok(!pathsOf(defaultProtectedPaths({ agentDir: agent, home })).includes("/srv/pass"));
+    });
+
+    test("a store in its usual place is listed once, under its built-in name", () => {
+        const entries = defaultProtectedPaths({
+            agentDir: agent,
+            home,
+            env: { PASSWORD_STORE_DIR: `${home}/.password-store`, GNUPGHOME: "~/.gnupg" },
+        });
+        assert.deepEqual(
+            entries.filter((item) => /\.(password-store|gnupg)$/.test(item.path)).map((item) => item.shown),
+            ["~/.gnupg", "~/.password-store"],
+        );
+    });
+
+    test("the file tools refuse a path under a store that is not in the home folder, and the message names the variable", () => {
+        const store = path.join(elsewhere, "vault", "pass");
+        const ctx = context({}, { PASSWORD_STORE_DIR: store });
+        const inside = path.join(store, "work", "db.gpg");
+        for (const tool of ["read", "write", "edit", "grep", "find", "ls"]) {
+            assert.equal(
+                check(tool, inside, ctx)?.reason,
+                `${tool} is refused: ${store} (from PASSWORD_STORE_DIR) holds credentials, so the file tools neither read nor write it`,
+                tool,
+            );
+        }
+        assert.ok(check("write", store, ctx), "the store itself");
+        assert.match(check("grep", elsewhere, ctx)?.reason ?? "", /^grep is refused: the folder to search contains /);
+        assert.equal(check("find", elsewhere, ctx), undefined, "names only, so a folder that contains it is fine");
+        assert.equal(check("read", path.join(elsewhere, "vault", "other", "file"), ctx), undefined);
+        assert.equal(check("read", path.join(elsewhere, "notes.txt"), ctx), undefined);
+    });
+
+    test("without the variable the same path is readable, so the refusal comes from the environment", () => {
+        const store = path.join(elsewhere, "vault", "pass");
+        assert.equal(check("read", path.join(store, "work", "db.gpg"), context()), undefined);
+        assert.equal(
+            check("read", path.join(store, "work", "db.gpg"), context({}, { PASSWORD_STORE_DIR: "pass" })),
+            undefined,
+        );
+    });
+
+    test("a link in the project that points into a moved store is refused", () => {
+        const store = path.join(elsewhere, "gnupg-moved");
+        mkdirSync(store, { recursive: true });
+        const link = path.join(project, "gpg-link");
+        symlinkSync(store, link);
+        try {
+            assert.match(
+                check("read", "gpg-link/pubring.kbx", context({}, { GNUPGHOME: store }))?.reason ?? "",
+                /\(from GNUPGHOME\) holds credentials/,
+            );
+        } finally {
+            rmSync(link, { force: true });
+        }
     });
 });
 
@@ -508,6 +667,7 @@ describe("configuration can add protected paths and never remove one", () => {
 describe("the tool_call hook", () => {
     const state = tempState();
     const savedHome = process.env.HOME;
+    const savedGh = process.env.GH_CONFIG_DIR;
     let h: Harness | undefined;
 
     beforeEach(() => {
@@ -520,6 +680,8 @@ describe("the tool_call hook", () => {
         state.stop();
         if (savedHome === undefined) delete process.env.HOME;
         else process.env.HOME = savedHome;
+        if (savedGh === undefined) delete process.env.GH_CONFIG_DIR;
+        else process.env.GH_CONFIG_DIR = savedGh;
     });
     async function begin(options: StartOptions = {}): Promise<Harness> {
         h = await start({ cwd: project, ...options });
@@ -651,6 +813,34 @@ describe("the tool_call hook", () => {
         }
     });
 
+    test("a store that Pi's environment moves is refused through the hook and listed for the sandbox", async () => {
+        const store = path.join(elsewhere, "hook-store");
+        const saved = process.env.PASSWORD_STORE_DIR;
+        process.env.PASSWORD_STORE_DIR = store;
+        try {
+            const harness = await begin();
+            const read = await harness.call({ tool: "read", input: { path: path.join(store, "work", "db.gpg") } });
+            const write = await harness.call({ tool: "write", input: { path: path.join(store, "new.gpg") } });
+            assert.equal(read.blocked, true);
+            assert.equal(write.blocked, true);
+            assert.match(read.reason ?? "", /\(from PASSWORD_STORE_DIR\) holds credentials/);
+            assert.deepEqual(
+                harness.decisions().map((d) => [d.tool, d.decision, d.source]),
+                [
+                    ["read", "deny", "floor"],
+                    ["write", "deny", "floor"],
+                ],
+            );
+            assert.deepEqual(
+                harness.api.protectedPaths.list().filter((item) => item.path === store),
+                [{ path: store, shown: `${store} (from PASSWORD_STORE_DIR)`, kind: "secret", source: "default" }],
+            );
+        } finally {
+            if (saved === undefined) delete process.env.PASSWORD_STORE_DIR;
+            else process.env.PASSWORD_STORE_DIR = saved;
+        }
+    });
+
     test("other tools, and the file tools on other paths, run as before", async () => {
         const harness = await begin();
         for (const [tool, input] of [
@@ -665,6 +855,7 @@ describe("the tool_call hook", () => {
     });
 
     test("/jig rules lists the protected paths and where each came from", async () => {
+        process.env.GH_CONFIG_DIR = path.join(elsewhere, "gh-moved");
         const harness = await begin({
             config: { protectedPaths: { secret: ["~/.config/mine"] } },
             plugins: (api) => api.config.addProtectedPaths({ guarded: ["~/company-etc"] }),
@@ -682,6 +873,10 @@ describe("the tool_call hook", () => {
         );
         assert.match(shown, /secret \(the file tools neither read nor write these\):/);
         assert.match(shown, /~\/\.ssh {2}\(default\)/);
+        assert.ok(
+            shown.includes(`${elsewhere}/gh-moved (from GH_CONFIG_DIR)  (default)`),
+            "a moved store names its variable",
+        );
         assert.match(shown, /~\/\.config\/mine {2}\(your jig\.json\)/);
         assert.match(shown, /guarded \(the file tools can read these, not write them\):/);
         assert.match(shown, /~\/company-etc {2}\(a company plugin\)/);

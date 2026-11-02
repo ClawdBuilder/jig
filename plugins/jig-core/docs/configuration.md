@@ -154,8 +154,10 @@ removes one. `/jig rules` lists them all, each with where it came from
   - `bash` and `powershell` are the sandbox's job: until a sandbox runs, a
     shell command can still read and write these paths. `jig-sandbox` hides the
     same list from `bash`, through `protectedPaths.list()`.
-  - Variables that move a tool's folder (`GH_CONFIG_DIR`, `CLOUDSDK_CONFIG`) are
-    not read: list that folder yourself.
+  - A store the environment moves is covered only through the variables the
+    defaults know (`PASSWORD_STORE_DIR`, `GNUPGHOME`, `KUBECONFIG` and the other
+    variables in [Permissions](../../../docs/permissions.md#protected-paths)). A
+    tool with a variable of its own is not: list that folder yourself.
   - The check is made when the call starts, so a link swapped afterwards by a
     shell command is not seen.
 

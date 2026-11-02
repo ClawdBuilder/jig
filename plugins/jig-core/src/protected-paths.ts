@@ -35,11 +35,15 @@ export interface PathContext {
     platform?: NodeJS.Platform;
 }
 
+/** Pi's environment, or a copy of it that a test made. */
+export type Env = Readonly<Record<string, string | undefined>>;
+
 export interface DefaultsInput extends PathContext {
     /** Pi's agent folder (`getAgentDir()`). Empty when not known: the entries inside it are left out. */
     agentDir: string;
     home: string;
-    env?: { XDG_CONFIG_HOME?: string | undefined; APPDATA?: string | undefined };
+    /** Where `XDG_CONFIG_HOME`, `APPDATA` and the variables that move a credential store are read from. */
+    env?: Env;
 }
 
 /** What a tool's input is checked against. */
@@ -88,6 +92,21 @@ const HOME_SECRETS = [
 const XDG_SECRETS = ["gh", "glab-cli", "gcloud"];
 const APPDATA_SECRETS = ["GitHub CLI", "glab-cli", "gcloud"];
 
+/** The variables that move a credential store away from its usual place in the home folder, and what each one names. A
+ *  `list` is split on the platform's path delimiter. `inside` is the one file of the named folder that holds credentials:
+ *  the usual `~/.docker` holds more than that file, so only the file is protected there too. */
+const MOVED_BY_ENV: ReadonlyArray<{ variable: string; list?: true; inside?: string }> = [
+    { variable: "PASSWORD_STORE_DIR" },
+    { variable: "GNUPGHOME" },
+    { variable: "AWS_CONFIG_FILE" },
+    { variable: "AWS_SHARED_CREDENTIALS_FILE" },
+    { variable: "KUBECONFIG", list: true },
+    { variable: "GH_CONFIG_DIR" },
+    { variable: "GLAB_CONFIG_DIR" },
+    { variable: "CLOUDSDK_CONFIG" },
+    { variable: "DOCKER_CONFIG", inside: "config.json" },
+];
+
 function flavour(platform: NodeJS.Platform | undefined): typeof path.posix {
     return (platform ?? process.platform) === "win32" ? path.win32 : path.posix;
 }
@@ -111,6 +130,37 @@ function entry(
     return { path: absolute, shown: abbreviate(absolute, home, pathApi), kind, source };
 }
 
+/**
+ * The secret paths that the environment moves a store to. `pass` and `gpg` honour `PASSWORD_STORE_DIR` and `GNUPGHOME`,
+ * and the cloud and forge tools have variables of their own, so a store that is not where it usually is would escape the
+ * built-in list.
+ *   - A value counts when it is absolute, or `~/...` (the AWS tools expand that themselves; for another tool it names a
+ *     place nobody uses, which costs nothing to protect). An empty or relative value is ignored: a relative one depends
+ *     on where the tool runs.
+ *   - A value that would protect the whole home folder, or a folder above it, or the root, is ignored too.
+ * Each entry says in `shown` which variable named it.
+ */
+export function relocatedStores(env: Env, home: string, platform?: NodeJS.Platform): ProtectedPath[] {
+    const pathApi = flavour(platform);
+    const out: ProtectedPath[] = [];
+    for (const { variable, list, inside } of MOVED_BY_ENV) {
+        const value = env[variable];
+        if (value === undefined || value === "") continue;
+        for (const text of list === true ? value.split(pathApi.delimiter) : [value]) {
+            const named = expandProtected(text, home, platform);
+            if (named === undefined) continue;
+            const target = inside === undefined ? named : pathApi.join(named, inside);
+            const wholeHome =
+                target === pathApi.parse(target).root ||
+                (home !== "" && isInside(comparable(home, platform), comparable(target, platform), pathApi.sep));
+            if (wholeHome) continue;
+            const found = entry(target, "secret", "default", home, pathApi);
+            out.push({ ...found, shown: `${found.shown} (from ${variable})` });
+        }
+    }
+    return out;
+}
+
 /** What is protected without any configuration. */
 export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     const pathApi = flavour(input.platform);
@@ -131,6 +181,7 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     if (pathApi === path.win32 && appData !== undefined && pathApi.isAbsolute(appData)) {
         for (const name of APPDATA_SECRETS) out.push(make(pathApi.join(appData, name), "secret"));
     }
+    if (input.env !== undefined) out.push(...relocatedStores(input.env, home, input.platform));
     // Last, so a message about a file inside it names the more specific secret entry first.
     if (agentDir !== "") out.push(make(agentDir, "guarded"));
     return dedupe(out, input.platform);
