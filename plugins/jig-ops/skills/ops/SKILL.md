@@ -17,6 +17,10 @@ Two tools share one catalog. `runtime` only reads. `deploy` changes an environme
 6. **When it fails,** read `runtime events` first (a pod that could not be scheduled, an image that could not be pulled, a container killed for its memory), then `runtime logs` of the pod it names. For a crashing pod pass `pod` and `previous: true`. Quote the pod and the time of a line with any conclusion.
 7. **Go back** with `deploy rollback` only in a test environment and only when the user asks. It shows the revision it goes back to.
 
+## When a version is a pin
+
+Some environments have no cluster command: their version is one line of a file in a control repository, and a pipeline applies it. `deploy status {service, environment}` says what that line pins, the ticket that holds the environment, who changed it last and when, the open pull requests that would change it, and what the pods run. Without `environment` it reads every environment of the service that has a pin; a status that includes production is masked as a whole. `deploy plan` with `version` (and `ticket`, and `values` where the catalog lets a call set them) shows the line a pin would change, the branch and the pull request, and who holds the environment now; it writes nothing. Say who holds the environment before you plan a change to it: that ticket's work is replaced. `deploy run` of a pin is not available yet, so a change is a pull request a person makes by hand; do not look for another way. A file that has no matching line, or two, is for a person to fix. `ci trigger` in such an environment shows a `Deploys` row: what the job will deploy.
+
 ## Never production
 
 The tools do not deploy, roll back or run anything in a pod in production, and the rules deny it too. Do not look for another way, such as a different tool or `bash`. For production, `runtime` reads (pods, rollout, logs, events, health by address) and `deploy plan` and `deploy status` still work, and their results are masked. A production change is a plan for a person to run: say what you would change and why, and stop.

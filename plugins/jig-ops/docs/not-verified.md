@@ -25,6 +25,7 @@ this repository's machine against a real API server, controller manager and sche
 | Production is read, never deployed to, and no command runs in its pods | `cluster.test.ts` |
 | A job log read by `gh` 2.92 and by `gh` 2.103, which needs `--allow-escape-sequences` | `ci-github.test.ts`, `github.test.ts` |
 | The GitHub Actions adapter reading this repository's runs, a run's jobs, the checks of a commit and a job log, with a run's own token and read-only permissions; a token GitHub refuses | `github.test.ts` |
+| The pin reads of `deploy status` and `deploy plan`: a file at a fixed commit and the last commit that touched it, as GitHub's contents and commits APIs answer, with the token Actions gives the run; a file that is not there | `pin.test.ts` |
 | Health by address over HTTPS: a certificate nobody trusts, one whose authority is trusted, a redirect that is not followed, a long body, terminal sequences, a service that never answers, and a refused connection | `health.test.ts` |
 
 ## What is still not verified
@@ -216,6 +217,23 @@ What the tests could not settle:
 - **The review screen** of a preview with the environment line, and the masking of a production read through a job, were not
   seen in the terminal. The fake `jig-core` answers the kind of an environment as the real one does.
 - **A job on a real server.** An environment's job is the same adapter as a service's `ci`, and the same open items apply to it.
+
+### Pins (the reads of `deploy status` and `deploy plan`)
+
+What the tests could not settle. The unit tests answer from a fake `gh` that follows GitHub's documented shapes, and CI reads a
+file and its commits at a fixed commit of this repository.
+- **A branch tip and the open pull requests.** `git/ref/heads/<branch>` (a `404` when the branch is not there) and
+  `pulls?state=open&base=<branch>` were not read from a real repository, so the shapes the code relies on are untried: `object.sha`,
+  `head.ref`, `head.repo.full_name` and `draft`. A pull request whose fork was deleted has no `head.repo` and counts as a fork.
+- **Page limits.** Pull requests are read from the first page of 100, and `deploy status` says so when the page is full. A file over
+  1 MB, which the contents API does not inline, is refused as too large.
+- **A branch with a slash in its name,** as `base`, in the contents and commits queries. The names are encoded as GitHub documents them.
+- **The commit that "changed it last".** It is the newest commit on `base` that touched the first pin's file, as the commits API orders
+  them. A history rewritten by a squash or a merge that GitHub simplifies away may name another commit than the one a person expects.
+- **GitHub Enterprise and GitLab.** Only github.com is read; `gh` is not given a host.
+- **The review screen** of a trigger preview with the `Deploys` row, and the masking of a status that includes production, were
+  not seen in the terminal.
+- **Rate limits.** A status of many environments makes a few requests per environment, one after the other; limits were not tried.
 
 ### GitHub Actions, as `jig-git`'s `checks` tool left it
 
