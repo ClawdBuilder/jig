@@ -210,6 +210,8 @@ describe("the README", () => {
             "createDefaults",
             "privateNames",
             "environment",
+            "me",
+            "commentSearch",
         ]);
         const valid = { site: "https://example.test", auth: { token: "pass:x/y" } };
         for (const field of documented) {

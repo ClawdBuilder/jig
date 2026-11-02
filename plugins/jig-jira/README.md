@@ -79,6 +79,8 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | `createDefaults` | none | Values `create` gives a field when the call does not set it, by field name or id |
 | `privateNames` | none | Folder or host names to flag in outgoing text, up to 100 |
 | `environment` | `external` | The environment name that rules and classification know this Jira by |
+| `me` | none | Your account id (Cloud) or user name (Data Center), for `commented` when `/myself` is unavailable |
+| `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` |
 
 The fields in detail are in [Configuration](docs/configuration.md).
 

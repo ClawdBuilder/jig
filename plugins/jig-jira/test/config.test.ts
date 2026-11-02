@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
+    DEFAULT_COMMENT_SEARCH,
     DEFAULT_ENVIRONMENT,
     DEFAULT_UPDATE_FIELDS,
     httpsOnly,
@@ -58,6 +59,9 @@ describe("a valid section", () => {
         assert.deepEqual(found.privateNames, []);
         assert.equal(found.environment, DEFAULT_ENVIRONMENT);
         assert.equal(DEFAULT_ENVIRONMENT, "external");
+        assert.equal(found.me, undefined);
+        assert.equal(found.commentSearch, DEFAULT_COMMENT_SEARCH);
+        assert.equal(DEFAULT_COMMENT_SEARCH, "auto");
     });
 
     test("every field set", () => {
@@ -68,7 +72,11 @@ describe("a valid section", () => {
             createDefaults: { Priority: "Medium", " Components ": ["Web"], "Story Points": 1 },
             privateNames: [" payroll ", "corp.example.net"],
             environment: "staging",
+            me: " 5b10a2844c20165700ede21g ",
+            commentSearch: "read",
         });
+        assert.equal(found.me, "5b10a2844c20165700ede21g");
+        assert.equal(found.commentSearch, "read");
         assert.deepEqual(found.createDefaults, { Priority: "Medium", Components: ["Web"], "Story Points": 1 });
         assert.deepEqual(found.updateFields, ["summary", "Story Points", "customfield_10500"]);
         assert.deepEqual(found.fields, { "Story Points": "customfield_10016", Epic: "customfield_10014" });
@@ -370,6 +378,26 @@ describe("the other fields", () => {
                 validateJira({ ...cloud, environment })[0] ?? "",
                 /^jira\.environment: must be an environment name/,
                 String(environment),
+            );
+        }
+    });
+
+    test("me is an account id or a user name", () => {
+        const accepted = ["5b10a2844c20165700ede21g", "712020:6c21d3a0-1111-4222-8333-944455556666", "jdoe"];
+        for (const me of accepted) assert.deepEqual(validateJira({ ...cloud, me }), [], me);
+        for (const me of ["", "   ", 5, "x".repeat(129), "two\nlines"]) {
+            assert.match(validateJira({ ...cloud, me })[0] ?? "", /^jira\.me: must be your account id/, String(me));
+        }
+    });
+
+    test("commentSearch is auto, scriptrunner or read", () => {
+        for (const commentSearch of ["auto", "scriptrunner", "read"])
+            assert.deepEqual(validateJira({ ...cloud, commentSearch }), [], commentSearch);
+        for (const commentSearch of ["", "Auto", "both", 1, null]) {
+            assert.deepEqual(
+                validateJira({ ...cloud, commentSearch }),
+                ["jira.commentSearch: must be one of auto, scriptrunner, read"],
+                String(commentSearch),
             );
         }
     });
