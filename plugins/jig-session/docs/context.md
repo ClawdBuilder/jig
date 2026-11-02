@@ -55,8 +55,9 @@ agent folder. `jig-session` uses Pi's `before_agent_start` event instead. Each t
 skills that are off are taken out of that copy's list. Pi then sends the skills section without them, as a patch to the
 prompt the model has.
 
-- **From the next turn, no reload.** A switch applies to the next turn of this session only. Other sessions, and the agent
-  folder's settings, are untouched.
+- **From your next prompt, no reload.** `before_agent_start` runs once per prompt, so a skill switch applies from the next
+  prompt of this session only. Other sessions, and the agent folder's settings, are untouched. A tool switch is sooner: Pi
+  sends the new tool list with its next request to the model, even within a running prompt.
 - **Saved in the session.** After a reload or a resume the entry brings the switches back.
 - **What off means.** The model no longer sees the skill in its list. You can still type `/skill:<name>`, which loads it.
 
