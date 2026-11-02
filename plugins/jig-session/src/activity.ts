@@ -1,10 +1,11 @@
 // What the session did, for the panel: the files its edit and write calls changed (paths only), and its recent tool calls
 // with the decision jig-core took on each (tool and action names only, never an argument's value).
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { DecisionEvent } from "../../jig-core/src/contract.ts";
 
+/** The most outputs kept per kind: files outside any git repository, and files inside one. */
 export const MAX_OUTPUTS = 50;
 export const MAX_RECENT = 15;
 /** The tools whose successful calls make an output: Pi's own file tools. */
@@ -15,6 +16,8 @@ export interface Output {
     path: string;
     action: "created" | "edited";
     at: string;
+    /** Absolute root of the git working tree that holds the path, or null when it is in none. */
+    repo: string | null;
 }
 
 export interface Recent {
@@ -36,6 +39,16 @@ export function absolute(given: string, cwd: string): string {
     return path.resolve(cwd, p);
 }
 
+/** Whether `dir` has a `.git` folder (a repository) or file (a worktree or submodule). */
+function hasGit(dir: string): boolean {
+    try {
+        const s = statSync(path.join(dir, ".git"));
+        return s.isDirectory() || s.isFile();
+    } catch {
+        return false;
+    }
+}
+
 const NAME = /^[A-Za-z0-9_.:/-]{1,80}$/;
 const clip = (value: unknown): string | undefined =>
     typeof value === "string" && NAME.test(value) ? value : undefined;
@@ -47,6 +60,8 @@ export class Activity {
     private readonly pending = new Map<string, { path: string; existed: boolean; tool: string }>();
     private readonly byId = new Map<string, Recent>();
     private readonly now: () => Date;
+    /** Folder to the root of the working tree holding it (or null), kept for the session. Walks the file system; never runs git. */
+    private readonly roots = new Map<string, string | null>();
 
     constructor(now: () => Date = () => new Date()) {
         this.now = now;
@@ -57,6 +72,31 @@ export class Activity {
         this.recent = [];
         this.pending.clear();
         this.byId.clear();
+    }
+
+    /** The root of the git working tree that holds `file`: the nearest ancestor folder with a `.git` folder or file. */
+    repoOf(file: string): string | null {
+        const walked: string[] = [];
+        let dir = path.dirname(file);
+        let found: string | null = null;
+        for (;;) {
+            const known = this.roots.get(dir);
+            if (known !== undefined) {
+                found = known;
+                break;
+            }
+            walked.push(dir);
+            if (hasGit(dir)) {
+                found = dir;
+                break;
+            }
+            const up = path.dirname(dir);
+            if (up === dir) break;
+            dir = up;
+        }
+        // Every folder walked on the way up has the same answer: the root found, or none.
+        for (const w of walked) this.roots.set(w, found);
+        return found;
     }
 
     private entry(toolCallId: string, tool: string): Recent {
@@ -110,10 +150,14 @@ export class Activity {
         const before = this.outputs.find((o) => o.path === file.path);
         const action: Output["action"] =
             before?.action === "created" || (file.tool === "write" && !file.existed) ? "created" : "edited";
-        this.outputs = [
-            { path: file.path, action, at: this.now().toISOString() },
+        const all = [
+            { path: file.path, action, at: this.now().toISOString(), repo: this.repoOf(file.path) },
             ...this.outputs.filter((o) => o.path !== file.path),
-        ].slice(0, MAX_OUTPUTS);
+        ];
+        // The cap is per kind, so edits inside repositories cannot push ticket files out.
+        let loose = 0;
+        let inRepo = 0;
+        this.outputs = all.filter((o) => (o.repo === null ? ++loose : ++inRepo) <= MAX_OUTPUTS);
         return true;
     }
 }
