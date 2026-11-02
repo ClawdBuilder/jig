@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { GitSettings } from "./config.ts";
 import { matchesAny } from "./config.ts";
+import { GITHUB_COM, githubHostOf, isGithubOrigin, originHost } from "./origin-host.ts";
 import { git, gitTry, refExists, scrub, T_NETWORK } from "./run.ts";
 
 export interface Repo {
@@ -233,33 +234,25 @@ export async function originUrl(repo: Repo, signal?: AbortSignal): Promise<strin
     return out === undefined ? undefined : scrub(out.trim());
 }
 
-/** Where `gh` is told to look when origin is on github.com or an ssh alias for it. */
-export const GITHUB_COM = "github.com";
+export { GITHUB_COM };
 
 /**
- * The GitHub repository behind origin, when origin is on GitHub. The configured clone host and `github.com-*` count as
- * github.com: they are ssh aliases the user chose for it. A host that `git.forges` maps to GitHub counts too, with the real
- * host its entry names (an ssh alias for github.com, or for a GitHub Enterprise Server host), else its own name.
+ * The GitHub repository behind origin, when origin is on GitHub. A host counts as GitHub when it is github.com, an ssh alias that
+ * `ssh -G` (or, when ssh cannot say, the `github.com-<alias>` convention) maps to github.com, the configured clone host, or a host
+ * that `git.forges` maps to GitHub ([origin-host.ts](./origin-host.ts)).
  *
- * `host` in the answer is the host `gh` is told, which is not always the host in origin's address: git goes on using the
- * alias, and the aliases are never put in a `gh` command.
+ * `host` in the answer is the host `gh` is told, which is not always the host in origin's address: git goes on using the alias,
+ * and the aliases are never put in a `gh` command. An object-form `git.forges` entry with a `host` names it; otherwise it is the
+ * real host.
  */
 export async function githubRepo(repo: Repo, settings: GitSettings, signal?: AbortSignal): Promise<Remote | undefined> {
-    const remote = parseRemote(await originUrl(repo, signal));
-    if (!remote) return undefined;
-    const host = remote.host.toLowerCase();
-    const entry = settings.forges?.[host];
-    const configured = typeof entry === "string" ? entry : entry?.forge;
-    if (configured === "gitlab") return undefined;
-    if (configured === "github") {
-        return { ...remote, host: typeof entry === "object" && entry.host !== undefined ? entry.host : host };
-    }
-    const isGithub =
-        host === GITHUB_COM ||
-        host === "ssh.github.com" ||
-        host.startsWith("github.com-") ||
-        host === settings.cloneHost.toLowerCase();
-    return isGithub ? { ...remote, host: GITHUB_COM } : undefined;
+    const url = await originUrl(repo, signal);
+    const remote = parseRemote(url);
+    if (!remote || url === undefined) return undefined;
+    const origin = await originHost(url, remote.host, settings);
+    if (origin.configured === "gitlab") return undefined;
+    if (origin.configured === "github") return { ...remote, host: origin.told };
+    return isGithubOrigin(origin, settings) ? { ...remote, host: githubHostOf(origin) } : undefined;
 }
 
 // ---- branches ------------------------------------------------------------------------------------------------------

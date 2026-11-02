@@ -27,7 +27,7 @@ error, and so is a field with a value it cannot use.
 A section may also have `watch` and `artifacts`, which are not about one service: see
 [Watching CI](#watching-ci).
 
-An environment has `deploy`, `runtime` and `health`, and at least one of them.
+An environment has `deploy`, `runtime`, `health` and `job`, and at least one of them.
 
 **An environment's name is the name `jig-core` knows it by.** The rules, the
 masking and the kind of environment (local, external, test or production) come
@@ -44,8 +44,8 @@ If a test environment is refused as production, this is the setting to add.
 
 ## `ci`
 
-An object with a `system`, one of `github-actions`, `gitlab` and `jenkins`, and the
-fields of that system. An unknown system or field is an error that names it. What
+An object with a `system`, one of `github-actions`, `gitlab`, `jenkins` and `concourse`, and
+the fields of that system. An unknown system or field is an error that names it. What
 the tool does with them is in [CI](ci.md).
 
 | System | Field | Meaning |
@@ -61,12 +61,30 @@ the tool does with them is in [CI](ci.md).
 | | `job` | The job with its folders, such as `orders/build`. A name may hold a space |
 | | `auth` | A `user` with a `token`, a `signIn` service or a `transport` |
 | | `required` | Optional. Up to 20 pipeline stage names that a `required` watch waits for |
+| `concourse` | `url` | As for GitLab |
+| | `team`, `pipeline`, `job` | Where the job is: letters, digits, `.`, `_`, `-`, not starting with a dot or a dash |
+| | `auth` | A `token` (sent as a bearer), a `signIn` service or a `transport` |
+| | `signInHint` | Optional. Up to 200 characters, one line: the command that renews the login, shown when it is refused |
 
 - **`environment`:** without it, the CI host is `external`. A name `jig-core` does
   not know counts as production.
 - **`url`** may have a path (`https://host/gitlab`).
 - **`auth`** is `{ "token": "<secret reference>" }` (for Jenkins `{ "user": "<name>", "token": "<secret reference>" }`),
   `{ "signIn": "<service>" }` or `{ "transport": "<name>" }`.
+- **A Concourse entry** has no `required`: a build has no stages to name. The token is a secret reference, here a
+  command you declare that prints only the token `fly login` wrote:
+
+```json
+{
+  "system": "concourse",
+  "url": "https://ci.example.com",
+  "team": "main",
+  "pipeline": "deploy",
+  "job": "orders-api-staging",
+  "auth": { "token": "cmd:fly-main" },
+  "signInHint": "fly -t main login"
+}
+```
 
 A token is a secret reference such as `pass:ci/gitlab`; one pasted by hand is an
 error that never repeats it. With a transport, the address may be plain `http`:
@@ -108,6 +126,39 @@ The `watch` and `artifacts` parts of the section were `git.watch` and
   }
 }
 ```
+
+## `job`
+
+The CI job that acts on an environment: the Concourse job that deploys it, the Jenkins job that builds for it. It is a `ci`
+entry (the fields are [above](#ci)) for any system but GitHub Actions, which has no trigger. A `ci` call that names the
+environment uses it ([CI jobs](ci.md#a-ci-job-per-environment)).
+
+```json
+{
+  "ops": {
+    "services": {
+      "orders-api": {
+        "ci": { "system": "github-actions", "workflow": "build.yml" },
+        "repo": "acme/orders-api",
+        "environments": {
+          "staging": {
+            "job": {
+              "system": "concourse", "url": "https://ci.example.com", "team": "main", "pipeline": "deploy",
+              "job": "orders-api-staging", "auth": { "token": "cmd:fly-main" }, "signInHint": "fly -t main login"
+            },
+            "runtime": { "kubernetes": { "context": "staging", "namespace": "orders", "selector": "app=orders-api" } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+- **The environment is the key it sits under.** A `job` that names an `environment` is an error.
+- **It needs no `repo`,** and an environment may have only a `job`.
+- **A job never starts a watch on a push.** Only the service's own `ci` does.
+- **A user's own `auth`** for a job replaces the company's whole, as for the service's `ci`.
 
 ## `deploy`
 

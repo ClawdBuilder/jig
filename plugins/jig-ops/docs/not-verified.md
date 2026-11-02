@@ -2,10 +2,10 @@
 
 What the tests of `jig-ops` do not cover. Back to the [jig-ops overview](../README.md).
 
-The tests in `test/` run against a fake `kubectl`, a fake `helm`, a fake `gh` and fake GitLab and Jenkins servers on this machine.
+The tests in `test/` run against a fake `kubectl`, a fake `helm`, a fake `gh` and fake GitLab, Jenkins and Concourse servers on this machine.
 The tests in `test/it/` run the same code against a real Kubernetes cluster and Helm, real GitHub, and a real HTTPS server, in the
-`integration` job of CI (see [Integration tests](../../../docs/integration-tests.md)). Nothing has been tried against a real GitLab
-or Jenkins.
+`integration` job of CI (see [Integration tests](../../../docs/integration-tests.md)). Nothing has been tried against a real GitLab,
+Jenkins or Concourse.
 
 ## Verified in CI
 
@@ -76,8 +76,8 @@ this repository's machine against a real API server, controller manager and sche
 
 ## CI: what the adapters rely on
 
-Each fact below was read in the official documentation on 2026-10-30. The pages
-are listed so that a change in them can be found.
+Each fact below was read in the official documentation on 2026-10-30 (Concourse's,
+on 2026-11-02, in its source). The pages are listed so that a change in them can be found.
 
 ### GitLab CI
 
@@ -180,6 +180,42 @@ What the tests could not settle:
 - **Clocks.** A build started without a number is the first one scheduled after the
   watch began, with ten seconds of difference allowed between the clocks of Pi and
   the server.
+
+### Concourse
+
+Each fact below was read in Concourse's source (`github.com/concourse/concourse`, `master`, version 8) on 2026-11-02, not
+run against a server:
+- **Routes** (`atc/routes.go`): `GET /api/v1/teams/:team_name/pipelines/:pipeline_name` and `.../jobs/:job_name`;
+  `GET` and `POST .../jobs/:job_name/builds`; `GET .../builds/:build_name`; `GET /api/v1/builds/:build_id`, `/events` and `/resources`.
+- **A build** (`atc/build.go`): `id`, `name` (its number in the job), `status`, `team_name`, `pipeline_name`, `job_name`,
+  `start_time` and `end_time` (seconds), `created_by`. The statuses are `pending`, `started`, `succeeded`, `failed`, `errored`
+  and `aborted`.
+- **A job and a pipeline** (`atc/job.go`, `atc/pipeline.go`): `paused` on both, and `disable_manual_trigger` on the job.
+- **Starting a job** (`atc/api/jobserver/create_build.go`): `POST .../builds` answers `200` with the new build, `409` when
+  manual triggering is off, and `404` for a job that is not there. It does not refuse a paused job; the adapter does.
+- **Events** (`atc/api/buildserver/eventhandler.go`, `atc/event/`): each event is an SSE block named `event` whose data is
+  `{ "event": "log", "data": { "payload": ... }, "version": ... }`; `status` has `status`, `error` has `message`. An `end`
+  block comes last. **After it the server waits for the client to disconnect**, so the connection stays open: the request
+  stops at the `end` block (`stopAt` in `jig-core`'s request) and lets go.
+
+What the tests could not settle:
+- **A real server.** The fake answers like the source reads. Nothing was tried against Concourse, including `/events` with
+  the stop marker, the form of `created_by` for a build a resource started, and a pipeline with instance variables.
+- **The token through `cmd:`.** That a command declared by a company prints only the token `fly login` wrote, and that Concourse
+  accepts it as a bearer, was not run. The adapter never reads `~/.flyrc` and never runs `fly`.
+- **Both forms of an event.** The bare form (block named `log`, data is the payload) is read too, but no server sends it.
+- **A transport.** It hands over its whole reply, so `stopAt` does nothing there and a log read through one waits for the
+  stream to close.
+- **Limits.** `GET .../builds?limit=` is used with 1, 5, 20 and 100. A job with a large log reads up to 8 MiB and refuses more.
+- **A real Concourse in CI.** It needs a database and a privileged worker, so the `integration` job does not run one. A check
+  against a quickstart Concourse, with a local user, would settle every item above.
+
+### CI jobs per environment
+
+What the tests could not settle:
+- **The review screen** of a preview with the environment line, and the masking of a production read through a job, were not
+  seen in the terminal. The fake `jig-core` answers the kind of an environment as the real one does.
+- **A job on a real server.** An environment's job is the same adapter as a service's `ci`, and the same open items apply to it.
 
 ### GitHub Actions, as `jig-git`'s `checks` tool left it
 

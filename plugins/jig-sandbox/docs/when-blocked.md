@@ -32,6 +32,37 @@ In `filtered` and `ask`, a name that does not resolve for a program that ignores
 settings (`dig`, `getent`, `ping`) and a direct connection with no route each get a line
 that says so.
 
+## A failure that only the tool's words give away
+
+Some blocks leave no refusal word and no path in the output: a program that cannot make a Unix socket says so in its own
+way, or only that it cannot connect. When a command **fails** (an exit code other than 0) and its output holds one of the
+tool messages below, one more line follows:
+
+```text
+[sandbox] this failure looks like the sandbox: it makes no Unix socket (JVM attach, as JMockit and some profilers and agents use, needs one). Run the command again with outside: true and a reason, which asks the user.
+```
+
+| Tool | The words it prints |
+|---|---|
+| JVM attach (JMockit, `jcmd`) | `Unable to open socket file ... HotSpot VM not loaded` |
+| Docker's CLI | `Cannot connect to the Docker daemon at unix://...` |
+| Python | `PermissionError: [Errno 1] Operation not permitted` from `socket.py`, with no file named |
+| Node | `connect EPERM /path`, `listen EPERM: operation not permitted /path` |
+| `socat` | `socket(1, ...): Operation not permitted` |
+| `nc` | `nc: /path: Operation not permitted` |
+| Go | `dial unix /path: socket: operation not permitted` |
+
+Every row names the same cause: the sandbox makes no Unix socket (see [Network](../README.md#network)).
+
+- **It says "looks like".** The tool's words are a good guide and not proof, so the line is never stronger than that. A Python
+  traceback that shows a raw socket (`SOCK_RAW`, `AF_PACKET`) is left alone.
+- **At most one, and never after a command that worked.** A command that exits 0 gets nothing, whatever it printed. The first
+  matching entry of the list wins, and the line counts with the other lines a command gets (at most five).
+- **The way depends on who is asking.** A background task is told to run the command in the foreground, since a task cannot
+  run [outside the sandbox](#running-one-command-outside), and a read-only agent is told to report to the user.
+- **The list is data,** `FAILURE_SIGNATURES` in `src/lists.ts`, kept small. An entry is added when a real session shows a
+  tool message that sends the agent the wrong way; the tests keep the messages as the tools printed them.
+
 ## The ways through
 
 | The command wanted to | Way through |

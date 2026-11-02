@@ -5,6 +5,11 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 ## Contents
 
 - [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
+- [2026-11-02: a push says how the agent will hear how the checks end](#2026-11-02-a-push-says-how-the-agent-will-hear-how-the-checks-end)
+- [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
+- [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
+- [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
+- [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
@@ -51,6 +56,103 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make
+
+A `bash` test run died with a JVM attach error before any test ran. The sandbox makes no Unix socket, by design, and the agent
+guessed that only by reasoning. The sandbox explained refusals it could see (a path, a refusal word) and nothing else.
+
+**Decided**
+- **A failed command's output is checked for a few tool messages** that mean "no Unix socket": JVM attach, Docker's CLI, and the
+  socket errors of Python, Node, `socat`, `nc` and Go. A match adds one `[sandbox]` line that says the failure *looks like* the
+  sandbox and gives the way on: `outside: true`, which asks the user.
+- **Only after a command that exited with a code other than 0,** so a command that worked is never accused.
+- **The messages are data** in `lists.ts`, small, and tested with the text the tools printed in the real sandbox.
+
+**Why**
+- A model that is not told the cause tries the same command again or changes the code under test. One line saves both.
+- Matching a tool's wording is a guess, so the line says "looks like" and offers a way, which asks the user, not a rule.
+
+**Rejected**
+- **Telling the agent about every possible block up front.** The description is read on every call; a line after a failure is
+  read only when it matters.
+- **A long list of tools.** Each entry is another message to keep right. An entry is added when a real session needs it.
+
+## 2026-11-02: an environment can have its own CI job, and a `ci` call can name it
+
+A service has one build CI, but the jobs that deploy it differ by environment, and so may the CI system. A Concourse job per
+environment is the case that asked for it; a Jenkins job that differs by environment is the same case.
+
+**Decided**
+- **`environments.<e>.job` is a `ci` entry,** for any system that can start a build (Concourse, Jenkins, GitLab). GitHub Actions has no
+  trigger, so it is refused. An environment may have only a `job`.
+- **Every `ci` action takes `environment`.** With it the call uses that job; without it, the service's `ci`.
+- **A call that names an environment acts in it.** The job carries the environment's name, so the rules of that environment decide:
+  reads are reads there, `trigger` and `rerun` are writes there, a test environment asks and production is denied before anyone is
+  asked. `watch` stays a local write.
+- **The environment is in the fingerprint and the preview.** The same job approved for one environment is not approved for another.
+- **A job never starts a watch on a push,** and its watch says nothing about a commit: no `jig-ops:ci-finished`, no "artifact
+  ready". A push means "a commit was built"; a deploy job does not say that.
+- **A user's own `auth` for a job replaces the company's whole** (`services.*.environments.*.job.auth` joins the `replace` keys).
+
+**Why**
+- **The environment already decides the rules.** Deriving the environment of a call from the job keeps one mapping, as the catalog
+  does for `deploy`.
+- **A second tool or a second service entry per environment** would have repeated the repository, the artifact rules and the
+  service's name, and a call could not say "staging" at all.
+
+## 2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker
+
+Teams that deploy with Concourse start a job by hand, and read its builds, the way a Jenkins team does. `ci` gains an adapter for it.
+
+**Decided**
+- **`concourse` is the fourth CI system** of `jig-ops`: `status`, `runs`, `run`, `log`, `trigger` and `watch`, with no `rerun`. The
+  catalog names the team, the pipeline and the job; a call names none of them. `trigger` has no `ref` and no `parameters`, because a job
+  runs what its pipeline pins. A paused job or pipeline is refused before anyone is asked.
+- **Every build read is checked to be the catalog's.** Its team, pipeline and job must match, so a number cannot reach another job.
+- **The login is a secret reference, sent as a bearer.** `fly login` writes a token for the person; a command the company declares
+  prints only that token, and the entry says `{ "token": "cmd:<name>" }`. Jig never signs in: no `fly login`, no browser, no
+  `~/.flyrc` read by a plugin. When Concourse refuses the login, or the reference cannot be read, the message names the command in
+  `signInHint`, for the user to run in their own terminal.
+- **`HttpRequest.stopAt` is a stop marker.** Concourse writes an `end` event and then keeps the stream open until the client goes (read in
+  its source). The request stops reading when the reply holds the marker and lets the connection go. The contract only grows.
+
+**Why**
+- **A broker or a `fly curl` transport was the alternative to a reference.** Both need a program of ours to hold a session. A reference
+  is read again for each request, so the call after the user's login works, and `jig-core` keeps the value from the plugin.
+- **Without a marker, `ci log` waits for the time limit** on a finished build, and every failed watch carries no log.
+
+**Rejected**
+- **A plugin that runs `fly login` on a 401.** It signs in for the user, which no plugin does.
+- **A `file:` selector in `jig-core`** for the token in `~/.flyrc`. A company's reader command does the same with no new backend.
+
+## 2026-11-02: jig-git asks ssh which host an alias is
+
+**Decided**
+- **For an ssh origin, the real host comes from `ssh -G <host>`.** An origin in the scp-like form (`user@host:path`) or `ssh://` names
+  a host that may be an alias in the user's `~/.ssh/config`. `jig-git` runs `ssh -G` on it through `jig-core`'s `exec.run` (3 seconds,
+  no input) and reads the `hostname` line. `-G` only parses the configuration and never connects. An https origin is not asked.
+- **The answer decides the forge and the host.** github.com and `ssh.github.com` are GitHub, gitlab.com and `altssh.gitlab.com` are
+  GitLab, and the host `gh` or `glab` is told is that real host. An alias that ssh maps to github.com works with no `git.forges`
+  entry, whatever its name.
+- **`git.forges` keeps what it can do that ssh cannot.** An object-form entry (`{ "forge": ..., "host": ... }`) wins over ssh. A
+  string-form entry decides the forge, and the host comes from ssh's answer. An entry is found by the host in `origin` or by the real
+  host, so a self-hosted GitLab is named once, whatever alias reaches it.
+- **When ssh cannot answer** (not installed, failing, too slow, or no `hostname` line) the convention applies, as it did before:
+  `github.com-<alias>` and `ssh.github.com` are github.com, `altssh.gitlab.com` is gitlab.com. Nothing alarming is said.
+- **One answer per host for the session,** and a failure is believed for a minute. One helper, `originHost`, serves `githubRepo` and
+  `forgeOf`, so the two cannot disagree.
+
+**Why**
+- A company config named an alias in the string form, `"github.com-myteam": "github"`. `gh` was then told the alias as `GH_HOST`, and
+  failed with "error connecting to github.com-myteam; check your internet connection", which the agent reported as GitHub being down.
+- The alias lives in the user's own `~/.ssh/config`. Naming it again in `jig.json`, in a company plugin or by hand, repeats a fact that
+  ssh already holds and that drifts from it.
+
+**Rejected**
+- **Only the `github.com-<alias>` convention in the string form.** It fixes the incident but still leaves every other alias to be
+  named in `jig.json`.
+- **Reading `~/.ssh/config` ourselves.** `Include`, `Match` and tokens make the file hard to read right, and ssh already does it.
 
 ## 2026-11-02: a review of an agent run leaves out the commits that came in with it
 
@@ -105,6 +207,26 @@ locked Node.js, Pi's own folders and the agent folder, and not these.
 - **Locking them in `jig-sandbox` only.** Pi's file tools could still change the code, and the two lists would drift.
 - **Skipping a package that holds the working folder.** It would leave the escape open for the one setup where it matters most.
   The folder becomes unwritable instead, which is loud, and the user changes it with `!`.
+
+## 2026-11-02: a push says how the agent will hear how the checks end
+
+After a push the agent said "I'll look at the CI result once it runs" and ended its turn, with nothing that would wake it.
+
+**Decided**
+- **The result of a push ends with one line.** When a listener started a watch while the push was announced, the line names it. When
+  none did, it says what starts one and that the user has to ask otherwise. A push that was not announced gets no line.
+- **The way to start one is the `ci` tool's `watch` action,** not `pr watch`: `pr watch` reports new comments, and never checks.
+  The line says so, so that a model does not wait for checks on a watch that cannot report them.
+- **A started watch is found by what `jig-core` lists,** open after the event and not before. `jig-git` still does not know
+  `jig-ops` or whether it is installed.
+- **One sentence in the tool guidance and the skill** says that a promise to report later needs a watch.
+
+**Why**
+- The agent can hold only what it is told. A line at the moment of the push is read when it matters.
+- Starting a CI watch from `jig-git` would put CI back into it, after CI moved to `jig-ops` so that each system has one adapter.
+
+**Rejected**
+- **Naming `pr watch` as the way to hear about checks.** It would send the agent to wait on a watch that never reports them.
 
 ## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
 

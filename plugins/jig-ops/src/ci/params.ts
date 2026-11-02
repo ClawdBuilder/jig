@@ -26,6 +26,14 @@ export const parameters = Type.Object(
             description:
                 "A service from the ops catalog that has a ci entry. An unknown name is refused with the known ones",
         }),
+        environment: Type.Optional(
+            Type.String({
+                minLength: 1,
+                maxLength: 40,
+                description:
+                    "An environment of the service that has a CI job: the call acts in it. Default: the service's own ci.",
+            }),
+        ),
         number: Type.Optional(Type.Integer({ minimum: 1, description: "A pull request number (GitHub Actions)." })),
         branch: Type.Optional(
             Type.String({
@@ -40,7 +48,8 @@ export const parameters = Type.Object(
         run_id: Type.Optional(
             Type.Integer({
                 minimum: 1,
-                description: "A GitHub run, a GitLab pipeline or a Jenkins build number, as runs lists them.",
+                description:
+                    "A GitHub run, a GitLab pipeline or a Jenkins or Concourse build number, as runs lists them.",
             }),
         ),
         required_only: Type.Optional(Type.Boolean({ description: "status: only the required checks or jobs." })),
@@ -48,7 +57,8 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 30,
-                description: "runs: queued, in_progress, completed, success, failure ...",
+                description:
+                    "runs: queued, in_progress, completed, success, failure ... (Concourse: succeeded, failed, ...)",
             }),
         ),
         limit: Type.Optional(
@@ -259,7 +269,12 @@ function rowCheck(
     const row: ActionRow = rowOf(info, service.name, action);
     const takes = [...(row.required ?? []), ...(row.optional ?? [])];
     const extra = Object.keys(input).filter(
-        (name) => present(input[name]) && name !== "action" && name !== "service" && !takes.includes(name),
+        (name) =>
+            present(input[name]) &&
+            name !== "action" &&
+            name !== "service" &&
+            name !== "environment" &&
+            !takes.includes(name),
     );
     if (extra.length > 0) {
         throw new InputError(
@@ -287,7 +302,12 @@ export function parseCall(input: Readonly<Record<string, unknown>>, catalog: Cat
             `ci ${action} needs service. Services with a ci entry: ${known === "" ? "none have one" : known}`,
         );
     }
-    const service = findCiService(catalog, "ci", input.service);
+    const service = findCiService(
+        catalog,
+        "ci",
+        input.service,
+        present(input.environment) ? input.environment : undefined,
+    );
     const info = SYSTEMS[service.ci.system];
     return { action, service, info, params: rowCheck(action, service, info, input) };
 }

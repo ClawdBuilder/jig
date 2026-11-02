@@ -11,6 +11,7 @@ import { jig } from "../../../jig-core/src/client.ts";
 import { catalogOf, ciServicesOfRepo } from "../catalog.ts";
 import type { CiService } from "../catalog.ts";
 import type { Catalog } from "../catalog.ts";
+import { titleOf as concourseTitle } from "./concourse-watch.ts";
 import { titleOf as githubTitle } from "./github-actions.ts";
 import { titleOf as gitlabTitle } from "./gitlab-watch.ts";
 import { titleOf as jenkinsTitle } from "./jenkins-watch.ts";
@@ -84,6 +85,16 @@ function watchFor(service: CiService, pushed: Pushed, now: number): { spec: CiSp
                 since: now,
             };
             return { spec, title: jenkinsTitle(spec) };
+        }
+        case "concourse": {
+            // Nothing is known of the job here, so the first poll notes the newest build and follows the next one.
+            const spec: CiSpec = {
+                system: "concourse",
+                service: service.name,
+                sha: pushed.sha,
+                finish: { kind: "build" },
+            };
+            return { spec, title: concourseTitle(spec) };
         }
     }
 }

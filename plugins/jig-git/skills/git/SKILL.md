@@ -46,6 +46,10 @@ ops catalog, `jig-ops` starts a watch on the CI of the pushed commit, and one me
 not poll. To look at CI yourself, or to start another watch, use the `ci` tool and read its skill: this plugin has no checks
 tool. `pr view` shows a one-line roll-up of a pull request's checks, which is enough to know whether to look further.
 
+The last line of a `git push` result says how you will hear: the watch that is running, or that none is and what starts one (the
+`ci` tool's `watch` action). A promise to report on CI later needs a watch, because nothing else wakes you: never end a turn on
+"I'll look at the CI result once it runs".
+
 ## Comments arrive by themselves
 
 `pr create` starts a watch on the comments of the new pull request (`pr watch` starts one on any open pull request, and

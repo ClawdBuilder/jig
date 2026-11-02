@@ -4,6 +4,19 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure
+  (such as `cmd:` reading what `fly login` saved); Jig never signs in. A paused pipeline or a job closed to manual starts is
+  refused before anyone is asked.
+- `jig-core` requests can stop at a marker in the reply, for a stream that never closes on its own.
+- A service's environment can name its own CI job (`environments.<name>.job`), and `ci` takes an `environment`: "build orders-api for staging" runs that environment's job. A write in a test environment asks; one in production is refused before asking.
+
+### Changed
+
+- After a push, the result says how the agent will hear when CI finishes (a running `ci` watch, or the call that starts one), and the model is told that a promise to report on CI needs a watch.
+- A command that fails because the sandbox makes no Unix socket (a JVM attaching to itself, Docker, a socket tool) says so in one line, and how to run it outside with the user's approval.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added

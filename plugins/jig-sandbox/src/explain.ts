@@ -4,11 +4,15 @@
 // rule and the way through, and anything else gets one general line that points at `/sandbox`.
 //
 // Network refusals are the runtime's own records and come from the broker (see `explainViolations`).
+//
+// Some blocks leave no refusal word and no path: a program that cannot make a Unix socket says so in its own way. For a command
+// that failed, a short list of such tool messages (`FAILURE_SIGNATURES`) earns one line that says the failure looks like the sandbox.
 import path from "node:path";
 import { inside } from "./pathing.ts";
 import { ROLE_SOURCE, ruleFor, showPath, writableRootFor } from "./rules.ts";
 import type { Rule, RuleSet } from "./rules.ts";
 import type { NetworkMode } from "./config.ts";
+import { FAILURE_SIGNATURES } from "./lists.ts";
 
 export interface Explained {
     /** One line each, ready to follow the command's output. */
@@ -77,6 +81,8 @@ function pathsIn(rawLine: string, cwd: string, home: string): string[] {
 export interface ExplainOptions {
     cwd: string;
     mode: NetworkMode;
+    /** Set when the command failed (it exited with a code other than 0): only then can its output earn a "looks like the sandbox" line. */
+    failure?: { background: boolean };
 }
 
 /** Network refusals for a command run with the network off: connection and name errors in its output. */
@@ -168,10 +174,34 @@ export function explainBlocks(output: string, set: RuleSet, options: ExplainOpti
                 : "[sandbox] a write was refused (read-only file system). Bash may write your home folder, the working folder and /tmp; /sandbox shows every rule.",
         );
     }
+    if (options.failure !== undefined) {
+        const sign = signatureLine(output, set, options.failure.background);
+        if (sign !== undefined) lines.push(sign);
+    }
     const shown = lines.slice(0, MAX_LINES);
     if (lines.length > MAX_LINES)
         shown.push(`[sandbox] and ${lines.length - MAX_LINES} more refusals; /sandbox shows the rules.`);
     return { lines: shown, askFirst: [...askFirst.values()] };
+}
+
+/** How the way through reads when the command cannot ask: a task cannot run outside, and a read-only role may not. */
+function wayOutside(set: RuleSet, background: boolean): string {
+    if (set.rules.some((rule) => rule.source === ROLE_SOURCE)) {
+        return "This agent's role may not run a command outside the sandbox, so tell the user what needs it.";
+    }
+    return background
+        ? "A background task cannot run outside the sandbox: run the command again in the foreground with outside: true and a reason, which asks the user."
+        : "Run the command again with outside: true and a reason, which asks the user.";
+}
+
+/** The one line a failed command's output earns when it carries the tool's own words for something the sandbox blocks. */
+function signatureLine(output: string, set: RuleSet, background: boolean): string | undefined {
+    for (const signature of FAILURE_SIGNATURES) {
+        if (!signature.patterns.some((pattern) => pattern.test(output))) continue;
+        if (signature.unless?.test(output)) continue;
+        return `[sandbox] this failure looks like the sandbox: ${signature.reason}. ${wayOutside(set, background)}`;
+    }
+    return undefined;
 }
 
 /** A path worth naming: not a kernel pseudo-path or a version number that happens to start with a slash. */

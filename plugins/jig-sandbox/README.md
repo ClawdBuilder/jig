@@ -63,6 +63,9 @@ files a tool needs.
 - **A folder that is not locked asks you.** If a command was stopped from writing
   `~/.sdkman`, Pi asks: *allow writes there for this session, always, or no?* Say yes
   and the agent runs it again. With no screen to ask on, the answer is no.
+- **A failure that only looks like a block is named.** A program that cannot make a Unix socket (JVM attach, Python,
+  Node, `socat`, Docker's CLI) fails with its own words and no refusal. When a command fails and its output holds one
+  of a few such messages, one line says it looks like the sandbox and offers `outside: true`.
 - **Git config keeps working.** `git config` and `git remote add` work in the sandbox.
   If a command adds a setting that would run a program outside it (`core.fsmonitor`,
   an alias starting with `!`, a filter), `jig-sandbox` takes that setting out, keeps the

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
+import { jig } from "../../jig-core/src/client.ts";
 import { setAnnouncer } from "../src/events.ts";
 import { ok, setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
@@ -321,4 +322,86 @@ test("a listener that throws does not undo the push or lose its result", async (
     } finally {
         setAnnouncer((event, payload) => void h.announced.push({ event, payload }));
     }
+});
+
+// ---- the last line: how the agent will hear how the checks end ------------------------------------------------------------
+
+const WAKES =
+    "the ci tool's watch action wakes you (pr watch wakes you for new comments only). Without one, do not promise to look later: the user has to ask you.";
+const lastLine = (text: string) => text.split("\n").at(-1);
+
+test("push with an open pull request and no watch: the last line says what starts one and that the user has to ask otherwise", async () => {
+    const r = unpushed("feature/f1", 1, "acme");
+    h.gh.on("pr list", { json: [{ number: 42 }] });
+    const text = ok(await h.call("git", { action: "push", repo: r.name }));
+    assert.equal(text.split("\n").length, 2, "one line is added");
+    assert.match(text.split("\n")[0] ?? "", /^Pushed feature\/f1 \(/);
+    assert.equal(lastLine(text), `To hear when the checks of pull request 42 finish, start a watch: ${WAKES}`);
+});
+
+test("push with no pull request open: the line is about the checks of the push", async () => {
+    const r = unpushed("feature/f2", 1, "acme");
+    h.gh.on("pr list", { json: [] });
+    const text = ok(await h.call("git", { action: "push", repo: r.name }));
+    assert.equal(lastLine(text), `To hear when the checks of this push finish, start a watch: ${WAKES}`);
+    assert.doesNotMatch(text, /pull request \d/);
+});
+
+test("push when a listener started a watch for it: the line names the watch, and says it wakes the agent", async () => {
+    const r = unpushed("feature/f3", 1, "acme");
+    h.gh.on("pr list", { json: [{ number: 7 }] });
+    setAnnouncer((event, payload) => {
+        h.announced.push({ event, payload });
+        jig().watches.start({ kind: "ops-ci", spec: {}, title: "checks of orders-api at abc1234" });
+    });
+    try {
+        const text = ok(await h.call("git", { action: "push", repo: r.name }));
+        assert.equal(
+            lastLine(text),
+            "A watch is running for this push: checks of orders-api at abc1234 (watch w1). It wakes you when it ends, so do not poll.",
+        );
+        assert.doesNotMatch(text, /do not promise/);
+    } finally {
+        setAnnouncer((event, payload) => void h.announced.push({ event, payload }));
+    }
+});
+
+test("a watch that was already open before the push is not taken for the push's", async () => {
+    const r = unpushed("feature/f4", 1, "acme");
+    h.gh.on("pr list", { json: [] });
+    h.jig.api.watches.start({ kind: "pr-comments", spec: {}, title: "comments on pull request 9" });
+    const text = ok(await h.call("git", { action: "push", repo: r.name }));
+    assert.match(lastLine(text) ?? "", /^To hear when the checks of this push finish, start a watch: /);
+});
+
+test("push to an origin that is on no forge: no line, because there are no checks to hear about", async () => {
+    const local = unpushed("feature/f5");
+    const text = ok(await h.call("git", { action: "push", repo: local.name }));
+    assert.equal(text.split("\n").length, 1);
+    assert.doesNotMatch(text, /watch/i);
+});
+
+test("a listener that throws: the push result is whole, and says nothing it cannot know", async () => {
+    const r = unpushed("feature/f6", 1, "acme");
+    h.gh.on("pr list", { json: [] });
+    setAnnouncer(() => {
+        throw new Error("a listener failed");
+    });
+    try {
+        const text = ok(await h.call("git", { action: "push", repo: r.name }));
+        assert.equal(text.split("\n").length, 1);
+    } finally {
+        setAnnouncer((event, payload) => void h.announced.push({ event, payload }));
+    }
+});
+
+test("a push whose reply was lost but landed ends with the same line, after the note about the lost reply", async () => {
+    const r = unpushed("feature/f7", 1, "acme");
+    h.gh.on("pr list", { json: [{ number: 5 }] });
+    h.jig.loseGitReply((args) => args[0] === "push", { code: 128, stderr: "connection reset by peer" }, true);
+    const text = ok(await h.call("git", { action: "push", repo: r.name }));
+    const lines = text.split("\n");
+    assert.equal(lines.length, 2);
+    assert.match(lines[0] ?? "", /The reply was lost/);
+    assert.match(lines[1] ?? "", /^To hear when the checks of pull request 5 finish/);
 });

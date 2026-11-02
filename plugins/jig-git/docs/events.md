@@ -39,3 +39,24 @@ knowing who is looking.
 `jig-ops` listens and starts a CI watch for a service of its catalog that has this
 repository; see [Watching CI](../../jig-ops/docs/ci.md#watching-ci). `jig-git` does
 not import it, read its files or know whether it is installed.
+
+## What the push result says
+
+The result of a push ends with one line on how the agent will hear how the checks end, because a model that says "I'll look at
+the CI result once it runs" and ends its turn has nothing that wakes it. `jig-git` cannot know who listens, so it looks at what
+happened while it published the event:
+
+| What happened | The last line |
+|---|---|
+| A listener started a watch | `A watch is running for this push: <its title> (watch <id>). It wakes you when it ends, so do not poll.` |
+| No watch started, a pull request is open | `To hear when the checks of pull request 42 finish, start a watch: ...` |
+| No watch started, no pull request | The same, about `the checks of this push` |
+| The event was not published | No line: origin is on neither GitHub nor GitLab, or a listener threw |
+
+- **The way to start one** is named as the `ci` tool's `watch` action, which wakes the agent when the checks end, and `pr watch`
+  is named for new comments only: it does not report checks. Without a watch the line says not to promise to look later, and that
+  the user has to ask. `jig-git` does not know whether `jig-ops` is installed, and the line does not claim it.
+- **A watch counts as this push's** when it was not open before the event was published and is open after. A watch that was already
+  open, such as the comment watch of a pull request, is not.
+- **On GitLab** the line says merge request.
+- **The line is for the agent.** It is not part of the preview, and a push that was refused or did not land has no result to end.
