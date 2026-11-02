@@ -1,5 +1,6 @@
 // jig-core: the tool manager. It sits over every tool call, whoever wrote the tool, through Pi's hooks:
 //
+//   session_start        read jig.json, resume the watches, and set the start-up work going (src/start-jobs.ts)
 //   tool_call            classify the call, decide allow / ask / deny, ask the user if a rule says so
 //   tool_result          redact secrets, mask production data, cut very long output
 //   tool_execution_end   write the call's record
@@ -22,6 +23,7 @@ import { configFile } from "./paths.ts";
 import { cleanupPreviews } from "./preview-html.ts";
 import { cleanupRecords, conditionProblem } from "./records.ts";
 import { finishCall, finishTurn, toolResult } from "./results.ts";
+import { startJobs } from "./start-jobs.ts";
 import { createState, loadPersonalConfig } from "./state.ts";
 import type { JigCoreOptions, JigState } from "./state.ts";
 import { registerWatchTool } from "./watch/tool.ts";
@@ -49,6 +51,8 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
             state.sessionAllows.clear();
             state.calls.clear();
             state.watches.end();
+            state.startJobs?.abort();
+            state.startJobs = undefined;
             state.screen = undefined;
         });
         registerCommands(pi, state);
@@ -81,6 +85,8 @@ function startSession(state: JigState, ctx: ExtensionContext): void {
     }
 
     announceSandbox(state, ctx);
+    // In the background: the session does not wait for it, and it cannot fail the start.
+    startJobs(state);
 
     // Old records, spill files and preview pages are removed when a session starts.
     const { config } = state.personal;

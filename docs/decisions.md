@@ -5,6 +5,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 ## Contents
 
 - [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
+- [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
 - [2026-11-01: guards a person would not see break](#2026-11-01-guards-a-person-would-not-see-break)
@@ -77,6 +78,44 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - **Only the `github.com-<alias>` convention in the string form.** It fixes the incident but still leaves every other alias to be
   named in `jig.json`.
 - **Reading `~/.ssh/config` ourselves.** `Include`, `Match` and tokens make the file hard to read right, and ssh already does it.
+
+## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
+
+**Decided**
+- **Two start-up jobs are settings in the user's `jig.json`.** `startChecks` lists TCP checks, and
+  `secrets.pass.unlockAtStart` asks for the pass store to be unlocked. `jig-core` runs both inside Pi when a session
+  starts, so they work however Pi was started: from a terminal, a launcher, a shortcut or an IDE.
+- **A start check is one TCP connection and nothing else.** Each check connects to its host and port and closes at
+  once, with a limit of 3 seconds. The checks run in parallel, none is retried, nothing is sent, and nothing is
+  started, stopped or signed in to. A failure is one notice for the user, with the check's own hint.
+- **The unlock opens one entry through the secret resolver.** Jig finds one `*.gpg` entry in the store `pass` uses and
+  has `pass` decrypt it, in turn with the other lookups, so a tool that asks meanwhile waits for it and finds the
+  store open. gpg-agent shows its own prompt, and Jig never asks for, sees or keeps the passphrase. It drops the value at
+  once and does not register it with the redactor.
+- **Both run only in the top-level session with a screen.** There is nobody to tell in print mode, and a child agent is
+  one of many that a parent started. `jig-agents` marks a child with `PI_SUBAGENT_ID`, and that is the signal used.
+- **They run in the background and tell the user, never the model.** The session start does not wait for them and
+  cannot fail on them. A notice never holds a value, an entry name or what `pass` printed.
+- **`startChecks` is `jig-core`'s own section,** like `rules`, so only the user's file can set it. `/jig` lists the checks
+  with their last result.
+
+**Why**
+- A launcher script runs only when Pi is started through it. A check or an unlock kept there disappears when Pi starts
+  another way, and the user is left to find out why. It is the reasoning that put the store folder in `jig.json`.
+- Which hosts must answer, and whether a store is unlocked, are facts about one user's machine and network. They are the
+  user's to write down, not a script's to decide.
+- A passphrase prompt in the middle of a task interrupts it and is easy to miss. At the start of a session the user is
+  there to answer it.
+- Telling the user costs nothing, and doing more would not be Jig's place. The VPN client and the password store each
+  have an owner, and a tool that needs the host or the store still fails with a clear error.
+
+**Rejected**
+- **A launcher script that hard-codes a company host or unlocks a store.** It decides for the user, and it is skipped when
+  Pi starts another way.
+- **A company plugin adding start checks.** It would decide which hosts a user's machine probes. A company plugin can
+  neither register a `startChecks` section nor give it defaults.
+- **Retrying, or acting on a failed check.** A retry turns one notice into traffic and delay. Starting a VPN or signing
+  in to anything would be control of software that Jig has no business with. The user reads the notice and fixes it.
 
 ## 2026-11-02: an optional launcher, with nothing a company decides
 

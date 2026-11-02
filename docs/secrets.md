@@ -64,6 +64,10 @@ environment on its own.
 Pi's file tools refuse them, and `jig-sandbox` hides them from `bash`
 ([the list](permissions.md#protected-paths)). `/jig` shows the folders `secrets.pass` binds, as paths.
 
+**Unlocking at start.** With `"unlockAtStart": true` in `secrets.pass`, `jig-core` has `pass` open one entry at session
+start, in the background, so no passphrase prompt interrupts a task later. gpg-agent shows its own prompt; Jig never asks
+for, sees or keeps the passphrase ([details](../plugins/jig-core/docs/configuration.md#at-session-start)).
+
 ## Other stores
 
 `jig-core` depends on no password store: each backend is a program it runs. So any store with a
