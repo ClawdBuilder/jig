@@ -1,8 +1,8 @@
 # Jig agent guide
 
-Fourteen of the fourteen plugins are built: `jig-core`, `jig-git`, `jig-memory`,
+Fifteen of the fifteen plugins are built: `jig-core`, `jig-git`, `jig-memory`,
 `jig-lens`, `jig-jira`, `jig-logs`, `jig-api`, `jig-ops`, `jig-review`,
-`jig-mongo`, `jig-theme`, `jig-sandbox`, `jig-workflow` and `jig-agents`.
+`jig-mongo`, `jig-theme`, `jig-sandbox`, `jig-workflow`, `jig-agents` and `jig-session`.
 `examples/jig-acme` is an example company plugin for a fictional company: the one
 place a company plugin lives in this repository, and its tests run with `npm test`.
 
@@ -25,6 +25,15 @@ changes, the other changes in the same commit. Tests read the tool tables of
   `docs/code-map.md`: every file of `src/` with what it does and who calls it, and one call followed through
   the files. When you add, rename or remove a file in one of them, change its map in the same commit; a test
   fails when they disagree. A source file over 500 lines is reported as a warning: split it by job.
+- **`jig-session`** writes one status file per session (its README specifies the format: files only, no port, never an
+  argument value). Other programs read it; change the format only as its README says (a new `schema` for a removal).
+- **`herdr/` is not a plugin.** The top-level `herdr/` folder holds files for the Herdr desktop app (layouts, mods, themes,
+  keys), copied into the app's folder by `herdr/scripts/install.ts`; Pi never loads it, its mods are plain JavaScript for
+  that app, and they approve nothing. Its Work panel reads `jig-session`'s files. `herdr/mods/jig-tabs/main.js` is derived
+  from Herdr's `tabs` mod (Apache-2.0): keep its header. After a change to a `jig-theme` palette or to
+  `herdr/mods/jig-theme-sync/convert.js`, run `node herdr/scripts/build-themes.ts`; a test fails when the committed themes
+  are out of date. Never copy a file of the Triage mods (EUPL-1.2) into it: the layout only names them. `npm test` runs
+  `herdr/test/` too.
 - **Docs.** Write them by [Writing the docs](docs/writing.md): open with what
   it is and why, short paragraphs and table cells (about 350 and 100
   characters), lists with bold lead-ins, generic examples, tagged code blocks.

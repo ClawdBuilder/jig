@@ -6,7 +6,7 @@ Jig is a set of plugins for the [Pi](https://pi.dev) coding agent. They decide
 what the agent may do, ask you when it matters, keep secrets out of its reach,
 and record what happened so you can see it later.
 
-**Status:** fourteen of the fourteen plugins are built. Each plugin's README is the
+**Status:** fifteen of the fifteen plugins are built. Each plugin's README is the
 specification that its code follows. New to a word? See the [glossary](docs/glossary.md).
 
 ## What works today
@@ -33,7 +33,8 @@ In short:
   evidence itself (tests run in the sandbox at the exact commit, a plan you approved, a review, a pull
   request) and holds `git push`, `edit` and `write` until the condition for them holds.
 - **How Pi looks:** `jig-theme` gives six palettes, a one-line footer and your
-  own colours.
+  own colours. `jig-session` publishes each session's state as a file other programs read, such as the
+  [Herdr app](#the-herdr-app) files.
 - **Checked on every push:** the type check, Biome, over 5,000 tests, the
   review page's build and every link in these docs run on GitHub Actions. A
   second job runs the plugins against real Elasticsearch, OpenSearch, Loki,
@@ -112,6 +113,7 @@ first in the list, because every other plugin needs it:
 | [`jig-ops`](plugins/jig-ops/README.md) | built | CI, deploy and runtime from one service catalog; watches CI until it ends |
 | [`jig-review`](plugins/jig-review/README.md) | built | Code review in the browser, answered round by round, approved with a passkey |
 | [`jig-theme`](plugins/jig-theme/README.md) | built | Six palettes as Pi themes, your own, a one-line footer, the answer colour |
+| [`jig-session`](plugins/jig-session/README.md) | built | The live session's state as a status file other programs read: terminal, model, context, ticket, stage, changed files, recent calls |
 | [`jig-agents`](plugins/jig-agents/README.md) | built | Child agents that Jig's rules still govern: their questions come to your screen, with limits on turns, time and cost, and roles that only narrow |
 
 Every plugin needs `jig-core`; otherwise they work on their own.
@@ -128,6 +130,12 @@ is a complete, tested example for a made-up company.
 
 [Plugins](docs/plugins.md) shows, for every tool, what is generic and what the
 company plugin supplies, and the order of building.
+
+## The Herdr app
+
+[`herdr/`](herdr/README.md) is not a plugin: it is a layout and mods for the [Herdr](https://herdr.dev) desktop app, copied
+into the app's folder by a script. Its Work panel shows the Pi session in focus from `jig-session`'s file (ticket, stages,
+pull requests, changed files, recent calls), beside the changes of every repository, a review tab and the Jig palette.
 
 ## Read in this order
 
