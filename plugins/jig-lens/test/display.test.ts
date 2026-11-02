@@ -85,7 +85,11 @@ test("the model never receives the summary: nothing the plugin does reaches the 
     // entries are session entries, which Pi's types say "do not participate in LLM context".
     assert.deepEqual(r.pi.sent, []);
     assert.ok(r.pi.entries.length >= 5, "and the summaries did go to the screen");
-    assert.deepEqual([...r.pi.handlers.keys()], ["agent_end"], "no hook that could add to a prompt or to the context");
+    assert.deepEqual(
+        [...r.pi.handlers.keys()],
+        ["agent_end", "session_shutdown"],
+        "no hook that could add to a prompt or to the context",
+    );
 });
 
 test("what the plugin keeps in the session is plain data that comes back the same from a session file", async (t) => {

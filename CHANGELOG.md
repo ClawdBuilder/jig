@@ -10,6 +10,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `/lens web`: a page of charts and tables over `jig-lens`'s index, served by Pi on `127.0.0.1` behind a secret link,
+  read-only, with nothing to install: cost per day, sessions and tickets, every turn and call of a session with child
+  agents nested, tools with p50 and p95 and loops of repeated failures, and your waiting time. It stops when Pi exits, and
+  `/lens status` reports it. It is now the recommended viewer; Grafana and Datasette are optional extras.
 - `tools.deferred` in `jig.json` names Jig tools to register `deferred`: their descriptions stay out of the context until Pi's
   `tool_search` finds them, and `jig-core` activates `tool_search` when a Jig tool is deferred. Plugins register their tools
   through the kit's `registerJigTool`.

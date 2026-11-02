@@ -21,7 +21,7 @@ Download counts are per week, from npm.
 | Question and approval forms | use as is, on trial | `@adeildo/pi-ask-questions` |
 | Git, GitHub and CI | port the existing harness's tools, borrowing patterns | several, below |
 | Cost, tokens and sessions | use as is, with its telemetry off | TokenTelemetry |
-| Jig's own records | build, small | `/lens` summary inside Pi; Grafana as an optional deep dive |
+| Jig's own records | build, small | `/lens` summary inside Pi; the `/lens web` page; Grafana optional |
 | Secret backends | build a small backend seam, borrowing the patterns | `@ian-pascoe/pi-secret` and others |
 
 ## Tool manager
@@ -143,8 +143,8 @@ Patterns borrowed:
 Skipped: exporters that send data to a service (Braintrust, Raindrop,
 Langfuse, OpenTelemetry to a backend).
 
-`jig-lens` shows Jig's own records as a summary inside Pi, with Grafana as an
-optional deep dive; see [`jig-lens`](../plugins/jig-lens/README.md).
+`jig-lens` shows Jig's own records as a summary inside Pi and as a local page
+(`/lens web`), with Grafana as an optional extra; see [`jig-lens`](../plugins/jig-lens/README.md).
 
 ## Secret backends
 

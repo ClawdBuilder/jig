@@ -85,7 +85,7 @@ drawn, because a session file can be edited.
 ## Not shown yet
 
 - cost while waiting for you, because a turn record has no duration;
-- retries and repeated failures;
 - runs blocked by failures that already exist on the main branch, which no
-  tool reports yet;
-- one ticket's calls and turns in order; the Session dashboard takes a session.
+  tool reports yet.
+
+Repeated failures (loops) and every session of a ticket are on the [web page](web.md).
