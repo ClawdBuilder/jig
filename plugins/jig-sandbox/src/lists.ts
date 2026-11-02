@@ -69,7 +69,7 @@ export const GROUPS = {
     git: { reason: "git runs it outside the sandbox", way: BY_HAND, floor: false },
     pi: {
         reason: "Pi and Jig load it outside the sandbox, so a write there could change what they do",
-        way: "Use the edit and write tools for files in the project; settings are the user's to change.",
+        way: "Use the edit and write tools for files in the project, unless they refuse the path as guarded; settings and loaded packages are the user's to change with !.",
         floor: false,
     },
     hooks: { reason: "git runs hooks outside the sandbox", way: BY_HAND, floor: false },

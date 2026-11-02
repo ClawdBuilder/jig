@@ -33,7 +33,7 @@ says which rule and why, and offers a way through.
 | Kind | Examples | Inside the sandbox |
 |---|---|---|
 | **Hidden** | `~/.ssh`, `~/.aws`, `~/.kube`, `~/.config/gh`, Pi's `auth.json`, a project's `.env`, `~/.gradle/gradle.properties`, the Windows drive | Cannot be read. Never asks |
-| **Locked** | `~/.bashrc`, `~/.gitconfig`, `PATH` folders, git hooks, Pi's agent folder, a project's `.pi/extensions`, `~/.gradle/init.d` | Readable, never written. Never asks |
+| **Locked** | `~/.bashrc`, `~/.gitconfig`, `PATH` folders, git hooks, Pi's agent folder and the packages it loads, a project's `.pi/extensions`, `~/.gradle/init.d` | Readable, never written. Never asks |
 | **Ask first** | Toolchain managers (`~/.sdkman`, `~/.nvm`, `~/.pyenv`, ...) | Writable once you say yes |
 | **Writable** | The project, your home folder, `/tmp`, build caches (`~/.gradle/caches`, `~/.m2/repository`, `~/.npm`) | As outside |
 
