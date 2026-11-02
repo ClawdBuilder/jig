@@ -1,7 +1,7 @@
 // The JQL helpers: the traps a query holds that a note points out. Pure functions, no Jira.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { jqlNotes, maskQuoted } from "../src/jql.ts";
+import { andClauses, commentedClause, jqlNotes, maskQuoted, splitOrder, updatedSince } from "../src/jql.ts";
 
 describe("maskQuoted", () => {
     test("blanks the text of a string and keeps the quotes and the length", () => {
@@ -70,5 +70,86 @@ describe("jqlNotes", () => {
     test("the same clause twice is noted once", () => {
         assert.equal(jqlNotes("labels != a OR labels != a").length, 1);
         assert.equal(jqlNotes("labels != a OR labels != b").length, 2);
+    });
+});
+
+describe("splitOrder", () => {
+    test("cuts at the ORDER BY, in any case and over any space", () => {
+        assert.deepEqual(splitOrder("project = PROJ ORDER BY updated DESC"), {
+            where: "project = PROJ",
+            order: "ORDER BY updated DESC",
+        });
+        assert.deepEqual(splitOrder("a = 1 order   by created, key"), {
+            where: "a = 1",
+            order: "order   by created, key",
+        });
+        assert.deepEqual(splitOrder("(a = 1)ORDER BY key"), { where: "(a = 1)", order: "ORDER BY key" });
+    });
+
+    test("a query with no ORDER BY, or only one, or one inside a string", () => {
+        assert.deepEqual(splitOrder("project = PROJ"), { where: "project = PROJ", order: "" });
+        assert.deepEqual(splitOrder("ORDER BY key"), { where: "", order: "ORDER BY key" });
+        const quoted = 'summary ~ "order by hand" AND status = Open';
+        assert.deepEqual(splitOrder(quoted), { where: quoted, order: "" });
+        assert.deepEqual(splitOrder('summary ~ "order by" ORDER BY key'), {
+            where: 'summary ~ "order by"',
+            order: "ORDER BY key",
+        });
+    });
+
+    test("a word that only ends in order is not an ORDER BY", () => {
+        assert.deepEqual(splitOrder("reorder by = 1"), { where: "reorder by = 1", order: "" });
+    });
+});
+
+describe("andClauses", () => {
+    test("the query goes in parentheses, so an OR cannot swallow the condition, and the ORDER BY stays last", () => {
+        assert.equal(
+            andClauses("project = PROJ OR assignee = currentUser() ORDER BY updated DESC", [
+                updatedSince("2026-09-29"),
+            ]),
+            '(project = PROJ OR assignee = currentUser()) AND updated >= "2026-09-29" ORDER BY updated DESC',
+        );
+    });
+
+    test("without an ORDER BY none is added", () => {
+        assert.equal(
+            andClauses("project = PROJ", [updatedSince("2026-09-29"), 'issueFunction in commented("by jdoe")']),
+            '(project = PROJ) AND updated >= "2026-09-29" AND issueFunction in commented("by jdoe")',
+        );
+    });
+
+    test("a query that is only an ORDER BY is just the conditions, then the ORDER BY", () => {
+        assert.equal(andClauses("ORDER BY key", [updatedSince("2026-09-29")]), 'updated >= "2026-09-29" ORDER BY key');
+    });
+
+    test("with nothing to add the query is as it was", () => {
+        assert.equal(andClauses("project = PROJ ORDER BY key", []), "project = PROJ ORDER BY key");
+    });
+});
+
+describe("commentedClause", () => {
+    test("by a user, after and before days that are given", () => {
+        assert.equal(
+            commentedClause("jdoe", "2026-09-29", "2026-10-04"),
+            'issueFunction in commented("by jdoe after 2026-09-29 before 2026-10-04")',
+        );
+        assert.equal(
+            commentedClause("jdoe", "2026-09-29", undefined),
+            'issueFunction in commented("by jdoe after 2026-09-29")',
+        );
+        assert.equal(
+            commentedClause("jdoe", undefined, "2026-10-04"),
+            'issueFunction in commented("by jdoe before 2026-10-04")',
+        );
+        assert.equal(commentedClause("jdoe", undefined, undefined), 'issueFunction in commented("by jdoe")');
+    });
+
+    test("an account id and an email address fit; anything that could end the string or split the query does not", () => {
+        assert.ok(commentedClause("712020:6c21d3a0-1111-4222-8333-944455556666", undefined, undefined));
+        assert.ok(commentedClause("jane.doe@example.test", undefined, undefined));
+        for (const user of ['jd"oe', "j doe", "jd)oe", "", "x".repeat(129), "jd\noe"]) {
+            assert.equal(commentedClause(user, undefined, undefined), undefined, JSON.stringify(user));
+        }
     });
 });

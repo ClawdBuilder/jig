@@ -78,3 +78,45 @@ export function jqlNotes(jql: string): string[] {
     }
     return [...notes];
 }
+
+// ---- building a query from the caller's -------------------------------------------------------------------------------
+
+/** The query cut at its `ORDER BY`, which is always last. Quoted text is skipped, so a string may say "order by". */
+export function splitOrder(jql: string): { where: string; order: string } {
+    const order = /(?<!\w)order\s+by\b/i.exec(maskQuoted(jql));
+    return order === null
+        ? { where: jql.trim(), order: "" }
+        : { where: jql.slice(0, order.index).trim(), order: jql.slice(order.index).trim() };
+}
+
+/**
+ * The caller's query with more conditions ANDed on. The query goes in parentheses, so an `OR` in it cannot swallow a
+ * condition, and its `ORDER BY` stays at the end.
+ */
+export function andClauses(jql: string, clauses: readonly string[]): string {
+    const { where, order } = splitOrder(jql);
+    const all = [...(where === "" ? [] : [clauses.length === 0 ? where : `(${where})`]), ...clauses];
+    return [all.join(" AND "), order].filter((part) => part !== "").join(" ");
+}
+
+/** `updated >= "2026-10-01"`: JQL reads a day in the time zone of the account that searches. */
+export const updatedSince = (day: string): string => `updated >= "${day}"`;
+
+/** What ScriptRunner's `commented` query can carry as a user: it is split on spaces and sits in a string. */
+const SCRIPTRUNNER_USER = /^[A-Za-z0-9._@:+-]{1,128}$/;
+
+/**
+ * ScriptRunner's `issueFunction in commented("by <user> after <day> before <day>")`, or undefined when the user cannot be
+ * written inside its query string. The days are the ones to send: the caller has widened them.
+ */
+export function commentedClause(
+    user: string,
+    after: string | undefined,
+    before: string | undefined,
+): string | undefined {
+    if (!SCRIPTRUNNER_USER.test(user)) return undefined;
+    const parts = [`by ${user}`];
+    if (after !== undefined) parts.push(`after ${after}`);
+    if (before !== undefined) parts.push(`before ${before}`);
+    return `issueFunction in commented("${parts.join(" ")}")`;
+}
