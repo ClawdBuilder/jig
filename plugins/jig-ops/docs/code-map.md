@@ -78,6 +78,7 @@ gone, so this table cannot drift from the code.
 | `ci/jenkins.ts` | The Jenkins adapter: builds, stages and console logs; trigger with a crumb | `ci/adapters.ts` |
 | `ci/concourse.ts` | The Concourse adapter: a job's builds, their inputs and logs; start the job; no rerun | `ci/adapters.ts` |
 | `ci/environment.ts` | The environment a call names: how a preview and a watch's title say so | `ci/concourse.ts`, `ci/gitlab.ts`, `ci/jenkins.ts` |
+| `ci/pin-line.ts` | The "Deploys" line of a trigger preview: what the environment is pinned to, read now, and part of the fingerprint | `ci/tool.ts` |
 | `ci/model.ts` | What a CI system says about a check, in one shape with four buckets: pass, fail, pending, skipped | the four CI adapters and their watches |
 | `ci/logs.ts` | Job logs from any CI system: cleaned, cut down, and scrubbed of anything credential-shaped | the adapters and watches that show a log |
 | `ci/lost.ts` | A write whose reply was lost: one read says what the system shows, and it is never sent again | `ci/concourse.ts`, `ci/github-actions.ts`, `ci/gitlab.ts` and 1 more |
