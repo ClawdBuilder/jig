@@ -7,12 +7,14 @@
 // Pi's docs also say not to list a host package in `dependencies`, which is checked here too.
 //   node scripts/check-runtime-deps.mjs [--root <folder>]
 import { builtinModules } from "node:module";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { importsOf } from "./imports.mjs";
 
 // The folders of a plugin that Pi does not run: tests, the review page (its own package, built to dist/), docs, build scripts.
+// The top-level `herdr/` folder is not a plugin: its mods are plain JavaScript for the Herdr desktop app and import the app's own
+// modules ("herdr", "gpui-kit"), so they are not scanned; its `scripts/` are (see below).
 const NOT_RUNTIME = new Set(["test", "web", "docs", "scripts", "dist", "skills", "themes"]);
 const CODE = /\.(?:ts|mts|cts|js|mjs|cjs)$/;
 
@@ -57,20 +59,22 @@ export function check(root) {
 
     let files = 0;
     let imports = 0;
-    for (const group of ["plugins", "examples"]) {
-        for (const plugin of readdirSync(path.join(root, group))) {
-            for (const file of runtimeFiles(root, path.join(group, plugin))) {
-                files += 1;
-                for (const { specifier, line } of bareImports(readFileSync(path.join(root, file), "utf8"))) {
-                    imports += 1;
-                    const name = packageOf(specifier);
-                    if (builtins.has(name) || dependencies.has(name) || hosts.has(name)) continue;
-                    const why = devDependencies.has(name)
-                        ? "a devDependency, which `pi install git:` does not install"
-                        : "not in the root package.json at all";
-                    problems.push(`${file}:${line}: imports "${specifier}", ${why}`);
-                }
-            }
+    const all = ["plugins", "examples"].flatMap((group) =>
+        readdirSync(path.join(root, group)).flatMap((plugin) => runtimeFiles(root, path.join(group, plugin))),
+    );
+    // herdr/scripts (the Herdr app's installer) runs with Node from an installed copy too, so it is held to the same rule.
+    if (existsSync(path.join(root, "herdr", "scripts")))
+        all.push(...runtimeFiles(root, path.join("herdr", "scripts"), false));
+    for (const file of all) {
+        files += 1;
+        for (const { specifier, line } of bareImports(readFileSync(path.join(root, file), "utf8"))) {
+            imports += 1;
+            const name = packageOf(specifier);
+            if (builtins.has(name) || dependencies.has(name) || hosts.has(name)) continue;
+            const why = devDependencies.has(name)
+                ? "a devDependency, which `pi install git:` does not install"
+                : "not in the root package.json at all";
+            problems.push(`${file}:${line}: imports "${specifier}", ${why}`);
         }
     }
     return { files, imports, problems };
