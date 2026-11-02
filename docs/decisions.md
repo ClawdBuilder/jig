@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
 - [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
 - [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
 - [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
@@ -53,6 +54,27 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make
+
+A `bash` test run died with a JVM attach error before any test ran. The sandbox makes no Unix socket, by design, and the agent
+guessed that only by reasoning. The sandbox explained refusals it could see (a path, a refusal word) and nothing else.
+
+**Decided**
+- **A failed command's output is checked for a few tool messages** that mean "no Unix socket": JVM attach, Docker's CLI, and the
+  socket errors of Python, Node, `socat`, `nc` and Go. A match adds one `[sandbox]` line that says the failure *looks like* the
+  sandbox and gives the way on: `outside: true`, which asks the user.
+- **Only after a command that exited with a code other than 0,** so a command that worked is never accused.
+- **The messages are data** in `lists.ts`, small, and tested with the text the tools printed in the real sandbox.
+
+**Why**
+- A model that is not told the cause tries the same command again or changes the code under test. One line saves both.
+- Matching a tool's wording is a guess, so the line says "looks like" and offers a way, which asks the user, not a rule.
+
+**Rejected**
+- **Telling the agent about every possible block up front.** The description is read on every call; a line after a failure is
+  read only when it matters.
+- **A long list of tools.** Each entry is another message to keep right. An entry is added when a real session needs it.
 
 ## 2026-11-02: an environment can have its own CI job, and a `ci` call can name it
 

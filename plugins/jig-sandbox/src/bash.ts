@@ -145,6 +145,7 @@ export function sandboxedOperations(deps: BashDeps, ctx: ExtensionContext, shell
                 ctx,
                 snapshot,
                 violations,
+                exitCode: result?.exitCode,
             });
             if (lines.length > 0) {
                 // The lines come after the command's own output, on lines of their own.
