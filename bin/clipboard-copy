@@ -1,15 +1,39 @@
 #!/usr/bin/env bash
 # Copies stdin to the system clipboard. tmux runs it when a mouse selection ends (copy on select).
-# On WSL it feeds Windows' clip.exe UTF-16LE, which is what keeps non-ASCII text intact.
-set -u
-if grep -qi microsoft /proc/version 2>/dev/null && command -v clip.exe >/dev/null; then
-    iconv -f UTF-8 -t UTF-16LE | clip.exe
+# On WSL it feeds Windows' clip.exe UTF-16LE, which is what keeps non-ASCII text intact. A shell started over SSH (herdr's
+# terminals start that way) has no Windows folders on its PATH and no interop socket, so clip.exe is found by its full path and
+# given the distro's socket. When nothing can copy, it says so in tmux instead of dropping the text quietly.
+#
+# For tests only: JIG_WSL=1 or 0 decides whether this is WSL, JIG_CLIP_EXE and JIG_INTEROP_FALLBACK stand in for Windows'
+# clip.exe and the distro's socket.
+set -u -o pipefail
+fail() {
+    tmux display-message "Not copied: $*" 2>/dev/null || printf 'jig: not copied: %s\n' "$*" >&2
+    exit 1
+}
+
+case "${JIG_WSL:-}" in
+    1) wsl=1 ;;
+    0) wsl=0 ;;
+    *) grep -qi microsoft /proc/version 2>/dev/null && wsl=1 || wsl=0 ;;
+esac
+clip=""
+if [ "$wsl" = 1 ]; then
+    clip="${JIG_CLIP_EXE:-$(command -v clip.exe || printf '%s' /mnt/c/Windows/System32/clip.exe)}"
+    [ -x "$clip" ] || clip=""
+fi
+
+if [ -n "$clip" ]; then
+    fallback="${JIG_INTEROP_FALLBACK:-/run/WSL/1_interop}"
+    [ -n "${WSL_INTEROP:-}" ] || [ ! -e "$fallback" ] || export WSL_INTEROP="$fallback"
+    iconv -f UTF-8 -t UTF-16LE | "$clip" || fail "clip.exe failed"
 elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null; then
-    wl-copy
+    wl-copy || fail "wl-copy failed"
 elif command -v xclip >/dev/null; then
-    xclip -selection clipboard
+    xclip -selection clipboard || fail "xclip failed"
 elif command -v pbcopy >/dev/null; then
-    pbcopy
+    pbcopy || fail "pbcopy failed"
 else
     cat >/dev/null
+    fail "no clipboard program (clip.exe, wl-copy, xclip or pbcopy)"
 fi
