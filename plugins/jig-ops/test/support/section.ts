@@ -148,3 +148,17 @@ export function withCi(ci: Raw, more: Raw = {}): Raw {
     ((raw.services as Record<string, Raw>)["orders-api"] as Raw).ci = ci;
     return raw;
 }
+
+/**
+ * A copy of the default section where the environments of orders-api have these CI jobs, by environment name. An environment
+ * the section does not have is added as a copy of staging, so it only has what a job needs.
+ */
+export function withJobs(jobs: Record<string, Raw>, more: Raw = {}, ci?: Raw): Raw {
+    const raw = section(more);
+    const entry = (raw.services as Record<string, Raw>)["orders-api"] as Raw & { environments: Record<string, Raw> };
+    if (ci !== undefined) entry.ci = ci;
+    for (const [name, job] of Object.entries(jobs)) {
+        entry.environments[name] = { ...(entry.environments[name] ?? {}), job };
+    }
+    return raw;
+}

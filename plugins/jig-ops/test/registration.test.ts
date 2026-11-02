@@ -99,7 +99,11 @@ describe("the extension", () => {
         const jig = installFakeJig();
         try {
             jigOps()(fakePi().pi);
-            assert.deepEqual(jig.sectionReplace.get("ops"), ["services.*.ci.auth", "services.*.environments.*.deploy"]);
+            assert.deepEqual(jig.sectionReplace.get("ops"), [
+                "services.*.ci.auth",
+                "services.*.environments.*.job.auth",
+                "services.*.environments.*.deploy",
+            ]);
             assert.deepEqual(jig.sectionReplace.get("ops"), OPS_REPLACE);
 
             // A company gives where the CI server is and how it signs in; you give your own token, and a deploy method.
@@ -621,7 +625,7 @@ describe("what the ci tool says about itself", () => {
     });
 
     test("every parameter of every adapter's table is in the schema, and the schema has no other", () => {
-        const used = new Set<string>(["action", "service"]);
+        const used = new Set<string>(["action", "service", "environment"]);
         for (const info of Object.values(SYSTEMS)) {
             for (const row of Object.values(info.table))
                 for (const name of [...(row.required ?? []), ...(row.optional ?? [])]) used.add(name);

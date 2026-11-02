@@ -18,6 +18,10 @@ export interface AfterInput {
     /** What `before` returned for this command. */
     snapshot: unknown;
     violations: ReadonlyArray<{ line: string }>;
+    /** How the command ended: its exit code, or undefined when it was stopped or never gave one. Only a code other than 0 is a failure. */
+    exitCode?: number | null | undefined;
+    /** True for a background task, which cannot run outside the sandbox. */
+    background?: boolean;
 }
 
 export interface Aftermath {
@@ -56,9 +60,11 @@ export function createAftermath(deps: AftermathDeps): Aftermath {
                     `[sandbox] the check of what the command changed failed (${(error as Error).message}); look at your shell start-up files and git hooks.`,
                 );
             }
+            const failed = typeof input.exitCode === "number" && input.exitCode !== 0;
             const explained = explainBlocks(input.output, input.prepared.rules, {
                 cwd: input.cwd,
                 mode: input.prepared.mode,
+                ...(failed ? { failure: { background: input.background === true } } : {}),
             });
             lines.push(...explained.lines, ...explainViolations(input.violations));
             // A refused write under a toolchain folder is a question for the user, inside this waiting call. Several refusals

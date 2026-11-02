@@ -4,7 +4,7 @@
 //
 // A call never names a context, a namespace, a release or an address. It names a service and an environment, and this
 // catalog says where that is, so nothing outside the catalog can be reached through the tools.
-import { checkCi } from "./ci/config.ts";
+import { checkCi, checkJob } from "./ci/config.ts";
 import type { CiConfig } from "./ci/config.ts";
 import { checkArtifacts, checkWatch } from "./ci/settings.ts";
 import type { ArtifactRule, WatchSettings } from "./ci/settings.ts";
@@ -27,6 +27,11 @@ export interface Environment {
     kubernetes?: Target;
     /** An https address that answers when the service is healthy. */
     health?: string;
+    /**
+     * The CI job that deploys or checks this environment. It names this environment as its own, so a `ci` call that names
+     * the environment acts there, with the rules of that environment.
+     */
+    job?: CiConfig;
 }
 
 export interface Service {
@@ -49,7 +54,7 @@ export interface Catalog {
 
 const SECTION_FIELDS: ReadonlySet<string> = new Set(["services", "watch", "artifacts"]);
 const SERVICE_FIELDS: ReadonlySet<string> = new Set(["repo", "ci", "environments"]);
-const ENVIRONMENT_FIELDS: ReadonlySet<string> = new Set(["deploy", "runtime", "health"]);
+const ENVIRONMENT_FIELDS: ReadonlySet<string> = new Set(["deploy", "runtime", "health", "job"]);
 /**
  * The runtimes an environment can have. A new one (Docker Compose, ECS) is a folder beside kubernetes/ and a name here.
  */
@@ -116,15 +121,16 @@ function checkEnvironment(
     errors: string[],
 ): Environment | undefined {
     if (!isObject(raw)) {
-        errors.push(`${at}: must be an object with deploy, runtime or health`);
+        errors.push(`${at}: must be an object with deploy, runtime, health or job`);
         return undefined;
     }
     const before = errors.length;
     for (const key of Object.keys(raw)) if (!ENVIRONMENT_FIELDS.has(key)) errors.push(`${at}.${key}: unknown field`);
-    if (raw.deploy === undefined && raw.runtime === undefined && raw.health === undefined) {
-        errors.push(`${at}: must have at least one of deploy, runtime and health`);
+    if (raw.deploy === undefined && raw.runtime === undefined && raw.health === undefined && raw.job === undefined) {
+        errors.push(`${at}: must have at least one of deploy, runtime, health and job`);
     }
 
+    const job = raw.job === undefined ? undefined : checkJob(raw.job, `${at}.job`, errors);
     const deploy = raw.deploy === undefined ? undefined : checkDeploy(raw.deploy, `${at}.deploy`, errors);
     const runtime = raw.runtime === undefined ? undefined : checkRuntime(raw.runtime, `${at}.runtime`, errors);
     let health: string | undefined;
@@ -148,6 +154,8 @@ function checkEnvironment(
         ...(deploy === undefined ? {} : { deploy }),
         ...(runtime === undefined ? {} : { kubernetes: { service, environment: name, ...runtime } }),
         ...(health === undefined ? {} : { health }),
+        // The job belongs to this environment: the rules of the environment apply to a call that names it.
+        ...(job === undefined ? {} : { job: { ...job, environment: name } }),
     };
 }
 
@@ -233,7 +241,11 @@ export function readOps(raw: unknown): { catalog?: Catalog; errors: string[] } {
  * these is one choice among several (a CI sign-in of `{ token }` or `{ signIn }`; a deploy by `helm` or by
  * `kubectl-image`), and merging two choices would give a mix that is neither.
  */
-export const OPS_REPLACE: readonly string[] = ["services.*.ci.auth", "services.*.environments.*.deploy"];
+export const OPS_REPLACE: readonly string[] = [
+    "services.*.ci.auth",
+    "services.*.environments.*.job.auth",
+    "services.*.environments.*.deploy",
+];
 
 /** The error messages for a raw section, for `registerSection`. An empty list means the section is valid. */
 export function validateOps(raw: unknown): string[] {
@@ -283,7 +295,10 @@ export function findEnvironment(catalog: Catalog, who: string, service: unknown,
 export interface CiService {
     name: string;
     repo?: string;
+    /** The CI entry the call acts on: the service's own, or the job of the environment the call names. */
     ci: CiConfig;
+    /** The environment whose job `ci` is. Without it, `ci` is the service's own entry. */
+    environment?: string;
 }
 
 function ciServiceOf(service: Service): CiService | undefined {
@@ -296,7 +311,8 @@ function ciServiceOf(service: Service): CiService | undefined {
  * The service a `ci` call names. A name nobody configured, or a service without a CI entry, is invalid input, and the
  * message lists the services that have one, because the model has no other way to learn them.
  */
-export function findCiService(catalog: Catalog, who: string, name: unknown): CiService {
+export function findCiService(catalog: Catalog, who: string, name: unknown, environment?: unknown): CiService {
+    if (environment !== undefined && environment !== null) return findJobService(catalog, who, name, environment);
     const found = typeof name === "string" ? catalog.services.get(name) : undefined;
     const withCi = [...catalog.services.values()].flatMap((service) => ciServiceOf(service) ?? []);
     const named = withCi.map((service) => `${service.name} (${service.ci.system})`);
@@ -311,6 +327,49 @@ export function findCiService(catalog: Catalog, who: string, name: unknown): CiS
         );
     }
     return service;
+}
+
+/**
+ * The service and environment a `ci` call names, and the environment's CI job. A name nobody configured, or an
+ * environment with no job, is invalid input, and the message lists the ones there are.
+ */
+function findJobService(catalog: Catalog, who: string, name: unknown, environment: unknown): CiService {
+    const found = typeof name === "string" ? catalog.services.get(name) : undefined;
+    const jobsOf = (service: Service) => [...service.environments.values()].filter((entry) => entry.job !== undefined);
+    if (found === undefined) {
+        const known = [...catalog.services.values()].flatMap((service) =>
+            jobsOf(service).length === 0
+                ? []
+                : [
+                      `${service.name} (${jobsOf(service)
+                          .map((entry) => entry.name)
+                          .join(", ")})`,
+                  ],
+        );
+        throw new InputError(
+            `${who}: no service named ${shown(name, 30)}. Services with a CI job: ${known.length === 0 ? "none have one" : shortList(known)}`,
+        );
+    }
+    const target = typeof environment === "string" ? found.environments.get(environment) : undefined;
+    if (target === undefined) {
+        throw new InputError(
+            `${who}: ${found.name} has no environment ${shown(environment, 30)}. ` +
+                `Known environments: ${shortList([...found.environments.keys()])}`,
+        );
+    }
+    if (target.job === undefined) {
+        const withJob = jobsOf(found).map((entry) => entry.name);
+        throw new InputError(
+            `${who}: ${found.name} has no CI job in ${target.name}. ` +
+                `Environments with a CI job: ${withJob.length === 0 ? "none" : shortList(withJob)}`,
+        );
+    }
+    return {
+        name: found.name,
+        ...(found.repo === undefined ? {} : { repo: found.repo }),
+        ci: target.job,
+        environment: target.name,
+    };
 }
 
 /** The services whose code lives in `repo`, and that have a CI entry. GitHub names are not case sensitive. */

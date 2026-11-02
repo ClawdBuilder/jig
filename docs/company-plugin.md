@@ -219,7 +219,7 @@ The user's own `~/.pi/agent/jig.json` is laid over the company's defaults before
 | `logs` | `backend.auth` | `backend.auth`, `backend.transport` | none |
 | `mongo` | `connections.*.via`, `connections.*.*.via` | none | none |
 | `api` | `environments.*` | none | none |
-| `ops` | `services.*.ci.auth`, `services.*.environments.*.deploy` | none | none |
+| `ops` | `services.*.ci.auth`, `services.*.environments.*.job.auth`, `services.*.environments.*.deploy` | none | none |
 | `workflow` | none | none | `folders` |
 
 The other sections merge as plain data. With jig-acme loaded, these are the results the tests check:

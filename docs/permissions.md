@@ -112,6 +112,19 @@ paths.
     [Where pass looks](secrets.md#where-pass-looks)). `/jig rules` says that `secrets.pass` named them.
   - *Guarded* (readable, not writable): the whole agent folder (`~/.pi/agent`,
     or where `PI_CODING_AGENT_DIR` points).
+  - *Guarded*, the code Pi loads at its next start, which runs with no sandbox. `/jig rules` says what named each path,
+    as in `~/work/ext (a package in settings.json)`:
+    - **Local packages and extensions** that Pi's settings name: the `packages` and the plain `extensions` entries of
+      `settings.json` in the agent folder, and of `.pi/settings.json` in Pi's working folder. A path is read as Pi reads
+      it: `~` and `file://` understood, and a relative one starting from the agent folder for the first file and from
+      `.pi` for the second. A folder or a single file, there or not yet.
+    - **Extension files Pi loaded** from anywhere else, as far as Pi says: it lists the files of the tools and
+      commands that extensions registered, so an extension that registered neither is not in the list.
+    - **Not added:** a `git:` or `npm:` package in the user's settings, which lives in the agent folder, and an entry
+      that would protect the home folder or a folder above it. The `.pi/git` and `.pi/npm` folders of a project are not
+      covered.
+    - **A package that holds the working folder** makes the whole folder unwritable, for the file tools and for `bash`.
+      That is the rule doing its work: change such a package yourself, with `!`.
 - **How a path is matched.** `~` is expanded, a relative path starts from Pi's
   working folder, `..` is folded away, and symlinks are followed (also a link
   that points nowhere yet), so a link in a project that points into `~/.ssh` is

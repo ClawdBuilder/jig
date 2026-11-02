@@ -6,6 +6,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `workflow test` picks the JDK a Gradle build needs from its files (the wrapper's Gradle version, the build's Java level, and each installed JDK's `release` file), so no repository needs its own `JAVA_HOME`; a configured one still wins, and the result says which JDK ran and why.
 - `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure
   (such as `cmd:` reading what `fly login` saved); Jig never signs in. A paused pipeline or a job closed to manual starts is
   refused before anyone is asked.
@@ -13,6 +14,16 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - A Context panel in the Herdr app files: what fills the session's context (messages, tools, system prompt, skills, context
   files, the compaction buffer, free space), a switch for each tool and skill of that session, and Reload. `jig-session`
   writes the figures into its status file and takes the switches from a request file; `/session-reload` reloads when idle.
+- A service's environment can name its own CI job (`environments.<name>.job`), and `ci` takes an `environment`: "build orders-api for staging" runs that environment's job. A write in a test environment asks; one in production is refused before asking.
+
+### Changed
+
+- After a push, the result says how the agent will hear when CI finishes (a running `ci` watch, or the call that starts one), and the model is told that a promise to report on CI needs a watch.
+- A command that fails because the sandbox makes no Unix socket (a JVM attaching to itself, Docker, a socket tool) says so in one line, and how to run it outside with the user's approval.
+
+### Fixed
+
+- The local packages Pi loads from its settings (and the extension files it loaded) are guarded: the sandboxed `bash` cannot change code that runs unsandboxed at the next start, and Pi's file tools refuse to write it.
 
 ## [0.2.0] - 2026-11-02
 

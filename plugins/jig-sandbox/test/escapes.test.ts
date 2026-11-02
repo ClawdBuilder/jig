@@ -2,11 +2,12 @@
 // home (see support/world.ts), and nothing here reads a file under the real home.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync } from "node:fs";
 import { userInfo } from "node:os";
 import net from "node:net";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
+import { loadedCodePaths } from "../../jig-core/src/loaded-code.ts";
 import { detectWsl } from "../src/platform.ts";
 import { nodeFiles } from "../src/files.ts";
 import { skipUnlessRealSandbox } from "./support/programs.ts";
@@ -119,8 +120,15 @@ describe("reading a credential fails", { skip }, () => {
 
 describe("writing what runs later outside the sandbox fails", { skip }, () => {
     let world: World;
+    // What jig-core would say is protected, for the one test that needs it: the sandbox asks for it with every command.
+    const provided: Array<{
+        path: string;
+        shown: string;
+        kind: "secret" | "guarded";
+        source: "default" | "personal" | "company";
+    }> = [];
     before(async () => {
-        world = await makeWorld();
+        world = await makeWorld({ deps: { protectedPaths: () => provided } });
         world.put(`${world.home}/.gradle/init.d/keep.gradle`, "// keep\n");
         mkdirSync(`${world.project}/.git/hooks`, { recursive: true });
         mkdirSync(`${world.project}/.pi/extensions`, { recursive: true });
@@ -168,6 +176,55 @@ describe("writing what runs later outside the sandbox fails", { skip }, () => {
     test("an extension Pi would load from the project", async () => {
         await world.run(`echo 'export default () => {}' > ${world.project}/.pi/extensions/x.ts`);
         assert.equal(existsSync(`${world.project}/.pi/extensions/x.ts`), false);
+    });
+
+    test("code that Pi's settings name: a package in the project, wherever it is, cannot be written, and the rest of the project can", async () => {
+        const settings = world.put(
+            `${world.agentDir}/settings.json`,
+            JSON.stringify({ packages: [`${world.project}/tools`, "git:github.com/acme/pkg"] }),
+        );
+        world.put(`${world.project}/.pi/settings.json`, JSON.stringify({ packages: ["../ext-pkg"] }));
+        world.put(`${world.project}/tools/index.ts`, "// mine\n");
+        world.put(`${world.project}/ext-pkg/index.ts`, "// theirs\n");
+        provided.push(
+            ...loadedCodePaths({
+                agentDir: world.agentDir,
+                cwd: world.project,
+                home: world.home,
+                platform: "linux",
+            }).map((entry) => ({ path: entry.path, shown: entry.shown, kind: entry.kind, source: entry.source })),
+        );
+        assert.ok(readFileSync(settings, "utf8").includes("tools"));
+        let result: Awaited<ReturnType<typeof world.runAudited>>;
+        try {
+            result = await world.runAudited(
+                [
+                    `echo evil > ${world.project}/tools/index.ts`,
+                    `echo evil > ${world.project}/tools/new.ts`,
+                    `rm -f ${world.project}/tools/index.ts`,
+                    `echo evil > ${world.project}/ext-pkg/index.ts`,
+                    `cat ${world.project}/tools/index.ts`,
+                    `echo fine > ${world.project}/notes.txt`,
+                ].join("; "),
+            );
+        } finally {
+            // The other tests read the agent folder as it was.
+            rmSync(settings, { force: true });
+            provided.length = 0;
+        }
+        assert.equal(readFileSync(`${world.project}/tools/index.ts`, "utf8"), "// mine\n");
+        assert.equal(existsSync(`${world.project}/tools/new.ts`), false);
+        assert.equal(readFileSync(`${world.project}/ext-pkg/index.ts`, "utf8"), "// theirs\n");
+        assert.match(result.output, /\/\/ mine/, "it can be read");
+        assert.equal(
+            readFileSync(`${world.project}/notes.txt`, "utf8"),
+            "fine\n",
+            "the rest of the project can be written",
+        );
+        assert.match(
+            result.lines.join("\n"),
+            /\[sandbox\] cannot write .*(tools|ext-pkg).*: Pi and Jig load it outside the sandbox/,
+        );
     });
 
     test("a program in a folder on PATH", async () => {

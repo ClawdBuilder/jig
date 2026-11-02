@@ -75,6 +75,8 @@ out of it.
 **Pi, Jig and other agents**
 - Pi's agent folder (`~/.pi/agent`, or `PI_CODING_AGENT_DIR`): settings, extensions,
   `jig.json`, every `jig-*` state folder
+- Every local package and extension that Pi's settings name, and the files of the extensions Pi loaded: `jig-core` guards
+  them from the file tools, so the list that locks the agent folder locks these too (`/jig rules` says what named each)
 - In the project and every folder above it below your home: `.pi/settings.json`,
   `.pi/extensions`, `.pi/skills`, `.pi/prompts`, `.pi/themes`, `.pi/mcp.json`, `.agents`.
   `.pi/docs` and other files under `.pi` stay writable.

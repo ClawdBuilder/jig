@@ -4,6 +4,11 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files](#2026-11-02-a-gradle-builds-tests-pick-an-installed-jdk-that-fits-from-files)
+- [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
+- [2026-11-02: a push says how the agent will hear how the checks end](#2026-11-02-a-push-says-how-the-agent-will-hear-how-the-checks-end)
+- [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
+- [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
 - [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
 - [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
@@ -52,6 +57,50 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make
+
+A `bash` test run died with a JVM attach error before any test ran. The sandbox makes no Unix socket, by design, and the agent
+guessed that only by reasoning. The sandbox explained refusals it could see (a path, a refusal word) and nothing else.
+
+**Decided**
+- **A failed command's output is checked for a few tool messages** that mean "no Unix socket": JVM attach, Docker's CLI, and the
+  socket errors of Python, Node, `socat`, `nc` and Go. A match adds one `[sandbox]` line that says the failure *looks like* the
+  sandbox and gives the way on: `outside: true`, which asks the user.
+- **Only after a command that exited with a code other than 0,** so a command that worked is never accused.
+- **The messages are data** in `lists.ts`, small, and tested with the text the tools printed in the real sandbox.
+
+**Why**
+- A model that is not told the cause tries the same command again or changes the code under test. One line saves both.
+- Matching a tool's wording is a guess, so the line says "looks like" and offers a way, which asks the user, not a rule.
+
+**Rejected**
+- **Telling the agent about every possible block up front.** The description is read on every call; a line after a failure is
+  read only when it matters.
+- **A long list of tools.** Each entry is another message to keep right. An entry is added when a real session needs it.
+
+## 2026-11-02: an environment can have its own CI job, and a `ci` call can name it
+
+A service has one build CI, but the jobs that deploy it differ by environment, and so may the CI system. A Concourse job per
+environment is the case that asked for it; a Jenkins job that differs by environment is the same case.
+
+**Decided**
+- **`environments.<e>.job` is a `ci` entry,** for any system that can start a build (Concourse, Jenkins, GitLab). GitHub Actions has no
+  trigger, so it is refused. An environment may have only a `job`.
+- **Every `ci` action takes `environment`.** With it the call uses that job; without it, the service's `ci`.
+- **A call that names an environment acts in it.** The job carries the environment's name, so the rules of that environment decide:
+  reads are reads there, `trigger` and `rerun` are writes there, a test environment asks and production is denied before anyone is
+  asked. `watch` stays a local write.
+- **The environment is in the fingerprint and the preview.** The same job approved for one environment is not approved for another.
+- **A job never starts a watch on a push,** and its watch says nothing about a commit: no `jig-ops:ci-finished`, no "artifact
+  ready". A push means "a commit was built"; a deploy job does not say that.
+- **A user's own `auth` for a job replaces the company's whole** (`services.*.environments.*.job.auth` joins the `replace` keys).
+
+**Why**
+- **The environment already decides the rules.** Deriving the environment of a call from the job keeps one mapping, as the catalog
+  does for `deploy`.
+- **A second tool or a second service entry per environment** would have repeated the repository, the artifact rules and the
+  service's name, and a call could not say "staging" at all.
 
 ## 2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker
 
@@ -134,6 +183,72 @@ Teams that deploy with Concourse start a job by hand, and read its builds, the w
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files
+
+A test run used a `JAVA_HOME` from a stale document, a JDK patch release that was no longer installed, and Gradle 2 to 7 cannot run
+on the machine's default Java 21. `workflow.tests` could only fix it with an `env.JAVA_HOME` that each user wrote for each repository.
+
+**Decided**
+- **A test command that runs a Gradle wrapper gets an installed JDK that fits,** when no `env.JAVA_HOME` is set. The wrapper's
+  Gradle version, the build's stated Java level and Gradle's compatibility table decide; `env.JAVA_HOME` still wins.
+- **Everything is read from files and nothing is run.** The JDKs are found in the usual places and read from their `release` file.
+- **With a level stated, the lowest Java that fits; with none, a default that Gradle runs on stays,** and otherwise the newest.
+- **When none fits the repository is not run,** and the line says what is needed and which JDKs were found.
+
+**Why**
+- Starting an unsuitable build wastes a long run on an error about class file versions that sends the agent after the wrong cause.
+- The table is Gradle's own and small, so a wrong Java is a data fix. A wrong guess costs one line that says what was chosen.
+- A level nobody stated is more likely too low than too high: a build with no `sourceCompatibility` runs on whatever Java starts it.
+
+**Rejected**
+- **Running `java -version`** on each folder: slower, and it runs code from folders the agent may be able to write.
+- **Choosing for builds that are not a Gradle wrapper.** Maven and `gradle test` have no pinned version to decide from.
+
+## 2026-11-02: the local packages and extensions that Pi loads are guarded paths
+
+Pi loads the local packages that its settings list, and runs their code with no sandbox, at the next start. When such a folder
+sits in the working folder, a sandboxed `bash` (which may write the working folder) could change that code: an escape. The sandbox
+locked Node.js, Pi's own folders and the agent folder, and not these.
+
+**Decided**
+- **`jig-core` adds them to its default protected paths as `guarded`,** so Pi's file tools refuse to write them and the sandbox,
+  which locks every guarded path, locks them for `bash`. Each says what named it: `(a package in settings.json)`.
+- **They are read from Pi's settings the way Pi reads them:** the agent folder's `settings.json` and `.pi/settings.json` of the
+  working folder, a relative path starting from the agent folder and from `.pi`. The plain `extensions` entries count too, since
+  they run the same way. A `git:` or `npm:` package of the user's lives in the agent folder, already guarded.
+- **The extension files Pi loaded are added when Pi lists them,** from the tools and commands they registered. One that registered
+  neither is not listed by Pi, so it is not guarded.
+- **A path is guarded whether or not it exists yet,** since a file made there before the next start would be loaded.
+
+**Why**
+- The guard follows what Pi will run, so a new package is covered without a rule for each repository.
+- One list for the file tools and `bash` means they cannot disagree.
+
+**Rejected**
+- **Locking them in `jig-sandbox` only.** Pi's file tools could still change the code, and the two lists would drift.
+- **Skipping a package that holds the working folder.** It would leave the escape open for the one setup where it matters most.
+  The folder becomes unwritable instead, which is loud, and the user changes it with `!`.
+
+## 2026-11-02: a push says how the agent will hear how the checks end
+
+After a push the agent said "I'll look at the CI result once it runs" and ended its turn, with nothing that would wake it.
+
+**Decided**
+- **The result of a push ends with one line.** When a listener started a watch while the push was announced, the line names it. When
+  none did, it says what starts one and that the user has to ask otherwise. A push that was not announced gets no line.
+- **The way to start one is the `ci` tool's `watch` action,** not `pr watch`: `pr watch` reports new comments, and never checks.
+  The line says so, so that a model does not wait for checks on a watch that cannot report them.
+- **A started watch is found by what `jig-core` lists,** open after the event and not before. `jig-git` still does not know
+  `jig-ops` or whether it is installed.
+- **One sentence in the tool guidance and the skill** says that a promise to report later needs a watch.
+
+**Why**
+- The agent can hold only what it is told. A line at the moment of the push is read when it matters.
+- Starting a CI watch from `jig-git` would put CI back into it, after CI moved to `jig-ops` so that each system has one adapter.
+
+**Rejected**
+- **Naming `pr watch` as the way to hear about checks.** It would send the agent to wait on a watch that never reports them.
 
 ## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
 

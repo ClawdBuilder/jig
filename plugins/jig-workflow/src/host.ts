@@ -2,6 +2,7 @@
 // jig-core through `jig()` as every plugin does; tests give a `Host` of their own so that a git repository is real and a
 // `gh` or a sandbox is a fake.
 import { createHash } from "node:crypto";
+import os from "node:os";
 import { jig } from "../../jig-core/src/client.ts";
 import type {
     Preview,
@@ -10,6 +11,7 @@ import type {
     SandboxRunOptions,
     SandboxRunResult,
 } from "../../jig-core/src/contract.ts";
+import type { JavaSources } from "./java.ts";
 
 export interface Host {
     /** `git` in a repository, through jig-core: hooks off, a repository that would run a command refused. */
@@ -26,6 +28,8 @@ export interface Host {
     /** jig-git keeps `forges` and `cloneHost` in the `git` section of `jig.json`; this is that section as
      *  jig-core loaded it, or undefined. Read to tell GitHub from GitLab, never written. */
     gitSection(): unknown;
+    /** Where JDKs can be found: the home folder and Pi's environment. A test gives folders of its own. */
+    java(): JavaSources;
     now(): Date;
 }
 
@@ -59,6 +63,7 @@ export function coreHost(): Host {
                 return undefined;
             }
         },
+        java: () => ({ home: os.homedir(), env: process.env, platform: process.platform }),
         now: () => new Date(),
     };
 }
