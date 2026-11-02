@@ -199,6 +199,10 @@ because the launcher had started. A `\\wsl.localhost\...` address stalls on a ne
   own policy plus `frame-ancestors 'none'`.
 - **The pages are kept in memory (the latest 50),** not written to disk, while the server works. The file under `previews/`
   is the fallback only, used when the server cannot listen, and the status line says which was used.
+- **A file address is never tried under WSL, or when the opener is a Windows program** (an `.exe`, or a path under
+  `/mnt/<drive>/`). WSL is found by `/proc/sys/fs/binfmt_misc/WSLInterop` or "microsoft" in `/proc/version`, not by
+  `WSL_DISTRO_NAME`, which a shell started over SSH lacks. Opened that way, the file raised a Windows network-file security
+  warning every time, so the screen reports the server's failure and leaves y, s and n.
 - **The line says what is known:** the address that was opened, or why it could not be, with the address to paste. A
   launcher that starts proves nothing about what the browser did.
 - **`approvals.openInBrowser`** (`"on-key"` by default, or `"always"`) opens the page once as a review screen appears.

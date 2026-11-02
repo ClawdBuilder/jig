@@ -12,7 +12,9 @@ import {
     escapeHtml,
     openInBrowser,
     openPreview,
+    opensInWindows,
     renderPreviewPage,
+    runsUnderWsl,
     writePreviewPage,
 } from "../src/preview-html.ts";
 import type { PreviewServer } from "../src/preview-server.ts";
@@ -401,7 +403,7 @@ describe("opening a preview", () => {
             },
             close: async () => undefined,
         };
-        const message = await openPreview(preview, "h", { server, launch, env: {} });
+        const message = await openPreview(preview, "h", { server, launch, env: {}, wsl: false });
         const files = readdirSync(path.join(state.dir, "previews"));
         assert.equal(files.length, 1);
         const address = pathToFileURL(path.join(state.dir, "previews", files[0] ?? "")).href;
@@ -425,11 +427,97 @@ describe("opening a preview", () => {
                 throw new Error("no browser");
             },
             env: {},
+            wsl: false,
         });
         assert.match(
             message,
             /^could not open the browser: no browser \(the local preview server could not start: listen EADDRNOTAVAIL; the file is file:\/\/\/.*\.html\)$/,
         );
+    });
+});
+
+describe("a file address is never tried for a Windows browser", () => {
+    const state = tempState();
+    before(() => {
+        state.start();
+    });
+    after(() => state.stop());
+
+    const down: PreviewServer = {
+        serve: async () => {
+            throw new Error("listen EADDRNOTAVAIL");
+        },
+        close: async () => undefined,
+    };
+    const preview: Preview = { summary: "s", body: "b" };
+
+    test("under WSL, a server that cannot start is said, and nothing is launched or written", async () => {
+        const launched: string[][] = [];
+        const message = await openPreview(preview, "h", {
+            server: down,
+            launch: async (_program, args) => {
+                launched.push(args);
+            },
+            env: {},
+            wsl: true,
+        });
+        assert.match(
+            message,
+            /^could not open the browser: the local preview server could not start: listen EADDRNOTAVAIL/,
+        );
+        assert.ok(!message.includes("file://"));
+        assert.deepEqual(launched, []);
+        assert.equal(existsSync(path.join(state.dir, "previews")), false);
+    });
+
+    test("a Windows program as the opener is the same, off WSL", async () => {
+        for (const browser of [
+            "/mnt/c/Windows/explorer.exe",
+            "msedge.exe",
+            "C:\\Windows\\explorer.exe",
+            "/mnt/d/tools/open",
+        ]) {
+            const launched: string[][] = [];
+            const message = await openPreview(preview, "h", {
+                server: down,
+                launch: async (_program, args) => {
+                    launched.push(args);
+                },
+                env: { BROWSER: browser },
+                wsl: false,
+            });
+            assert.match(message, /^could not open the browser: the local preview server could not start/, browser);
+            assert.deepEqual(launched, [], browser);
+        }
+    });
+
+    test("opensInWindows tells the cases apart", () => {
+        assert.equal(opensInWindows({}, true), true);
+        assert.equal(opensInWindows({}, false), false);
+        assert.equal(opensInWindows({ BROWSER: "firefox" }, false), false);
+        assert.equal(opensInWindows({ BROWSER: "/usr/bin/chromium --new-window" }, false), false);
+        assert.equal(opensInWindows({ BROWSER: "/mnt/c/Program Files/x.exe" }, false), true);
+        assert.equal(opensInWindows({ BROWSER: "wslview.exe" }, false), true);
+    });
+
+    test("WSL is found by the interop file or the kernel version, not by WSL_DISTRO_NAME", () => {
+        const none = () => false;
+        const missing = (): string => {
+            throw new Error("ENOENT");
+        };
+        assert.equal(
+            runsUnderWsl((file) => file.endsWith("WSLInterop"), missing),
+            true,
+        );
+        assert.equal(
+            runsUnderWsl(none, () => "Linux version 6.18.26.1-microsoft-standard-WSL2 (root@x)"),
+            true,
+        );
+        assert.equal(
+            runsUnderWsl(none, () => "Linux version 6.8.0-generic (buildd@lcy02)"),
+            false,
+        );
+        assert.equal(runsUnderWsl(none, missing), false);
     });
 });
 

@@ -9,6 +9,7 @@
 // raw HTML in it is shown as text, links are kept only for http, https and mailto, images are shown as their
 // description, and the page tells the browser to load nothing from outside.
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -205,15 +206,41 @@ export async function openInBrowser(
         : `could not open the browser: ${failure} (the address is ${address})`;
 }
 
+/** Whether Pi runs under WSL. The interop file or "microsoft" in the kernel's version say so; `WSL_DISTRO_NAME` is not
+ *  used, because a shell started over SSH does not have it. */
+export function runsUnderWsl(
+    exists: (file: string) => boolean = existsSync,
+    read: (file: string) => string = (file) => readFileSync(file, "utf8"),
+): boolean {
+    if (exists("/proc/sys/fs/binfmt_misc/WSLInterop")) return true;
+    try {
+        return /microsoft/i.test(read("/proc/version"));
+    } catch {
+        return false;
+    }
+}
+
+/** Whether the browser is started by a Windows program, which cannot open a file of this system's: its program is an
+ *  `.exe`, `.cmd` or `.bat`, or is under `/mnt/<drive>/`, or Pi runs under WSL (a wrapper script hides what it calls). */
+export function opensInWindows(env: NodeJS.ProcessEnv, wsl: boolean): boolean {
+    if (wsl) return true;
+    const { program } = browserCommand("", env);
+    return /\.(?:exe|cmd|bat|com)$/i.test(program) || /^\/mnt\/[a-z]\//i.test(program) || program.includes("\\");
+}
+
 export interface OpenPreviewDeps {
     server: PreviewServer;
     launch?: Launch;
     env?: NodeJS.ProcessEnv;
+    /** Whether Pi runs under WSL. Default: looked up. */
+    wsl?: boolean;
 }
 
 /**
  * The `o` key: serves the preview over http and opens it. When the server cannot listen, it falls back to a file under
- * the state folder, and the line says so, because a browser on another system (a Windows one under WSL) may not find it.
+ * the state folder, and the line says so. That fallback is never used when a Windows browser would open it (under WSL, or
+ * with a Windows program as the opener): Windows cannot open the file, or raises a network-file security warning each
+ * time. The line then says the server could not start, and nothing is launched.
  */
 export async function openPreview(preview: Preview, header: string, deps: OpenPreviewDeps): Promise<string> {
     const launch = deps.launch ?? launchDetached;
@@ -222,8 +249,10 @@ export async function openPreview(preview: Preview, header: string, deps: OpenPr
     try {
         address = await deps.server.serve(renderPreviewPage(preview, header));
     } catch (serverError) {
-        const file = pathToFileURL(writePreviewPage(preview, header)).href;
         const why = `the local preview server could not start: ${errorMessage(serverError)}`;
+        if (opensInWindows(env, deps.wsl ?? runsUnderWsl()))
+            return `could not open the browser: ${why} (a file address is not tried here: a Windows browser cannot open it)`;
+        const file = pathToFileURL(writePreviewPage(preview, header)).href;
         const failure = await launchBrowser(file, launch, env);
         return failure === undefined
             ? `opened the page as a file, not over http (${why}): ${file}`

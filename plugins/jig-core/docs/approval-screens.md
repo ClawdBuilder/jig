@@ -43,7 +43,9 @@ before it gave:
     session ends) and opened at `http://localhost:<port>/preview/<random>.html`. It serves only pages Jig wrote, answers
     404 to everything else, and takes GET and HEAD only. A file address does not work for a Windows browser under WSL;
     an address on `localhost` does. If the server cannot start, the page is written as a file and opened by its file
-    address, and the status line says so.
+    address, and the status line says so. Under WSL, or when the opener is a Windows program, no file address is tried
+    (a Windows browser cannot open it, or warns about a network file each time): the status line says "could not open the
+    browser" with the server's error, and y, s and n still answer.
 - **Form:** shown with Pi's selector in this version.
 - **Hosts without the terminal interface (RPC)** use the selector for every
   kind. A review question then shows the first 20 lines of the body in it, and
