@@ -5,6 +5,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 ## Contents
 
 - [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
+- [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
@@ -78,6 +79,35 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - **Only the `github.com-<alias>` convention in the string form.** It fixes the incident but still leaves every other alias to be
   named in `jig.json`.
 - **Reading `~/.ssh/config` ourselves.** `Include`, `Match` and tokens make the file hard to read right, and ssh already does it.
+
+## 2026-11-02: a review of an agent run leaves out the commits that came in with it
+
+**Decided**
+- **The offered review starts from a base that already holds what came in.** When a run merged, pulled, fast-forwarded, reset to a ref or
+  rebased onto other commits, `jig-review` diffs the working tree against the run's starting commit merged with those commits by git's
+  own automatic merge (`git merge-tree --write-tree`, git 2.38 or newer). A clean merge leaves nothing; a conflict leaves its markers in the
+  base, so the agent's resolution is the difference. The agent's own commits and uncommitted edits show as before, and `--touched` follows
+  the offer.
+- **The agent's commits are the ones HEAD's reflog says git created in the run** (`commit`, `cherry-pick`, `revert`, `am`, a rebase's
+  picks). Any other commit under a merge's other parent, or under where a fast-forward, pull, reset or rebase moved HEAD, and with
+  none of the agent's under it, came in from elsewhere.
+- **Nothing left means no offer, and one line says why:** `Nothing to review: the run only merged origin/develop.`
+- **An explicit scope is unchanged.** `--branch`, `--staged`, `--unstaged`, a folder and a ticket show everything: you asked for it.
+- **When git cannot tell** (older git, a reflog that is off or expired, a very long run) the review starts at the starting commit, as before:
+  more than the agent did, never less. See [What counts as the agent's](../plugins/jig-review/docs/run-changes.md).
+
+**Why**
+- A clean merge of the main branch into a feature branch offered its colleagues' files as "the agent's changes". The user was asked to
+  review and approve code the agent never wrote, which makes an approval mean less.
+- A diff against a base that holds the incoming commits keeps the lines of a file the agent edited after the merge, and drops the lines
+  the merge brought.
+
+**Rejected**
+- **Commits reachable from the upstream branch are not the agent's.** A push makes the agent's own commit reachable from it, and its
+  review would vanish.
+- **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
+- **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
+- **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
 
 ## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
 

@@ -264,7 +264,13 @@ export class ReviewCoordinator {
         }
 
         const settings = await this.getSettings();
-        if (!this.tracker.changed || this.currentReview?.status === "awaiting-review") return;
+        if (!this.tracker.changed) {
+            // Say why there is no offer when the run only brought in other people's commits (a merge, a pull, a rebase).
+            const why = this.tracker.nothingToReview;
+            if (why !== undefined) ctx.ui.notify(why, "info");
+            return;
+        }
+        if (this.currentReview?.status === "awaiting-review") return;
         this.tracker.clearChanged();
 
         // The offer covers what the agent just changed, not the whole branch: after a two-file edit the user wants those two
