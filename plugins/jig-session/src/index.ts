@@ -1,0 +1,107 @@
+// Pi entry point of jig-session. It publishes the live session's state as one status file per session, for any program to
+// read: which terminal the session runs in, its model, context, ticket, workflow stage, the files it changed and its recent
+// tool calls (the README specifies the file). It writes files only: nothing listens on a port, nothing is sent anywhere, and
+// no argument value or secret is written.
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
+import { jig } from "../../jig-core/src/client.ts";
+import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
+import { stateDir } from "./files.ts";
+import { StatusFile, terminalOf } from "./status.ts";
+import type { Sources } from "./status.ts";
+
+/** The parts a test replaces. */
+export interface SessionOptions extends Partial<Sources> {
+    /** How often the cheap check runs, in ms; 0 turns it off (a test then calls `tick`). Default 2000. */
+    tickMs?: number;
+    /** Receives the status file's handle, for a test. */
+    onStatus?: (status: StatusFile) => void;
+}
+
+/** A section of jig.json as jig-core loaded it; undefined without jig-core or without the section. */
+function section(name: string): unknown {
+    try {
+        return jig().config.section(name);
+    } catch {
+        return undefined;
+    }
+}
+
+/** A child that `jig-agents` (or another subagent extension) started runs in its parent's terminal, so it writes nothing. */
+const isChild = (env: NodeJS.ProcessEnv): boolean =>
+    (env.PI_SUBAGENT_ID?.trim() ?? "") !== "" || env.PI_SUBAGENT_CHILD === "1";
+
+/** The extension, with parts a test can replace. Pi loads the default export below. */
+export function session(options: SessionOptions = {}): ExtensionFactory {
+    return (pi: ExtensionAPI) => {
+        const env = options.env ?? process.env;
+        if (isChild(env)) return;
+        const status = new StatusFile({
+            env,
+            stateDir: options.stateDir ?? (() => stateDir(env)),
+            agentDir: options.agentDir ?? (() => getAgentDir()),
+            section: options.section ?? section,
+            tools: options.tools ?? (() => ({ active: pi.getActiveTools().length, total: pi.getAllTools().length })),
+            thinking:
+                options.thinking ??
+                (() => {
+                    try {
+                        return pi.getThinkingLevel();
+                    } catch {
+                        return null;
+                    }
+                }),
+            now: options.now ?? (() => new Date()),
+        });
+        options.onStatus?.(status);
+
+        // `/session-file`: where this session's status file is, and the terminal it names.
+        pi.registerCommand("session-file", {
+            description: "Where this session's status file is, and the terminal it names",
+            handler: async (_args, ctx) => {
+                const where = status.path ?? "none: no session has started";
+                const { terminal, terminalFrom } = terminalOf(env);
+                const term = terminal ? `terminal ${terminal} (${terminalFrom})` : "no terminal known";
+                ctx.ui.notify(`jig-session: status file ${where}; ${term}`, "info");
+            },
+        });
+
+        // jig-core publishes a decision for every call it governs; listened to from the start, so none is missed.
+        pi.events.on(JIG_EVENTS.decision, (event) => {
+            if (status.activity.decided(event)) status.write();
+        });
+
+        pi.on("session_start", (_event, ctx: ExtensionContext) => status.start(ctx, options.tickMs ?? 2000));
+        pi.on("session_shutdown", () => status.stop());
+        pi.on("agent_start", () => status.setBusy(true));
+        pi.on("agent_settled", (_event, ctx) => {
+            status.setBusy(false);
+            status.refresh(ctx);
+        });
+        pi.on("turn_end", (_event, ctx) => status.refresh(ctx));
+        pi.on("model_select", (_event, ctx) => status.refresh(ctx));
+        pi.on("thinking_level_select", () => {
+            status.write();
+        });
+        pi.on("session_compact", (_event, ctx) => status.refresh(ctx));
+        pi.on("session_tree", (_event, ctx) => status.refresh(ctx));
+        pi.on("tool_execution_start", (event) => {
+            status.activity.started(event.toolCallId, event.toolName);
+            status.write();
+        });
+        // A throwing tool_call handler blocks the call, so this one never throws: it only notes a file tool's path.
+        pi.on("tool_call", (event, ctx) => {
+            try {
+                status.activity.called(event.toolCallId, event.toolName, event.input, ctx.cwd);
+            } catch {
+                // no output recorded for this call
+            }
+        });
+        pi.on("tool_execution_end", (event) => {
+            status.activity.ended(event.toolCallId, event.toolName, event.isError);
+            status.write();
+        });
+    };
+}
+
+export default session();

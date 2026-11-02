@@ -39,6 +39,7 @@ paths (see [Permissions](permissions.md#the-floor-what-configuration-cannot-chan
 | [`jig-ops`](../plugins/jig-ops/README.md) | built | `ci`, `deploy`, `runtime` | 7 |
 | [`jig-review`](../plugins/jig-review/README.md) | built | `start_interactive_code_review` and one more; `/code-review` | 8 |
 | [`jig-theme`](../plugins/jig-theme/README.md) | built | none: the `/theme` command, palettes and a footer | 8 |
+| [`jig-session`](../plugins/jig-session/README.md) | built | none: `/session-file`, and a status file per session that other programs read | 8 |
 | [`jig-agents`](../plugins/jig-agents/README.md) | built | `subagent`: start, status, message, stop; the `/agents` command | 8 |
 
 `jig-agents` is Jig's own, on Pi's RPC mode: no Pi store package keeps every child
@@ -107,6 +108,7 @@ tested example that supplies a part for every plugin that has one:
 - **`jig-review`:** nothing.
 - **`jig-theme`:** a company palette, footer defaults and footer parts of its
   own, such as a model spend.
+- **`jig-session`:** nothing.
 - **`jig-agents`:** which model each role uses, its own roles, and the variable names a model provider needs in a child.
 
 ## How company parts plug in
@@ -147,6 +149,6 @@ The numbers in the table above follow this order:
   is shared.
 - **4 to 7. The data and service tools,** one at a time, each with its company
   part: `jig-mongo`, `jig-jira`, `jig-logs`, then `jig-api` and `jig-ops`.
-- **8. Review, `jig-theme` and subagents.** Nothing depends on them, so they can
+- **8. Review, `jig-theme`, `jig-session` and subagents.** Nothing depends on them, so they can
   come at any point, and subagents are skipped if a package from the Pi store
   does the job better (see [Reuse](reuse.md)).

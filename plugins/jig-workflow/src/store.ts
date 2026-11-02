@@ -14,6 +14,8 @@ const MAX_REVIEWS = 20;
 const MAX_CI = 20;
 /** Nothing here is larger than a few kilobytes; a file past this is not ours. */
 const MAX_STATE_BYTES = 1024 * 1024;
+/** The longest note on a JDK kept in a test result. */
+const MAX_JAVA_NOTE = 600;
 
 export interface TestResult {
     /** The full commit HEAD was at when the run began. */
@@ -27,6 +29,8 @@ export interface TestResult {
     sandboxed: boolean;
     at: string;
     durationMs: number;
+    /** One line on the JDK a Gradle build was given, or why it was left alone. Absent for other builds. */
+    java?: string;
 }
 
 export type EvidenceKind = "path" | "toolResult" | "text";
@@ -240,6 +244,7 @@ function normalize(raw: unknown): WorkflowState | string {
                     sandboxed: entry.sandboxed === true,
                     at: entry.at,
                     durationMs: typeof entry.durationMs === "number" ? entry.durationMs : 0,
+                    ...(str(entry.java) ? { java: entry.java.slice(0, MAX_JAVA_NOTE) } : {}),
                 };
             }
         }

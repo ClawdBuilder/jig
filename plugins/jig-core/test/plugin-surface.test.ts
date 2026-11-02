@@ -163,6 +163,7 @@ const EXPECTED: Record<string, Given> = {
         commands: [],
         sections: ["mongo"],
     },
+    "jig-session": { tools: {}, commands: ["session-file"], sections: [] },
     "jig-theme": { tools: {}, commands: ["theme"], sections: ["theme"] },
 };
 
