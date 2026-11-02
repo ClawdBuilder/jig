@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
 - [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
@@ -79,6 +80,31 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-02: the local packages and extensions that Pi loads are guarded paths
+
+Pi loads the local packages that its settings list, and runs their code with no sandbox, at the next start. When such a folder
+sits in the working folder, a sandboxed `bash` (which may write the working folder) could change that code: an escape. The sandbox
+locked Node.js, Pi's own folders and the agent folder, and not these.
+
+**Decided**
+- **`jig-core` adds them to its default protected paths as `guarded`,** so Pi's file tools refuse to write them and the sandbox,
+  which locks every guarded path, locks them for `bash`. Each says what named it: `(a package in settings.json)`.
+- **They are read from Pi's settings the way Pi reads them:** the agent folder's `settings.json` and `.pi/settings.json` of the
+  working folder, a relative path starting from the agent folder and from `.pi`. The plain `extensions` entries count too, since
+  they run the same way. A `git:` or `npm:` package of the user's lives in the agent folder, already guarded.
+- **The extension files Pi loaded are added when Pi lists them,** from the tools and commands they registered. One that registered
+  neither is not listed by Pi, so it is not guarded.
+- **A path is guarded whether or not it exists yet,** since a file made there before the next start would be loaded.
+
+**Why**
+- The guard follows what Pi will run, so a new package is covered without a rule for each repository.
+- One list for the file tools and `bash` means they cannot disagree.
+
+**Rejected**
+- **Locking them in `jig-sandbox` only.** Pi's file tools could still change the code, and the two lists would drift.
+- **Skipping a package that holds the working folder.** It would leave the escape open for the one setup where it matters most.
+  The folder becomes unwritable instead, which is loud, and the user changes it with `!`.
 
 ## 2026-11-02: start checks and the store unlock are the user's settings, run inside Pi
 
