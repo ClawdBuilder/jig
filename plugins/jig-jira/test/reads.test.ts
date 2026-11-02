@@ -253,6 +253,29 @@ describe("search", () => {
         );
     });
 
+    test("a labels != clause gets a note under the result, and the query is sent as written", async () => {
+        const jql = "project = PROJ AND labels != reviewed";
+        const text = ok(await h.call({ action: "search", jql }));
+        assert.match(text, /^2 issues for: project = PROJ AND labels != reviewed\nPROJ-1 \| /);
+        assert.match(
+            text,
+            /\nNote: labels != reviewed also drops the issues that have no labels\. To keep them, use \(labels is EMPTY OR labels != reviewed\)\.$/,
+        );
+        assert.equal(h.jira.requests[0]?.query.jql, jql);
+    });
+
+    test("the note is also under an empty result, and not there once the query says what an empty field does", async () => {
+        h.jira.issues.clear();
+        assert.match(
+            ok(await h.call({ action: "search", jql: "labels not in (a)" })),
+            /^No issues for: labels not in \(a\)\nNote: labels not in \(a\) also drops/,
+        );
+        assert.doesNotMatch(
+            ok(await h.call({ action: "search", jql: "(labels is EMPTY OR labels != reviewed)" })),
+            /Note:/,
+        );
+    });
+
     test("a field Jira does not know in the query gets the closest names", async () => {
         h.jira.unknownFields = ["PR Link"];
         const result = await h.call({ action: "search", jql: 'project = PROJ AND "PR Link" is not EMPTY' });

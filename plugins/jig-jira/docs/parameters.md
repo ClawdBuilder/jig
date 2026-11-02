@@ -93,6 +93,12 @@ Compact plain text for the model, one line per issue, comment or change.
 | A reply from Jira | 8 MiB |
 | Timeouts | 30 seconds; 60 for `search` |
 
+A search whose JQL says `labels != x` or `labels not in (...)`, or the same with
+`component` or `fixVersion`, gets a one-line note under the result. Such a clause
+also drops the issues that have no value, and `(labels is EMPTY OR labels != x)`
+keeps them. There is no note when the JQL already says `labels is EMPTY`, and the
+query is always sent as written.
+
 A search that names a field Jira does not know gets the closest field names
 appended. Searching pages by token on Jira Cloud (`/search/jql`) and by offset
 on Data Center (`/search`); the tool tries the first and remembers which one the

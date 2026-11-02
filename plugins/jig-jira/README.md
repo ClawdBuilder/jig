@@ -58,6 +58,9 @@ in [Parameters](docs/parameters.md).
   see the new preview".
 - **No resend on timeout.** A write whose result is unknown is never sent
   again. The issue is read once, and the tool says whether the write happened.
+- **JQL notes.** A `search` whose JQL says `labels != x` (or `not in`, or the same
+  with `component` or `fixVersion`) gets a note: such a clause also drops issues
+  that have none. It is a note, never a refusal.
 - **Facts.** After a write, the call's record carries the issue key, as the
   fact `issue`.
 

@@ -27,6 +27,7 @@ import {
     LATEST_COMMENTS,
 } from "./format.ts";
 import { JiraError } from "./http.ts";
+import { jqlNotes } from "./jql.ts";
 import type { Call } from "./params.ts";
 import { arr, InputError, int, obj, userId } from "./values.ts";
 
@@ -88,7 +89,7 @@ export async function runRead(env: Env, call: Call): Promise<string> {
             try {
                 const fields = [...SEARCH_FIELDS, ...extra.map(({ id }) => id)];
                 const page = await search(env, { jql: call.jql, fields, limit: call.limit, page: call.page });
-                return formatSearch(page, call.jql, extra);
+                return [formatSearch(page, call.jql, extra), ...jqlNotes(call.jql)].join("\n");
             } catch (error) {
                 throw await withFieldHint(env, error);
             }
