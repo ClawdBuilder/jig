@@ -1,7 +1,7 @@
 // The parameters of the `runtime` tool, and the checks that turn them into a Call. Everything that reaches kubectl or
 // the network has passed through parseCall: the service and the environment are the catalog's, and every other value
 // has a known shape and size. parseCall does no I/O.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import { describeServices, findEnvironment, notSetUp } from "../catalog.ts";
 import type { Catalog, Environment } from "../catalog.ts";
@@ -20,7 +20,7 @@ export const MAX_WAIT_SECONDS = 600;
 
 export const parameters = Type.Object(
     {
-        action: StringEnum(ACTIONS, { description: "pods, rollout, logs, events or health" }),
+        action: stringEnum(ACTIONS, { description: "pods, rollout, logs, events or health" }),
         service: Type.String({
             description: "A service from the ops catalog. An unknown name is refused with the names there are",
         }),

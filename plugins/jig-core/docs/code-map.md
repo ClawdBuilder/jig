@@ -80,6 +80,14 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
 | `commands.ts` | The `/jig` commands: status, rules, records | `index.ts` |
 
+### Session start
+
+| File | What it does | Called by |
+|---|---|---|
+| `start-jobs.ts` | What a session start sets going in the background (the unlock and the checks), in the top-level interactive session only | `index.ts` |
+| `start-unlock.ts` | Gets the pass store unlocked at start (`secrets.pass.unlockAtStart`), and tells you only what you can use | `start-jobs.ts` |
+| `start-checks.ts` | The `startChecks` list of `jig.json`: what it accepts, and the one TCP connection each check makes | `config.ts`, `start-jobs.ts` and 2 more |
+
 ### What other plugins use
 
 | File | What it does | Called by |
@@ -103,6 +111,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/http-error.ts` | The one error a request throws | `kit/http.ts`, `kit/oauth.ts` |
 | `kit/abort.ts` | Waiting for work that may ignore its signal | `kit/http.ts` |
 | `kit/role-policy.ts` | The policy a role gives its child agent in `JIG_ROLE_POLICY`: written, read, and checked | `jig-agents`, `jig-sandbox`; no file here |
+| `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |
 | `kit/ports.ts` | For a tunnel that starts a program: a really free port, a test that it answers, a wait | a company plugin keeps a copy; no file here |
 | `kit/values.ts` | Small stateless helpers that plugins share, such as the invalid-input error | `config.ts`, `kit/http.ts`, `kit/oauth.ts`, the watch files |

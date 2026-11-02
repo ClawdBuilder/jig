@@ -76,13 +76,14 @@ export async function snapshotHeads(
 }
 
 /**
- * Files changed by commits made since `heads` (absolute paths): a committed file is clean before and after the run, so
- * git status never shows it. Repositories whose HEAD did not move, or that git cannot read, add nothing.
+ * Files changed by commits made since `starts` (absolute paths): a committed file is clean before and after the run, so
+ * git status never shows it. A start is the commit HEAD was at, or the tree `runBases` gives when commits from elsewhere
+ * came in, so those are not counted. Repositories whose HEAD did not move, or that git cannot read, add nothing.
  */
-export async function committedSince(heads: Record<string, string>, git: Git = jigGit): Promise<string[]> {
+export async function committedSince(starts: Record<string, string>, git: Git = jigGit): Promise<string[]> {
     const files: string[] = [];
     await Promise.all(
-        Object.entries(heads).map(async ([root, start]) => {
+        Object.entries(starts).map(async ([root, start]) => {
             try {
                 const now = await git(root, ["rev-parse", "--verify", "--quiet", "HEAD"], STATUS_TIMEOUT_MS);
                 if (now.code !== 0 || now.stdout.trim() === start) return;
