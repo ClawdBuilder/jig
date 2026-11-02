@@ -17,6 +17,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - After a push, the result says how the agent will hear when CI finishes (a running `ci` watch, or the call that starts one), and the model is told that a promise to report on CI needs a watch.
 - A command that fails because the sandbox makes no Unix socket (a JVM attaching to itself, Docker, a socket tool) says so in one line, and how to run it outside with the user's approval.
 
+### Fixed
+
+- The local packages Pi loads from its settings (and the extension files it loaded) are guarded: the sandboxed `bash` cannot change code that runs unsandboxed at the next start, and Pi's file tools refuse to write it.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added

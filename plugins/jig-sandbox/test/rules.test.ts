@@ -2,6 +2,7 @@
 // runtime is told. The machines are made in memory, so WSL, a Mac and links that loop are as easy to try as a plain home.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { loadedCodePaths } from "../../jig-core/src/loaded-code.ts";
 import { defaultProtectedPaths } from "../../jig-core/src/protected-paths.ts";
 import { canWritePath, computeRules, ruleFor, runtimeFilesystem, secretFilesIn } from "../src/rules.ts";
 import type { RuleKind, RulesInput, RuleSet } from "../src/rules.ts";
@@ -194,6 +195,58 @@ describe("jig-core's protected paths", () => {
             protectedPaths: defaultProtectedPaths({ agentDir: `${HOME}/.pi/agent`, home: HOME, env: {} }),
         });
         assert.ok(!of(set, "hidden").includes("/srv/vault/pass"));
+    });
+
+    test("a local package of Pi's settings is locked, also inside the working folder, and the rest of the working folder is not", () => {
+        const files = linux({
+            dirs: [`${CWD}/tools`, `${CWD}/ext`, `${CWD}/src`, "/opt/pi-pkg"],
+            files: {
+                [`${HOME}/.pi/agent/settings.json`]: JSON.stringify({
+                    packages: ["/opt/pi-pkg", "git:github.com/o/r"],
+                }),
+                [`${CWD}/.pi/settings.json`]: JSON.stringify({
+                    packages: ["../tools", "../later"],
+                    extensions: ["../ext"],
+                }),
+                [`${CWD}/tools/index.ts`]: "",
+            },
+        });
+        const set = rules(files, {
+            protectedPaths: [
+                ...defaultProtectedPaths({ agentDir: `${HOME}/.pi/agent`, home: HOME, env: {} }),
+                ...loadedCodePaths({
+                    agentDir: `${HOME}/.pi/agent`,
+                    cwd: CWD,
+                    home: HOME,
+                    platform: "linux",
+                    read: (file) => files.read(file),
+                }),
+            ],
+        });
+        for (const place of [`${CWD}/tools`, `${CWD}/ext`, "/opt/pi-pkg"]) {
+            assert.ok(of(set, "locked").includes(place), place);
+            assert.equal(canWritePath(set, `${place}/new.ts`), false, place);
+            // Outside the folders bash may write there is nothing to deny: it is read-only already.
+            assert.equal(
+                runtimeFilesystem(set).denyWrite.some((entry) => entry.path === place),
+                place.startsWith(CWD),
+                place,
+            );
+        }
+        assert.equal(canWritePath(set, `${CWD}/tools/index.ts`), false, "a file that is there");
+        assert.equal(canWritePath(set, `${CWD}/src/a.ts`), true, "the rest of the working folder");
+        assert.equal(canWritePath(set, `${CWD}/tools-notes.md`), true, "a neighbour with a longer name");
+        const rule = ruleFor(set, `${CWD}/tools/index.ts`);
+        assert.match(rule?.source ?? "", /jig-core protected paths/);
+        assert.match(rule?.reason ?? "", /Pi and Jig load it outside the sandbox/);
+        assert.match(rule?.way ?? "", /unless they refuse the path as guarded/);
+        // A package folder that is not there yet is locked as soon as it is made, and the audit takes out what a command puts there.
+        assert.ok(
+            set.missing.some((rule) => rule.path === `${CWD}/later`),
+            "a folder named and not made yet",
+        );
+        // A git package adds nothing of its own: it lives in the agent folder, which is locked whole.
+        assert.equal(ruleFor(set, `${HOME}/.pi/agent/git/github.com/o/r/x.ts`)?.kind, "locked");
     });
 
     test("a path both lists name is one rule that keeps both sources", () => {
