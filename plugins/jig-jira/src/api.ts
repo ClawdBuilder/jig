@@ -12,6 +12,8 @@ export interface Session {
     searchDialect?: "enhanced" | "classic";
     /** The field list, read once: it is the same for every issue. */
     fields?: Promise<FieldInfo[]>;
+    /** Whether ScriptRunner's `commented()` is on this Jira, once a search has found out. Not set until then. */
+    scriptRunner?: "present" | "missing";
 }
 
 /** Everything one call of the tool works with. */
@@ -19,6 +21,8 @@ export interface Env {
     settings: JiraSettings;
     http: Http;
     session: Session;
+    /** The call's own signal, for work that goes on between requests (the requests themselves already stop with it). */
+    signal?: AbortSignal;
 }
 
 /** A 404 on `what` is a wrong key or id, which is a mistake in the call, not a failure of Jira. */

@@ -1,4 +1,5 @@
 // The eight read actions. Each is a request or two, shaped into compact text by format.ts.
+import { jig } from "../../jig-core/src/client.ts";
 import {
     assignableUsers,
     commentOf,
@@ -16,6 +17,7 @@ import { knownFieldId } from "./fields.ts";
 import {
     formatAttachments,
     formatChangelog,
+    formatCommented,
     formatComments,
     formatFields,
     formatIssue,
@@ -26,9 +28,10 @@ import {
     ISSUE_FIELDS,
     LATEST_COMMENTS,
 } from "./format.ts";
+import { commentedSearch } from "./commented.ts";
 import { JiraError } from "./http.ts";
 import { jqlNotes } from "./jql.ts";
-import type { Call } from "./params.ts";
+import type { Call, CommentedFilter } from "./params.ts";
 import { arr, InputError, int, obj, userId } from "./values.ts";
 
 const SEARCH_FIELDS = ["summary", "status", "issuetype", "priority", "assignee", "updated"];
@@ -67,7 +70,29 @@ async function withFieldHint(env: Env, error: unknown): Promise<unknown> {
     return hint === undefined ? error : new JiraError(`${error.message} ${hint}`, error.status);
 }
 
-export async function runRead(env: Env, call: Call): Promise<string> {
+/** The search with a `commented` filter: its result, and the numbers for the call's record. */
+async function searchCommented(
+    env: Env,
+    call: Call & { action: "search"; commented: CommentedFilter },
+    extra: ReadonlyArray<{ id: string; label: string }>,
+    toolCallId: string,
+): Promise<string> {
+    const result = await commentedSearch(
+        env,
+        call.jql,
+        call.commented,
+        extra.map(({ id }) => id),
+    );
+    jig().addFacts(toolCallId, {
+        candidates: result.candidates,
+        matched: result.matches.length,
+        method: result.method,
+        unread: result.unread.length,
+    });
+    return formatCommented(result, extra);
+}
+
+export async function runRead(env: Env, call: Call, toolCallId: string): Promise<string> {
     switch (call.action) {
         case "get": {
             const extra = await resolveInclude(env, call.include);
@@ -87,6 +112,10 @@ export async function runRead(env: Env, call: Call): Promise<string> {
         case "search": {
             const extra = await resolveInclude(env, call.include);
             try {
+                if (call.commented !== undefined) {
+                    const text = await searchCommented(env, { ...call, commented: call.commented }, extra, toolCallId);
+                    return [text, ...jqlNotes(call.jql)].join("\n");
+                }
                 const fields = [...SEARCH_FIELDS, ...extra.map(({ id }) => id)];
                 const page = await search(env, { jql: call.jql, fields, limit: call.limit, page: call.page });
                 return [formatSearch(page, call.jql, extra), ...jqlNotes(call.jql)].join("\n");

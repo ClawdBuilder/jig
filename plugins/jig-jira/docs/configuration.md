@@ -41,8 +41,10 @@ The fields of the `jira` section of `jig.json`, in detail. The tables are in the
 - **`environment`:** letters, digits, `_` and `-`, starting with a letter, up to
   40 characters.
 - **`me`:** up to 128 characters, no line breaks. It is read only by the
-  `commented` filter of `search`, and only when `GET /myself` is unavailable:
-  some sites reach Jira through a sign-in proxy that has no "who am I". Use the
-  account id on Jira Cloud, and the user name (or the key) on Data Center.
+  `commented` filter of `search` (see [Commented by](commented.md)), and only
+  when `GET /myself` is unavailable: some sites reach Jira through a sign-in
+  proxy that has no "who am I". Use the account id on Jira Cloud, and the user
+  name (or the key) on Data Center.
 - **`commentSearch`:** `auto` (the default), `scriptrunner` or `read`. It says
-  how the `commented` filter of `search` finds issues.
+  how the `commented` filter finds issues; the three modes are in
+  [Commented by](commented.md).

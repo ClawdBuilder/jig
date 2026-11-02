@@ -1,6 +1,7 @@
 // What the model reads: Jira's answers as compact plain text. One line per issue, comment or change, no tables, and long
 // text cut with a note that says how to get the rest. Pure functions, no requests.
 import type { Comment, LinkType, SearchPage, Transition } from "./api.ts";
+import type { CommentedResult } from "./commented.ts";
 import { arr, day, describeValue, int, isObject, minute, nameOf, obj, oneLine, str, userOf } from "./values.ts";
 import type { Obj, User } from "./values.ts";
 
@@ -156,6 +157,72 @@ export function formatSearch(
             : `${first}-${last} of ${page.total} for: ${where}`;
     const more = page.next === undefined ? [] : [`More: repeat with page=${JSON.stringify(page.next)}`];
     return [header, ...rows, ...more].join("\n");
+}
+
+/** The most matches, comments of one match and unreadable issues a commented search lists; the rest is counted. */
+export const COMMENTED_SHOWN = { matches: 100, hits: 10, unread: 5 } as const;
+
+/** `2026-10-12T14:03:22.123+0000` as `2026-10-12 14:03 +0000`: the time as Jira wrote it, with the offset it is in. */
+const stampText = (stamp: string): string => {
+    const offset = /(Z|[+-]\d{2}:?\d{2})$/.exec(stamp)?.[0];
+    return `${minute(stamp)}${offset === undefined ? "" : ` ${offset}`}`;
+};
+
+function daysText({ from, to }: { from?: string | undefined; to?: string | undefined }): string {
+    if (from !== undefined && to !== undefined) return from === to ? `on ${from}` : `${from} to ${to}`;
+    if (from !== undefined) return `since ${from}`;
+    return to === undefined ? "on any day" : `up to ${to}`;
+}
+
+/**
+ * The result of a `search` with `commented`: what was asked and how it was answered in a header, the issues that match
+ * with the id and date of each comment that made them match (not the text), and the issues that could not be checked.
+ */
+export function formatCommented(result: CommentedResult, extra: ReadonlyArray<{ id: string; label: string }>): string {
+    const { matches, unread } = result;
+    const how =
+        result.method === "scriptrunner"
+            ? "scriptrunner (its commented() listed the candidates, and each one's comments were then checked)"
+            : `read (${result.skipped === undefined ? "" : `${result.skipped}; `}every candidate's comments were read)`;
+    const checked = result.candidates - unread.length;
+    const lines = [
+        `Issues commented on by ${result.who}, ${daysText(result.asked)} (days on your clock, both included): ` +
+            `${matches.length} ${matches.length === 1 ? "match" : "matches"} among ${checked} ${checked === 1 ? "candidate" : "candidates"} checked. Method: ${how}.`,
+        `Candidates came from: ${oneLine(result.query, 200)}`,
+    ];
+    if (unread.length > 0) {
+        const named = unread.slice(0, COMMENTED_SHOWN.unread).map(({ key, why }) => `${key} (${why})`);
+        const rest = unread.length - named.length;
+        lines.push(
+            `Could not read the comments of ${unread.length} ${unread.length === 1 ? "issue" : "issues"}, so ` +
+                `${unread.length === 1 ? "it is" : "they are"} not counted: ${named.join("; ")}${rest > 0 ? `; and ${rest} more` : ""}`,
+        );
+    }
+    for (const match of matches.slice(0, COMMENTED_SHOWN.matches)) {
+        const f = match.fields;
+        lines.push(
+            [match.key, nameOf(f.status), oneLine(str(f.summary), 120)].join(" | "),
+            ...extra.map(({ id, label }) => `    ${label}: ${describeValue(f[id])}`),
+        );
+        const shown = match.hits.slice(0, COMMENTED_SHOWN.hits);
+        lines.push(...shown.map((hit) => `    #${hit.id} ${stampText(hit.created)}`));
+        const more = match.hits.length - shown.length;
+        if (more > 0) lines.push(`    ... and ${more} more ${more === 1 ? "comment" : "comments"}`);
+    }
+    const unshown = matches.length - COMMENTED_SHOWN.matches;
+    if (unshown > 0) {
+        lines.push(
+            `... and ${unshown} more ${unshown === 1 ? "match" : "matches"}; ` +
+                "narrow commented.from, commented.to or the JQL to see them",
+        );
+    }
+    if (matches.length === 0 && result.asked.by.toLowerCase() !== "me") {
+        lines.push(
+            "Comments are matched to a person by account id, user name, key or email address, never by display name; " +
+                "check that commented.by is one of those.",
+        );
+    }
+    return lines.join("\n");
 }
 
 export function formatComments(key: string, comments: Comment[], total: number, full: boolean): string {

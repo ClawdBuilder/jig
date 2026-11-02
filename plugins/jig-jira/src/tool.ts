@@ -22,9 +22,11 @@ export interface JiraOptions {
     timeouts?: Timeouts;
 }
 
+// At most 200 characters (registration.test.ts). The skill carries the rest: reading before writing, and what a search by
+// who commented returns.
 const DESCRIPTION =
-    "Read and change Jira issues. Text is Jira wiki markup. Every write shows a preview and asks first. " +
-    "To change something, read the issue first.";
+    "Read and change Jira issues in wiki markup. Writes preview and ask; read before changing. " +
+    "search commented {by, from?, to?}: issues a person commented on; from/to are whole local days, inclusive.";
 
 function describeCall(call: Call): string {
     const target = "key" in call ? ` ${call.key}` : "";
@@ -51,7 +53,7 @@ export function createTool(options: JiraOptions = {}): JiraTool {
             );
         }
         const http = createHttp(settings, { ...options, ...(signal === undefined ? {} : { signal }) });
-        return { settings, session, http };
+        return { settings, session, http, ...(signal === undefined ? {} : { signal }) };
     }
 
     /** How a call is read: with the user's project keys, so that a search may leave the JQL out. */
@@ -91,7 +93,7 @@ export function createTool(options: JiraOptions = {}): JiraTool {
                 const call = parseCall(params, parsing());
                 const env = envFor(signal);
                 if (ACTIONS[call.action].kind === "read") {
-                    const text = await runRead(env, call);
+                    const text = await runRead(env, call, toolCallId);
                     return { content: [{ type: "text", text }], details: { action: call.action } };
                 }
                 const written = await runWrite(env, call, toolCallId, signal);

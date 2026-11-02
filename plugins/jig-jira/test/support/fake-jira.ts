@@ -13,6 +13,8 @@ export interface FakeUser {
     accountId?: string;
     name?: string;
     key?: string;
+    /** Shown by Data Center only: Jira Cloud hides it unless the person allows it. */
+    email?: string;
     displayName: string;
     active: boolean;
 }
@@ -76,6 +78,18 @@ export interface FakeJira {
     unknownFields: string[];
     /** How many comments an issue carries inline before the rest must be asked for. Default: all. */
     inlineComments: number;
+    /** Whether a search that asks for the `comment` field gets it. Default true; false plays a Jira that never embeds it. */
+    embedComments: boolean;
+    /** The most comments one `GET /issue/{key}/comment` page holds, whatever `maxResults` says. Default: no limit. */
+    commentPageCap: number;
+    /** Hold each `GET /issue/{key}/comment` this long (ms) so that reads overlap. Default 0. */
+    commentDelayMs: number;
+    /** The most comment reads that were held at one time. Only counts while `commentDelayMs` is set. */
+    peakCommentReads: number;
+    /** Whether ScriptRunner is installed: its `issueFunction in commented("by U after D before D")` works. Default false. */
+    scriptRunner: boolean;
+    /** How ScriptRunner reads `after` and `before`: its documentation does not say. Default `exclusive` (the day is out). */
+    scriptRunnerBounds: "exclusive" | "inclusive";
     /** Whether the create screen can be read. Default true. */
     createScreen: boolean;
     /** The link types `GET /issueLinkType` lists. */
@@ -97,8 +111,8 @@ const CLOUD_USERS: FakeUser[] = [
     { accountId: "712020:6c21d3a0-1111-4222-8333-944455556666", displayName: "Sam Lee", active: true },
 ];
 const DATACENTER_USERS: FakeUser[] = [
-    { name: "jdoe", key: "JIRAUSER10001", displayName: "Jane Doe", active: true },
-    { name: "slee", key: "JIRAUSER10002", displayName: "Sam Lee", active: true },
+    { name: "jdoe", key: "JIRAUSER10001", email: "jane.doe@example.test", displayName: "Jane Doe", active: true },
+    { name: "slee", key: "JIRAUSER10002", email: "sam.lee@example.test", displayName: "Sam Lee", active: true },
 ];
 
 export const DESCRIPTION = [
@@ -117,7 +131,13 @@ export const DESCRIPTION = [
 function person(user: FakeUser, flavor: Flavor): Record<string, unknown> {
     return flavor === "cloud"
         ? { accountId: user.accountId, displayName: user.displayName, active: user.active }
-        : { name: user.name, key: user.key, displayName: user.displayName, active: user.active };
+        : {
+              name: user.name,
+              key: user.key,
+              ...(user.email === undefined ? {} : { emailAddress: user.email }),
+              displayName: user.displayName,
+              active: user.active,
+          };
 }
 
 function fixtures(flavor: Flavor, users: FakeUser[]): Map<string, FakeIssue> {
@@ -324,6 +344,30 @@ interface Reply {
     body?: unknown;
 }
 
+/** A Jira timestamp (`2026-10-12T14:03:22.123+0000`) in milliseconds. */
+const stampMs = (stamp: unknown): number => Date.parse(String(stamp).replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
+
+/**
+ * ScriptRunner's `commented("by U after D before D")` for one issue: some comment is by U (an account id, user name, key
+ * or email address) and was written on a day after D and before D, going by the date as Jira writes it, in the server's zone.
+ * Whether the days D themselves are in is `bounds`, which ScriptRunner's documentation leaves open.
+ */
+function scriptRunnerLists(issue: FakeIssue, query: string, bounds: "exclusive" | "inclusive"): boolean {
+    const by = /\bby (\S+)/.exec(query)?.[1]?.toLowerCase();
+    const after = /\bafter (\S+)/.exec(query)?.[1];
+    const before = /\bbefore (\S+)/.exec(query)?.[1];
+    const strict = bounds === "exclusive";
+    return issue.comments.some((comment) => {
+        const ids = [comment.author.accountId, comment.author.name, comment.author.key, comment.author.email];
+        const day = comment.created.slice(0, 10);
+        return (
+            (by === undefined || ids.some((id) => id?.toLowerCase() === by)) &&
+            (after === undefined || (strict ? day > after : day >= after)) &&
+            (before === undefined || (strict ? day < before : day <= before))
+        );
+    });
+}
+
 const notFound = (message: string): Reply => ({ status: 404, body: { errorMessages: [message], errors: {} } });
 const badRequest = (errors: Record<string, string>, messages: string[] = []): Reply => ({
     status: 400,
@@ -336,6 +380,8 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
     let nextComment = 10100;
     let nextLink = 10200;
     let rules: Misbehaviour[] = [];
+    /** Comment reads being held right now (see `commentDelayMs`). */
+    let held = 0;
 
     const fake: FakeJira = {
         flavor,
@@ -348,6 +394,12 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
         duplicates: [],
         unknownFields: [],
         inlineComments: Number.POSITIVE_INFINITY,
+        embedComments: true,
+        commentPageCap: Number.POSITIVE_INFINITY,
+        commentDelayMs: 0,
+        peakCommentReads: 0,
+        scriptRunner: false,
+        scriptRunnerBounds: "exclusive",
         createScreen: true,
         linkTypes: [],
         misbehave: (rule) => void rules.push(rule),
@@ -366,6 +418,12 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
             fake.duplicates = [];
             fake.unknownFields = [];
             fake.inlineComments = Number.POSITIVE_INFINITY;
+            fake.embedComments = true;
+            fake.commentPageCap = Number.POSITIVE_INFINITY;
+            fake.commentDelayMs = 0;
+            fake.peakCommentReads = 0;
+            fake.scriptRunner = false;
+            fake.scriptRunnerBounds = "exclusive";
             fake.createScreen = true;
             fake.linkTypes = structuredClone(LINK_TYPES);
             delete fake.requireHeader;
@@ -397,7 +455,7 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
         const fields: Record<string, unknown> = {};
         for (const [name, value] of Object.entries(issue.fields))
             if (wanted.includes("*all") || wanted.includes(name)) fields[name] = value;
-        if (wanted.includes("*all") || wanted.includes("comment")) {
+        if (fake.embedComments && (wanted.includes("*all") || wanted.includes("comment"))) {
             const inline = issue.comments.slice(0, fake.inlineComments);
             fields.comment = {
                 comments: inline.map((c) => commentJson(c)),
@@ -528,9 +586,25 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
             const unknown = fake.unknownFields.find((name) => jql.includes(name));
             if (unknown !== undefined)
                 return badRequest({}, [`Field '${unknown}' does not exist or you do not have permission to view it.`]);
-            const matching = /summary ~/.test(jql)
+            if (/issueFunction/.test(jql) && !fake.scriptRunner) {
+                return badRequest({}, [
+                    "Field 'issueFunction' does not exist or you do not have permission to view it.",
+                ]);
+            }
+            let matching = /summary ~/.test(jql)
                 ? fake.duplicates.flatMap((key) => fake.issues.get(key) ?? [])
                 : [...fake.issues.values()];
+            // `updated >= "2026-10-01"` is read as midnight UTC, the time zone this Jira's searching account is in.
+            const since = /updated >= "(\d{4}-\d{2}-\d{2})"/.exec(jql)?.[1];
+            if (since !== undefined) {
+                matching = matching.filter(
+                    (issue) => stampMs(issue.fields.updated) >= Date.parse(`${since}T00:00:00Z`),
+                );
+            }
+            const clause = /issueFunction in commented\("([^"]*)"\)/.exec(jql)?.[1];
+            if (clause !== undefined) {
+                matching = matching.filter((issue) => scriptRunnerLists(issue, clause, fake.scriptRunnerBounds));
+            }
             const size = Number(query.maxResults ?? 50);
             const start = Number(enhanced ? (query.nextPageToken ?? 0) : (query.startAt ?? 0));
             const page = matching.slice(start, start + size).map((issue) => issueJson(issue, query));
@@ -597,7 +671,7 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
             if (part === "comment") {
                 if (id === undefined && method === "GET") {
                     const start = Number(query.startAt ?? 0);
-                    const size = Number(query.maxResults ?? 50);
+                    const size = Math.min(Number(query.maxResults ?? 50), fake.commentPageCap);
                     const page = issue.comments.slice(start, start + size);
                     return {
                         status: 200,
@@ -685,6 +759,16 @@ export async function startFakeJira(flavor: Flavor = "cloud"): Promise<FakeJira>
             };
             fake.requests.push(request);
 
+            if (
+                fake.commentDelayMs > 0 &&
+                request.method === "GET" &&
+                /^\/issue\/[A-Z]+-\d+\/comment$/.test(request.path)
+            ) {
+                held++;
+                fake.peakCommentReads = Math.max(fake.peakCommentReads, held);
+                await new Promise((resolve) => setTimeout(resolve, fake.commentDelayMs));
+                held--;
+            }
             const index = rules.findIndex((rule) => rule.match(request));
             const rule = index < 0 ? undefined : rules.splice(index, 1)[0];
             rule?.effect?.();

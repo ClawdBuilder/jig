@@ -12,7 +12,7 @@ comment needs text. Usage: jira comment {key, text}`.
 | Action | Needs | Optional |
 |---|---|---|
 | `get` | `key` | `include`, `full` |
-| `search` | `jql` | `limit`, `page`, `include` |
+| `search` | `jql` | `limit`, `page`, `include`, `commented` |
 | `comments` | `key` | `limit`, `full` |
 | `transitions` | `key` | |
 | `changelog` | `key` | `limit` |
@@ -40,11 +40,13 @@ comment needs text. Usage: jira comment {key, text}`.
 | `commentId`, `text` | The number `comments` shows; the comment, in Jira wiki markup |
 | `transition` | A name from `transitions` (or its id) |
 | `type`, `summary`, `description` | The issue type name; a one-line title of at most 255 characters; the description, in wiki markup |
+| `commented` | `search` only: `{by, from?, to?}`, the issues a person commented on (see [Commented by](commented.md)) |
 | `fields` | The fields to set, by name or id (see below) |
 | `to`, `linkType` | The other issue's key; a link type from `link_types`, by name or by a phrase (see below) |
 
 - **`limit`:** `search` and `assignable` return 20 by default, up to 50.
-  `comments` returns 20, up to 100. `changelog` returns 30, up to 100.
+  `comments` returns 20, up to 100. `changelog` returns 30, up to 100. A
+  `search` with `commented` takes no `limit` and no `page`: it lists every match.
 - **`fields`:** an example is
   `{"labels": ["a"], "priority": "High", "assignee": "<id from assignable>"}`. A
   person is given by the id `assignable` shows, or `null` to unassign.
