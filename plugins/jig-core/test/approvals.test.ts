@@ -109,6 +109,22 @@ describe("the review screen", () => {
         assert.deepEqual([log.customs, log.selects.length], [1, 0]);
     });
 
+    test("tells the terminal that Pi waits for a permission while the screen is open", async () => {
+        let seen: unknown;
+        const answer = pressing("y");
+        const { ctx } = context(
+            {
+                custom: (factory, options) => {
+                    seen = options;
+                    return answer(factory, options);
+                },
+            },
+            "tui",
+        );
+        await createApprovals().ask(ctx, review);
+        assert.deepEqual(seen, { blocked: { kind: "permission", message: HEADER } });
+    });
+
     test("s allows for the session", async () => {
         const { ctx } = context({ custom: pressing("s") }, "tui");
         assert.equal((await createApprovals().ask(ctx, review)).answer, "allow-session");
