@@ -3,7 +3,8 @@
 //
 // Acme's two services build on GitHub Actions, deploy with Helm and run on Kubernetes, one context per environment. `prod` has no
 // `deploy` on purpose: without one, the agent cannot deploy there. Production is also never deployed to whatever is written here.
-// A user's own `ci.auth` or `deploy` for a service replaces the company's whole; everything else merges key by key.
+// A user's own `ci.auth`, `job.auth` (the CI job of an environment) or `deploy` for a service replaces the company's whole;
+// everything else merges key by key.
 //
 // `artifacts` says how to tell that a build is ready to deploy: a check named `build-image` whose log says `image: <name>`.
 

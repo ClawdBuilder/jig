@@ -26,6 +26,8 @@ export type GitlabFinish =
 export interface GitlabSpec {
     system: "gitlab";
     service: string;
+    /** The environment the call named, when it named one: its CI is watched. */
+    environment?: string;
     ref?: string;
     /** The full id of the commit whose pipeline is watched. */
     sha?: string;
@@ -47,6 +49,10 @@ const SKEW_MS = 60_000;
 
 /** One line naming what is watched, such as "pipeline of branch main at abc1234" or "job build of pipeline #12". */
 export function titleOf(spec: GitlabSpec): string {
+    return `${plainTitle(spec)}${spec.environment === undefined ? "" : ` in ${spec.environment}`}`;
+}
+
+function plainTitle(spec: GitlabSpec): string {
     const sha = spec.sha ? ` at ${spec.sha.slice(0, 7)}` : "";
     const pipeline =
         spec.pipelineId !== undefined
@@ -190,6 +196,8 @@ async function evaluate(
         links: pipeline.web_url ? [pipeline.web_url] : undefined,
         facts: facts(relevant, pipeline),
     };
+    // An environment's CI deploys or checks it, and builds nothing that is ready for a deploy.
+    if (spec.environment !== undefined) return passed;
     return addArtifacts(passed, {
         repo,
         sha: pipeline.sha,

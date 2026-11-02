@@ -192,10 +192,10 @@ describe("a catalog that is refused", () => {
             "ops.services.svc: must be an object with environments",
         ]);
         assert.deepEqual(validateOps(only({})), [
-            "ops.services.svc.environments.staging: must have at least one of deploy, runtime and health",
+            "ops.services.svc.environments.staging: must have at least one of deploy, runtime, health and job",
         ]);
         assert.deepEqual(validateOps(only("x")), [
-            "ops.services.svc.environments.staging: must be an object with deploy, runtime or health",
+            "ops.services.svc.environments.staging: must be an object with deploy, runtime, health or job",
         ]);
     });
 

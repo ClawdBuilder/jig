@@ -266,6 +266,30 @@ function checkConcourse(
     };
 }
 
+/** The systems that can be an environment's job: all but GitHub Actions, which has no trigger. */
+export const JOB_SYSTEMS: readonly CiSystem[] = CI_SYSTEMS.filter((system) => system !== "github-actions");
+
+/**
+ * Checks the `job` of one environment: a `ci` entry for a system that can start a build. The environment is the key it sits
+ * under, so the entry names none, and it needs no `repo`. Every error names its key; with any error there is no entry.
+ */
+export function checkJob(raw: unknown, at: string, errors: string[]): CiConfig | undefined {
+    if (!isObject(raw)) return checkCi(raw, at, undefined, errors);
+    if (raw.system === "github-actions") {
+        errors.push(
+            `${at}.system: github-actions has no trigger, so it cannot be a job; ` +
+                `the systems for a job are: ${JOB_SYSTEMS.join(", ")}`,
+        );
+        return undefined;
+    }
+    const { environment, ...rest } = raw;
+    if (environment !== undefined) {
+        errors.push(`${at}.environment: not allowed in a job, which belongs to the environment it is under`);
+    }
+    const read = checkCi(rest, at, undefined, errors);
+    return environment === undefined ? read : undefined;
+}
+
 /**
  * Checks the `ci` entry of one service and reads it. Every error names its key; with any error there is no entry.
  * `repo` is the service's own, which GitHub Actions needs because the run is found by repository.

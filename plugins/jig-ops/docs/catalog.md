@@ -27,7 +27,7 @@ error, and so is a field with a value it cannot use.
 A section may also have `watch` and `artifacts`, which are not about one service: see
 [Watching CI](#watching-ci).
 
-An environment has `deploy`, `runtime` and `health`, and at least one of them.
+An environment has `deploy`, `runtime`, `health` and `job`, and at least one of them.
 
 **An environment's name is the name `jig-core` knows it by.** The rules, the
 masking and the kind of environment (local, external, test or production) come
@@ -126,6 +126,39 @@ The `watch` and `artifacts` parts of the section were `git.watch` and
   }
 }
 ```
+
+## `job`
+
+The CI job that acts on an environment: the Concourse job that deploys it, the Jenkins job that builds for it. It is a `ci`
+entry (the fields are [above](#ci)) for any system but GitHub Actions, which has no trigger. A `ci` call that names the
+environment uses it ([CI jobs](ci.md#a-ci-job-per-environment)).
+
+```json
+{
+  "ops": {
+    "services": {
+      "orders-api": {
+        "ci": { "system": "github-actions", "workflow": "build.yml" },
+        "repo": "acme/orders-api",
+        "environments": {
+          "staging": {
+            "job": {
+              "system": "concourse", "url": "https://ci.example.com", "team": "main", "pipeline": "deploy",
+              "job": "orders-api-staging", "auth": { "token": "cmd:fly-main" }, "signInHint": "fly -t main login"
+            },
+            "runtime": { "kubernetes": { "context": "staging", "namespace": "orders", "selector": "app=orders-api" } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+- **The environment is the key it sits under.** A `job` that names an `environment` is an error.
+- **It needs no `repo`,** and an environment may have only a `job`.
+- **A job never starts a watch on a push.** Only the service's own `ci` does.
+- **A user's own `auth`** for a job replaces the company's whole, as for the service's `ci`.
 
 ## `deploy`
 

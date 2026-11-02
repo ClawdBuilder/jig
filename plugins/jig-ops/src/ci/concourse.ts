@@ -14,6 +14,7 @@ import type { Build, ConcourseApi } from "./concourse-api.ts";
 import { pollConcourse, titleOf } from "./concourse-watch.ts";
 import type { ConcourseSpec, ConcourseState } from "./concourse-watch.ts";
 import type { ConcourseConfig } from "./config.ts";
+import { environmentOf, inEnvironment } from "./environment.ts";
 import { httpFailure } from "./http.ts";
 import { selectLog } from "./logs.ts";
 import { afterLostReply } from "./lost.ts";
@@ -180,8 +181,10 @@ function concourse(service: CiService, ctx: CiContext): CiAdapter {
                 : `#${last.name} ${last.status}` +
                   (last.startedAt === undefined ? "" : `, started ${utc(last.startedAt)}`) +
                   (last.createdBy === undefined ? "" : ` by ${last.createdBy}`);
+        const environment = environmentOf(service);
         const body = [
             `Service:       ${service.name}`,
+            ...(environment === undefined ? [] : [`Environment:   ${environment}`]),
             `Job:           ${job} (Concourse, team ${config.team}, pipeline ${config.pipeline})`,
             `Last build:    ${lastLine}`,
             ...(last !== undefined && running(last)
@@ -191,12 +194,13 @@ function concourse(service: CiService, ctx: CiContext): CiAdapter {
         ].join("\n");
         return {
             preview: {
-                summary: `start the job ${job} (Concourse, pipeline ${config.pipeline})`,
+                summary: `start the job ${job} (Concourse, pipeline ${config.pipeline})${inEnvironment(service)}`,
                 body,
                 format: "text",
                 fingerprint: digest(
                     "ci trigger",
                     service.name,
+                    service.environment ?? null,
                     config.team,
                     config.pipeline,
                     job,
@@ -261,6 +265,7 @@ function concourse(service: CiService, ctx: CiContext): CiAdapter {
             throw new InputError(`ci watch: Concourse does not support finish ${finishName}. It supports: run`);
         }
         const spec: ConcourseSpec = { system: "concourse", service: service.name, finish: { kind: "build" } };
+        if (service.environment !== undefined) spec.environment = service.environment;
         if (params.run_id !== undefined) {
             spec.build = (await buildOf(params)).name;
         } else {

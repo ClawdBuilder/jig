@@ -67,6 +67,24 @@ names the adapter and says what it does have.
   answers 404 and none is used. The session cookie the crumb is tied to goes back
   with the POST. A failure to get the crumb is a plain failure: nothing was sent.
 
+## A CI job per environment
+
+A service has one build CI. The jobs that deploy it differ by environment, and so may the system: one Concourse job for staging,
+a Jenkins job for another environment. So an environment can have its own `job` in the catalog ([the entry](catalog.md#job)).
+
+- **`environment` on any action** picks it: `ci trigger {service: "orders-api", environment: "staging"}` starts staging's job.
+  Without it, the call uses the service's own `ci`.
+- **The call acts in that environment.** A read is a read there, with production reads masked. `trigger` and `rerun` are
+  writes there: a test environment asks, and production is denied before anyone is asked. `watch` stays a local write.
+- **The preview names it:** `Environment: staging (test)`, and the headline ends `in staging`. The environment is part of the
+  fingerprint, so the same job approved for one environment is not approved for another.
+- **Any system that can start a build** is a job: Concourse, Jenkins or GitLab. GitHub Actions has no trigger, so it is refused.
+- **A watch names the environment** in its spec and its title (`the next build of orders-api in staging`).
+  - It says nothing about a commit: no `jig-ops:ci-finished`, and no "artifact ready" from an environment's job.
+  - A push never starts one. Only the service's own `ci` is watched after a push.
+- **An unknown environment, or one with no job,** is refused with the ones there are. An environment `jig-core` does not know
+  counts as production.
+
 ## Signing in
 
 `gitlab`, `jenkins` and `concourse` entries have an `auth`, exactly one of:

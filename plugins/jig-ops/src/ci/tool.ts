@@ -24,7 +24,8 @@ import type { CiWatchOptions } from "./watch.ts";
 
 const DESCRIPTION =
     "CI for a service from the ops catalog, on GitHub Actions, GitLab CI, Jenkins or Concourse: status, runs, run, log, " +
-    "rerun (asks), trigger (asks), and watch, which waits in the background until a finish line and reports once.";
+    "rerun (asks), trigger (asks), and watch, which waits in the background until a finish line and reports once. " +
+    "With environment, a call acts on that environment's CI job, such as the job that deploys it.";
 
 type Input = Readonly<Record<string, unknown>>;
 

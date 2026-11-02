@@ -7,6 +7,10 @@ description: How to wait for CI without polling, find out why a run failed, and 
 
 The `ci` tool works on a `service` from the ops catalog. The catalog says which CI system builds it and where, so you never type an address, a project or a job. A service the catalog does not list is refused with the ones it does. An action or a parameter the CI system of the service does not have is refused too, with what it does have.
 
+## A service's CI, and an environment's job
+
+A call without `environment` is about the service's own CI, the one that builds it. A call with `environment` (`ci trigger {service, environment: "staging"}`) is about the CI job of that environment, such as the job that deploys it, and it acts in that environment: a trigger there asks the user, and in production it is refused before anyone is asked. A name with no job is refused with the environments that have one. A push never starts a watch of an environment's job; start it with `ci watch {environment}` after a trigger.
+
 ## After a push, do not poll
 
 A push and a new pull request each start a background watch on the CI of the pushed commit, when the repository belongs to a service in the catalog. It reports once: when the required checks pass, or at the first failure with the failing checks, their links and the lines around the error in the log. The message starts your next turn. Do not call `ci status` in a loop.

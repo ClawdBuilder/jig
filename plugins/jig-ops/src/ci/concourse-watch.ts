@@ -20,6 +20,8 @@ import { count } from "./model.ts";
 export interface ConcourseSpec {
     system: "concourse";
     service: string;
+    /** The environment the call named, when it named one: its CI is watched. */
+    environment?: string;
     /** The number of the build (`20`), when it is known. */
     build?: string;
     /** Follow the first build created after the build with this Concourse number. 0 when there was none. */
@@ -43,7 +45,8 @@ const RECENT = 20;
 
 /** One line naming what is watched, such as "build #12 of orders-api" or "the next build of orders-api". */
 export function titleOf(spec: ConcourseSpec): string {
-    return spec.build !== undefined ? `build #${spec.build} of ${spec.service}` : `the next build of ${spec.service}`;
+    const of = spec.environment === undefined ? spec.service : `${spec.service} in ${spec.environment}`;
+    return spec.build !== undefined ? `build #${spec.build} of ${of}` : `the next build of ${of}`;
 }
 
 /** One line for `watch list`: the service, then what it waits for. */
