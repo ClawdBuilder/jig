@@ -27,12 +27,14 @@
         {
             "id": "deliver",
             "goal": "Push, open the pull request, and wait for its checks",
-            "exit": ["pull-request-open", "checks-pass"]
+            "exit": ["pull-request-open", "checks-pass"],
+            "tools": ["pr", "ci"]
         },
         {
             "id": "accept",
             "goal": "Run each acceptance scenario on staging and record its result with evidence",
-            "exit": ["scenarios-pass", "you-approve"]
+            "exit": ["scenarios-pass", "you-approve"],
+            "tools": ["api", "logs"]
         },
         { "id": "done" }
     ],

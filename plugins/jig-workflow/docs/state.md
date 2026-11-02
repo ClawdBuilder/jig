@@ -68,6 +68,16 @@ so `notes-updated` needs a new change. Holds do not depend on the stage.
 `git worktree add` for `repo`, a new branch named by the workflow's `branch` (default the ticket key), cut
 from the fetched base. It then adds the worktree's path. A repository is bound once.
 
+## Stage tools in the session
+
+The tools a stage switched on ([Stage tools](files.md#stage-tools)) are not in `workflow.json`: they belong to
+the session, not the ticket. Each change is kept as a custom entry of the session, `jig-workflow.stage-tools`,
+with `stage` (the ticket, the workflow and the stage, or null) and `added` (the tools this plugin switched on).
+At session start the last entry on the branch is read back, so a reload or a resume takes out only those
+tools when the work moves on. The plugin reads `jig-session.switches` too, the tools you switched on or off,
+and never takes out one you switched on. The stage is checked again before each prompt and after each
+`workflow` call, so a move made in another session is caught up.
+
 ## Two sessions on one ticket
 
 Every change reads the file, changes it and replaces it in one step, so two sessions never leave a torn

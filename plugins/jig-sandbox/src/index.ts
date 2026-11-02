@@ -11,6 +11,7 @@ import { createLocalBashOperations, getAgentDir, getShellConfig } from "@earendi
 import type { BashOperations, ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { jig, withJig } from "../../jig-core/src/client.ts";
 import type { SandboxProvider, SandboxRunOptions, SandboxRunResult } from "../../jig-core/src/contract.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { createAftermath } from "./aftermath.ts";
 import type { Aftermath } from "./aftermath.ts";
 import { createAllowed } from "./allowed.ts";
@@ -263,7 +264,7 @@ export function sandbox(options: SandboxOptions = {}): ExtensionFactory {
                 }
             },
         };
-        pi.registerTool(createBashTool(bashDeps) as never);
+        registerJigTool(pi, createBashTool(bashDeps) as never);
 
         /**
          * `jig().sandbox.run`: a shell command for another plugin, wrapped as the agent's `bash` is. The same operations as the
@@ -307,7 +308,7 @@ export function sandbox(options: SandboxOptions = {}): ExtensionFactory {
                 throw error;
             }
         }
-        for (const tool of backgroundTools(tasks)) pi.registerTool(tool as never);
+        for (const tool of backgroundTools(tasks)) registerJigTool(pi, tool as never);
         registerPs(pi, tasks);
         pi.on("message_start", (event) => {
             tasks.onMessageStart(event.message as { role?: string; customType?: string });

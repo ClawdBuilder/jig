@@ -198,7 +198,12 @@ test("the default folder is under XDG_DATA_HOME when jig.json has no memory sect
     const jig = useJig(t, {});
     const pi = loadPlugin("/work");
     pi.start();
-    assert.deepEqual(jig.reads, ["memory"], "the section is read at session start");
+    // `tools` is jig-core's, read by the kit's registerJigTool to know whether the ticket tool is deferred.
+    assert.deepEqual(
+        jig.reads.filter((name) => name !== "tools"),
+        ["memory"],
+        "the section is read at session start",
+    );
     await pi.command("ACME-9");
     assert.ok(existsSync(path.join(xdg, "jig", "tickets", "ACME-9", "notes.md")));
 });

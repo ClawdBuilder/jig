@@ -4,6 +4,7 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { withJig } from "../../jig-core/src/client.ts";
 import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
 import type { WatchDoneEvent } from "../../jig-core/src/contract.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { registerCommands } from "./commands.ts";
 import { validateAgents } from "./config.ts";
 import { realHost } from "./host.ts";
@@ -47,7 +48,7 @@ export function agents(options: AgentsOptions = {}): ExtensionFactory {
             api.watches.registerKind(watchKind(rt));
             api.status?.register("jig-agents", () => rt.statusLines());
         });
-        pi.registerTool(tool.definition);
+        registerJigTool(pi, tool.definition);
         registerCommands(pi, rt);
 
         const stopListening = pi.events.on(JIG_EVENTS.watchDone, (event) => rt.onWatchDone(event as WatchDoneEvent));
@@ -60,7 +61,7 @@ export function agents(options: AgentsOptions = {}): ExtensionFactory {
             const next = describeTool(rt.roles.roles.values());
             if (next !== described) {
                 described = next;
-                pi.registerTool(createTool(rt, next).definition);
+                registerJigTool(pi, createTool(rt, next).definition);
             }
         });
         pi.on("session_shutdown", async () => {
