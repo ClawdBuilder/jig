@@ -1,6 +1,7 @@
 // jig-core: the tool manager. It sits over every tool call, whoever wrote the tool, through Pi's hooks:
 //
-//   session_start        read jig.json, resume the watches, and set the start-up work going (src/start-jobs.ts)
+//   session_start        read jig.json, resume the watches, activate tool_search when a Jig tool is deferred
+//                        (src/tool-exposure.ts), and set the start-up work going (src/start-jobs.ts)
 //   tool_call            classify the call, decide allow / ask / deny, ask the user if a rule says so
 //   tool_result          redact secrets, mask production data, cut very long output
 //   tool_execution_end   write the call's record
@@ -24,6 +25,7 @@ import { cleanupPreviews } from "./preview-html.ts";
 import { cleanupRecords, conditionProblem } from "./records.ts";
 import { finishCall, finishTurn, toolResult } from "./results.ts";
 import { startJobs } from "./start-jobs.ts";
+import { settleDeferredTools } from "./tool-exposure.ts";
 import { createState, loadPersonalConfig } from "./state.ts";
 import type { JigCoreOptions, JigState } from "./state.ts";
 import { registerWatchTool } from "./watch/tool.ts";
@@ -88,6 +90,12 @@ function startSession(state: JigState, ctx: ExtensionContext): void {
     }
 
     announceSandbox(state, ctx);
+    // Deferred Jig tools are found with Pi's tool_search, which Pi registers inactive.
+    try {
+        settleDeferredTools(state, ctx);
+    } catch {
+        // The tools stay as they are: a larger context, not a broken session.
+    }
     // In the background: the session does not wait for it, and it cannot fail the start.
     startJobs(state);
 

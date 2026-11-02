@@ -81,10 +81,12 @@ All fields are optional.
 | `records.retentionDays` | 90 | Days record files are kept, from 1 to 3650 |
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
 | `approvals.openInBrowser` | `"on-key"` | `"always"` opens a review screen's preview in the browser as soon as it appears |
+| `tools.deferred` | none | Jig tools whose descriptions stay out of the context until Pi's `tool_search` finds them |
 | `startChecks` | none | Up to 16 TCP checks made when a session starts: `name`, `tcp` (`host:port`), `hint` |
 
 What each field means, with its limits, is in the
-[configuration reference](docs/configuration.md#the-fields); the two that run when a session starts,
+[configuration reference](docs/configuration.md#the-fields), and [Deferred tools](docs/configuration.md#deferred-tools) says
+how `tools.deferred` works; the two that run when a session starts,
 with an example, are under [At session start](docs/configuration.md#at-session-start). An unknown field is
 an error. It names the file and the key, and the plugin starts with the defaults
 rather than guessing. So is a wrong type or value.
@@ -114,7 +116,7 @@ on Linux first; any store with a command line works through `cmd:`, see
 - sign-in services and transports for its systems, and tunnels (a forward, or a SOCKS proxy) for its
   databases;
 - defaults for other plugins' sections of `jig.json` (`config.addSectionDefaults`), which your own
-  section is laid over;
+  section is laid over, and for `tools` (which tools are deferred);
 - secret commands (`config.addSecretCommands`), the secret backends its references need
   (`config.enableSecretBackends`) and protected paths (`config.addProtectedPaths`) for its own
   tools.

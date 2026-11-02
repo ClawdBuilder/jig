@@ -39,6 +39,8 @@ import { createTransports } from "./transports.ts";
 import { createTunnels } from "./tunnels.ts";
 import type { Tunnels } from "./tunnels.ts";
 import type { Transports } from "./transports.ts";
+import { TOOLS_SECTION } from "./kit/tools.ts";
+import { validateToolsSection } from "./tool-exposure.ts";
 import { createWatchEngine } from "./watch/engine.ts";
 import type { WatchEngine } from "./watch/engine.ts";
 import { createWatchStore } from "./watch/store.ts";
@@ -165,6 +167,8 @@ export interface JigState {
     recordsProblem: string | undefined;
     /** Problems from loading that are not configuration, such as a plugin whose start-up callback threw. */
     startupProblems: string[];
+    /** What session start already said about `tools.deferred`, so each warning comes once (src/tool-exposure.ts). */
+    toolWarnings: { unknown?: string; noSearch?: boolean };
 }
 
 /** A key for checking field names only. Nothing is ever masked with it. */
@@ -328,6 +332,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         statusLines: new Map(),
         recordsProblem: undefined,
         startupProblems: [],
+        toolWarnings: {},
     };
     state.http = createHttp({
         secrets: state.secrets,
@@ -349,7 +354,10 @@ export function rememberCall(state: JigState, call: CallState): void {
 
 /** Reads jig.json, with the sections plugins registered, and rebuilds the policy. Run at session start. */
 export function loadPersonalConfig(state: JigState, file: string = state.configPath()): void {
-    state.personal = loadConfigFile(file, state.sectionChecks, {
+    // jig-core's own `tools` section is checked like a plugin's, so a company plugin can give defaults for it, but it is
+    // not a plugin's: it stays out of `sectionChecks`, which `/jig` lists as the plugins' sections.
+    const checks = new Map([[TOOLS_SECTION, validateToolsSection], ...state.sectionChecks]);
+    state.personal = loadConfigFile(file, checks, {
         defaults: state.sectionDefaults,
         replace: state.sectionReplace,
         oneOf: state.sectionOneOf,

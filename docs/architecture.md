@@ -154,6 +154,9 @@ company plugin (separate, private repository)
   - the events other plugins can listen to.
 - **One owner per file:** only `jig-core` writes the records, and `jig-lens`
   only reads them.
+- **Tools are registered through `jig-core`'s kit** (`registerJigTool`), so `tools.deferred` in `jig.json` can keep a tool's
+  description out of the context until Pi's `tool_search` finds it, and a workflow stage can bring tools in
+  ([Deferred tools](../plugins/jig-core/docs/configuration.md#deferred-tools)).
 
 ## Platforms
 

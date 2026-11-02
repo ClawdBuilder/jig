@@ -14,6 +14,7 @@
 import { existsSync } from "node:fs";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import {
     CARD_FIX,
     CARD_REQUEST,
@@ -429,7 +430,8 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         };
     });
 
-    pi.registerTool(
+    registerJigTool(
+        pi,
         ticketTool({
             active: () =>
                 memory === undefined || active === undefined ? undefined : { folder: memory.folder, key: active },

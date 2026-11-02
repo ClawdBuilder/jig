@@ -1,6 +1,7 @@
 // The two tools the agent has for the review loop. Both only change this plugin's own files, so jig-core classifies them
 // as local writes (see index.ts). Neither can approve: approving needs the user.
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { ReviewRecord, ReviewResolution } from "./types.ts";
@@ -21,7 +22,7 @@ export const RESOLUTION_TOOL = "record_interactive_review_resolution";
 export const OPENED_TEXT = "Review opened in the user's browser. Ask the user to review and approve it there.";
 
 export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandlers): void {
-    pi.registerTool({
+    registerJigTool(pi, {
         name: START_TOOL,
         label: "Start Interactive Code Review",
         description:
@@ -38,7 +39,7 @@ export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandle
         },
     });
 
-    pi.registerTool({
+    registerJigTool(pi, {
         name: RESOLUTION_TOOL,
         label: "Record Review Resolution",
         description:
