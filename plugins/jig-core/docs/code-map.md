@@ -80,6 +80,12 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
 | `commands.ts` | The `/jig` commands: status, rules, records | `index.ts` |
 
+### Session start
+
+| File | What it does | Called by |
+|---|---|---|
+| `start-checks.ts` | The `startChecks` list of `jig.json`: what it accepts, and the TCP test each check makes | `config.ts` |
+
 ### What other plugins use
 
 | File | What it does | Called by |
