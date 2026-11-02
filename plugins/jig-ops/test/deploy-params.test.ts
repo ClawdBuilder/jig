@@ -74,15 +74,15 @@ describe("the shape of a call", () => {
     test("a call names its service and its environment, and the version where the action needs one", () => {
         refused(
             { action: "status", environment: "staging" },
-            /^deploy status needs service\. Known services: orders-api \(staging, production\), billing \(staging\)\. Usage: deploy status \{service, environment\}$/,
+            /^deploy status needs service\. Known services: orders-api \(staging, production\), billing \(staging\)\. Usage: deploy status \{service, environment\?\}$/,
         );
         refused(
             { action: "run", service: "billing" },
-            "deploy run needs environment, version. Usage: deploy run {service, environment, version}",
+            "deploy run needs environment, version. Usage: deploy run {service, environment, version, ticket?, values?}",
         );
         refused(
             { action: "plan", ...WHERE },
-            "deploy plan needs version. Usage: deploy plan {service, environment, version}",
+            "deploy plan needs version. Usage: deploy plan {service, environment, version, ticket?, values?}",
         );
         refused(
             { action: "watch", ...WHERE },
@@ -93,7 +93,7 @@ describe("the shape of a call", () => {
     test("a parameter the action does not use is refused, with the usage line of that action", () => {
         refused(
             { action: "status", ...WHERE, version: "1.4.3" },
-            "deploy status does not use version. Usage: deploy status {service, environment}",
+            "deploy status does not use version. Usage: deploy status {service, environment?}",
         );
         refused(
             { action: "rollback", ...WHERE, version: "1.4.3" },
@@ -101,7 +101,7 @@ describe("the shape of a call", () => {
         );
         refused(
             { action: "run", ...WHERE, version: "1.4.3", timeoutMinutes: 5 },
-            "deploy run does not use timeoutMinutes. Usage: deploy run {service, environment, version}",
+            "deploy run does not use timeoutMinutes. Usage: deploy run {service, environment, version, ticket?, values?}",
         );
     });
 
@@ -110,7 +110,6 @@ describe("the shape of a call", () => {
             "release",
             "chart",
             "valuesFile",
-            "values",
             "set",
             "image",
             "tag",
@@ -177,6 +176,7 @@ describe("the shape of a call", () => {
             { action: "run", service: "billing", environment: "staging", version: "2.0.0" },
             catalog,
         );
+        assert.ok(!("pin" in call), "billing deploys with a command and not by a pin");
         assert.equal(call.env.deploy?.method, "kubectl-image");
         assert.equal(call.target.namespace, "billing-staging");
         assert.equal(call.target.context, "test-cluster");
@@ -297,9 +297,9 @@ describe("environments that are not deployed to", () => {
 
 describe("the usage lines", () => {
     test("name every parameter an action takes", () => {
-        assert.equal(usage("plan"), "Usage: deploy plan {service, environment, version}");
-        assert.equal(usage("run"), "Usage: deploy run {service, environment, version}");
-        assert.equal(usage("status"), "Usage: deploy status {service, environment}");
+        assert.equal(usage("plan"), "Usage: deploy plan {service, environment, version, ticket?, values?}");
+        assert.equal(usage("run"), "Usage: deploy run {service, environment, version, ticket?, values?}");
+        assert.equal(usage("status"), "Usage: deploy status {service, environment?}");
         assert.equal(usage("rollback"), "Usage: deploy rollback {service, environment}");
         assert.equal(usage("watch"), "Usage: deploy watch {service, environment, version, timeoutMinutes?}");
     });

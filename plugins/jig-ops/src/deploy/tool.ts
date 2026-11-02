@@ -1,6 +1,7 @@
 // The `deploy` tool: what Pi registers, and the classification and preview that make up jig-core's declaration of it.
 //
-//   plan, status   read, in the environment of the call
+//   plan, status   read, in the environment of the call. A status of a whole service reads every environment that has a
+//                  pin, and is classified in the most restricted of them, so that production is masked as a whole
 //   run, rollback  write in the environment of the call. jig-core asks the user, with the preview as the screen,
 //                  and its floor denies production anyway
 //   watch          a local write: it starts a watch on this machine, and changes no environment
@@ -11,7 +12,7 @@
 // know counts as production.
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../../jig-core/src/client.ts";
-import type { CallClass, Preview } from "../../../jig-core/src/contract.ts";
+import type { CallClass, EnvironmentKind, Preview } from "../../../jig-core/src/contract.ts";
 import { catalogOf } from "../catalog.ts";
 import type { Kube } from "../runtime/kubernetes/kubectl.ts";
 import { classifying, InputError, previewing } from "../values.ts";
@@ -19,7 +20,8 @@ import type { Outcome } from "../values.ts";
 import { planAction, rollbackAction, runAction, statusAction, watchAction } from "./actions.ts";
 import type { Context } from "./actions.ts";
 import { parameters, parseCall } from "./params.ts";
-import type { Call } from "./params.ts";
+import type { Call, PinCall } from "./params.ts";
+import { statusPinAction } from "./pin-status.ts";
 import { planRollback, planRun, refusal } from "./plan.ts";
 import { createRecords } from "./records.ts";
 
@@ -46,16 +48,42 @@ export interface DeployTool {
     preview(input: Input, signal: AbortSignal): Promise<Preview>;
 }
 
+/** The preview of a call about a pin. Only reads reach it: a run or a rollback of a pin is refused first. */
+function pinPreview(call: PinCall): Preview {
+    if (call.action === "status") return { summary: `show what ${call.service} is pinned to` };
+    if (call.action === "plan")
+        return { summary: `plan the pin of ${call.version} for ${call.env.service} in ${call.env.name}` };
+    return { summary: `deploy ${call.action}` };
+}
+
 /** The catalog as jig-core loaded it. Read on every call, so a configuration change applies. */
 function currentCatalog() {
     return catalogOf(jig().config.section("ops"));
 }
 
+/** What a run or a rollback of a pin is told until the pin writes (see docs/deploy.md). */
+const PIN_RUN =
+    "deploy run for the pin method is not available yet. deploy plan shows what it would change, and the change is a pull request a person can make";
+const PIN_ROLLBACK = "a pin goes back by pinning the previous version: deploy run with that version";
+
 /** Throws an InputError for a deploy or a rollback that may not run. */
-function refuse(call: Call): void {
+function refuse(call: Call | PinCall): void {
     if (call.action !== "run" && call.action !== "rollback") return;
     const why = refusal(call.action, call.env, jig().environments.kindOf(call.env.name));
     if (why !== undefined) throw new InputError(`deploy ${call.action} is refused: ${why}`);
+    if ("pin" in call) {
+        throw new InputError(`deploy ${call.action} is refused: ${call.action === "run" ? PIN_RUN : PIN_ROLLBACK}`);
+    }
+}
+
+/** Least to most restricted: what jig-core does with a read grows stricter down the list. */
+const RESTRICTION: readonly EnvironmentKind[] = ["local", "test", "external", "production"];
+
+/** The environment a call is classified in. A status of several environments takes the most restricted of them. */
+function classifiedIn(call: Call | PinCall): string {
+    if (!("environments" in call)) return call.env.name;
+    const kindOf = (name: string): number => RESTRICTION.indexOf(jig().environments.kindOf(name));
+    return call.environments.reduce((most, env) => (kindOf(env.name) > kindOf(most.name) ? env : most)).name;
 }
 
 export function createDeployTool(options: DeployOptions = {}): DeployTool {
@@ -65,7 +93,21 @@ export function createDeployTool(options: DeployOptions = {}): DeployTool {
         records: createRecords(),
     };
 
-    function run(call: Call, toolCallId: string, signal: AbortSignal | undefined): Promise<Outcome> | Outcome {
+    function run(
+        call: Call | PinCall,
+        toolCallId: string,
+        signal: AbortSignal | undefined,
+    ): Promise<Outcome> | Outcome {
+        if ("pin" in call) {
+            switch (call.action) {
+                case "status":
+                    return statusPinAction(call, { signal });
+                case "plan":
+                    throw new InputError("deploy plan for the pin method is not available yet");
+                default:
+                    throw new InputError(`deploy ${call.action} is refused: ${PIN_RUN}`);
+            }
+        }
         const kube: Kube = { target: call.target, signal };
         switch (call.action) {
             case "plan":
@@ -89,7 +131,7 @@ export function createDeployTool(options: DeployOptions = {}): DeployTool {
                 // A watch lives on this machine and reads the cluster; it changes no environment.
                 if (call.action === "watch") return { action: call.action, environment: "local", effect: "write" };
                 const effect = call.action === "run" || call.action === "rollback" ? "write" : "read";
-                return { action: call.action, environment: call.env.name, effect };
+                return { action: call.action, environment: classifiedIn(call), effect };
             });
         },
 
@@ -99,6 +141,7 @@ export function createDeployTool(options: DeployOptions = {}): DeployTool {
             return previewing(async () => {
                 const call = parseCall(input, currentCatalog());
                 refuse(call);
+                if ("pin" in call) return pinPreview(call);
                 const kube: Kube = { target: call.target, signal };
                 const kind = jig().environments.kindOf(call.env.name);
                 const where = `${call.env.service} in ${call.env.name}`;
