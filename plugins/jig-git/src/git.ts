@@ -209,6 +209,7 @@ export const gitTool: JigTool = buildTool({
     promptSnippet: "Local git: status, diff, commit, branch, push",
     promptGuidelines: [
         "Use the git tool for git, not bash: the shell has no GitHub credentials. Check status before you commit, and read the jig-git skill for the order of work.",
+        "A promise to report on CI later needs a watch, because nothing else wakes you: the last line of a push result says how you will hear, and with no watch the user has to ask.",
     ],
     parameters: GitParams,
     table: GIT_ACTIONS,
