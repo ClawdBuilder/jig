@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jig lens</title>
+<style>
+/* The Jig palettes: paper by day, signal by night. The page follows the system. */
+:root {
+    color-scheme: light dark;
+    --bg: #FAF6EE; --panel: #F1EADB; --selected: #E5DAC3; --error-bg: #FBE3DF;
+    --text: #1B1712; --muted: #5A5144; --dim: #6A6050; --border: #B8AA90; --border-muted: #DDD2BD;
+    --accent: #9C4208; --link: #0B6A94; --heading: #862A74; --info: #2A55A0;
+    --success: #25702A; --warning: #8A5600; --error: #B3261E; --bar: #2A55A0;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0E1520; --panel: #111C2A; --selected: #1B2A3D; --error-bg: #241820;
+        --text: #FFFFFF; --muted: #A9B6C6; --dim: #8292A6; --border: #273344; --border-muted: #1D2734;
+        --accent: #55DDE0; --link: #55DDE0; --heading: #C099FF; --info: #78A9FF;
+        --success: #7BD88F; --warning: #FFB454; --error: #FF6B7A; --bar: #78A9FF;
+    }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow-x: hidden; }
+a { color: var(--link); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--border-muted); }
+.bar { max-width: 1280px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.brand { font-weight: 700; color: var(--heading); margin-right: 8px; }
+nav, .range { display: flex; flex-wrap: wrap; gap: 4px; }
+nav a, .range button {
+    padding: 4px 10px; border-radius: 6px; border: 1px solid transparent; background: none;
+    color: var(--muted); font: inherit; cursor: pointer;
+}
+nav a.on, .range button.on { background: var(--selected); color: var(--text); border-color: var(--border-muted); text-decoration: none; }
+.range { margin-left: auto; align-items: center; }
+.range .label { color: var(--dim); margin-right: 4px; }
+main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 20px; margin: 4px 0 12px; }
+h2 { font-size: 15px; margin: 24px 0 8px; color: var(--heading); }
+.sub { color: var(--dim); font-weight: 400; font-size: 13px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.card { background: var(--panel); border: 1px solid var(--border-muted); border-radius: 8px; padding: 8px 12px; min-width: 0; }
+.card .k { color: var(--dim); font-size: 12px; }
+.card .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.card .n { color: var(--muted); font-size: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--border-muted); border-radius: 8px; padding: 12px; }
+.scroll { overflow-x: auto; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border-muted); vertical-align: top; }
+th { color: var(--dim); font-weight: 600; font-size: 12px; white-space: nowrap; user-select: none; }
+th.sort { cursor: pointer; }
+th.sort:hover { color: var(--text); }
+th.num, td.num { text-align: right; }
+tbody tr:hover { background: var(--selected); }
+td.wrap { overflow-wrap: anywhere; }
+.empty { color: var(--dim); padding: 16px; text-align: center; border: 1px dashed var(--border); border-radius: 8px; }
+.badge { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 12px; border: 1px solid var(--border-muted); white-space: nowrap; }
+.ok { color: var(--success); } .error { color: var(--error); } .blocked { color: var(--warning); }
+.ask { color: var(--info); } .deny { color: var(--error); } .allow { color: var(--muted); }
+.err-line { color: var(--error); background: var(--error-bg); border-radius: 4px; padding: 1px 6px; display: inline-block; overflow-wrap: anywhere; }
+.muted { color: var(--muted); } .dim { color: var(--dim); }
+svg text { fill: var(--dim); font-size: 11px; }
+svg .b { fill: var(--bar); }
+svg .b:hover { fill: var(--accent); }
+svg .grid { stroke: var(--border-muted); }
+.tl { list-style: none; margin: 0; padding: 0; }
+.tl > li { display: grid; grid-template-columns: 74px 64px minmax(0, 1fr) auto; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--border-muted); align-items: baseline; }
+.tl > li.turn { color: var(--muted); }
+.tl > li.child { display: block; padding: 6px 0 6px 12px; border-left: 3px solid var(--accent); margin: 6px 0; }
+.tl .what { min-width: 0; overflow-wrap: anywhere; }
+.tl .right { text-align: right; color: var(--dim); white-space: nowrap; }
+details > summary { cursor: pointer; padding: 2px 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
+.note { color: var(--dim); font-size: 12px; margin: 6px 0 0; }
+input[type=search] { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+@media (max-width: 720px) {
+    .two { grid-template-columns: 1fr; }
+    .tl > li { grid-template-columns: 64px minmax(0, 1fr) auto; }
+    .tl > li .kind { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+    <div class="bar">
+        <span class="brand">Jig lens</span>
+        <nav id="nav"></nav>
+        <div class="range" id="range"></div>
+    </div>
+</header>
+<svg id="svg-namespace" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
+<main id="main"><p class="dim">Loading…</p></main>
+<script nonce="__NONCE__">
+"use strict";
+// The page of /lens web. It reads the JSON endpoints of the server that served it and draws everything itself: no
+// library, no request anywhere else. Text from the records is always set as text, never as markup.
+
+const VIEWS = [
+    ["overview", "Overview"],
+    ["tickets", "Tickets"],
+    ["session", "Session"],
+    ["tools", "Tools"],
+    ["time", "Your time"],
+];
+const RANGES = [1, 7, 30];
+
+// ---- small helpers ----------------------------------------------------------------------------------------------
+
+function h(tag, props, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(props || {})) {
+        if (value === undefined || value === null || value === false) continue;
+        if (key === "class") node.className = value;
+        else if (key === "on") for (const [event, fn] of Object.entries(value)) node.addEventListener(event, fn);
+        else node.setAttribute(key, value === true ? "" : String(value));
+    }
+    for (const child of children.flat(Infinity)) {
+        if (child === undefined || child === null || child === false) continue;
+        node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    }
+    return node;
+}
+// SVG elements need SVG's namespace, which the parser gave the hidden <svg> below: the page holds no address at all.
+const SVG = document.getElementById("svg-namespace").namespaceURI;
+function s(tag, attrs, ...children) {
+    const node = document.createElementNS(SVG, tag);
+    for (const [key, value] of Object.entries(attrs || {})) node.setAttribute(key, String(value));
+    for (const child of children.flat(Infinity)) {
+        if (child === undefined || child === null) continue;
+        node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    }
+    return node;
+}
+
+function money(dollars) {
+    if (!dollars) return "$0";
+    if (dollars < 0.01) return "<$0.01";
+    return `$${dollars >= 100 ? dollars.toFixed(0) : dollars.toFixed(2)}`;
+}
+function count(n) {
+    if (n === undefined || n === null) return "";
+    if (n >= 1e9) return `${(n / 1e9).toFixed(1)}G`;
+    if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+    if (n >= 1e4) return `${(n / 1e3).toFixed(0)}k`;
+    if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
+    return String(Math.round(n));
+}
+function ms(value) {
+    if (value === undefined || value === null) return "";
+    if (value === 0) return "0s";
+    if (value < 1000) return `${Math.round(value)}ms`;
+    const sec = value / 1000;
+    if (sec < 60) return `${sec < 10 ? sec.toFixed(1) : Math.round(sec)}s`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ${Math.round(sec % 60)}s`;
+    return `${Math.floor(min / 60)}h ${min % 60}m`;
+}
+function pct(share) {
+    return share === undefined || share === null ? "–" : `${Math.round(share * 100)}%`;
+}
+const two = (n) => String(n).padStart(2, "0");
+function clock(seconds) {
+    const d = new Date(seconds * 1000);
+    return `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+}
+function when(seconds) {
+    const d = new Date(seconds * 1000);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    const day = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+    return `${sameDay ? "today" : day} ${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+const shortId = (id) => (id.length > 12 ? `${id.slice(0, 8)}…` : id);
+const toolName = (row) => (row.action ? `${row.tool} ${row.action}` : row.tool);
+
+function sessionLink(id, label) {
+    return h("a", { href: `#session/${encodeURIComponent(id)}`, title: id, class: "mono" }, label || shortId(id));
+}
+function ticketLink(key) {
+    if (!key) return h("span", { class: "dim" }, "none");
+    return h("a", { href: `#ticket/${encodeURIComponent(key)}` }, key);
+}
+function empty(text) {
+    return h("div", { class: "empty" }, text);
+}
+function card(label, value, note) {
+    return h("div", { class: "card" }, h("div", { class: "k" }, label), h("div", { class: "v" }, value), note ? h("div", { class: "n" }, note) : null);
+}
+
+// A sortable table. Each column: label, value (for sorting), show (what to draw; default the value), num (right-aligned).
+function table(columns, rows, options) {
+    options = options || {};
+    if (!rows || rows.length === 0) return empty(options.empty || "Nothing here for this range.");
+    let sortBy = options.sortBy === undefined ? -1 : options.sortBy;
+    let desc = options.desc !== false;
+    const body = h("tbody");
+    const heads = columns.map((column, index) =>
+        h("th", {
+            class: (column.num ? "num " : "") + (column.value ? "sort" : ""),
+            title: column.value ? "Sort" : undefined,
+            on: column.value ? { click: () => { desc = sortBy === index ? !desc : true; sortBy = index; draw(); } } : {},
+        }, column.label),
+    );
+    function draw() {
+        const sorted = rows.slice();
+        if (sortBy >= 0) {
+            const value = columns[sortBy].value;
+            sorted.sort((a, b) => {
+                const x = value(a);
+                const y = value(b);
+                const order = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+                return desc ? -order : order;
+            });
+        }
+        heads.forEach((th, index) => {
+            th.textContent = columns[index].label + (index === sortBy ? (desc ? " ▾" : " ▴") : "");
+        });
+        body.replaceChildren(
+            ...sorted.map((row) =>
+                h("tr", {}, columns.map((column) => {
+                    const shown = column.show ? column.show(row) : column.value(row);
+                    return h("td", { class: (column.num ? "num" : "") + (column.wrap ? " wrap" : "") }, shown);
+                })),
+            ),
+        );
+    }
+    draw();
+    return h("div", { class: "scroll" }, h("table", {}, h("thead", {}, h("tr", {}, heads)), body));
+}
+
+// Bars for each day, drawn as SVG that scales to the width it is given.
+function dayChart(days, value, format) {
+    const max = Math.max(...days.map(value), 0);
+    if (max === 0) return empty("Nothing was spent in this range.");
+    const width = 1000;
+    const height = 180;
+    const left = 52;
+    const bottom = 22;
+    const plotW = width - left - 8;
+    const plotH = height - bottom - 8;
+    const step = plotW / days.length;
+    const barW = Math.max(2, Math.min(48, step * 0.7));
+    const grid = [0, 0.5, 1].map((share) => {
+        const y = 8 + plotH - plotH * share;
+        return [
+            s("line", { class: "grid", x1: left, x2: width - 8, y1: y, y2: y }),
+            s("text", { x: left - 6, y: y + 4, "text-anchor": "end" }, format(max * share)),
+        ];
+    });
+    const labelEvery = Math.ceil(days.length / 10);
+    const bars = days.map((day, index) => {
+        const v = value(day);
+        const barH = (plotH * v) / max;
+        const x = left + step * index + (step - barW) / 2;
+        return [
+            s("rect", { class: "b", x, y: 8 + plotH - barH, width: barW, height: Math.max(barH, v > 0 ? 1 : 0), rx: 2 },
+                s("title", {}, `${day.day}: ${format(v)}, ${day.turns} turns, ${day.calls} calls`)),
+            index % labelEvery === 0 || days.length <= 10
+                ? s("text", { x: x + barW / 2, y: height - 6, "text-anchor": "middle" }, day.day.slice(5))
+                : null,
+        ];
+    });
+    return s("svg", { viewBox: `0 0 ${width} ${height}`, width: "100%", role: "img", "aria-label": "Cost per day" }, grid, bars);
+}
+
+// ---- state and routing ------------------------------------------------------------------------------------------
+
+const state = { days: 1 };
+try {
+    const saved = Number(localStorage.getItem("jig-lens-days"));
+    if (RANGES.includes(saved)) state.days = saved;
+} catch (_) {
+    // No storage: the range starts at one day.
+}
+
+function route() {
+    // `#tools?days=7`: a link can carry its range.
+    const [path, search = ""] = location.hash.replace(/^#\/?/, "").split("?");
+    const days = Number(new URLSearchParams(search).get("days"));
+    if (RANGES.includes(days)) state.days = days;
+    const [view, ...rest] = path.split("/");
+    const arg = rest.length > 0 ? decodeURIComponent(rest.join("/")) : undefined;
+    return { view: VIEWS.some(([name]) => name === view) || view === "ticket" ? view : "overview", arg };
+}
+
+function pickRange(days) {
+    state.days = days;
+    try {
+        localStorage.setItem("jig-lens-days", String(days));
+    } catch (_) {
+        // The range is kept for this page only.
+    }
+    // A range in the address would win over the one just picked, so it goes; changing the address draws again.
+    if (location.hash.includes("?")) location.hash = location.hash.split("?")[0];
+    else render();
+}
+
+function drawHeader(current) {
+    const nav = document.getElementById("nav");
+    nav.replaceChildren(
+        ...VIEWS.map(([name, label]) => {
+            const on = current === name || (name === "tickets" && current === "ticket");
+            return h("a", { href: `#${name}`, class: on ? "on" : "" }, label);
+        }),
+    );
+    const range = document.getElementById("range");
+    range.replaceChildren(
+        h("span", { class: "label" }, "Last"),
+        ...RANGES.map((days) =>
+            h("button", {
+                class: days === state.days ? "on" : "",
+                on: { click: () => pickRange(days) },
+            }, days === 1 ? "today" : `${days} days`),
+        ),
+        h("button", { title: "Read the index again", on: { click: () => render() } }, "↻"),
+    );
+}
+
+async function get(path) {
+    const response = await fetch(path, { credentials: "same-origin" });
+    if (response.status === 403) throw new Error("This page needs the link from /lens web. Run it in Pi again.");
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || `The server answered ${response.status}.`);
+    return body;
+}
+
+let drawing = 0;
+async function render() {
+    const { view, arg } = route();
+    drawHeader(view);
+    const main = document.getElementById("main");
+    const mine = ++drawing;
+    let content;
+    try {
+        content = await VIEW_DRAW[view](arg);
+    } catch (error) {
+        content = empty(String(error.message || error));
+    }
+    if (mine === drawing) main.replaceChildren(...[content].flat(Infinity).filter((node) => node));
+    window.scrollTo(0, 0);
+}
+
+const NO_INDEX = "No index yet. Records appear here once Pi has run a tool; /lens rebuild makes the index from them.";
+const rangeName = () => (state.days === 1 ? "today" : `the last ${state.days} days`);
+
+// ---- the views --------------------------------------------------------------------------------------------------
+
+function totalsCards(t) {
+    return h("div", { class: "cards" },
+        card("Cost", money(t.cost), `${t.turns} model turns`),
+        card("Tokens in", count(t.input), `cache hit ${pct(t.cacheHit)}`),
+        card("Tokens out", count(t.output)),
+        card("Tool calls", count(t.calls), `${t.failed} failed, ${t.blocked} blocked`),
+        card("Questions", String(t.questions), `waited ${ms(t.waitedMs) || "0s"}`),
+    );
+}
+
+const SESSION_COLUMNS = [
+    { label: "Session", value: (r) => r.session, show: (r) => sessionLink(r.session) },
+    { label: "Role", value: (r) => r.agentRole },
+    { label: "Ticket", value: (r) => r.tickets.join(", "), show: (r) => (r.tickets.length ? r.tickets.map((k, i) => [i ? ", " : "", ticketLink(k)]) : ticketLink()) },
+    { label: "Last", value: (r) => r.last, show: (r) => when(r.last) },
+    { label: "Duration", value: (r) => r.last - r.first, show: (r) => ms((r.last - r.first) * 1000), num: true },
+    { label: "Cost", value: (r) => r.cost, show: (r) => money(r.cost), num: true },
+    { label: "Turns", value: (r) => r.turns, num: true },
+    { label: "Calls", value: (r) => r.calls, num: true },
+    { label: "Failed", value: (r) => r.failed, show: (r) => (r.failed ? h("span", { class: "error" }, r.failed) : "0"), num: true },
+    { label: "Waited", value: (r) => r.waitedMs, show: (r) => ms(r.waitedMs), num: true },
+];
+
+const TICKET_COLUMNS = [
+    { label: "Ticket", value: (r) => r.ticket, show: (r) => ticketLink(r.ticket) },
+    { label: "Sessions", value: (r) => r.sessions, num: true },
+    { label: "Last", value: (r) => r.last, show: (r) => when(r.last) },
+    { label: "Cost", value: (r) => r.cost, show: (r) => money(r.cost), num: true },
+    { label: "Turns", value: (r) => r.turns, num: true },
+    { label: "Calls", value: (r) => r.calls, num: true },
+    { label: "Failed", value: (r) => r.failed, num: true },
+    { label: "Waited", value: (r) => r.waitedMs, show: (r) => ms(r.waitedMs), num: true },
+];
+
+async function overview() {
+    const data = await get(`/api/overview?days=${state.days}`);
+    if (data.empty) return empty(NO_INDEX);
+    const t = data.totals;
+    return [
+        h("h1", {}, "Overview ", h("span", { class: "sub" }, `${rangeName()} (${data.range.first}${data.range.first === data.range.last ? "" : ` to ${data.range.last}`})`)),
+        totalsCards(t),
+        h("h2", {}, "Cost per day"),
+        h("div", { class: "panel" }, dayChart(data.perDay, (d) => d.cost, money)),
+        h("h2", {}, "By session"),
+        table(SESSION_COLUMNS, data.sessions, { sortBy: 3, empty: "No session has a record in this range." }),
+        h("h2", {}, "By ticket"),
+        table(TICKET_COLUMNS, data.tickets, { sortBy: 3, empty: "No session in this range was on a ticket." }),
+    ];
+}
+
+async function tickets() {
+    const data = await get(`/api/tickets?days=${state.days}`);
+    if (data.empty) return empty(NO_INDEX);
+    const input = h("input", { type: "search", placeholder: "Ticket key, then Enter", "aria-label": "Ticket key" });
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && input.value.trim() !== "") location.hash = `#ticket/${encodeURIComponent(input.value.trim())}`;
+    });
+    return [
+        h("h1", {}, "Tickets ", h("span", { class: "sub" }, rangeName())),
+        h("p", {}, input, h("span", { class: "dim" }, "  A ticket's page covers all time.")),
+        table(TICKET_COLUMNS, data.tickets, { sortBy: 2, empty: "No session in this range was on a ticket." }),
+    ];
+}
+
+async function ticket(key) {
+    if (!key) return tickets();
+    const data = await get(`/api/ticket?key=${encodeURIComponent(key)}`);
+    if (data.empty) return empty(NO_INDEX);
+    if (data.sessions.length === 0) return [h("h1", {}, key), empty("No record carries this ticket.")];
+    const columns = [
+        SESSION_COLUMNS[0],
+        SESSION_COLUMNS[1],
+        { label: "Started", value: (r) => r.first, show: (r) => when(r.first) },
+        SESSION_COLUMNS[4],
+        SESSION_COLUMNS[5],
+        SESSION_COLUMNS[7],
+        SESSION_COLUMNS[8],
+        { label: "Tools used", wrap: true, value: (r) => r.tools.length, show: (r) => r.tools.map((tool, i) => [i ? ", " : "", `${toolName(tool)} ${tool.calls}`, tool.failed ? h("span", { class: "error" }, ` (${tool.failed} failed)`) : null]) },
+        SESSION_COLUMNS[9],
+    ];
+    return [
+        h("h1", {}, key, " ", h("span", { class: "sub" }, `all time, ${data.sessions.length} session${data.sessions.length === 1 ? "" : "s"}`)),
+        totalsCards(data.totals),
+        h("h2", {}, "Sessions"),
+        table(columns, data.sessions, { sortBy: 2, desc: false }),
+        h("p", { class: "note" }, "Stages and compactions are not in the records yet, so they are not shown."),
+    ];
+}
+
+async function sessionPicker() {
+    const data = await get(`/api/overview?days=${state.days}`);
+    if (data.empty) return empty(NO_INDEX);
+    return [
+        h("h1", {}, "Sessions ", h("span", { class: "sub" }, `${rangeName()}: pick one to see every turn and call in order`)),
+        table(SESSION_COLUMNS, data.sessions, { sortBy: 3, empty: "No session has a record in this range." }),
+    ];
+}
+
+function callLine(line) {
+    const decision = line.decision
+        ? h("span", { class: `badge ${line.decision}`, title: `decided by ${line.decisionSource || "unknown"}` }, line.decision + (line.decisionSource ? ` · ${line.decisionSource}` : ""))
+        : null;
+    const answer = line.answer
+        ? h("span", { class: "badge ask" }, `you: ${line.answer}${line.waitedMs ? ` after ${ms(line.waitedMs)}` : ""}`)
+        : null;
+    const outcome = h("span", { class: `badge ${line.outcome}` }, line.outcome + (line.errorKind ? ` · ${line.errorKind}` : ""));
+    const facts = line.facts
+        ? h("span", { class: "dim mono" }, ` ${Object.entries(line.facts).map(([k, v]) => `${k}=${v}`).join(" ")}`)
+        : null;
+    return h("li", { class: "call" },
+        h("span", { class: "dim mono" }, clock(line.time)),
+        h("span", { class: "kind dim" }, "tool"),
+        h("span", { class: "what" },
+            h("strong", {}, toolName(line)), " ",
+            line.environment && line.environment !== "local" ? h("span", { class: "dim" }, `@${line.environment} `) : null,
+            decision, " ", answer, " ", outcome, facts,
+            line.error ? h("div", {}, h("span", { class: "err-line mono" }, line.error)) : null,
+        ),
+        h("span", { class: "right" }, ms(line.durationMs)),
+    );
+}
+
+function turnLine(line) {
+    const input = line.input + line.cacheRead + line.cacheWrite;
+    const hit = input > 0 ? ` (${pct(line.cacheRead / input)} cached)` : "";
+    return h("li", { class: "turn" },
+        h("span", { class: "dim mono" }, clock(line.time)),
+        h("span", { class: "kind dim" }, "model"),
+        h("span", { class: "what" }, h("span", { title: line.modelId }, line.model), h("span", { class: "dim" }, `  ${count(input)} in${hit}, ${count(line.output)} out`)),
+        h("span", { class: "right" }, money(line.cost)),
+    );
+}
+
+function timelineList(timeline) {
+    return h("ul", { class: "tl" }, timeline.lines.map((line) => {
+        if (line.kind === "turn") return turnLine(line);
+        if (line.kind === "call") return callLine(line);
+        const child = line.timeline;
+        return h("li", { class: "child" },
+            h("details", { open: true },
+                h("summary", {}, h("strong", {}, child.agentRole), " ", sessionLink(child.session), h("span", { class: "dim" }, `  ${when(child.first)}, ${ms((child.last - child.first) * 1000)}, ${money(child.cost)}, ${child.lines.length} lines`)),
+                timelineList(child),
+            ),
+        );
+    }));
+}
+
+async function session(id) {
+    if (!id) return sessionPicker();
+    const data = await get(`/api/session?id=${encodeURIComponent(id)}`);
+    if (data.empty) return empty(NO_INDEX);
+    const tl = data.timeline;
+    if (!tl) return [h("h1", {}, "Session ", h("span", { class: "mono" }, id)), empty("No record has this session id.")];
+    return [
+        h("h1", {}, "Session ", h("span", { class: "mono", title: tl.session }, shortId(tl.session)), " ",
+            h("span", { class: "sub" }, `${tl.agentRole}, ${when(tl.first)} for ${ms((tl.last - tl.first) * 1000)}`)),
+        h("p", {},
+            "Ticket: ", tl.tickets.length ? tl.tickets.map((k, i) => [i ? ", " : "", ticketLink(k)]) : ticketLink(),
+            tl.parentSession ? [h("span", { class: "dim" }, "  ·  child of "), sessionLink(tl.parentSession)] : null,
+        ),
+        totalsCards(data.totals),
+        h("h2", {}, "Every turn and call, in order ", h("span", { class: "sub" }, "child agents nested where they started")),
+        tl.lines.length ? h("div", { class: "panel" }, timelineList(tl)) : empty("This session has no lines."),
+        tl.cut ? h("p", { class: "note" }, "The list stops at 5000 lines.") : null,
+    ];
+}
+
+async function tools() {
+    const data = await get(`/api/tools?days=${state.days}`);
+    if (data.empty) return empty(NO_INDEX);
+    const toolColumns = [
+        { label: "Tool", value: (r) => toolName(r), show: (r) => h("strong", {}, toolName(r)) },
+        { label: "Calls", value: (r) => r.calls, num: true },
+        { label: "Failed", value: (r) => r.failed, show: (r) => (r.failed ? h("span", { class: "error" }, r.failed) : "0"), num: true },
+        { label: "Fail %", value: (r) => r.failed / r.calls, show: (r) => pct(r.failed / r.calls), num: true },
+        { label: "Blocked", value: (r) => r.blocked, num: true },
+        { label: "p50", value: (r) => r.p50Ms ?? -1, show: (r) => ms(r.p50Ms), num: true },
+        { label: "p95", value: (r) => r.p95Ms ?? -1, show: (r) => ms(r.p95Ms), num: true },
+    ];
+    const refusedRows = data.refused ? data.refused.groups.flatMap((group) => group.tools.map((tool) => ({ ...tool, source: group.source, kind: group.kind }))) : [];
+    const refusedColumns = [
+        { label: "Decided by", value: (r) => r.source },
+        { label: "Why", value: (r) => r.kind },
+        { label: "Tool", value: (r) => toolName(r) },
+        { label: "Calls", value: (r) => r.count, num: true },
+    ];
+    const loopColumns = [
+        { label: "Session", value: (r) => r.session, show: (r) => sessionLink(r.session) },
+        { label: "Ticket", value: (r) => r.ticket || "", show: (r) => ticketLink(r.ticket) },
+        { label: "Tool", value: (r) => toolName(r), show: (r) => h("strong", {}, toolName(r)) },
+        { label: "In a row", value: (r) => r.failures, num: true },
+        { label: "Last error", value: (r) => r.errorKind || "" },
+        { label: "From", value: (r) => r.from, show: (r) => when(r.from) },
+        { label: "For", value: (r) => r.to - r.from, show: (r) => ms((r.to - r.from) * 1000), num: true },
+    ];
+    return [
+        h("h1", {}, "Tools ", h("span", { class: "sub" }, rangeName())),
+        table(toolColumns, data.tools, { sortBy: 1, empty: "No tool was called in this range." }),
+        h("h2", {}, "Loops ", h("span", { class: "sub" }, "the same tool failing 3 times or more in a row in a session")),
+        table(loopColumns, data.loops, { sortBy: 3, empty: "No loops in this range." }),
+        h("h2", {}, "Refused ", h("span", { class: "sub" }, "calls that never ran, by who decided and why")),
+        table(refusedColumns, refusedRows, { sortBy: 3, empty: "Nothing was refused in this range." }),
+    ];
+}
+
+async function yourTime() {
+    const data = await get(`/api/time?days=${state.days}`);
+    if (data.empty) return empty(NO_INDEX);
+    const t = data.time;
+    const heading = h("h1", {}, "Your time ", h("span", { class: "sub" }, rangeName()));
+    if (!t) return [heading, empty("Nothing asked you a question in this range.")];
+    const groupColumns = (label) => [
+        { label, value: (r) => r.name, show: (r) => (label === "Ticket" ? ticketLink(r.name) : h("strong", {}, r.name)) },
+        { label: "Questions", value: (r) => r.questions, num: true },
+        { label: "Waited", value: (r) => r.waitedMs, show: (r) => ms(r.waitedMs), num: true },
+        { label: "Longest", value: (r) => r.longestMs, show: (r) => ms(r.longestMs), num: true },
+    ];
+    const longestColumns = [
+        { label: "When", value: (r) => r.time, show: (r) => when(r.time) },
+        { label: "Session", value: (r) => r.session, show: (r) => sessionLink(r.session) },
+        { label: "Ticket", value: (r) => r.ticket || "", show: (r) => ticketLink(r.ticket) },
+        { label: "Tool", value: (r) => toolName(r) },
+        { label: "Answer", value: (r) => r.answer },
+        { label: "Waited", value: (r) => r.waitedMs, show: (r) => ms(r.waitedMs), num: true },
+    ];
+    const a = t.answers;
+    return [
+        heading,
+        h("div", { class: "cards" },
+            card("Questions", String(t.questions), `${a.allowed} allowed, ${a.allowedForSession} for the session`),
+            card("Declined", String(a.declined + a.dismissed), `${a.dismissed} closed without an answer`),
+            card("Waited in total", ms(t.totalMs) || "0s"),
+            card("Median wait", ms(t.medianMs) || "0s"),
+            card("Longest wait", ms(t.longestMs) || "0s"),
+        ),
+        h("div", { class: "two" },
+            h("div", {}, h("h2", {}, "By tool"), table(groupColumns("Tool"), t.byTool, { sortBy: 2 })),
+            h("div", {}, h("h2", {}, "By ticket"), table(groupColumns("Ticket"), t.byTicket, { sortBy: 2 })),
+        ),
+        h("h2", {}, "Longest waits"),
+        table(longestColumns, t.longest, { sortBy: 5 }),
+    ];
+}
+
+const VIEW_DRAW = { overview, tickets, ticket, session, tools, time: yourTime };
+
+window.addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>

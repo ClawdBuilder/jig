@@ -4,14 +4,13 @@
 Pi session on a scripted model, and was seen in Pi 1.4.0's terminal on Linux; the
 RPC notification is tested with a fake screen only.
 
-`/lens usage` is tested with session files and a fake screen, and was seen in the
-same terminal. The dashboards were tried with Grafana 13.3 and its SQLite data
-source 4.0.6 on Linux. macOS is not tried yet.
+`/lens usage` is tested with session files and a fake screen, and was seen in the same terminal. `/lens web` was
+tried in Edge against a real index; Grafana 13.3 with its SQLite data source 4.0.6 on Linux. macOS is not tried yet.
 
 `jig-lens` shows what `jig-core` [records](../jig-core/docs/records.md): cost, tool
 failures, and time spent waiting for you. `/lens` prints a summary inside Pi, with
-no server and no install. Grafana, or Datasette, is an optional deep dive. It
-never changes the records, and nothing leaves the machine.
+no server and no install; `/lens web` opens charts, sessions and tools in your browser, with no
+install either. Grafana or Datasette are optional extras. It never changes the records, and nothing leaves the machine.
 
 `/lens usage` is a quick view of cost and tokens from Pi's own session files;
 TokenTelemetry goes further (see [Reuse](../../docs/reuse.md)). `jig-lens` adds what only
@@ -38,9 +37,9 @@ Ticket PROJ-123, all time
   Checks     ci watch  conclusion success, failed 0, passed 412  2h ago
 ```
 
-![jig-core appends records, jig-lens imports them into its own index, the /lens summary in Pi reads it, and Grafana reads it read-only on 127.0.0.1](../../docs/img/lens-flow.svg)
+![jig-core appends records, jig-lens imports them into its own index, the /lens summary in Pi reads it, and the /lens web page reads it read-only on 127.0.0.1](../../docs/img/lens-flow.svg)
 
-*How the records reach the screen: `jig-core` appends them, `jig-lens` keeps a copy it can rebuild, the `/lens` summary reads that copy inside Pi, and Grafana, if you start it, reads it read-only on `127.0.0.1`, with its sign-in on.*
+*How the records reach the screen: `jig-core` appends them, `jig-lens` keeps a copy it can rebuild, the `/lens` summary reads that copy inside Pi, and the `/lens web` page reads it read-only on `127.0.0.1`, behind a secret link.*
 
 ## Commands
 
@@ -52,29 +51,29 @@ Ticket PROJ-123, all time
 | `/lens days N` | The last N days, from 1 to 90, the last of them today |
 | `/lens compare [days N]` | Sessions grouped by condition, side by side, over the last N days (30 by default). See [Comparing conditions](docs/compare.md) |
 | `/lens usage` | An interactive view of cost and tokens from Pi's own session files |
+| `/lens web` | Imports, starts this session's page on `127.0.0.1` (or reuses it), and opens it. See [The web page](docs/web.md) |
 | `/lens grafana` | Imports, starts Grafana if it is not running, and opens its dashboards |
 | `/lens datasette` | The same for Datasette |
 | `/lens rebuild` | Deletes the index and imports every record file again. The viewers are not touched |
-| `/lens status` | The viewer on the port, the index size, the last import, and the lines skipped |
+| `/lens status` | The viewer on the port, the index size, the last import, the lines skipped, and the page |
 
 `/lens compare` groups main sessions by the `condition` tag (`$JIG_CONDITION`) and counts a child's lines toward its
 parent. A short separate Pi process, such as a judge model call, is a side call: give it a `JIG_AGENT_ROLE` other than
 `main` and its cost joins its condition without making it a session.
 
 Anything else, or the wrong arguments (`/lens days 91`), shows the usage line and
-does nothing: `Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | grafana | datasette | rebuild | status]`.
+does nothing: `Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | web | grafana | datasette | rebuild | status]`.
 
 ## Rules
 
 - **Read-only over the records.** They belong to `jig-core`. The index is a copy
   that `/lens rebuild` makes again.
 - **Separate from `jig-core`,** so the guard works without the summary.
-- **The summary is for you, not the model.** In a terminal it is a session entry
-  that the model never receives; over RPC, a shortened notification; with no
-  screen, nothing.
+- **The summary is for you, not the model.** In a terminal it is a session entry that the model never
+  receives; over RPC, a shortened notification; with no screen, nothing.
 - **Today is your day,** from midnight on your clock, not a UTC day.
-- **Text here, charts elsewhere.** An existing viewer draws them, on `127.0.0.1`
-  only, and Grafana's sign-in stays on.
+- **Text here, charts on a local page.** `/lens web` draws them on `127.0.0.1` only, read-only, behind a
+  secret link, and stops with the session. Grafana's sign-in stays on.
 
 ## Configure
 
@@ -83,7 +82,7 @@ the section when a session starts; a mistake names the key, and the defaults app
 
 | Field | Default | Meaning |
 |---|---|---|
-| `port` | 3300 | The port of Grafana or Datasette on `127.0.0.1` |
+| `port` | 3300 | The port of Grafana or Datasette on `127.0.0.1`. `/lens web` takes a free port of its own |
 
 ```json
 { "lens": { "port": 3300 } }
@@ -97,15 +96,15 @@ the section when a session starts; a mistake names the key, and the defaults app
 - **OpenTelemetry export to MLflow,** for trace waterfalls, and **Datasette
   charts** through `datasette-dashboards`.
 - **The harness watching itself,** from the records and closed tickets.
-- **Not shown yet:** cost while waiting for you, retries and repeated failures,
-  and one ticket's calls in order (see [The summary](docs/summary.md#not-shown-yet)).
+- **Not shown yet:** cost while waiting for you (see [The summary](docs/summary.md#not-shown-yet)).
 
 ## Layout
 
 ```text
 jig-lens/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows the plugin's name
   src/      the import and /lens (lens, command, scopes), the figures (queries, summary, format, period),
-            the viewers (start, viewer), the index (store, import, parse), and usage-*.ts for /lens usage
+            the viewers (start, viewer), the page (web, web-queries), the index (store, import, parse), usage-*.ts
+  web/      the page of /lens web: one HTML file with its styles and script
   viewer/   Grafana provisioning and dashboards, as files; Datasette's metadata and queries
   test/     sample records, a fake Pi and a real Pi session, 100 000 calls timed, every dashboard query
   docs/     the detail pages below
@@ -118,7 +117,8 @@ jig-lens/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows 
 - [The usage view](docs/usage.md): `/lens usage`, its keys, what it reads, naming the models
 - [From the records to the index](docs/import.md): imports, retention, one viewer process
 - [The index](docs/index-schema.md): tables, SQL indexes, how fast
-- [Grafana and Datasette](docs/viewers.md): the dashboards, why these viewers, what to install
+- [The web page](docs/web.md): `/lens web`, its views and endpoints, how it starts and stops, why it is safe
+- [Viewers](docs/viewers.md): the page by default, Grafana and Datasette as extras, what to install
 - [Viewer settings](docs/viewer-settings.md): how they run, and why the sign-in stays on
 - [Starting Grafana](docs/starting-grafana.md): what `/lens grafana` does, step by step
 - [Later](docs/later.md): the export to MLflow, Datasette charts, the harness watching itself

@@ -6,6 +6,7 @@
 //   /lens days N         the same for the last N days
 //   /lens compare [days N]  the conditions (JIG_CONDITION) side by side over the last N days, 30 by default
 //   /lens usage          an interactive view of cost and tokens, from Pi's own session files
+//   /lens web            imports, starts this session's page on 127.0.0.1 (or reuses it) and opens it
 //   /lens grafana        imports, starts Grafana if it is not running, and opens its dashboards
 //   /lens datasette      the same for Datasette
 //   /lens rebuild        deletes the index and imports every record file again
@@ -29,6 +30,7 @@ import type { Block } from "./summary.ts";
 import { createModelNames, MODEL_NAMES_EVENT } from "./usage-names.ts";
 import { homeUrl, viewerUrl } from "./viewer.ts";
 import type { Viewer, ViewerState } from "./viewer.ts";
+import { LensWeb } from "./web.ts";
 
 type Level = "info" | "warning" | "error";
 
@@ -215,6 +217,27 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
         tell(ctx, lines.join("\n"));
     }
 
+    // The page of this session. Nothing listens until `/lens web`, and it stops with the session.
+    const web = new LensWeb({ index: () => deps.paths().index, now: () => deps.now(), names: modelNames.names });
+    pi.on("session_shutdown", () => web.stop());
+
+    /** `/lens web`: import, start the page (or reuse it), and open it. */
+    async function openWeb(ctx: ExtensionContext): Promise<void> {
+        const lines = [importLine(await importer.run())];
+        let reused: boolean;
+        try {
+            ({ reused } = await web.start());
+        } catch (error) {
+            lines.push(`Could not start the page: ${reason(error)}`);
+            tell(ctx, lines.join("\n"), "warning");
+            return;
+        }
+        const link = web.link ?? "";
+        lines.push(reused ? `The page is running at ${web.url}.` : `Started the page at ${web.url}.`);
+        lines.push((await deps.open(link)) ? `Opened ${link} in your browser.` : `Open ${link} in your browser.`);
+        tell(ctx, lines.join("\n"));
+    }
+
     async function rebuild(ctx: ExtensionContext): Promise<void> {
         const outcome = await importer.run(true);
         if (outcome.result === undefined) {
@@ -260,7 +283,10 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
                 : state === "stopped"
                   ? `Viewer: none running at ${url} (/lens grafana or /lens datasette starts one)`
                   : `Viewer: the port is taken by something that is neither Grafana nor Datasette (${url})`;
-        const lines = [viewerLine, ...indexLines(paths.index, () => readStatus(paths.index))];
+        const webLine = web.running
+            ? `Page: running at ${web.url}, for this session (/lens web opens it)`
+            : "Page: not running (/lens web starts it)";
+        const lines = [viewerLine, ...indexLines(paths.index, () => readStatus(paths.index)), webLine];
         const problem = importer.problem();
         if (problem !== undefined) lines.push(`Latest import in this session: ${problem}`);
         tell(ctx, lines.join("\n"));
@@ -269,7 +295,7 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
     pi.registerCommand("lens", {
         description:
             "Jig summary of cost, failures and your waiting time: /lens, ticket KEY, session, days N; compare [days N] for conditions side by side; " +
-            "usage for cost and tokens by period and model; grafana or datasette for a dashboard; rebuild, status",
+            "usage for cost and tokens by period and model; web for the built-in page; grafana or datasette for a dashboard; rebuild, status",
         getArgumentCompletions: completions,
         handler: async (args, ctx) => {
             const command = parseCommand(args);
@@ -281,6 +307,8 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
                     return compare(ctx, command.days);
                 case "usage-view":
                     return usage(ctx);
+                case "web":
+                    return openWeb(ctx);
                 case "viewer":
                     return openViewer(ctx, command.viewer);
                 case "rebuild":

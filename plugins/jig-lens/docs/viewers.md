@@ -1,18 +1,21 @@
-# Grafana and Datasette
+# Viewers
 
-The two optional viewers over the index, why these, and what they need. Back to
-the [jig-lens overview](../README.md).
+The ways to look at the index beyond the `/lens` summary: the built-in page by
+default, and Grafana or Datasette as optional extras. Back to the
+[jig-lens overview](../README.md).
 
 **The everyday view is `/lens` inside Pi:** a summary with no server and no
-install.
+install. **For charts and drill-down, `/lens web`** opens a page that this Pi
+session serves on `127.0.0.1`, with nothing to install (see
+[The web page](web.md)).
 
-Grafana is an optional deep dive (`/lens grafana`) for when charts and drill-down
-are wanted, and Datasette (`/lens datasette`) takes its place where Grafana
-cannot be installed. How each is run is in [Viewer settings](viewer-settings.md),
+Grafana is an optional extra (`/lens grafana`) for those who already run it or
+want to write their own dashboards, and Datasette (`/lens datasette`) shows the
+kept queries as tables. How each is run is in [Viewer settings](viewer-settings.md),
 and what `/lens grafana` does step by step is in
 [Starting Grafana](starting-grafana.md).
 
-## The dashboards
+## Grafana's dashboards
 
 Five dashboards, in a Grafana folder named Jig. A day is a UTC day, as in the
 record files.
@@ -38,16 +41,21 @@ Datasette shows the queries kept in this plugin as tables. Charts with
 
 Chosen on 2026-10-30 from a comparison of LLM trace platforms, OpenTelemetry
 backends, SQL dashboards and tools built for coding agents. Each was judged on
-local-only operation, setup, charts, licence, and Linux and macOS support.
+local-only operation, setup, charts, licence, and Linux and macOS support. The
+built-in page came later, on 2026-11-03, so that nobody needs to install Grafana
+to see a chart.
 
 | Viewer | Verdict | Why |
 |---|---|---|
-| Grafana OSS with the SQLite data source plugin | **optional deep dive** | One local process, no containers, SQL panels, links from a summary to its detail |
-| Datasette | fallback | One Python process over the same index; the queries show as tables |
+| `/lens web`, the built-in page | **default** | Nothing to install; served by Pi, read-only, stops with the session |
+| Grafana OSS with the SQLite data source plugin | optional extra | One local process, SQL panels you can edit, links from a summary to its detail |
+| Datasette | optional extra | One Python process over the same index; the queries show as tables |
 | MLflow, through OpenTelemetry export | later | Trace waterfalls and LLM views, if they are wanted. An export from the index, not a second record |
 | Arize Phoenix | skip | A richer trace view, but its licence is not open source, and its dashboards are fixed |
 | Langfuse, Opik, SigNoz, OpenLIT | skip | Three to seven containers each, with ClickHouse or Postgres: too heavy for one developer |
 
+- **The page:** one HTML file in this plugin, drawn by its own small script,
+  over fixed queries; see [The web page](web.md).
 - **Grafana:** the data source and dashboards load from files kept in this
   plugin, with a variable for the session and the ticket.
 - **Datasette:** charts with `datasette-dashboards` come later.
@@ -61,7 +69,8 @@ no change to the import.
 
 ## What to install
 
-Jig does not bundle either viewer. Both are optional: `/lens` needs neither.
+`/lens` and `/lens web` need nothing. Jig does not bundle Grafana or Datasette;
+both are optional.
 
 - **For `/lens grafana`:** Grafana OSS and its `frser-sqlite-datasource` plugin,
   installed by you: a package manager on Linux, Homebrew on macOS.

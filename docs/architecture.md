@@ -134,7 +134,7 @@ jig (this repository, generic)
   jig-review tools: the code review in the browser, approved with a passkey
   jig-memory tool: the handoff record (pasted evidence, open checks); ticket folders, notes, evidence, cards and recall
   jig-workflow tool: named workflows, with exit conditions decided from evidence; registers a gate that holds calls
-  jig-lens   observability: reads jig-core's records, local dashboard; no tools
+  jig-lens   observability: reads jig-core's records, a summary in Pi and a local page; no tools
   jig-theme  the look: palettes as Pi themes, a footer, the answer colour; no tools
   jig-session the live session's state as a status file other programs read, such as the Herdr app files (herdr/, not a plugin)
   jig-sandbox the sandbox around the agent's bash, and the bash tool that replaces Pi's

@@ -17,7 +17,7 @@ In text, the same picture:
                                │
                                │ read-only SQL
                                ▼
-                         Grafana on 127.0.0.1     dashboards kept as files in this plugin (optional)
+                         /lens web on 127.0.0.1   a page served by Pi (or Grafana, optional)
                                │
                                ▼
                          your browser

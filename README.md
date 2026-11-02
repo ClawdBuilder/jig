@@ -164,7 +164,7 @@ Why the launcher is this small: [Decisions](docs/decisions.md#2026-11-02-an-opti
 | [`jig-core`](plugins/jig-core/README.md) | built | The tool manager: rules per environment, approvals, secrets, masking, watches, records |
 | [`jig-sandbox`](plugins/jig-sandbox/README.md) | built | The agent's `bash` in an operating-system sandbox: credentials hidden, start-up files locked, everything else as outside; background tasks; a filtered network |
 | [`jig-git`](plugins/jig-git/README.md) | built | Local git, GitHub pull requests and GitLab merge requests with reviews, tags and releases |
-| [`jig-lens`](plugins/jig-lens/README.md) | built | Cost, tool failures and time spent waiting for you, inside Pi; Grafana optional |
+| [`jig-lens`](plugins/jig-lens/README.md) | built | Cost, tool failures and time spent waiting for you, inside Pi and on a local page; Grafana optional |
 | [`jig-workflow`](plugins/jig-workflow/README.md) | built | Named workflows you define: stages, exit conditions checked against evidence, holds, test runs in the sandbox |
 | [`jig-memory`](plugins/jig-memory/README.md) | built | Ticket folders, notes and evidence; a card per closed ticket, and recall of related tickets |
 | [`jig-mongo`](plugins/jig-mongo/README.md) | built | MongoDB: explore, query, aggregate and write, with allow and deny lists |
