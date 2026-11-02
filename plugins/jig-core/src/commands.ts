@@ -13,6 +13,7 @@ import { FILE_TOOLS } from "./protected-paths.ts";
 import type { ProtectedKind, ProtectedSource } from "./protected-paths.ts";
 import { formatDuration, summarize } from "./records.ts";
 import { plainLine } from "./watch/clean.ts";
+import { deferredNames } from "./tool-exposure.ts";
 import type { JigState } from "./state.ts";
 
 /** A list longer than this is shown in a scrollable selector instead of a notice. */
@@ -117,6 +118,8 @@ export function statusLines(state: JigState): string[] {
             ? `Configuration: ${state.personal.file}`
             : `Configuration: none found (${state.personal.file || "not loaded yet"}), defaults apply`,
     ];
+    const deferred = deferredNames(state);
+    if (deferred.length > 0) lines.push(`Deferred tools (found with tool_search): ${deferred.join(", ")}`);
     const sections = [...state.sectionChecks.keys()];
     if (sections.length > 0) {
         const shown = sections.map((name) => `${name} (${sectionState(state, name)})`);

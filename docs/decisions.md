@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-03: deferred tools and stage tools](#2026-11-03-deferred-tools-and-stage-tools)
 - [2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file](#2026-11-02-the-review-screens-browser-page-is-served-over-localhost-not-opened-as-a-file)
 - [2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files](#2026-11-02-a-gradle-builds-tests-pick-an-installed-jdk-that-fits-from-files)
 - [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
@@ -184,6 +185,36 @@ Teams that deploy with Concourse start a job by hand, and read its builds, the w
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-03: deferred tools and stage tools
+
+Every Jig tool's description is sent at session start, about 13k tokens with all the plugins loaded, though most sessions use a
+few of the tools. Pi 1.5 can register a tool `deferred`: it is not declared to the model until Pi's `tool_search` finds it.
+
+**Decided**
+- **`tools.deferred` in `jig.json`** names the Jig tools to defer. jig-core checks the section like a plugin's, so a company
+  plugin can give a default through `addSectionDefaults("tools", ...)`, and the user's list replaces it. A name no plugin
+  declared is a warning at session start, said once; Pi's own tools (`read`, `bash`, `edit`, `write` and the rest) are refused.
+- **Every plugin registers through `registerJigTool`** (kit), a drop-in for `pi.registerTool`. A plugin registers before
+  `jig.json` is read, so the tool is registered direct, and at session start a deferred one is registered again as
+  `deferred` and taken out of the active set, unless the transcript shows it loaded (a resume or a reload keeps it).
+- **jig-core activates `tool_search`** at session start when a Jig tool is deferred, as Pi's MCP extension does for deferred
+  servers (Pi registers it inactive). Without a `tool_search`, nothing is deferred and the user is told.
+- **A workflow stage can name tools** (`"tools": ["deploy"]`). jig-workflow activates them when the work enters the stage and
+  takes out, when it leaves, only those it added, and never one the user switched on meanwhile (`jig-session`'s switches).
+  What it added is kept in a session entry, so a reload or a resume knows which tools are the stage's.
+
+**Why**
+- **Context and focus, more than money.** Prompt caching makes the repeated descriptions cheap after the first request, so the
+  saving in money is small. The gain is a smaller context and fewer tools for the model to weigh on every turn.
+- **The safety net is Pi's.** `tool_search` finds a deferred tool by its name and description, so a task that needs one still
+  gets it, at the cost of one extra step. A stage that knows it needs a tool brings it in without that step.
+
+**Rejected**
+- **Deciding the exposure when the plugin loads.** A company plugin's defaults may come after the plugin, and `jig.json` is read
+  at session start; a tool registered once with the wrong exposure would have to be changed anyway.
+- **Hiding the tools a stage does not name.** A stage says what it needs, not everything it may need; `tool_search` covers the rest.
+- **A loader tool of our own.** Pi ships one; a second would be another description in every session.
 
 ## 2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file
 

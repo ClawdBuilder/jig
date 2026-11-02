@@ -3,6 +3,7 @@
 // push or a new pull request this plugin announces `jig-git:pushed` on Pi's event bus, and jig-ops acts on it.
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { withJig } from "../../jig-core/src/client.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { validateGitSection } from "./config.ts";
 import { setAnnouncer } from "./events.ts";
 import { gitTool } from "./git.ts";
@@ -18,7 +19,7 @@ export default function (pi: ExtensionAPI) {
     // The tools' previews run without a context, so the folder Pi works in is remembered from the start of the session.
     pi.on("session_start", (_event, ctx) => setWorkingDirectory(ctx.cwd));
     setAnnouncer((event, payload) => pi.events.emit(event, payload));
-    for (const tool of tools) pi.registerTool(tool.definition);
+    for (const tool of tools) registerJigTool(pi, tool.definition);
     // jig-core may load after this plugin; withJig waits for it. What the tools declare is how jig-core classifies them.
     withJig((api) => {
         for (const tool of tools) api.declareTool(tool.declaration);

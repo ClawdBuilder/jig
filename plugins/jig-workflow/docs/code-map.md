@@ -12,7 +12,7 @@ gone, so this table cannot drift from the code.
 
 | File | What it does | Called by |
 |---|---|---|
-| `index.ts` | The factory: registers the section, the tool, the gate, the command and the listeners for other plugins' events | Pi |
+| `index.ts` | The factory: registers the section, the tool, the gate, the command, the listeners for other plugins' events, and the stage tools' sync | Pi |
 
 ### Tool, command and gate
 
@@ -44,6 +44,7 @@ gone, so this table cannot drift from the code.
 | `environment.ts` | The plain environment variables of a test command: what is accepted, how `~` expands | `tests.ts`, `outside.ts`, `action-tests.ts` |
 | `java.ts` | Which installed JDK a Gradle build runs on: the wrapper's version, the build's Java level, Gradle's table | `tests.ts` |
 | `outside.ts` | A test command set to run outside the sandbox: it goes through `bash` with `outside: true`, so you are asked | `action-tests.ts` |
+| `stage-tools.ts` | A stage's `tools`: switched on when the work enters it, off when it leaves, except what you switched on; kept in a session entry | `runtime.ts` |
 | `status.ts` | Says where the work is: the stage, each missing condition, the holds | `action-start.ts`, `action-support.ts`, `index.ts` |
 | `definition.ts` | A workflow file, checked: stages, conditions and holds | `load.ts`, `runtime.ts`, `conditions.ts`, `gate.ts`, `status.ts`, `action-start.ts` |
 | `load.ts` | Reads the workflow files from their folders; a bad file is reported and the rest still load | `runtime.ts`, `action-start.ts`, `action-support.ts`, `status.ts` |

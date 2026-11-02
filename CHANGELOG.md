@@ -10,6 +10,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `tools.deferred` in `jig.json` names Jig tools to register `deferred`: their descriptions stay out of the context until Pi's
+  `tool_search` finds them, and `jig-core` activates `tool_search` when a Jig tool is deferred. Plugins register their tools
+  through the kit's `registerJigTool`.
+- A workflow stage can name tools (`"tools": ["deploy"]`): `jig-workflow` activates them while the work is in the stage, and
+  takes out on leaving only the ones it added, never one you switched on yourself.
 - `approvals.openInBrowser` in `jig.json`: `"always"` opens a review screen's preview in the browser as soon as the screen appears (once per question); the default `"on-key"` keeps the `o` key.
 - `workflow test` picks the JDK a Gradle build needs from its files (the wrapper's Gradle version, the build's Java level, and each installed JDK's `release` file), so no repository needs its own `JAVA_HOME`; a configured one still wins, and the result says which JDK ran and why.
 - `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure

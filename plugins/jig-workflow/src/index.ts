@@ -3,6 +3,7 @@
 // from a ticket folder or a repository until a session starts or a call is made.
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { withJig } from "../../jig-core/src/client.ts";
+import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { registerCommands } from "./commands.ts";
 import { validateWorkflow } from "./config.ts";
 import { createGate } from "./gate.ts";
@@ -34,7 +35,7 @@ export function workflow(options: WorkflowOptions = {}): ExtensionFactory {
             api.declareTool(tool.declaration);
             api.gates.register(createGate(rt));
         });
-        pi.registerTool(tool.definition);
+        registerJigTool(pi, tool.definition);
         registerCommands(pi, rt);
 
         const listening = [
@@ -55,9 +56,17 @@ export function workflow(options: WorkflowOptions = {}): ExtensionFactory {
         pi.on("tool_result", (event, ctx) => {
             rt.touch(ctx);
             rt.noteResult(event.toolCallId, event.toolName, event.isError);
+            // `start`, `advance` and `back` move the stage: its tools are there for the next request of this run.
+            if (event.toolName === "workflow") rt.syncStageTools();
+        });
+        // Before each prompt, so a ticket switched with /ticket, a /workflow command or another session's move is caught up.
+        pi.on("before_agent_start", (_event, ctx) => {
+            rt.touch(ctx);
+            rt.syncStageTools();
         });
         pi.on("session_start", async (_event, ctx) => {
             rt.start(ctx);
+            rt.syncStageTools(true);
             try {
                 const line = await startLine(rt);
                 if (line !== undefined && ctx.hasUI) ctx.ui.notify(line, "info");

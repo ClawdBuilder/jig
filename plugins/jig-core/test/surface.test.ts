@@ -152,6 +152,23 @@ describe("the API", () => {
         ]);
     });
 
+    test("jig-core checks one own section like a plugin's, so a company plugin can give defaults for it: tools", async () => {
+        const { TOOLS_SECTION, NOT_DEFERRABLE } = await import("../src/kit/tools.ts");
+        assert.equal(TOOLS_SECTION, "tools");
+        assert.deepEqual([...NOT_DEFERRABLE].sort(), [
+            "bash",
+            "codemode",
+            "edit",
+            "find",
+            "grep",
+            "ls",
+            "powershell",
+            "read",
+            "tool_search",
+            "write",
+        ]);
+    });
+
     test("the events on Pi's event bus are these", async () => {
         const { JIG_EVENTS } = await import("../src/contract.ts");
         assert.deepEqual({ ...JIG_EVENTS }, { decision: "jig:decision", watchDone: "jig:watch-done" });
@@ -230,6 +247,7 @@ describe("what plugins import", () => {
             "role-policy.ts",
             "schema.ts",
             "text.ts",
+            "tools.ts",
             "values.ts",
         ]);
         const expected: Record<string, string[]> = {
@@ -271,6 +289,15 @@ describe("what plugins import", () => {
             ],
             "schema.ts": ["stringEnum"],
             "text.ts": ["printable", "stringOf"],
+            "tools.ts": [
+                "NOT_DEFERRABLE",
+                "TOOLS_SECTION",
+                "TOOL_SEARCH",
+                "deferredToolNames",
+                "hasToolSearch",
+                "registerJigTool",
+                "transcriptTools",
+            ],
             "values.ts": ["InputError", "isObject"],
         };
         for (const module of modules) {

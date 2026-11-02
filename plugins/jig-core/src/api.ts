@@ -11,6 +11,7 @@ import {
 } from "./config.ts";
 import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
 import { git, run } from "./exec.ts";
+import { TOOLS_SECTION } from "./kit/tools.ts";
 import type { ExecGuard } from "./exec.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
 import type { JigState } from "./state.ts";
@@ -183,6 +184,9 @@ export function buildApi(state: JigState): JigApi {
                     throw new Error(
                         `registerSection: "${name}" is a jig-core field, so a plugin cannot use it for a section`,
                     );
+                }
+                if (name === TOOLS_SECTION) {
+                    throw new Error(`registerSection: "${name}" is jig-core's section, so a plugin cannot use it`);
                 }
                 state.sectionChecks.set(name, validate);
                 if (oneOf === undefined || oneOf.length === 0) state.sectionOneOf.delete(name);

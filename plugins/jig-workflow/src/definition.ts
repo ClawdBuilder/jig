@@ -32,6 +32,8 @@ export interface Stage {
     id: string;
     goal?: string;
     exit: Condition[];
+    /** Tools made active while the work is in this stage (stage-tools.ts). */
+    tools?: string[];
 }
 
 /** One entry of a hold's `calls`: a tool, and optionally one of its actions. */
@@ -63,7 +65,7 @@ export interface Parsed {
 }
 
 const FILE_FIELDS = new Set(["name", "description", "match", "branch", "stages", "holds"]);
-const STAGE_FIELDS = new Set(["id", "goal", "exit"]);
+const STAGE_FIELDS = new Set(["id", "goal", "exit", "tools"]);
 const HOLD_FIELDS = new Set(["until", "calls"]);
 const MATCH_FIELDS = new Set(["ticket"]);
 
@@ -75,6 +77,7 @@ const MAX_TEXT = 500;
 const MAX_STAGES = 30;
 const MAX_HOLDS = 30;
 const MAX_CALLS = 30;
+const MAX_STAGE_TOOLS = 30;
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -214,9 +217,33 @@ function parseStages(raw: unknown, errors: string[]): Stage[] {
                 });
             }
         }
-        if (typeof id === "string") stages.push({ id, ...(goal === undefined ? {} : { goal }), exit });
+        const tools = parseStageTools(entry.tools, at, errors);
+        if (typeof id === "string")
+            stages.push({
+                id,
+                ...(goal === undefined ? {} : { goal }),
+                exit,
+                ...(tools === undefined ? {} : { tools }),
+            });
     });
     return stages;
+}
+
+/** A stage's `tools`: tool names, each once. Whether this session has the tool is said when the stage is entered. */
+function parseStageTools(raw: unknown, at: string, errors: string[]): string[] | undefined {
+    if (raw === undefined) return undefined;
+    if (!Array.isArray(raw) || raw.length > MAX_STAGE_TOOLS) {
+        errors.push(`${at}.tools: must be a list of at most ${MAX_STAGE_TOOLS} tool names`);
+        return undefined;
+    }
+    const tools: string[] = [];
+    raw.forEach((name, position) => {
+        const where = `${at}.tools[${position}]`;
+        if (typeof name !== "string" || !TOOL.test(name)) errors.push(`${where}: ${quoted(name)} is not a tool name`);
+        else if (tools.includes(name)) errors.push(`${where}: ${quoted(name)} is listed twice`);
+        else tools.push(name);
+    });
+    return tools;
 }
 
 function parseHolds(raw: unknown, errors: string[]): Hold[] {
