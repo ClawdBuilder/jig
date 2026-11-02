@@ -9,6 +9,8 @@ import { installFakeGh, installFakeGlab } from "./fake-gh.ts";
 import type { FakeGh } from "./fake-gh.ts";
 import { installFakeJig } from "./fake-jig.ts";
 import type { FakeJig } from "./fake-jig.ts";
+import { installFakeSshConfig } from "./fake-ssh-config.ts";
+import type { FakeSshConfig } from "./fake-ssh-config.ts";
 import { sandbox } from "./repos.ts";
 import type { Sandbox } from "./repos.ts";
 
@@ -44,6 +46,11 @@ export interface Harness {
     gh: FakeGh;
     /** The fake `glab`, which answers `glab api` for GitLab as the fake `gh` answers `gh api` for GitHub. */
     glab: FakeGh;
+    /**
+     * The fake `ssh` that answers `ssh -G <host>` for an ssh origin, so no test reads a real `~/.ssh` or runs the real ssh. By
+     * default a host is its own `hostname`. A real harness has none.
+     */
+    ssh: FakeSshConfig;
     tools: Map<string, ToolDefinition>;
     announced: Announced[];
     /** Forgets what earlier tests did: the programs run, the watches started, the settings, the fake gh's fixtures. */
@@ -71,6 +78,7 @@ export function setupHarness(real = false): Harness {
     const jig = installFakeJig();
     const gh = real ? (NO_FAKE_GH as FakeGh) : installFakeGh(sb);
     const glab = real ? (NO_FAKE_GH as FakeGh) : installFakeGlab(sb);
+    const ssh = real ? (NO_FAKE_GH as unknown as FakeSshConfig) : installFakeSshConfig(sb);
     const tools = new Map<string, ToolDefinition>();
     const announced: Announced[] = [];
     const pi = {
@@ -90,12 +98,14 @@ export function setupHarness(real = false): Harness {
         jig,
         gh,
         glab,
+        ssh,
         tools,
         announced,
         reset() {
             jig.reset();
             gh.reset();
             glab.reset();
+            if (!real) ssh.reset();
             announced.length = 0;
             setWorkingDirectory(sb.workspace);
         },
