@@ -147,6 +147,7 @@ describe("the API", () => {
             "rules",
             "secrets",
             "spill",
+            "startChecks",
         ]);
     });
 

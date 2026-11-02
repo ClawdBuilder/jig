@@ -24,6 +24,8 @@ import type { ApprovalKind, ClassifyRule, Decision, Effect, EnvironmentConfig, R
 import { coversHome, expandProtected, isListablePath, mergeProtected } from "./protected-paths.ts";
 import type { ProtectedPath, ProtectedSource } from "./protected-paths.ts";
 import { layered } from "./section-defaults.ts";
+import { parseStartChecks } from "./start-checks.ts";
+import type { StartCheck } from "./start-checks.ts";
 
 /** The secret backends jig-core can resolve. `secrets.backends` chooses which of them are allowed. */
 export const SECRET_BACKENDS = ["pass", "env", "keychain", "op", "cmd", "file"] as const;
@@ -48,11 +50,14 @@ export interface ProtectedPathLists {
     guarded: string[];
 }
 
-/** Where `pass` looks, bound in `jig.json` so it does not depend on how Pi was started. Each is absolute or starts
- *  with `~/`, as written. Without one, `PASSWORD_STORE_DIR` or `GNUPGHOME` of Pi's environment applies, then pass's own. */
+/** How `pass` is used, set in `jig.json` so it does not depend on how Pi was started. `storeDir` and `gnupgHome` say where
+ *  it looks; each is absolute or starts with `~/`, as written. Without one, `PASSWORD_STORE_DIR` or `GNUPGHOME` of Pi's
+ *  environment applies, then pass's own. `unlockAtStart` (default false) asks for the store to be unlocked when a session
+ *  starts. */
 export interface PassBinding {
     storeDir?: string;
     gnupgHome?: string;
+    unlockAtStart?: boolean;
 }
 
 export interface JigConfig {
@@ -68,6 +73,8 @@ export interface JigConfig {
     };
     records: { retentionDays: number };
     spill: { retentionDays: number };
+    /** TCP checks made when a session starts. Only the user's file sets them, never a company plugin. */
+    startChecks: StartCheck[];
 }
 
 export function defaultConfig(): JigConfig {
@@ -79,6 +86,7 @@ export function defaultConfig(): JigConfig {
         secrets: { backends: ["pass"], disabledBackends: [], commands: {}, pass: {} },
         records: { retentionDays: 90 },
         spill: { retentionDays: 7 },
+        startChecks: [],
     };
 }
 
@@ -91,6 +99,7 @@ export const OWN_SECTIONS: readonly string[] = [
     "secrets",
     "records",
     "spill",
+    "startChecks",
 ];
 
 /** A plugin's check of its own section: error messages that name the key, or an empty list when it is fine. */
@@ -218,6 +227,7 @@ export function parseConfig(
     if (value.secrets !== undefined) config.secrets = parseSecrets(value.secrets, fail);
     if (value.records !== undefined) config.records = parseRetention(value.records, "records", fail, config.records);
     if (value.spill !== undefined) config.spill = parseRetention(value.spill, "spill", fail, config.spill);
+    if (value.startChecks !== undefined) config.startChecks = parseStartChecks(value.startChecks, "startChecks", fail);
 
     return {
         config: problems.length === 0 ? config : defaultConfig(),
@@ -571,14 +581,17 @@ function whyNotAStoreFolder(value: unknown): string | undefined {
     return undefined;
 }
 
-/** `{ storeDir, gnupgHome }`: the folders `pass` and its GnuPG use. */
+/** `{ storeDir, gnupgHome, unlockAtStart }`: the folders `pass` and its GnuPG use, and whether to unlock it at start. */
 function parsePassBinding(raw: unknown, path: string, fail: Fail): PassBinding {
     const out: PassBinding = {};
     if (!isObject(raw)) {
-        fail(path, "must be an object with storeDir and gnupgHome");
+        fail(path, "must be an object with storeDir, gnupgHome and unlockAtStart");
         return out;
     }
-    knownFields(raw, ["storeDir", "gnupgHome"], path, fail);
+    knownFields(raw, ["storeDir", "gnupgHome", "unlockAtStart"], path, fail);
+    const unlock = raw.unlockAtStart;
+    if (typeof unlock === "boolean") out.unlockAtStart = unlock;
+    else if (unlock !== undefined) fail(at(path, "unlockAtStart"), "must be true or false");
     for (const key of ["storeDir", "gnupgHome"] as const) {
         const value = raw[key];
         if (value === undefined) continue;
