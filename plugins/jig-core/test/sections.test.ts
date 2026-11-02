@@ -180,7 +180,7 @@ describe("through the API", () => {
         }
         // jig-core's own `tools` section is checked like a plugin's, and a plugin cannot take it either.
         assert.throws(() => api.config.registerSection("tools", () => []), /"tools" is jig-core's section/);
-        assert.deepEqual([...state.sectionChecks.keys()], ["tools"]);
+        assert.equal(state.sectionChecks.size, 0);
     });
 
     test("a section needs a name and a check", () => {

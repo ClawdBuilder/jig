@@ -217,8 +217,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             invalid: new Set(),
         },
         company: emptyAdditions(),
-        // jig-core's own section that is checked like a plugin's, so a company plugin can give defaults for it.
-        sectionChecks: new Map([[TOOLS_SECTION, validateToolsSection]]),
+        sectionChecks: new Map(),
         sectionDefaults: new Map(),
         sectionReplace: new Map(),
         sectionOneOf: new Map(),
@@ -355,7 +354,10 @@ export function rememberCall(state: JigState, call: CallState): void {
 
 /** Reads jig.json, with the sections plugins registered, and rebuilds the policy. Run at session start. */
 export function loadPersonalConfig(state: JigState, file: string = state.configPath()): void {
-    state.personal = loadConfigFile(file, state.sectionChecks, {
+    // jig-core's own `tools` section is checked like a plugin's, so a company plugin can give defaults for it, but it is
+    // not a plugin's: it stays out of `sectionChecks`, which `/jig` lists as the plugins' sections.
+    const checks = new Map([[TOOLS_SECTION, validateToolsSection], ...state.sectionChecks]);
+    state.personal = loadConfigFile(file, checks, {
         defaults: state.sectionDefaults,
         replace: state.sectionReplace,
         oneOf: state.sectionOneOf,

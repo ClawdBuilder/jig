@@ -124,7 +124,7 @@ company plugin's own tools can be deferred the same way.
   loaded, the environments and who defined them, the tools still on the unknown
   default, and the open watches (and how many are paused or wait
   for their plugin). It also shows the configuration file with the state of each
-  plugin section, the start checks and their last result, lines that plugins registered (such as `jig-mongo` saying that
+  plugin section (jig-core's own `tools` is not one; the tools it defers get a line of their own), the start checks and their last result, lines that plugins registered (such as `jig-mongo` saying that
   its index check is off), configuration errors, a failed records write, and
   problems with saved watches.
   - **A section is `loaded`,** `company defaults incomplete` (waiting for the part

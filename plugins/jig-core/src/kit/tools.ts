@@ -37,7 +37,8 @@ export const NOT_DEFERRABLE: ReadonlySet<string> = new Set([
 
 interface Slot {
     tools: Map<string, ToolDefinition>;
-    /** Between session start and shutdown: a tool registered now (again) gets its exposure at once. */
+    /** After the first session start of this runtime (a reload makes a new `pi`, so a new slot): a tool registered now
+     *  (again) gets its exposure at once. Only a session start hooks in, so the plugin's own handlers are all it has. */
     started: boolean;
 }
 
@@ -140,9 +141,6 @@ export function registerJigTool<TParams extends TSchema = TSchema, TDetails = un
             } catch {
                 // A tool left direct is a larger context, not a broken session.
             }
-        });
-        pi.on("session_shutdown", () => {
-            created.started = false;
         });
     }
     slot.tools.set(tool.name, tool as unknown as ToolDefinition);

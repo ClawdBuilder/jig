@@ -152,12 +152,9 @@ describe("the API", () => {
         ]);
     });
 
-    test("jig-core checks one section like a plugin's, so a company plugin can give defaults for it: tools", async () => {
+    test("jig-core checks one own section like a plugin's, so a company plugin can give defaults for it: tools", async () => {
         const { TOOLS_SECTION, NOT_DEFERRABLE } = await import("../src/kit/tools.ts");
         assert.equal(TOOLS_SECTION, "tools");
-        const { createState } = await import("../src/state.ts");
-        const state = createState({} as never);
-        assert.deepEqual([...state.sectionChecks.keys()], ["tools"]);
         assert.deepEqual([...NOT_DEFERRABLE].sort(), [
             "bash",
             "codemode",
