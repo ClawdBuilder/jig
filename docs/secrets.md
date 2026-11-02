@@ -21,7 +21,8 @@ appears in:
 
 All six are built, and `secrets.backends` says which may resolve a reference
 (`pass` alone by default). A new machine or employer means setting a different
-reference, not changing tools.
+reference, not changing tools. A store that is not in the table works through
+`cmd:` (see [Other stores](#other-stores)).
 
 A company plugin can turn a backend on for its own references
 (`config.enableSecretBackends`), and `secrets.disabledBackends` turns any off
@@ -63,6 +64,48 @@ environment on its own.
 Pi's file tools refuse them, and `jig-sandbox` hides them from `bash`
 ([the list](permissions.md#protected-paths)). `/jig` shows the folders `secrets.pass` binds, as paths.
 
+## Other stores
+
+`jig-core` depends on no password store: each backend is a program it runs. So any store with a
+command line works through `cmd:`, with one declared command per secret. Turn `cmd` on in
+`secrets.backends`, name the command in `secrets.commands`, and write the name in the reference:
+
+```json
+{
+  "secrets": {
+    "backends": ["pass", "cmd"],
+    "commands": {
+      "orders-db-password": ["vault", "kv", "get", "-field=password", "secret/orders/db"]
+    }
+  }
+}
+```
+
+A tool then names the secret as `cmd:orders-db-password`. A command is the program and its
+arguments as a list, run without a shell; the trimmed output is the secret
+([`cmd` in detail](../plugins/jig-core/docs/configuration.md#cmd-a-command-that-owns-the-login)).
+
+| Store | Command to declare | Note |
+|---|---|---|
+| gopass | `gopass show -o <path>` | `-o` prints the password alone |
+| HashiCorp Vault | `vault kv get -field=password <path>` | |
+| AWS Secrets Manager | `aws secretsmanager get-secret-value --secret-id <id> --query SecretString --output text` | |
+| Azure Key Vault | `az keyvault secret show --vault-name <v> --name <n> --query value -o tsv` | |
+| Linux Secret Service | `secret-tool lookup <attr> <value> ...` | |
+| Bitwarden | `bw get password <item>` | Unlocking with `bw unlock` stays your job |
+
+- **The command sees a short environment,** the one `cmd` passes on, without tokens. A variable that only
+  Pi's environment holds is not there.
+- **Windows Credential Manager has no backend.** No standard command prints a stored password, so there
+  is nothing for `cmd:` to run.
+- **A `.env` file is a last resort.** Read through `file:` or `env:`, it is plain text on disk. Prefer a
+  store that encrypts.
+
+**A team and its stores.** A company plugin's defaults name references, such as `pass:orders/api-token`.
+To use your own store, replace that one field in your own `jig.json` with a reference to it, such as
+`op://Private/orders/token` (with `op` in `secrets.backends`). Your section is laid over the company's
+([how](company-plugin.md)), so no tool changes.
+
 ## Rules
 
 - **Only through `jig-core`:** a tool gets a secret by naming its reference.
@@ -75,6 +118,15 @@ Pi's file tools refuse them, and `jig-sandbox` hides them from `bash`
   agent's shell by the sandbox.
 - **Your own tools only:** tools from other packages keep their own credentials.
   `jig-core` can mask and record their calls, but not manage their secrets.
+
+## No password entry in Jig
+
+Jig never asks for, takes or stores a secret: not in a prompt, not in a panel, not in a command. You add a
+secret with your own store's tool, in your own terminal, such as `pass insert work/jira-token`.
+
+A password typed into Jig, or into a terminal program that Jig runs for you, passes through code that is
+not the store's own. Jig keeps none of that code. What you give it is a reference, and `jig-core` reads
+the value from your store when a request needs it.
 
 ## Sign-in that a company provides
 
@@ -91,3 +143,10 @@ every result before the model sees it. See
 A request names a reference, a sign-in service or a transport in `auth`, and
 `jig-core` attaches the credential, so a plugin never sees it (see
 [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md)).
+
+## Later
+
+A read-only status that a side panel or `/jig` can show. For each reference the session's tools name, it
+says **found**, **missing** or **store locked**, and never a value. It decides without decrypting where
+the backend allows (for `pass`, the entry file exists), and for a missing one it gives the command that
+adds it. This is not built.

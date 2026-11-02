@@ -139,8 +139,8 @@ the sandbox check and `/lens`, in plain words. Then:
 2. [Permissions](docs/permissions.md): environments, rules per tool, and the
    floor that configuration cannot lower.
 3. [Approvals](docs/approvals.md): how and where you are asked.
-4. [Secrets](docs/secrets.md): where passwords and tokens come from, on any
-   operating system.
+4. [Secrets](docs/secrets.md): where passwords and tokens come from, where `pass`
+   looks, and how to use the store you already have.
 5. [Plugins](docs/plugins.md): every tool and the plugin it belongs to.
 6. [Writing a company plugin](docs/company-plugin.md): what a company adds, the
    seams in order, how your `jig.json` layers over its defaults, and the tested
