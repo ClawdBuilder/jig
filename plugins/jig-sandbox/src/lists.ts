@@ -313,6 +313,12 @@ export const FAILURE_SIGNATURES: readonly FailureSignature[] = [
         patterns: [/Cannot connect to the Docker daemon at unix:\/\//],
     },
     {
+        reason: "it makes no Unix socket (mongod makes one in /tmp: start it with --nounixsocket)",
+        // mongod's start-up error when the socket file cannot be made, recorded from mongod 8.0 in the sandbox. With --fork the
+        // output holds only "child process failed, exited with 1", so only a foreground start gives the sign.
+        patterns: [/std::exception in initAndListen, terminating","attr":\{"error":"open: Operation not permitted"\}/],
+    },
+    {
         reason: "it makes no Unix socket (the program tried to make or reach one)",
         patterns: [
             // Python: the socket call itself fails with no path in the message (a failed file operation names its path).

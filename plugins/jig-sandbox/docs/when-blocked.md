@@ -51,8 +51,12 @@ tool messages below, one more line follows:
 | `socat` | `socket(1, ...): Operation not permitted` |
 | `nc` | `nc: /path: Operation not permitted` |
 | Go | `dial unix /path: socket: operation not permitted` |
+| `mongod` | `std::exception in initAndListen, terminating` with `"error":"open: Operation not permitted"` (it exits with code 100) |
 
 Every row names the same cause: the sandbox makes no Unix socket (see [Network](../README.md#network)).
+
+`mongod` makes a socket file in `/tmp` by default, so the line there names the cheaper way: start it with `--nounixsocket`. With `--fork`, `mongod` prints
+only `child process failed, exited with 1`, so the sign shows only in a foreground start.
 
 - **It says "looks like".** The tool's words are a good guide and not proof, so the line is never stronger than that. A Python
   traceback that shows a raw socket (`SOCK_RAW`, `AF_PACKET`) is left alone.
@@ -62,6 +66,15 @@ Every row names the same cause: the sandbox makes no Unix socket (see [Network](
   run [outside the sandbox](#running-one-command-outside), and a read-only agent is told to report to the user.
 - **The list is data,** `FAILURE_SIGNATURES` in `src/lists.ts`, kept small. An entry is added when a real session shows a
   tool message that sends the agent the wrong way; the tests keep the messages as the tools printed them.
+
+## A process left running
+
+When a command ends, the sandbox stops every process it started, including ones sent away with `&`, `nohup` or `setsid`. A server
+started in one `bash` call is gone in the next; a test recorded in the real sandbox found `setsid nohup sleep 300 &` alive in the same
+call and gone in the next.
+
+- **In an interactive session,** start it as a [background task](background.md) (`background: true`): it outlives the call and wakes the agent.
+- **Without one** (print mode), or for a short job, run the server, whatever uses it and the cleanup in one command, with a `trap` that stops the server.
 
 ## The ways through
 

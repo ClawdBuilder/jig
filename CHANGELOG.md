@@ -10,6 +10,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `jig-sandbox` names a `mongod` that cannot make its Unix socket ("this failure looks like the sandbox", with the cheaper way out, `--nounixsocket`), and its docs say that a process a command leaves running ends with the call.
 - `approvals.openInBrowser` in `jig.json`: `"always"` opens a review screen's preview in the browser as soon as the screen appears (once per question); the default `"on-key"` keeps the `o` key.
 - `workflow test` picks the JDK a Gradle build needs from its files (the wrapper's Gradle version, the build's Java level, and each installed JDK's `release` file), so no repository needs its own `JAVA_HOME`; a configured one still wins, and the result says which JDK ran and why.
 - `ci` with Concourse: a job's builds, one build and its log, trigger and watch. The token comes from a credential you configure

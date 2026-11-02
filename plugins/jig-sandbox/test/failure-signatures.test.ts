@@ -42,6 +42,8 @@ const RECORDED = {
         "    _socket.socket.__init__(self, family, type, proto, fileno)",
         "PermissionError: [Errno 1] Operation not permitted",
     ].join("\n"),
+    // mongod 8.0, started in the foreground; it exits with code 100.
+    mongod: '{"t":{"$date":"2026-11-03T02:31:17.501+05:30"},"s":"E",  "c":"CONTROL",  "id":20558,   "ctx":"initandlisten","msg":"std::exception in initAndListen, terminating","attr":{"error":"open: Operation not permitted"}}',
     nodeConnect: "connect EPERM /tmp/x.sock",
     nodeListen: "listen EPERM: operation not permitted /tmp/y.sock",
     socat: "2026/11/02 17:40:44 socat[3] E socket(1, 1, 0): Operation not permitted",
@@ -69,6 +71,18 @@ describe("the words of a tool that cannot make a Unix socket", () => {
         assert.deepEqual(say(RECORDED.docker), [
             `${LOOKS}it makes no Unix socket (Docker's daemon is reached through one). ${FOREGROUND}`,
         ]);
+    });
+
+    test("mongod names the cheaper way: no Unix socket", () => {
+        assert.deepEqual(say(RECORDED.mongod), [
+            `${LOOKS}it makes no Unix socket (mongod makes one in /tmp: start it with --nounixsocket). ${FOREGROUND}`,
+        ]);
+    });
+
+    test("a mongod failure that is not the socket gets none", () => {
+        const portTaken =
+            '{"t":{"$date":"2026-11-03T02:31:17.501+05:30"},"s":"E",  "c":"CONTROL","msg":"std::exception in initAndListen, terminating","attr":{"error":"SocketException: Address already in use"}}';
+        assert.deepEqual(say(portTaken), []);
     });
 
     test("Python, Node, socat, nc and Go, each as it prints it", () => {
