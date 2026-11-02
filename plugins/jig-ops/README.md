@@ -1,8 +1,8 @@
 # jig-ops: build, deploy and run, on any CI and any platform
 
 **Status: `ci`, `deploy` and `runtime` are built.** Tested against fakes, and in CI against a real
-Kubernetes cluster with Helm, real GitHub Actions runs and a real HTTPS address. GitLab and Jenkins were not
-tried against a real server ([Not verified yet](docs/not-verified.md)).
+Kubernetes cluster with Helm, real GitHub Actions runs and a real HTTPS address. GitLab, Jenkins and Concourse
+were not tried against a real server ([Not verified yet](docs/not-verified.md)).
 
 `jig-ops` covers what happens after the code is written: did CI pass, can it go to a
 test environment, is it healthy, and what do the logs say. You describe each service
@@ -44,8 +44,8 @@ In `~/.pi/agent/jig.json`, under `ops`:
 | Field | Meaning |
 |---|---|
 | `repo` | Where the code lives, for finding the CI run of a commit |
-| `ci` | The CI system and where it is: GitHub Actions, GitLab CI or Jenkins, with its address and sign-in |
-| `environments` | Per environment: its `deploy` method, where it runs (`runtime`) and its `health` address |
+| `ci` | The CI system and where it is: GitHub Actions, GitLab CI, Jenkins or Concourse, with its address and sign-in |
+| `environments` | Per environment: its `deploy` method, where it runs (`runtime`), its `health` address and the CI `job` that acts on it |
 
 - **`production` has no `deploy` on purpose.** Without `deploy`, the agent cannot
   deploy to an environment.
@@ -86,17 +86,20 @@ All fields (and how CI watches poll): [The catalog](docs/catalog.md).
 | `runs` | read | Recent workflow runs, pipelines or builds, by branch, commit or state |
 | `run` | read | One run's jobs and steps (GitHub also its artifacts), a pipeline's jobs, or a build's stages |
 | `log` | read | A failed job's log: the tail, or the lines matching a search; capped at 400 lines and scrubbed |
-| `rerun` | external write, asks | The failed jobs of a run or pipeline (GitHub also the whole run). Not Jenkins |
-| `trigger` | external write, asks | A GitLab pipeline on a ref, or a Jenkins build, with parameters. Not GitHub Actions |
+| `rerun` | external write, asks | The failed jobs of a run or pipeline (GitHub also the whole run). Not Jenkins or Concourse |
+| `trigger` | external write, asks | A GitLab pipeline on a ref, a Jenkins build with parameters, or a Concourse job. Not GitHub Actions |
 | `watch` | local write | Waits in the background until a finish line (the required checks, a named one, a run) |
 
 An action or parameter the CI system of the service lacks is refused, naming the adapter ([CI](docs/ci.md)).
+
+Every action takes an `environment`. The call then acts on that environment's CI `job` (a Concourse job that deploys it, say)
+and in that environment: reads are reads there, a `trigger` is a write there, and production is denied ([CI jobs](docs/ci.md#a-ci-job-per-environment)).
 
 ## Adapters
 
 | Area | Built | Later, or added by anyone |
 |---|---|---|
-| CI | GitHub Actions, GitLab CI, Jenkins | Buildkite, CircleCI |
+| CI | GitHub Actions, GitLab CI, Jenkins, Concourse | Buildkite, CircleCI |
 | Deploy | Helm, `kubectl set image` | A GitOps pull request, a CI deploy job, Argo CD, Flux, platform CLIs |
 | Runtime | Kubernetes | Docker Compose, ECS, Cloud Run |
 
@@ -104,10 +107,10 @@ An action or parameter the CI system of the service lacks is refused, naming the
 
 - **Reads run.** Reruns, triggers, deploys and rollbacks ask you. Writes to production
   are denied by the floor, and production reads are masked. The CI host is `external`
-  unless the catalog names its environment.
+  unless the catalog names its environment, or the call names one with a `job`.
 - **Arguments, never a shell.** `gh`, `kubectl` and `helm` get their repository, context,
   namespace, release, chart and values from the catalog, never from the model. So do
-  GitLab and Jenkins their address, project and job.
+  GitLab, Jenkins and Concourse their address, project, team, pipeline and job.
 - **A few named writes:** `helm upgrade --install`, `helm rollback`, `kubectl set image`,
   `kubectl rollout undo`, and in CI a rerun and a trigger. No delete, scale, arbitrary
   exec or port-forward. A version is checked to be an image tag.
@@ -117,7 +120,8 @@ An action or parameter the CI system of the service lacks is refused, naming the
   nothing is run: "changed since the preview". A command or request cut short, with an
   unknown outcome, is never sent again; the state is read once.
 - **Credentials stay with you.** `gh`, `kubectl` and `helm` use their own sign-in. A
-  GitLab or Jenkins token is a secret reference, a sign-in service or a transport.
+  GitLab, Jenkins or Concourse token is a secret reference, a sign-in service or a transport. Jig never
+  signs in: when Concourse refuses the login, the message says how you renew it.
 - **A watch has an explicit finish line,** never "all checks"; one message wakes the agent.
 
 ## Events
@@ -133,9 +137,9 @@ An action or parameter the CI system of the service lacks is refused, naming the
 ## Company part (in the company plugin)
 
 - its service catalog, test environments and "artifact ready" rules; later, its deploy
-  methods, and sign-in services and transports for CI servers behind a VPN or proxy.
-- Your `ops` section is laid over its defaults, so you write only what you change. A CI `auth` and a
-  `deploy` entry of yours replace the company's whole, and the rest merges key by key.
+  methods, and sign-in services, transports and token commands for CI servers behind a VPN or proxy.
+- Your `ops` section is laid over its defaults, so you write only what you change. A CI `auth`, the `auth` of an
+  environment's `job` and a `deploy` entry of yours replace the company's whole, and the rest merges key by key.
 
 ## Later
 
@@ -152,7 +156,7 @@ jig-ops/
   src/      index, catalog, values, watch (ops-rollout); runtime/ and deploy/ (kubernetes/, helm, kubectl-image);
             ci/ (the tool, the adapter interface, an adapter per system with its api and watch, request.ts, ops-ci)
   skills/   ops/ (roll out, check, read events and logs), ci/ (wait without polling, read why it failed)
-  test/     fake gh, kubectl and helm on a PATH, fake GitLab and Jenkins on 127.0.0.1, a fake jig-core;
+  test/     fake gh, kubectl and helm on a PATH, fake GitLab, Jenkins and Concourse on 127.0.0.1, a fake jig-core;
             test/it/ against a kind cluster, Helm, GitHub and an HTTPS server (see the repository's docs/integration-tests.md)
 ```
 

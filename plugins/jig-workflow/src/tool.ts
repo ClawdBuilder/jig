@@ -1,7 +1,7 @@
 // The `workflow` tool: how the agent takes work through its workflow. Reads (`list`, `status`) run; every other action is a local
 // write. Four of them ask the user, inside the waiting call: the plan, a stage that needs you, replacing a workflow, and tests
 // outside the sandbox. `jig-core` governs the calls, and this plugin's gate makes the asks unavoidable.
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { CallClass, Preview, ToolDeclaration } from "../../jig-core/src/contract.ts";
@@ -43,7 +43,7 @@ export const ACTION_NAMES: readonly string[] = NAMES;
 
 const parameters = Type.Object(
     {
-        action: StringEnum(NAMES, {
+        action: stringEnum(NAMES, {
             description: NAMES.map((name) => `- ${name}: ${ACTIONS[name].summary}`).join("\n"),
         }),
         ticket: Type.Optional(
@@ -77,7 +77,7 @@ const parameters = Type.Object(
         number: Type.Optional(
             Type.Integer({ minimum: 1, maximum: 50, description: "scenario: the number in plan.md." }),
         ),
-        result: Type.Optional(StringEnum(["pass", "fail"] as const, { description: "scenario: what happened." })),
+        result: Type.Optional(stringEnum(["pass", "fail"] as const, { description: "scenario: what happened." })),
         evidence: Type.Optional(
             Type.Object(
                 {

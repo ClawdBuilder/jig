@@ -7,7 +7,7 @@ import type { PollOutcome } from "../../jig-core/src/contract.ts";
 import { parsePushed, PUSHED_EVENT } from "../src/ci/autowatch.ts";
 import { setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
-import { gitlabCi, jenkinsCi, section, withCi } from "./support/section.ts";
+import { concourseCi, gitlabCi, jenkinsCi, section, withCi } from "./support/section.ts";
 import type { Raw } from "./support/section.ts";
 
 let h: Harness;
@@ -186,6 +186,18 @@ describe("the watch it starts follows the CI system of the service", () => {
         h.configure(withCi(jenkinsCi({ required: ["Build"] })));
         announce(pushed({ sha: SHA2 }));
         assert.deepEqual((h.jig.watches[1]!.spec as { finish: unknown }).finish, { kind: "stages", names: ["Build"] });
+    });
+
+    test("Concourse: the first build created after the first poll, for the pushed commit", () => {
+        h.configure(withCi(concourseCi()));
+        announce(pushed());
+        assert.deepEqual(h.jig.watches[0]?.spec, {
+            system: "concourse",
+            service: "orders-api",
+            sha: SHA,
+            finish: { kind: "build" },
+        });
+        assert.equal(h.jig.watches[0]?.title, "the next build of orders-api");
     });
 });
 

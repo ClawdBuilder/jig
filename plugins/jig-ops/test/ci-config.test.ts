@@ -6,7 +6,7 @@ import { describe, test } from "node:test";
 import { ciServicesOfRepo, findCiService, readOps, validateOps } from "../src/catalog.ts";
 import type { Catalog } from "../src/catalog.ts";
 import { DEFAULT_WATCH } from "../src/ci/settings.ts";
-import { gitlabCi, jenkinsCi, section, withCi } from "./support/section.ts";
+import { concourseCi, gitlabCi, jenkinsCi, section, withCi } from "./support/section.ts";
 import type { Raw } from "./support/section.ts";
 
 const errors = (ci: unknown, repo = "acme/orders-api"): string[] => {
@@ -24,7 +24,7 @@ const catalog = (raw: Raw): Catalog => {
 };
 
 describe("a ci entry", () => {
-    test("is read for each of the three systems, with the fields of its system", () => {
+    test("is read for each of the four systems, with the fields of its system", () => {
         assert.deepEqual(catalog(section()).services.get("orders-api")?.ci, {
             system: "github-actions",
             workflow: "build.yml",
@@ -49,14 +49,24 @@ describe("a ci entry", () => {
                 required: ["Build", "Test"],
             },
         );
+        assert.deepEqual(catalog(withCi(concourseCi({ environment: "staging" }))).services.get("orders-api")?.ci, {
+            system: "concourse",
+            environment: "staging",
+            url: CI_URL,
+            team: "main",
+            pipeline: "deploy",
+            job: "orders-api-staging",
+            auth: { kind: "token", token: "env:CONCOURSE_TOKEN" },
+            signInHint: "fly -t main login",
+        });
     });
 
     test("names one of the systems there are", () => {
         assert.deepEqual(errors({ system: "circleci" }), [
-            "ops.services.orders-api.ci.system: unknown CI system; the systems there are: github-actions, gitlab, jenkins",
+            "ops.services.orders-api.ci.system: unknown CI system; the systems there are: github-actions, gitlab, jenkins, concourse",
         ]);
         assert.deepEqual(errors({}), [
-            "ops.services.orders-api.ci.system: required, the CI system: github-actions, gitlab, jenkins",
+            "ops.services.orders-api.ci.system: required, the CI system: github-actions, gitlab, jenkins, concourse",
         ]);
         assert.match(errors("gitlab")[0] ?? "", /^ops\.services\.orders-api\.ci: must be an object with a system/);
     });
@@ -121,6 +131,50 @@ describe("a ci entry", () => {
         }
         assert.match(errors(jenkinsCi({ job: undefined }))[0] ?? "", /job: required, the job with its folders/);
         assert.match(errors(jenkinsCi({ url: "http://jenkins.example.test" }))[0] ?? "", /must start with https:\/\//);
+    });
+
+    test("Concourse needs an https address, a team, a pipeline, a job and a sign-in; the hint is optional", () => {
+        assert.deepEqual(errors(concourseCi()), []);
+        assert.deepEqual(errors(concourseCi({ signInHint: undefined })), []);
+        for (const name of ["main", "deploy.v2", "orders_api-staging", "9lives", "_hidden"]) {
+            assert.deepEqual(errors(concourseCi({ team: name, pipeline: name, job: name })), [], name);
+        }
+        for (const key of ["team", "pipeline", "job"]) {
+            for (const bad of ["", ".", "..", "-x", "a b", "a/b", "x".repeat(101), 5]) {
+                assert.equal(errors(concourseCi({ [key]: bad })).length, 1, `${key} ${JSON.stringify(bad)}`);
+            }
+        }
+        assert.deepEqual(errors(concourseCi({ team: undefined, pipeline: undefined, job: undefined })), [
+            "ops.services.orders-api.ci.team: required, the team name",
+            "ops.services.orders-api.ci.pipeline: required, the pipeline name",
+            "ops.services.orders-api.ci.job: required, the job name",
+        ]);
+        assert.match(
+            errors(concourseCi({ job: "../x" }))[0] ?? "",
+            /^ops\.services\.orders-api\.ci\.job: must be a job name: letters, digits, \. _ -/,
+        );
+        assert.match(errors(concourseCi({ url: "http://ci.example.test" }))[0] ?? "", /must start with https:\/\//);
+        assert.deepEqual(errors(concourseCi({ url: "http://ci.example.test", auth: { transport: "corp" } })), []);
+        assert.deepEqual(errors(concourseCi({ auth: { signIn: "corp" } })), []);
+        assert.deepEqual(errors(concourseCi({ auth: { token: "cmd:fly-main" } })), []);
+        assert.deepEqual(errors(concourseCi({ required: ["x"] })), [
+            "ops.services.orders-api.ci.required: unknown field for concourse",
+        ]);
+        assert.deepEqual(errors(concourseCi({ project: "x" })), [
+            "ops.services.orders-api.ci.project: unknown field for concourse",
+        ]);
+        assert.deepEqual(errors(concourseCi({ auth: { user: "bot", token: "env:T" } })), [
+            "ops.services.orders-api.ci.auth.user: unknown field",
+        ]);
+    });
+
+    test("signInHint is one line of at most 200 characters, and it is a command and not a secret reference", () => {
+        for (const bad of ["", "x".repeat(201), "fly login\nrm -rf /", 5, ["fly"]]) {
+            assert.deepEqual(errors(concourseCi({ signInHint: bad })), [
+                "ops.services.orders-api.ci.signInHint: must be the command that renews the login, one line of at most 200 characters",
+            ]);
+        }
+        assert.deepEqual(errors(concourseCi({ signInHint: "x".repeat(200) })), []);
     });
 
     test("the sign-in is exactly one of a token, a sign-in service and a transport", () => {

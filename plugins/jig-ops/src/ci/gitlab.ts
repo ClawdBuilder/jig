@@ -9,6 +9,7 @@ import type { Outcome } from "../values.ts";
 import type { ActionTable, CiAdapter, CiContext, CiSystemInfo, Params, Plan, WatchPlan } from "./adapter.ts";
 import type { CiService } from "../catalog.ts";
 import type { GitlabConfig } from "./config.ts";
+import { environmentOf, inEnvironment } from "./environment.ts";
 import { fullSha, gitlabApi, finished, jobCheck } from "./gitlab-api.ts";
 import type { GitlabApi, GitlabJob, Pipeline } from "./gitlab-api.ts";
 import { pollGitlab, titleOf } from "./gitlab-watch.ts";
@@ -257,8 +258,10 @@ function gitlab(service: CiService, ctx: CiContext): CiAdapter {
             variables.length === 0
                 ? "none"
                 : variables.map(([key, value]) => `${key}=${oneLine(value, 80)}`).join(", ");
+        const environment = environmentOf(service);
         const body = [
             `Service:   ${service.name} (GitLab project ${where})`,
+            ...(environment === undefined ? [] : [`Environment: ${environment}`]),
             `Ref:       ${ref}`,
             `Variables: ${shownVariables}`,
             `Latest on this ref: ${latest === undefined ? "none" : describePipeline(latest)}`,
@@ -270,10 +273,19 @@ function gitlab(service: CiService, ctx: CiContext): CiAdapter {
             preview: {
                 summary:
                     `create a pipeline on ${ref} in ${where}` +
-                    (variables.length > 0 ? ` with ${plural(variables.length, "variable")}` : ""),
+                    (variables.length > 0 ? ` with ${plural(variables.length, "variable")}` : "") +
+                    inEnvironment(service),
                 body,
                 format: "text",
-                fingerprint: digest("ci trigger", service.name, where, ref, variables, latest?.id ?? null),
+                fingerprint: digest(
+                    "ci trigger",
+                    service.name,
+                    service.environment ?? null,
+                    where,
+                    ref,
+                    variables,
+                    latest?.id ?? null,
+                ),
             },
             send: async () => {
                 const sentBody =
@@ -343,6 +355,7 @@ function gitlab(service: CiService, ctx: CiContext): CiAdapter {
             );
         }
         const spec: GitlabSpec = { system: "gitlab", service: service.name, finish, since: ctx.now() };
+        if (service.environment !== undefined) spec.environment = service.environment;
         if (params.run_id !== undefined) {
             const pipeline = await api.pipeline(params.run_id);
             Object.assign(spec, { pipelineId: pipeline.id, ref: pipeline.ref, sha: pipeline.sha });

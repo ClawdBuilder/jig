@@ -5,6 +5,9 @@ import { test } from "node:test";
 import { parseApiOutput } from "../src/ci/gh.ts";
 import { reviewState } from "../src/ci/github-watch.ts";
 import type { Review } from "../src/ci/github-checks.ts";
+import { buildCheck as concourseCheck, readBuild, running } from "../src/ci/concourse-api.ts";
+import { renderEvents } from "../src/ci/concourse-events.ts";
+import type { ConcourseConfig } from "../src/ci/config.ts";
 import { buildCheck, resultOf, stageCheck } from "../src/ci/jenkins-api.ts";
 import { jobCheck } from "../src/ci/gitlab-api.ts";
 import { cleanLog, failureExcerpt, redactLog, selectLog } from "../src/ci/logs.ts";
@@ -289,4 +292,102 @@ test("a pipeline stage is pass, fail, pending or skipped", () => {
 
 test("a log from any server loses terminal sequences and control characters", () => {
     assert.equal(cleanLog("a\u001b]0;title\u0007b\u0000c\u001b[2Jd\n"), "ab?cd\n");
+});
+
+// ---- Concourse builds and events -----------------------------------------------------------------------------------
+
+const TEAM: ConcourseConfig = {
+    system: "concourse",
+    url: "https://ci.example.test",
+    team: "main",
+    pipeline: "deploy",
+    job: "orders-api-staging",
+    auth: { kind: "token", token: "env:T" },
+};
+const raw = (more: object = {}) => ({
+    id: 7,
+    name: "3",
+    status: "succeeded",
+    team_name: "main",
+    pipeline_name: "deploy",
+    job_name: "orders-api-staging",
+    ...more,
+});
+
+test("a Concourse build is judged by its status, and is pending until it ends", () => {
+    const check = (status: string) => concourseCheck("job", { id: 1, name: "1", status }).bucket;
+    assert.equal(check("succeeded"), "pass");
+    for (const status of ["failed", "errored", "aborted"]) assert.equal(check(status), "fail", status);
+    for (const status of ["pending", "started"]) assert.equal(check(status), "pending", status);
+    assert.equal(check("something-new"), "fail", "a status nobody knows is not a pass");
+    assert.equal(running({ id: 1, name: "1", status: "started" }), true);
+    assert.equal(running({ id: 1, name: "1", status: "aborted" }), false);
+});
+
+test("a Concourse build is read in seconds, with a rerun's name, and only when it belongs to the job", () => {
+    assert.deepEqual(
+        readBuild(raw({ name: "3.1", start_time: 1_000, end_time: 1_302, created_by: " jdoe\u001b[0m " }), TEAM, "x"),
+        {
+            id: 7,
+            name: "3.1",
+            status: "succeeded",
+            startedAt: 1_000_000,
+            endedAt: 1_302_000,
+            createdBy: "jdoe",
+        },
+    );
+    for (const bad of [
+        raw({ job_name: "other" }),
+        raw({ pipeline_name: "other" }),
+        raw({ team_name: "other" }),
+        raw({ job_name: undefined }),
+    ]) {
+        assert.throws(
+            () => readBuild(bad, TEAM, "GET build 3"),
+            /^Error: Concourse GET build 3 returned a build that is not a build of orders-api-staging, so it was refused$/,
+        );
+    }
+    for (const bad of [
+        null,
+        "x",
+        raw({ id: 0 }),
+        raw({ id: "7" }),
+        raw({ name: "../x" }),
+        raw({ name: "3.1.2" }),
+        raw({ status: "Succeeded" }),
+        raw({ status: 5 }),
+    ]) {
+        assert.throws(() => readBuild(bad, TEAM, "x"), /Concourse x returned/);
+    }
+});
+
+test("Concourse events: output, errors and statuses, in the form Concourse sends and in the bare form", () => {
+    const wrapped = (kind: string, data: object) =>
+        `id: 1\nevent: event\ndata: ${JSON.stringify({ data, event: kind, version: "5.1" })}\n\n`;
+    const bare = (kind: string, data: object) => `event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const block of [wrapped, bare]) {
+        const body = [
+            block("start-task", { origin: {} }),
+            block("log", { payload: "one " }),
+            block("log", { payload: "two\nthree" }),
+            block("error", { message: "boom" }),
+            block("status", { status: "failed" }),
+            "event: end\ndata: \n\n",
+            block("log", { payload: "after the end" }),
+        ].join("");
+        assert.equal(renderEvents(body), "one two\nthree\n[error] boom\n[status] failed\n");
+    }
+});
+
+test("Concourse events: a comment, a block that is not JSON, and carriage returns do no harm", () => {
+    const body = [
+        ": keep-alive\n\n",
+        "event: event\r\ndata: not json\r\n\r\n",
+        'event: event\r\ndata: {"data":{"payload":"a\\r\\n"},"event":"log"}\r\n\r\n',
+        'event: event\ndata: {"data":"oops","event":"log"}\n\n',
+        'event: log\ndata: {"payload":5}\n\n',
+        'event: log\ndata: ["x"]\n\n',
+    ].join("");
+    assert.equal(renderEvents(body), "a\r\n");
+    assert.equal(renderEvents(""), "");
 });

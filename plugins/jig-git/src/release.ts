@@ -1,7 +1,7 @@
 // The `release` tool: tags and releases. Creating a tag is local. Pushing a tag and creating a release on GitHub or GitLab change
 // the forge, so they ask. A tag is never deleted or moved from here, and a pushed tag is never forced. Tags are git; the releases
 // go to the forge of the repository, through gh or glab (see forge.ts).
-import { StringEnum } from "@earendil-works/pi-ai";
+import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { Type } from "typebox";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { forgeOf } from "./forge.ts";
@@ -37,7 +37,7 @@ const ACTION_NAMES = Object.keys(RELEASE_ACTIONS) as (keyof typeof RELEASE_ACTIO
 
 const ReleaseParams = Type.Object(
     {
-        action: StringEnum(ACTION_NAMES, { description: describeActions(RELEASE_ACTIONS) }),
+        action: stringEnum(ACTION_NAMES, { description: describeActions(RELEASE_ACTIONS) }),
         repo: Type.Optional(
             Type.String({
                 minLength: 1,

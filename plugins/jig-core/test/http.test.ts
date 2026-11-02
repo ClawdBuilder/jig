@@ -166,6 +166,59 @@ describe("a plain request", () => {
         assert.deepEqual([exact.body, exact.truncated], ["0123456789", false]);
     });
 
+    test("stops at a marker for a reply that goes on after its last word, even when the marker is split between chunks", async () => {
+        const t = rig();
+        const send = (parts: string[]) => {
+            let cancelled = false;
+            const queue = parts.map((part) => new TextEncoder().encode(part));
+            // The server goes on after its last word and never ends the reply: only the marker lets the caller go.
+            const reply = new Response(
+                new ReadableStream({
+                    pull(controller) {
+                        const chunk = queue.shift();
+                        if (chunk !== undefined) controller.enqueue(chunk);
+                        else return new Promise<void>(() => {});
+                    },
+                    cancel() {
+                        cancelled = true;
+                    },
+                }),
+            );
+            return { reply, cancelled: () => cancelled };
+        };
+        const whole = send(["id: 1\nevent: log\n\n", "id: 2\nevent: end\ndata: \n\n", "never read"]);
+        t.replies.push(whole.reply);
+        const stopped = await t.http.request({ ...base, stopAt: "\nevent: end\n" });
+        assert.equal(stopped.body, "id: 1\nevent: log\n\nid: 2\nevent: end\ndata: \n\n");
+        assert.equal(stopped.truncated, false);
+        assert.equal(whole.cancelled(), true, "the connection is let go");
+        const split = send(["id: 1\nevent: lo", "g\n\nid: 2\nev", "ent: e", "nd\n", "never read"]);
+        t.replies.push(split.reply);
+        const found = await t.http.request({ ...base, stopAt: "\nevent: end\n" });
+        assert.equal(found.body, "id: 1\nevent: log\n\nid: 2\nevent: end\n");
+        const one = send(["abc", "d", "e"]);
+        t.replies.push(one.reply);
+        assert.equal((await t.http.request({ ...base, stopAt: "d" })).body, "abcd");
+    });
+
+    test("a marker does not lift maxBytes, and a reply with no marker is read to its end", async () => {
+        const t = rig();
+        t.replies.push(t.ok("0123456789abcdef"));
+        const cut = await t.http.request({ ...base, maxBytes: 8, stopAt: "end" });
+        assert.deepEqual([cut.body, cut.truncated], ["01234567", true]);
+        t.replies.push(t.ok("no marker here"));
+        assert.equal((await t.http.request({ ...base, stopAt: "end" })).body, "no marker here");
+    });
+
+    test("a marker must be 1 to 100 plain characters", async () => {
+        const t = rig();
+        for (const stopAt of ["", "x".repeat(101), "caf\u00e9", "tab\there", 5 as never]) {
+            const error = await failure(t.http.request({ ...base, stopAt }));
+            assert.equal(error.code, "invalid_request", JSON.stringify(stopAt));
+        }
+        assert.equal(t.sent.length, 0);
+    });
+
     test("notes a NUL byte near the start, as a sign that the reply is not text", async () => {
         const t = rig();
         t.replies.push(new Response(new Uint8Array([80, 78, 71, 0, 1])));
