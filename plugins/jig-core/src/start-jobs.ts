@@ -6,6 +6,7 @@
 // probe the VPN host. Nothing here is awaited by the session start, and nothing here can fail it.
 import { effectiveBackends } from "./config.ts";
 import type { JigState } from "./state.ts";
+import { describeFailure } from "./start-checks.ts";
 import { unlockStoreAtStart } from "./start-unlock.ts";
 
 /** Whether this Pi was started by another Pi's `jig-agents`. `PI_SUBAGENT_ID` is the variable it sets, as `jig-agents`,
@@ -43,5 +44,11 @@ export function startJobs(state: JigState): void {
             now: () => state.now().getTime(),
             signal: control.signal,
         });
+    }
+    const { startChecks } = state.personal.config;
+    if (startChecks.length > 0) {
+        void state.startChecks
+            .run(startChecks, (check) => notify(describeFailure(check), "warning"), control.signal)
+            .catch(() => undefined);
     }
 }

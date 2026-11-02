@@ -29,6 +29,8 @@ import type { JigApi } from "./contract.ts";
 import { createSecrets } from "./secrets.ts";
 import type { Secrets, SecretsOptions } from "./secrets.ts";
 import { createSignIn } from "./signin.ts";
+import { createStartChecks } from "./start-checks.ts";
+import type { Connector, StartChecks } from "./start-checks.ts";
 import type { SignIn } from "./signin.ts";
 import { createTransports } from "./transports.ts";
 import { createTunnels } from "./tunnels.ts";
@@ -37,6 +39,7 @@ import type { Transports } from "./transports.ts";
 import { createWatchEngine } from "./watch/engine.ts";
 import type { WatchEngine } from "./watch/engine.ts";
 import { createWatchStore } from "./watch/store.ts";
+import { realTimers } from "./watch/timers.ts";
 import type { Timers } from "./watch/timers.ts";
 
 /** What a test (or an embedding program) can replace. A real Pi session uses the defaults. */
@@ -55,6 +58,8 @@ export interface JigCoreOptions {
     env?: NodeJS.ProcessEnv;
     /** How the secret backends start their programs (`pass`, ...). Tests pass a fake. Default: jig-core's own exec. */
     runProgram?: SecretsOptions["run"];
+    /** Makes the connection of a start check. Default: a real TCP connection, closed at once. */
+    connect?: Connector;
 }
 
 /** What jig-core remembers about one call, from the moment it is decided until its record is written. */
@@ -141,7 +146,9 @@ export interface JigState {
     /** The merged configuration. Rebuilt when something changes it. */
     policy(): Policy;
     invalidatePolicy(): void;
-    /** Stops the background work that the session start began (the store unlock). Undefined when none runs. */
+    /** The checks of `startChecks`, and what the last run found. */
+    startChecks: StartChecks;
+    /** Stops the background work that the session start began (the store unlock and the checks). Undefined when none runs. */
     startJobs: AbortController | undefined;
     /** The sandbox that runs `bash`, once a plugin registers one. */
     sandbox: SandboxProvider | undefined;
@@ -296,6 +303,10 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         invalidatePolicy() {
             policy = undefined;
         },
+        startChecks: createStartChecks({
+            ...(options.connect === undefined ? {} : { connect: options.connect }),
+            timers: options.timers ?? realTimers,
+        }),
         startJobs: undefined,
         sandbox: undefined,
         statusLines: new Map(),

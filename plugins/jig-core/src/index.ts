@@ -1,5 +1,6 @@
 // jig-core: the tool manager. It sits over every tool call, whoever wrote the tool, through Pi's hooks:
 //
+//   session_start        read jig.json, resume the watches, and set the start-up work going (src/start-jobs.ts)
 //   tool_call            classify the call, decide allow / ask / deny, ask the user if a rule says so
 //   tool_result          redact secrets, mask production data, cut very long output
 //   tool_execution_end   write the call's record

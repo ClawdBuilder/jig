@@ -214,14 +214,22 @@ export function passBindingLines(state: JigState): string[] {
     return bound.length === 0 ? [] : [`pass is bound by secrets.pass to: ${bound.join(", ")}`];
 }
 
-/** What a session start sets going in the background, from `jig.json`: the store unlock, and (below it) the start checks. */
+/** What a session start sets going in the background, from `jig.json`: the store unlock, and the start checks with the
+ *  last result of each. */
 export function startLines(state: JigState): string[] {
-    const { secrets } = state.personal.config;
-    if (secrets.pass.unlockAtStart !== true) return [];
-    const usable = effectiveBackends(secrets, state.company).on.includes("pass");
-    return [
-        `Secret store: unlocked when a session starts (secrets.pass.unlockAtStart)${usable ? "" : ", but pass is not an enabled backend, so this does nothing"}`,
-    ];
+    const { secrets, startChecks } = state.personal.config;
+    const lines: string[] = [];
+    if (secrets.pass.unlockAtStart === true) {
+        const usable = effectiveBackends(secrets, state.company).on.includes("pass");
+        lines.push(
+            `Secret store: unlocked when a session starts (secrets.pass.unlockAtStart)${usable ? "" : ", but pass is not an enabled backend, so this does nothing"}`,
+        );
+    }
+    if (startChecks.length > 0) {
+        lines.push(`Start checks (one TCP connection each, made in the background when a session starts):`);
+        for (const check of startChecks) lines.push(`  ${check.name} (${check.tcp}): ${state.startChecks.last(check)}`);
+    }
+    return lines;
 }
 
 /**

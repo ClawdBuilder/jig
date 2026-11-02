@@ -2,10 +2,13 @@
 // port, made when a session starts, so a user who forgot to connect their VPN hears of it before a tool fails at it.
 //
 // It is the user's list and no one else's: `startChecks` is a section of jig-core's own, so a company plugin cannot add a
-// host for a user's machine to probe. This file holds what the list is (its checking, here); running it comes below.
-import { isIP, isIPv4, isIPv6 } from "node:net";
+// host for a user's machine to probe. This file holds the list (its checking) and the running of it. A check opens one TCP
+// connection and closes it, with a 3-second limit and no retry: it sends nothing, and it never starts, stops or signs in to
+// anything, whatever it finds.
+import { connect, isIP, isIPv4, isIPv6 } from "node:net";
 import { printable } from "./kit/text.ts";
 import { isObject } from "./kit/values.ts";
+import type { Timers } from "./watch/timers.ts";
 
 /** One check, as `jig.json` writes it, with the address split. `tcp` is kept as written, for messages. */
 export interface StartCheck {
@@ -99,4 +102,109 @@ export function parseStartChecks(raw: unknown, path: string, fail: Fail): StartC
         if (check !== undefined) checks.push(check);
     });
     return checks;
+}
+
+// ---- running the checks ------------------------------------------------------------------------------------------------
+
+/** The longest one check waits for its connection. */
+export const CHECK_TIMEOUT_MS = 3000;
+
+/**
+ * Opens one connection to `host:port` and closes it at once, true when it was accepted. Resolves false on any failure and
+ * when `signal` is aborted, which also closes a connection still being made. Never rejects.
+ */
+export type Connector = (host: string, port: number, signal: AbortSignal) => Promise<boolean>;
+
+export const tcpConnect: Connector = (host, port, signal) =>
+    new Promise<boolean>((resolve) => {
+        if (signal.aborted) return resolve(false);
+        const socket = connect({ host, port });
+        const done = (reached: boolean): void => {
+            signal.removeEventListener("abort", giveUp);
+            socket.destroy();
+            resolve(reached);
+        };
+        const giveUp = (): void => done(false);
+        socket.once("connect", () => done(true));
+        socket.once("error", () => done(false));
+        signal.addEventListener("abort", giveUp, { once: true });
+    });
+
+/** What the last run found for a check. */
+export type CheckResult = "reachable" | "not reachable" | "not run";
+
+export interface StartChecks {
+    /**
+     * Makes the connection of every check at once, and calls `failed` for each that did not connect, as soon as it is
+     * known. Resolves when all are done. Aborting `session` ends them without a word: nothing is recorded or reported
+     * after it. Never rejects, and a throwing `failed` does not stop the others.
+     */
+    run(checks: readonly StartCheck[], failed: (check: StartCheck) => void, session: AbortSignal): Promise<void>;
+    /** What the last run found for a check, or "not run" when none has finished for it. */
+    last(check: StartCheck): CheckResult;
+}
+
+export interface StartChecksOptions {
+    /** Makes a connection. Default: a real TCP one. */
+    connect?: Connector;
+    /** The timers the limit of a check runs on, so a test can move time by hand. */
+    timers: Timers;
+}
+
+/** What a failed check tells the user: `VPN is not reachable (vpn.example.com:443): connect your VPN client`. */
+export function describeFailure(check: StartCheck): string {
+    return `${check.name} is not reachable (${check.tcp})${check.hint === undefined ? "" : `: ${check.hint}`}`;
+}
+
+export function createStartChecks(options: StartChecksOptions): StartChecks {
+    const connectTo = options.connect ?? tcpConnect;
+    const results = new Map<string, "reachable" | "not reachable">();
+    const keyOf = (check: StartCheck): string => `${check.name}\n${check.tcp}`;
+
+    /** One attempt, no retry: true when it connected within the limit and the session was still on. */
+    async function attempt(check: StartCheck, session: AbortSignal): Promise<boolean> {
+        const own = new AbortController();
+        const stop = (): void => own.abort();
+        session.addEventListener("abort", stop, { once: true });
+        let timer: unknown;
+        // Ends the attempt at the limit or when the session ends, even if the connector pays no heed to its signal.
+        const late = new Promise<boolean>((resolve) => {
+            own.signal.addEventListener("abort", () => resolve(false), { once: true });
+            timer = options.timers.setTimeout(() => own.abort(), CHECK_TIMEOUT_MS);
+        });
+        try {
+            const connected = Promise.resolve()
+                .then(() => connectTo(check.host, check.port, own.signal))
+                .then(
+                    (reached) => reached === true,
+                    () => false,
+                );
+            return await Promise.race([connected, late]);
+        } finally {
+            options.timers.clearTimeout(timer);
+            session.removeEventListener("abort", stop);
+            // A connection the race left behind (a timeout) is closed here.
+            own.abort();
+        }
+    }
+
+    return {
+        async run(checks, failed, session) {
+            results.clear();
+            await Promise.all(
+                checks.map(async (check) => {
+                    const reached = await attempt(check, session);
+                    if (session.aborted) return;
+                    results.set(keyOf(check), reached ? "reachable" : "not reachable");
+                    if (reached) return;
+                    try {
+                        failed(check);
+                    } catch {
+                        // Telling the user is a courtesy; the other checks go on.
+                    }
+                }),
+            );
+        },
+        last: (check) => results.get(keyOf(check)) ?? "not run",
+    };
 }

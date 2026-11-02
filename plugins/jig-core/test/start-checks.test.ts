@@ -1,7 +1,22 @@
 // Start checks: what `startChecks` of jig.json accepts, and how the checks run when a session starts.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { MAX_START_CHECKS, parseStartChecks, splitTcp } from "../src/start-checks.ts";
+import { createServer } from "node:net";
+import type { Server } from "node:net";
+import { afterEach, beforeEach } from "node:test";
+import { freePort } from "../src/kit/ports.ts";
+import {
+    CHECK_TIMEOUT_MS,
+    createStartChecks,
+    describeFailure,
+    MAX_START_CHECKS,
+    parseStartChecks,
+    splitTcp,
+    tcpConnect,
+} from "../src/start-checks.ts";
+import type { Connector, StartCheck } from "../src/start-checks.ts";
+import { realTimers } from "../src/watch/timers.ts";
+import { fakeClock } from "./support/clock.ts";
 
 /** Parses a list and returns what was kept and what was said, as `key: message`. */
 function parse(raw: unknown) {
@@ -179,5 +194,243 @@ describe("the list", () => {
         assert.ok(!messages.includes("xxxxxxxxxxxx".repeat(8)), "no long value is echoed");
         assert.ok(!messages.includes("ghp_"), "no value is echoed");
         assert.ok(messages.length < 1200, `messages stay short (${messages.length})`);
+    });
+});
+
+// ---- running -----------------------------------------------------------------------------------------------------------
+
+const check = (name: string, tcp = "host.example.com:443", hint?: string): StartCheck => {
+    const split = splitTcp(tcp);
+    assert.ok(split, tcp);
+    return { name, tcp, ...split, ...(hint === undefined ? {} : { hint }) };
+};
+
+describe("what a failed check says", () => {
+    test("names the check and the address, and adds the hint when there is one", () => {
+        assert.equal(
+            describeFailure(check("VPN", "vpn.example.com:443")),
+            "VPN is not reachable (vpn.example.com:443)",
+        );
+        assert.equal(
+            describeFailure(check("VPN", "vpn.example.com:443", "connect your VPN client")),
+            "VPN is not reachable (vpn.example.com:443): connect your VPN client",
+        );
+    });
+});
+
+describe("a real connection", () => {
+    const servers: Server[] = [];
+    const seen: Buffer[] = [];
+    let closed = 0;
+    beforeEach(() => {
+        seen.length = 0;
+        closed = 0;
+    });
+    afterEach(async () => {
+        await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
+    });
+    /** A local server that records what it is sent and when a connection ends. */
+    async function listen(): Promise<number> {
+        const server = createServer((socket) => {
+            socket.on("data", (chunk) => seen.push(Buffer.from(chunk)));
+            socket.on("close", () => closed++);
+        });
+        servers.push(server);
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+        return (server.address() as { port: number }).port;
+    }
+    const noSignal = new AbortController().signal;
+
+    test("an open port is reachable, and the connection is closed without a byte sent", async () => {
+        const port = await listen();
+        assert.equal(await tcpConnect("127.0.0.1", port, noSignal), true);
+        for (let n = 0; n < 100 && closed === 0; n++) await new Promise((resolve) => setTimeout(resolve, 10));
+        assert.equal(closed, 1, "the server saw the connection end");
+        assert.deepEqual(seen, [], "and nothing was sent on it");
+    });
+
+    test("a closed port is not reachable", async () => {
+        assert.equal(await tcpConnect("127.0.0.1", await freePort(), noSignal), false);
+    });
+
+    test("an aborted signal ends it, before or during the connection", async () => {
+        const early = new AbortController();
+        early.abort();
+        assert.equal(await tcpConnect("127.0.0.1", await listen(), early.signal), false);
+        // Aborted in the same turn that the connection is begun: it never completes.
+        const later = new AbortController();
+        const pending = tcpConnect("127.0.0.1", await listen(), later.signal);
+        later.abort();
+        assert.equal(await pending, false);
+    });
+
+    test("the runner finds an open and a closed port, and reports only the closed one", async () => {
+        const open = check("Open", `127.0.0.1:${await listen()}`);
+        const shut = check("Shut", `127.0.0.1:${await freePort()}`, "start it");
+        const checks = createStartChecks({ timers: realTimers });
+        const failures: StartCheck[] = [];
+        await checks.run([open, shut], (failed) => failures.push(failed), noSignal);
+        assert.deepEqual(failures, [shut]);
+        assert.deepEqual([checks.last(open), checks.last(shut)], ["reachable", "not reachable"]);
+    });
+});
+
+describe("the runner", () => {
+    /** A connector the test settles by hand, that remembers what it was asked. */
+    function manual() {
+        const asked: Array<{ host: string; port: number; signal: AbortSignal; settle: (reached: boolean) => void }> =
+            [];
+        const connector: Connector = (host, port, signal) =>
+            new Promise<boolean>((resolve) => {
+                asked.push({ host, port, signal, settle: resolve });
+            });
+        return { asked, connector };
+    }
+
+    test("the limit is three seconds", () => {
+        assert.equal(CHECK_TIMEOUT_MS, 3000);
+    });
+
+    test("makes every connection at once, not one after another", async () => {
+        const { asked, connector } = manual();
+        const checks = createStartChecks({ connect: connector, timers: fakeClock().timers });
+        const list = [check("A", "a.example.com:1"), check("B", "b.example.com:2"), check("C", "c.example.com:3")];
+        const running = checks.run(list, () => undefined, new AbortController().signal);
+        await fakeClock().settle();
+        assert.deepEqual(
+            asked.map((call) => `${call.host}:${call.port}`),
+            ["a.example.com:1", "b.example.com:2", "c.example.com:3"],
+            "all three were started before any was answered",
+        );
+        for (const call of asked) call.settle(true);
+        await running;
+    });
+
+    test("a connection that never answers fails at three seconds, and its connection is told to stop", async () => {
+        const clock = fakeClock();
+        const { asked, connector } = manual();
+        const checks = createStartChecks({ connect: connector, timers: clock.timers });
+        const slow = check("Slow");
+        const failures: string[] = [];
+        let finished = false;
+        const running = checks
+            .run([slow], (failed) => failures.push(failed.name), new AbortController().signal)
+            .then(() => {
+                finished = true;
+            });
+        await clock.advance(CHECK_TIMEOUT_MS - 1);
+        assert.deepEqual([finished, failures, checks.last(slow)], [false, [], "not run"]);
+        assert.equal(asked[0]?.signal.aborted, false);
+        await clock.advance(1);
+        await running;
+        assert.deepEqual([failures, checks.last(slow)], [["Slow"], "not reachable"]);
+        assert.equal(asked[0]?.signal.aborted, true, "the connector was told to give up");
+        assert.equal(clock.pending(), 0, "no timer is left running");
+    });
+
+    test("an answer in time stops the timer, and a late answer changes nothing", async () => {
+        const clock = fakeClock();
+        const { asked, connector } = manual();
+        const checks = createStartChecks({ connect: connector, timers: clock.timers });
+        const quick = check("Quick");
+        const running = checks.run([quick], () => assert.fail("it connected"), new AbortController().signal);
+        await clock.settle();
+        asked[0]?.settle(true);
+        await running;
+        assert.equal(checks.last(quick), "reachable");
+        assert.equal(clock.pending(), 0);
+    });
+
+    test("makes one attempt per check, and no retry", async () => {
+        const clock = fakeClock();
+        let attempts = 0;
+        const checks = createStartChecks({
+            connect: async () => {
+                attempts++;
+                return false;
+            },
+            timers: clock.timers,
+        });
+        await checks.run([check("A"), check("B")], () => undefined, new AbortController().signal);
+        await clock.advance(60_000);
+        assert.equal(attempts, 2);
+    });
+
+    test("a connector that throws, rejects or answers oddly counts as not reachable", async () => {
+        const clock = fakeClock();
+        const failures: string[] = [];
+        const kinds: Connector[] = [
+            () => {
+                throw new Error("boom");
+            },
+            async () => {
+                throw new Error("boom");
+            },
+            async () => "yes" as unknown as boolean,
+        ];
+        for (const [n, connector] of kinds.entries()) {
+            const checks = createStartChecks({ connect: connector, timers: clock.timers });
+            await checks.run([check(`K${n}`)], (failed) => failures.push(failed.name), new AbortController().signal);
+        }
+        assert.deepEqual(failures, ["K0", "K1", "K2"]);
+    });
+
+    test("reports each failure as it is known, and a failure to report does not stop the others", async () => {
+        const clock = fakeClock();
+        const { asked, connector } = manual();
+        const checks = createStartChecks({ connect: connector, timers: clock.timers });
+        const told: string[] = [];
+        const running = checks.run(
+            [check("A"), check("B"), check("C")],
+            (failed) => {
+                told.push(failed.name);
+                if (failed.name === "A") throw new Error("the screen is gone");
+            },
+            new AbortController().signal,
+        );
+        await clock.settle();
+        asked[1]?.settle(false);
+        await clock.settle();
+        assert.deepEqual(told, ["B"], "B is told before the others have answered");
+        asked[0]?.settle(false);
+        asked[2]?.settle(false);
+        await running;
+        assert.deepEqual(told, ["B", "A", "C"]);
+    });
+
+    test("remembers the last result of each check, and a new run starts from not run", async () => {
+        const clock = fakeClock();
+        const answers = new Map([["up.example.com", true]]);
+        const { asked, connector } = manual();
+        const checks = createStartChecks({ connect: connector, timers: clock.timers });
+        const up = check("Up", "up.example.com:1");
+        const down = check("Down", "down.example.com:1");
+        assert.deepEqual([checks.last(up), checks.last(down)], ["not run", "not run"]);
+        const first = checks.run([up, down], () => undefined, new AbortController().signal);
+        await clock.settle();
+        for (const call of asked) call.settle(answers.get(call.host) === true);
+        await first;
+        assert.deepEqual([checks.last(up), checks.last(down)], ["reachable", "not reachable"]);
+        const again = checks.run([up, down], () => undefined, new AbortController().signal);
+        await clock.settle();
+        assert.deepEqual([checks.last(up), checks.last(down)], ["not run", "not run"]);
+        for (const call of asked.slice(2)) call.settle(true);
+        await again;
+        assert.deepEqual([checks.last(up), checks.last(down)], ["reachable", "reachable"]);
+    });
+
+    test("when the session ends it stops without a word and records nothing", async () => {
+        const clock = fakeClock();
+        const { asked, connector } = manual();
+        const checks = createStartChecks({ connect: connector, timers: clock.timers });
+        const session = new AbortController();
+        const a = check("A");
+        const running = checks.run([a], () => assert.fail("nobody is there to tell"), session.signal);
+        await clock.settle();
+        session.abort();
+        await running;
+        assert.equal(asked[0]?.signal.aborted, true);
+        assert.equal(checks.last(a), "not run");
+        assert.equal(clock.pending(), 0);
     });
 });

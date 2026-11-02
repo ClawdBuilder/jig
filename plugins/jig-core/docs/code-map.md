@@ -84,9 +84,9 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `start-jobs.ts` | What a session start sets going in the background, in the top-level interactive session only | `index.ts` |
+| `start-jobs.ts` | What a session start sets going in the background (the unlock and the checks), in the top-level interactive session only | `index.ts` |
 | `start-unlock.ts` | Gets the pass store unlocked at start (`secrets.pass.unlockAtStart`), and tells you only what you can use | `start-jobs.ts` |
-| `start-checks.ts` | The `startChecks` list of `jig.json`: what it accepts, and the TCP test each check makes | `config.ts` |
+| `start-checks.ts` | The `startChecks` list of `jig.json`: what it accepts, and the one TCP connection each check makes | `config.ts`, `start-jobs.ts` and 2 more |
 
 ### What other plugins use
 
