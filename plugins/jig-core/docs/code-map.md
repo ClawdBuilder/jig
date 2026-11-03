@@ -82,6 +82,15 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
 | `commands.ts` | The `/jig` commands: status, rules, records | `index.ts` |
 
+### Profiles (which company applies)
+
+| File | What it does | Called by |
+|---|---|---|
+| `profiles.ts` | The `profiles` and `profile` sections: their checks, folder and remote patterns, the origin remote read from `.git/config`, and the choice | `profile-state.ts`, `state.ts` |
+| `profile-state.ts` | Applies the choice: the active company's additions and section defaults, `onChange`, merged skills, the turn's skill list | `state.ts`, `api.ts`, `index.ts` and 2 more |
+| `overlays.ts` | Skill overlays: writes `<state>/skills/<profile>/<skill>/SKILL.md` (generic text plus the company's rules) and edits the skill list of a turn | `profile-state.ts` |
+| `profile-command.ts` | `/profile`: shows the active profile and why, chooses one for the session, restores the choice after a reload | `index.ts`, `commands.ts` |
+
 ### Session start
 
 | File | What it does | Called by |

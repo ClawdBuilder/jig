@@ -18,7 +18,7 @@ order the example uses.*
 | Secret references, and the command of the tool that owns a login | The reading of a reference, and the redaction of its value |
 | The code that signs in, carries a request or opens a tunnel for one employer's systems | The contract those are called through |
 | Field names for masking and paths to protect that are the company's own | The masker, the floor and the built-in paths |
-| Overlay skills with the company's conventions | The generic skill of each plugin |
+| Skill overlays (`overlays/<skill>.md`) with the company's conventions | The generic skill of each plugin |
 | An internal tool that exists only at this employer (a deploy tool, a billing system) | A new CI system or database that anyone could use, as an adapter |
 
 - **Configuration and knowledge, not code that changes a tool.** A company gives a tool another site or another sign-in. If a
@@ -30,7 +30,7 @@ order the example uses.*
 
 ## The package
 
-A company plugin is a Pi package like Jig itself: a `package.json` with a `pi` block, an entry point, and optionally skills.
+A company plugin is a Pi package like Jig itself: a `package.json` with a `pi` block, an entry point, and optionally skills and `overlays/`.
 
 ```json
 {
@@ -52,7 +52,8 @@ A company plugin is a Pi package like Jig itself: a `package.json` with a `pi` b
 ```ts
 export function jigAcme(): ExtensionFactory {
   return () => {
-    withJig((api) => {
+    withJig((jig) => {
+      const api = jig.profiles?.register("jig-acme", { displayName: "Acme" }) ?? jig; // seam 8
       registerEnvironments(api);
       registerDefaults(api);
       // ... one call per seam
@@ -173,15 +174,53 @@ its section (`"via": { "tunnel": "acme-bastion" }` in `mongo`), and `jig-core` o
 - **`secret`** is neither read nor written; **`guarded`** can be read, not written. A path is absolute or starts with `~/`.
 - **It only adds.** Nothing removes a built-in path or one the user listed.
 
-### 8. Skills
+### 8. Profile and skills
 
-An overlay skill is the company's own rules, read beside a generic plugin's skill.
-[`skills/acme-jira`](../examples/jig-acme/skills/acme-jira/SKILL.md) holds Acme's Jira conventions.
+A person may work for more than one company, so a company plugin registers under a name and gives its parts through the view that call
+returns. Only the company the work belongs to applies ([Profiles](../plugins/jig-core/docs/profiles.md) says how it is chosen).
+[`index.ts`](../examples/jig-acme/src/index.ts) does it in four lines:
 
-- **The manifest loads it** (`pi.skills`); the factory registers nothing.
-- **Start with the generic skill,** "read the `jira` skill first", and add only what it cannot know: projects, fields, workflow, manners.
-- **Keep it short,** and quote a description that holds a colon: Pi skips a skill whose front matter is not valid YAML, and the
-  agent silently loses it.
+```ts
+withJig((jig) => {
+    const api =
+        jig.profiles?.register("jig-acme", { displayName: "Acme", overlays: OVERLAYS, skills: ["acme-releases"] }) ?? jig;
+    // ... every seam above uses `api`
+});
+```
+
+- **Use the returned view for everything.** What the plugin adds through it (environments, rules, defaults, secret commands and backends,
+  status lines) applies while the company is active. Protected paths and mask fields always apply, because they only protect.
+- **The `?? jig` keeps it working on a Jig without profiles,** where what is added applies always, as it did.
+- **A plugin that never registers keeps working,** and applies always. With no `profiles` section and one registered company, that
+  company is active.
+- **`onChange(active)` is for tools only this company has.** Register them with `exposure: "hidden"` when it is called with `false`,
+  and as they were with `true`. Pi cannot unregister a tool.
+
+Skills come in two kinds:
+
+| Kind | Where it lives | What the model sees |
+|---|---|---|
+| Overlay | `overlays/<skill-name>.md`, plain Markdown, no front matter | The generic skill with a section `## Acme rules` added |
+| Company-only skill | `skills/<name>/SKILL.md`, loaded by the manifest (`pi.skills`) | A normal skill, listed while the company is active |
+
+- **An overlay is read with the generic skill,** in one file, so its rules are never missed and the model sees one description per
+  trigger. [`overlays/jira.md`](../examples/jig-acme/overlays/jira.md) holds Acme's Jira conventions. Do not repeat the generic skill:
+  add only what it cannot know (projects, fields, workflow, manners), starting at heading level 3.
+- **The overlay's file name is the generic skill's name.** An overlay with no generic skill loaded applies to nothing, and `/profile` says so.
+- **A company-only skill is for what has no generic counterpart,** such as an internal deploy tool. List its name in `skills` when you
+  register, so it is left out of the list while the company is dormant. Keep it short, and quote a description that holds a colon:
+  Pi skips a skill whose front matter is not valid YAML, and the agent silently loses it.
+- **A link in the generic skill that stays inside its folder keeps working,** because jig-core copies the folder's other files beside the
+  merged file. A link out of the folder is not rewritten.
+
+#### Moving from `<company>-<skill>` to an overlay
+
+1. Make `overlays/<skill>.md` from the company skill's body: no front matter, drop the title and the "read the generic skill first"
+   line, and lower the headings by one level.
+2. Delete the company skill's folder. If it was the only skill, drop `pi.skills` from the manifest.
+3. Register with `profiles.register(...)` as above and take `displayName` from the old title.
+4. A role in `jig-agents` that listed the old skill by name now lists the generic one: the overlay comes with it.
+5. Run the tests: the merged text is the generic file, then `## <displayName> rules`, then your overlay.
 
 ### What else a company can add
 
@@ -244,6 +283,9 @@ A company plugin is configuration, so its tests load the real thing and look at 
   in a temporary agent folder, then start a session. [`test/support/world.ts`](../examples/jig-acme/test/support/world.ts) does it.
 - **Check that nothing is reported** at start-up or in `/jig`, that each section you gave defaults for is valid, and that `/jig`
   lists the environments (the company's among them) and the company's status.
+- **Check the profile:** that the company is active by folder, by remote, by name and as the only company, and dormant otherwise
+  (a `staging` that is test while active and production while dormant). [`test/profiles.test.ts`](../examples/jig-acme/test/profiles.test.ts)
+  does, with the real `jira` skill, and checks the merged `SKILL.md` and the turn's skill list.
 - **Check the layering** with small `jig.json` files: one change each, and what the plugin gets back. Cover each `replace` and
   `oneOf` key you rely on.
 - **Run the code against fakes.** A fake server on `127.0.0.1` for a sign-in service and a transport, and a fake `ssh` script first on

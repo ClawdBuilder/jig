@@ -134,6 +134,13 @@ closed instead of running ungoverned.
   asked each time `/jig` runs and may return nothing. Each line is cut to one
   line of 300 characters; a `lines` that throws shows as `<plugin>: its status
   could not be read`. Registering the same plugin again replaces it.
+- **`profiles.register(name, options)`** is how a company plugin says it is one, and returns a view of the API for it. What it gives
+  through the view (`config.addEnvironments`, `addRules`, `addClassifyRules`, `addSecretCommands`, `enableSecretBackends`,
+  `addSectionDefaults` and `status.register`) applies only while its company is active; `addProtectedPaths` and `addMaskFields`
+  always apply. `options` are `displayName` (the heading of the merged skill sections), `overlays` (an absolute folder of
+  `<skill-name>.md` files), `skills` (the names of its skills that have no generic counterpart) and `onChange(active)`.
+  **`profiles.active()`** says which company is active and why. A plugin that never registers applies always. See
+  [Profiles](profiles.md).
 - **`exec`** has `run` and `git`, which start programs without a shell (see
   [Running programs](running-programs.md)).
 

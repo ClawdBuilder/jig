@@ -2,6 +2,7 @@
 //
 //   session_start        read jig.json, resume the watches, activate tool_search when a Jig tool is deferred
 //                        (src/tool-exposure.ts), and set the start-up work going (src/start-jobs.ts)
+//   before_agent_start   the skill list of the turn: merged skills of the active company, none of a dormant one's (src/profile-state.ts)
 //   tool_call            classify the call, decide allow / ask / deny, ask the user if a rule says so
 //   tool_result          redact secrets, mask production data, cut very long output
 //   tool_execution_end   write the call's record
@@ -24,6 +25,8 @@ import { configFile } from "./paths.ts";
 import { cleanupPreviews } from "./preview-html.ts";
 import { cleanupRecords, conditionProblem } from "./records.ts";
 import { finishCall, finishTurn, toolResult } from "./results.ts";
+import { beforeTurn, loadedSkills, syncSkills } from "./profile-state.ts";
+import { registerProfileCommand, restoreSessionProfile } from "./profile-command.ts";
 import { startJobs } from "./start-jobs.ts";
 import { settleDeferredTools } from "./tool-exposure.ts";
 import { createState, loadPersonalConfig } from "./state.ts";
@@ -43,6 +46,9 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
         if (badCondition !== undefined) state.startupProblems.push(badCondition);
 
         pi.on("session_start", (_event, ctx) => startSession(state, ctx));
+        pi.on("before_agent_start", (event) => {
+            beforeTurn(state, event.systemPromptOptions);
+        });
         pi.on("tool_call", (event, ctx) => gate(state, event, ctx));
         pi.on("tool_result", (event, ctx) => toolResult(state, event, ctx));
         pi.on("tool_execution_end", (event, ctx) => finishCall(state, event, ctx));
@@ -60,6 +66,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
             await state.previews.close().catch(() => undefined);
         });
         registerCommands(pi, state);
+        registerProfileCommand(pi, state);
         registerWatchTool(pi, api, state.watches);
 
         // Last, so the hooks are in place before other plugins start declaring their tools. A plugin whose start-up
@@ -75,7 +82,11 @@ function startSession(state: JigState, ctx: ExtensionContext): void {
     state.sessionId = ctx.sessionManager.getSessionId();
     state.screen = ctx.hasUI ? ctx.ui : undefined;
     state.workingDir = ctx.cwd;
+    // `/profile <name>` of this session, kept in the session file so that a reload or a resume keeps it.
+    state.profile.session = restoreSessionProfile(ctx);
     loadPersonalConfig(state);
+    // The merged skills of the active company (its overlays laid under the generic skills); the prompt's list is edited each turn.
+    syncSkills(state, loadedSkills(state));
     // Watches saved by this session before Pi was closed start polling again.
     state.watches.begin(state.sessionId);
 

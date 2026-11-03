@@ -9,6 +9,8 @@ import { describeProblem, effectiveBackends } from "./config.ts";
 import type { EnvironmentInfo } from "./contract.ts";
 import { decide } from "./decide.ts";
 import { errorMessage } from "./errors.ts";
+import { profileLine } from "./profile-command.ts";
+import { activeCompany } from "./profile-state.ts";
 import { FILE_TOOLS } from "./protected-paths.ts";
 import type { ProtectedKind, ProtectedSource } from "./protected-paths.ts";
 import { formatDuration, summarize } from "./records.ts";
@@ -103,6 +105,7 @@ export function statusLines(state: JigState): string[] {
         `jig-core governs ${tools.length} tools${state.sessionId === undefined ? "" : ` in session ${state.sessionId}`}`,
         sandboxLine(state),
         `Plugins: ${[...plugins].join(", ")}`,
+        profileLine(state),
         environmentsLine(state),
         secretBackendsLine(state),
         ...passBindingLines(state),
@@ -144,7 +147,8 @@ export function statusLines(state: JigState): string[] {
 /** What plugins asked `/jig` to show (`status.register`). A plugin that fails shows that it did, and the others still show. */
 function pluginLines(state: JigState): string[] {
     const out: string[] = [];
-    for (const [plugin, lines] of state.statusLines) {
+    const own = activeCompany(state)?.statusLines ?? [];
+    for (const [plugin, lines] of [...state.statusLines, ...own]) {
         try {
             for (const line of lines()) out.push(plainLine(String(line), 300));
         } catch {

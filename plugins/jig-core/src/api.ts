@@ -13,6 +13,9 @@ import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
 import { git, run } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import type { ExecGuard } from "./exec.ts";
+import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
+import type { CompanyEntry } from "./profile-state.ts";
+import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";
@@ -46,8 +49,51 @@ export function buildApi(state: JigState): JigApi {
             }
         },
     };
-    return {
+    const profiles: NonNullable<JigApi["profiles"]> = {
+        register(name, options) {
+            if (typeof name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(name)) {
+                throw new TypeError("profiles.register: the name is letters, digits, dots, dashes and underscores");
+            }
+            if (typeof options?.displayName !== "string" || options.displayName.trim() === "") {
+                throw new TypeError(`profiles.register(${name}): displayName must be text`);
+            }
+            if (
+                options.overlays !== undefined &&
+                (typeof options.overlays !== "string" || !isAbsolute(options.overlays))
+            ) {
+                throw new TypeError(`profiles.register(${name}): overlays must be an absolute folder`);
+            }
+            if (
+                options.skills !== undefined &&
+                (!Array.isArray(options.skills) || options.skills.some((skill) => typeof skill !== "string"))
+            ) {
+                throw new TypeError(`profiles.register(${name}): skills must be a list of skill names`);
+            }
+            if (options.onChange !== undefined && typeof options.onChange !== "function") {
+                throw new TypeError(`profiles.register(${name}): onChange must be a function`);
+            }
+            const entry = newCompanyEntry(name, options.displayName.trim());
+            entry.overlays = options.overlays;
+            entry.skills = [...(options.skills ?? [])];
+            entry.onChange = options.onChange;
+            state.companies.set(name, entry);
+            // The choice may be a different one now that this company can be chosen.
+            if (state.configLoaded) loadPersonalConfig(state, state.personal.file);
+            return scoped(api, state, entry);
+        },
+        active() {
+            const { reason, profile, plugin, why } = state.profile.selection;
+            return {
+                reason,
+                why,
+                ...(profile === undefined ? {} : { profile }),
+                ...(plugin === undefined ? {} : { plugin }),
+            };
+        },
+    };
+    const api: JigApi = {
         version: 1,
+        profiles,
 
         declareTool(declaration) {
             // A declaration is code from another package. Check its shape here, so a mistake fails where it is made
@@ -125,27 +171,29 @@ export function buildApi(state: JigState): JigApi {
 
         config: {
             addEnvironments(environments) {
-                addCompanyEnvironments(state.company, environments);
-                state.invalidatePolicy();
+                addCompanyEnvironments(state.globalCompany, environments);
+                refreshCompany(state);
             },
             addRules(rules) {
-                addCompanyRules(state.company, rules);
-                state.invalidatePolicy();
+                addCompanyRules(state.globalCompany, rules);
+                refreshCompany(state);
             },
             addClassifyRules(rules) {
-                addCompanyClassifyRules(state.company, rules);
-                state.invalidatePolicy();
+                addCompanyClassifyRules(state.globalCompany, rules);
+                refreshCompany(state);
             },
             addProtectedPaths(paths) {
-                addCompanyProtectedPaths(state.company, paths);
-                state.invalidatePolicy();
+                addCompanyProtectedPaths(state.globalCompany, paths);
+                refreshCompany(state);
             },
             addSecretCommands(commands) {
-                addCompanySecretCommands(state.company, commands);
+                addCompanySecretCommands(state.globalCompany, commands);
+                refreshCompany(state);
             },
             enableSecretBackends(backends) {
                 // Read at each resolve, so there is no policy to rebuild.
-                addCompanySecretBackends(state.company, backends);
+                addCompanySecretBackends(state.globalCompany, backends);
+                refreshCompany(state);
             },
             addMaskFields: (fields) => state.addMaskFields(fields),
             registerSection(name, validate, options) {
@@ -185,7 +233,7 @@ export function buildApi(state: JigState): JigApi {
                         `registerSection: "${name}" is a jig-core field, so a plugin cannot use it for a section`,
                     );
                 }
-                if (name === TOOLS_SECTION) {
+                if (name === TOOLS_SECTION || name === PROFILES_SECTION || name === PROFILE_SECTION) {
                     throw new Error(`registerSection: "${name}" is jig-core's section, so a plugin cannot use it`);
                 }
                 state.sectionChecks.set(name, validate);
@@ -206,7 +254,7 @@ export function buildApi(state: JigState): JigApi {
             addSectionDefaults(name, defaults) {
                 if (typeof name !== "string" || name === "")
                     throw new TypeError("addSectionDefaults: the section needs a name");
-                if (OWN_SECTIONS.includes(name)) {
+                if (OWN_SECTIONS.includes(name) || name === PROFILES_SECTION || name === PROFILE_SECTION) {
                     throw new Error(`addSectionDefaults: "${name}" is a jig-core field, not a plugin's section`);
                 }
                 state.sectionDefaults.set(name, defaults);
@@ -280,6 +328,62 @@ export function buildApi(state: JigState): JigApi {
         exec: {
             run: (file, args, options) => run(file, args, options, guard),
             git: (repo, args, options) => git(repo, args, options, guard),
+        },
+    };
+
+    return api;
+}
+
+/** The API as one company plugin sees it: what it adds belongs to its company, and applies while that company is active. */
+function scoped(api: JigApi, state: JigState, entry: CompanyEntry): JigApi {
+    const mine = (): boolean => state.companies.get(entry.name) === entry;
+    const settle = (): void => {
+        // A registration that was replaced no longer counts.
+        if (mine()) refreshCompany(state);
+    };
+    return {
+        ...api,
+        config: {
+            ...api.config,
+            addEnvironments(environments) {
+                addCompanyEnvironments(entry.additions, environments);
+                settle();
+            },
+            addRules(rules) {
+                addCompanyRules(entry.additions, rules);
+                settle();
+            },
+            addClassifyRules(rules) {
+                addCompanyClassifyRules(entry.additions, rules);
+                settle();
+            },
+            addSecretCommands(commands) {
+                addCompanySecretCommands(entry.additions, commands);
+                settle();
+            },
+            enableSecretBackends(backends) {
+                addCompanySecretBackends(entry.additions, backends);
+                settle();
+            },
+            addSectionDefaults(name, defaults) {
+                if (typeof name !== "string" || name === "")
+                    throw new TypeError("addSectionDefaults: the section needs a name");
+                if (OWN_SECTIONS.includes(name) || name === PROFILES_SECTION || name === PROFILE_SECTION) {
+                    throw new Error(`addSectionDefaults: "${name}" is a jig-core field, not a plugin's section`);
+                }
+                entry.defaults.set(name, defaults);
+                if (state.configLoaded && mine()) loadPersonalConfig(state, state.personal.file);
+            },
+        },
+        status: {
+            register(plugin, lines) {
+                if (typeof plugin !== "string" || plugin === "") {
+                    throw new TypeError("status.register: the plugin needs a name");
+                }
+                if (typeof lines !== "function")
+                    throw new TypeError(`status.register(${plugin}): lines must be a function`);
+                entry.statusLines.set(plugin, lines);
+            },
         },
     };
 }

@@ -44,6 +44,9 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
   [Approval screens](approval-screens.md).
 - **`tools.deferred`:** names of Jig tools to keep out of the model's context until Pi's `tool_search` finds them, such as
   `{ "tools": { "deferred": ["mongo", "deploy"] } }`. See [Deferred tools](#deferred-tools).
+- **`profiles`:** named company profiles, each `{ "plugin": "jig-acme", "when": { "folders": ["~/work/acme/**"], "remotes":
+  ["github.com:acme-org/*"] } }`, at most 50, with at most 50 patterns in each list. **`profile`:** `"auto"` (default), `"none"` or
+  a profile name. See [Profiles](profiles.md).
 - **`startChecks`:** a list of at most 16 checks, each `{ "name": "VPN", "tcp":
   "vpn.example.com:443", "hint": "connect your VPN client" }`. See
   [At session start](#at-session-start).
