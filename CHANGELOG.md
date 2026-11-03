@@ -10,6 +10,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- Herdr Changes panel: a checkout with commits its base branch lacks shows a chip such as `3 commits vs develop`, and a click opens the Review tab in branch mode: the file list and diff of the whole branch against `git merge-base` (committed and uncommitted work, read-only), with a switch to the working changes. The base is the closest of origin/develop, origin's HEAD branch, origin/main, origin/master and the local develop, main, master; a checkout on one of them has none. A clean checkout with commits ahead moves out of `Clean`.
+- Herdr History panel: when the commit filter matches nothing, repositories and worktrees whose folder name or branch matches the text are offered under `Look in another repo`.
 - `deploy` with a pin (a version line in a control repository): the catalog's `pin` method and a read-only `pinned` entry for production; `deploy status` says what is pinned, for whom, who changed it last and the open pin pull requests; `deploy plan` shows the line a run would change; and a `ci trigger` preview says what the environment is pinned to. Reads only; `deploy run` for a pin comes later.
 - `/lens web`: a page of charts and tables over `jig-lens`'s index, served by Pi on `127.0.0.1` behind a secret link,
   read-only, with nothing to install: cost per day, sessions and tickets, every turn and call of a session with child
