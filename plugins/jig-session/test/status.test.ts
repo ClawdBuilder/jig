@@ -363,3 +363,94 @@ test("the extension is listed in the package, after jig-core", () => {
     assert.ok(listed.includes("./plugins/jig-session/index.ts"));
     assert.ok(listed.indexOf("./plugins/jig-core/index.ts") < listed.indexOf("./plugins/jig-session/index.ts"));
 });
+
+test("outputs are rebuilt from the transcript after a restart; failed calls and other tools are left out", async (t) => {
+    const { pi, read, cwd } = rig(t);
+    const at = (n: number) => new Date(Date.UTC(2026, 0, 1, 0, n)).toISOString();
+    const use = (id: string, name: string, file: string, n: number) => ({
+        type: "message",
+        timestamp: at(n),
+        message: {
+            role: "assistant",
+            content: [{ type: "toolCall", id, name, arguments: { path: file, content: "secret" } }],
+        },
+    });
+    const result = (id: string, isError: boolean, n: number) => ({
+        type: "message",
+        timestamp: at(n),
+        message: { role: "toolResult", toolCallId: id, toolName: "x", isError },
+    });
+    pi.entries.push(
+        use("a", "write", "plan.md", 1),
+        result("a", false, 2),
+        use("b", "edit", "plan.md", 3),
+        result("b", false, 4),
+        use("c", "edit", "missing.md", 5),
+        result("c", true, 6),
+        use("d", "read", "other.md", 7),
+        result("d", false, 8),
+        use("e", "edit", "old.md", 9),
+        result("e", false, 10),
+    );
+    await pi.fire("session_start", { reason: "resume" });
+    assert.deepEqual(
+        read().outputs.map((o) => [path.relative(cwd, o.path), o.action, o.at]),
+        [
+            ["old.md", "edited", at(9)],
+            ["plan.md", "created", at(3)],
+        ],
+    );
+    assert.ok(!JSON.stringify(read().outputs).includes("secret"));
+});
+
+test("the active ticket's notes, plans and evidence are outputs; bookkeeping and saved tool outputs are not; merged by path", async (t) => {
+    const root = temp(t);
+    const tickets = path.join(root, "tickets");
+    const dir = path.join(tickets, "PROJ-1");
+    mkdirSync(path.join(dir, "evidence", "run1", "deep", "deeper"), { recursive: true });
+    mkdirSync(path.join(dir, "history"), { recursive: true });
+    for (const f of [
+        "notes.md",
+        "plan.md",
+        "report.txt",
+        "evidence/log.out",
+        "evidence/run1/a.png",
+        "ticket.json",
+        "workflow.json",
+        "history/h1.md",
+        "image.png",
+        "evidence/run1/deep/deeper/z.txt",
+        "evidence/2026-01-02T10-20-30.123Z-bash-9713e1.txt",
+    ]) {
+        writeFileSync(path.join(dir, f), "x\n");
+    }
+    const { pi, read } = rig(t, {
+        section: (name) => (name === "memory" ? { folder: tickets } : undefined),
+    });
+    // The transcript also wrote plan.md, later than the file's age on disk.
+    const future = new Date(Date.now() + 60_000);
+    pi.entries.push(
+        { type: "custom", customType: "jig-memory-ticket", data: { key: "PROJ-1" } },
+        {
+            type: "message",
+            timestamp: future.toISOString(),
+            message: {
+                role: "assistant",
+                content: [{ type: "toolCall", id: "p", name: "write", arguments: { path: path.join(dir, "plan.md") } }],
+            },
+        },
+        {
+            type: "message",
+            timestamp: future.toISOString(),
+            message: { role: "toolResult", toolCallId: "p", isError: false },
+        },
+    );
+    await pi.fire("session_start", { reason: "resume" });
+    const outputs = read().outputs;
+    const names = outputs.map((o) => path.relative(dir, o.path)).sort();
+    assert.deepEqual(names, ["evidence/log.out", "evidence/run1/a.png", "notes.md", "plan.md", "report.txt"]);
+    assert.equal(outputs[0]?.path, path.join(dir, "plan.md"));
+    assert.equal(outputs[0]?.at, future.toISOString());
+    assert.equal(outputs[0]?.action, "created");
+    assert.ok(outputs.every((o) => o.repo === null));
+});

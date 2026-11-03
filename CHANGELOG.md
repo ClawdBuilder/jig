@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Fixed
+
+- The Herdr Work panel's Outputs no longer empty after Pi restarts or a session resumes: `jig-session` rebuilds them from the session's `edit` and `write` calls and lists the active ticket's notes, plans and evidence files (not `ticket.json`, `workflow.json` or `history/`).
+
 ### Changed
 
 - The Herdr Work panel's Outputs list shows only files outside git repositories (ticket notes, plans, reports); a line under it counts the files changed in repositories and opens the Changes section. `jig-session` adds `repo` to each output (the working tree's root, or null) and caps the two kinds separately.

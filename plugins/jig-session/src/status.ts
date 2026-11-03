@@ -10,7 +10,7 @@ import type { ContextDetail, ContextView } from "./context.ts";
 import { fileName, removeFile, sessionsDir, sweep, writeAtomic } from "./files.ts";
 import type { Outcome } from "./requests.ts";
 import { ensureRequestsDir, requestsDir, sweepRequests } from "./requests.ts";
-import { activeTicket, readTicket, ticketsFolder, workflowFolders } from "./ticket.ts";
+import { activeTicket, readTicket, ticketFiles, ticketsFolder, workflowFolders } from "./ticket.ts";
 import type { TicketView, WorkflowView } from "./ticket.ts";
 import { contextFill, sessionUsage } from "./usage.ts";
 import type { ContextFill, Usage } from "./usage.ts";
@@ -106,6 +106,7 @@ export class StatusFile {
         this.stop();
         this.ctx = ctx;
         this.activity.reset();
+        this.activity.replay(safeBranch(ctx), ctx.cwd);
         this.busy = false;
         this.last = "";
         this.ticketKey = undefined;
@@ -228,6 +229,7 @@ export class StatusFile {
         this.ticketReadAt = this.sources.now().getTime();
         if (key === undefined) {
             this.ticket = undefined;
+            this.activity.ticketOutputs = [];
             return;
         }
         const trusted = (() => {
@@ -244,6 +246,13 @@ export class StatusFile {
             this.sources.section("jira"),
             folders,
         );
+        const dir = path.join(ticketsFolder(this.sources.section("memory"), this.sources.env), key);
+        this.activity.ticketOutputs = ticketFiles(dir).map((f) => ({
+            path: f.path,
+            action: "edited" as const,
+            at: f.at,
+            repo: this.activity.repoOf(f.path),
+        }));
     }
 
     /** The status as it is now. */
@@ -272,7 +281,7 @@ export class StatusFile {
             tools: this.sources.tools(),
             ticket: this.ticket?.ticket ?? null,
             workflow: this.ticket?.workflow ?? null,
-            outputs: this.activity.outputs,
+            outputs: this.activity.allOutputs(),
             recent: this.activity.recent,
             contextDetail: this.contextDetail(ctx),
             lastRequest: this.sources.context?.last ?? null,

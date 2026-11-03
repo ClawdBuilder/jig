@@ -1,7 +1,8 @@
 // The ticket a session works on, and its workflow, as the status file shows them. Everything is read from files that
 // `jig-memory` and `jig-workflow` own: the session entry that names the active ticket, the ticket folder's `notes.md` (for a
 // title) and `workflow.json`, and the workflow file that names the stages. Nothing here writes to them.
-import { readFileSync, statSync } from "node:fs";
+import type { Dirent } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -217,4 +218,54 @@ export function readTicket(
     if (url !== undefined) ticket.url = url;
     const workflow = readWorkflow(dir, folders);
     return workflow === undefined ? { ticket } : { ticket, workflow };
+}
+
+/** Files in a ticket folder that are bookkeeping, not work product. */
+const BOOKKEEPING = new Set(["ticket.json", "workflow.json"]);
+const REPORT = /\.(md|txt|json)$/i;
+const MAX_FILES = 200;
+/** A tool output Jig saved on its own (`<ISO time>-<tool>-<hash>.<ext>` in `evidence/`): a record, not something you made. */
+const CAPTURED = /^\d{4}-\d{2}-\d{2}T[\d-]+(?:\.\d+)?Z-.+-[0-9a-f]{6,}\.[a-z]+$/i;
+
+export interface TicketFile {
+    path: string;
+    /** The file's modification time, ISO. */
+    at: string;
+}
+
+/**
+ * The user-facing files of a ticket folder: top-level notes, plans and other .md, .txt and .json reports, and the files
+ * under subfolders (`evidence/` of any type, others as reports) down to two levels. Not `ticket.json`, `workflow.json`,
+ * `history/`, or the tool outputs Jig saves to `evidence/` by itself (dozens per ticket; they would bury the notes). Paths and times only; nothing is read. Bounded to a few hundred entries.
+ */
+export function ticketFiles(dir: string): TicketFile[] {
+    const out: TicketFile[] = [];
+    const walk = (folder: string, depth: number, any: boolean): void => {
+        let names: Dirent[];
+        try {
+            names = readdirSync(folder, { withFileTypes: true });
+        } catch {
+            return;
+        }
+        for (const entry of names) {
+            if (out.length >= MAX_FILES) return;
+            if (entry.name.startsWith(".")) continue;
+            const full = path.join(folder, entry.name);
+            if (entry.isDirectory()) {
+                if (depth === 0 && entry.name === "history") continue;
+                if (depth < 2) walk(full, depth + 1, any || entry.name === "evidence");
+            } else if (entry.isFile()) {
+                if (depth === 0 && BOOKKEEPING.has(entry.name)) continue;
+                if ((depth === 0 || !any) && !REPORT.test(entry.name)) continue;
+                if (depth > 0 && CAPTURED.test(entry.name)) continue;
+                try {
+                    out.push({ path: full, at: statSync(full).mtime.toISOString() });
+                } catch {
+                    // gone since the listing
+                }
+            }
+        }
+    };
+    walk(dir, 0, false);
+    return out;
 }
