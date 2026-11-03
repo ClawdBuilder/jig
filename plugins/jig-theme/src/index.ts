@@ -87,7 +87,15 @@ export function theme(options: ThemeOptions = {}): ExtensionFactory {
             // Answers in the theme's colour, so they stand apart from thinking text. Any terminal session, a child's too.
             if (ctx.mode === "tui" && now.answerColor !== false) {
                 const role = now.answerColor;
-                installAnswerText(() => (text) => ctx.ui.theme.fg(role, text));
+                // The painter stays on drawn messages, and Pi draws them after /new has made this ctx stale, where
+                // reading ctx.ui throws; an old message then keeps its text unpainted instead of crashing the draw.
+                installAnswerText(() => (text) => {
+                    try {
+                        return ctx.ui.theme.fg(role, text);
+                    } catch {
+                        return text;
+                    }
+                });
             } else {
                 uninstallAnswerText();
             }
