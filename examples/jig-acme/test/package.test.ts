@@ -59,6 +59,8 @@ describe("the README", () => {
         assert.ok(readme.includes("src/defaults/"), "the defaults folder");
         for (const skill of readdirSync(path.join(root, "skills")))
             assert.ok(readme.includes(`skills/${skill}`), skill);
+        for (const overlay of readdirSync(path.join(root, "overlays")))
+            assert.ok(readme.includes(`overlays/${overlay}`), overlay);
         assert.ok(readme.includes("src/index.ts"));
     });
 
@@ -79,11 +81,11 @@ describe("the skills", () => {
     const skills = path.join(root, "skills");
     const names = readdirSync(skills);
 
-    test("the company has the one overlay it needs", () => {
-        assert.deepEqual(names, ["acme-jira"]);
+    test("the company ships one skill of its own, which has no generic counterpart", () => {
+        assert.deepEqual(names, ["acme-releases"]);
     });
 
-    test("each has front matter Pi can read, with the folder's name and a description that says when to use it", () => {
+    test("it has front matter Pi can read, with the folder's name and a description that says when to use it", () => {
         for (const name of names) {
             const file = path.join(skills, name, "SKILL.md");
             const match = /^---\n([\s\S]*?)\n---\n/.exec(readFileSync(file, "utf8"));
@@ -95,8 +97,28 @@ describe("the skills", () => {
         }
     });
 
+    test("is short enough to read before acting", () => {
+        for (const name of names) {
+            assert.ok(readFileSync(path.join(skills, name, "SKILL.md"), "utf8").split("\n").length <= 70, name);
+        }
+    });
+});
+
+describe("the overlays", () => {
+    const overlays = path.join(root, "overlays");
+
+    test("are plain Markdown named after a generic skill, with no front matter, so Pi can never load one as a skill", () => {
+        assert.deepEqual(readdirSync(overlays), ["jira.md"]);
+        for (const file of readdirSync(overlays)) {
+            const text = readFileSync(path.join(overlays, file), "utf8");
+            assert.ok(!text.startsWith("---"), `${file}: no front matter`);
+            assert.ok(!/^# /m.test(text), `${file}: no top-level heading: the merged skill adds "## Acme rules"`);
+            assert.ok(text.split("\n").length <= 70, `${file}: short enough to read before acting`);
+        }
+    });
+
     test("the Jira overlay agrees with the ticket pattern, the branch rule and the title rule", async () => {
-        const text = readFileSync(path.join(skills, "acme-jira", "SKILL.md"), "utf8");
+        const text = readFileSync(path.join(overlays, "jira.md"), "utf8");
         const { memoryDefaults } = await import("../src/defaults/memory.ts");
         const { gitDefaults } = await import("../src/defaults/git.ts");
         const key = /\*\*([A-Z]+)\*\* is the product project/.exec(text)?.[1];
@@ -107,19 +129,8 @@ describe("the skills", () => {
         assert.ok(text.includes("`feature/ACME-123`") && text.includes("`ACME-123: add the order filter`"));
     });
 
-    test("the Jira overlay names the tool it extends, so a child agent sees it with that tool and not without", async () => {
-        const text = readFileSync(path.join(skills, "acme-jira", "SKILL.md"), "utf8");
-        const { bodyOf, frontMatterOf, toolsNamedBy } = await import("../../../plugins/jig-agents/src/skills.ts");
-        assert.deepEqual(toolsNamedBy(frontMatterOf(text) ?? ""), ["jira"]);
-        // The field is the Agent Skills format's own `metadata`, so any reader of a skill file accepts it.
-        const front = parse(frontMatterOf(text) ?? "") as { metadata?: Record<string, unknown> };
-        assert.deepEqual(front.metadata, { "jig-tool": "jira" });
-        assert.match(bodyOf(text), /^# Jira at Acme/);
-    });
-
-    test("is short enough to read before acting", () => {
-        for (const name of names) {
-            assert.ok(readFileSync(path.join(skills, name, "SKILL.md"), "utf8").split("\n").length <= 70, name);
-        }
+    test("the overlay's name is a skill Jig really ships", () => {
+        const generic = path.resolve(root, "../../plugins/jig-jira/skills/jira/SKILL.md");
+        assert.ok(existsSync(generic));
     });
 });

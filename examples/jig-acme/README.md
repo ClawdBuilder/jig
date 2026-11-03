@@ -31,7 +31,9 @@ knowledge, an overlay skill the agent reads.*
 | [`src/masking.ts`](src/masking.ts) | Two field names for the masker: `memberAlias`, `loyaltyCardHolder` | The names that hold personal data in its own systems |
 | [`src/protection.ts`](src/protection.ts) | One secret path: `~/.acme/credentials.json` | Where its own tools keep a login |
 | [`src/status.ts`](src/status.ts) | Lines for `/jig`: the sign-in, transport and tunnel it adds, and what this user still has to set | What a user needs to see at a glance |
-| [`skills/acme-jira`](skills/acme-jira/SKILL.md) | The company's Jira conventions, read beside the `jira` skill. `metadata: jig-tool: jira` makes a child agent see it with the `jira` tool | Its projects, fields, workflow and manners |
+| [`overlays/jira.md`](overlays/jira.md) | The company's Jira conventions as an overlay: jig-core adds it to the generic `jira` skill as a section `## Acme rules`, so the model reads one skill | Its projects, fields, workflow and manners |
+| [`skills/acme-releases`](skills/acme-releases/SKILL.md) | A skill with no generic counterpart, listed for the model only while the Acme profile is active | Rules for something only this company has |
+| [`src/index.ts`](src/index.ts) | Registers the plugin as `jig-acme` (`profiles.register`), with its overlays and its own skill, and gives everything else through the view that returns | The name and the folder of overlays |
 | [`src/config.ts`](src/config.ts) | The `acme` section of `jig.json`, for what only one person can say | The few per-person settings |
 | [`src/hosts.ts`](src/hosts.ts) | The hosts the sign-in service and the transport serve, and no others | Its own hosts, so a credential never goes where somebody else chose |
 | [`src/jig/`](src/jig) | The global handle, the port helpers and the contract's types | Copies of `client.ts` and `kit/ports.ts`, and the types from a checkout of Jig |
@@ -47,6 +49,23 @@ before `jig-core` or after it.
 - **No credential in the code.** A secret is a reference (`env:`, `pass:`, `cmd:`); a value pasted in its place is refused, and
   the message does not repeat it. The company's own tool owns the login.
 - **The floor holds.** `prod` is read-only and masked whatever this plugin says, and a protected path can only be added.
+
+## Profiles
+
+`jig-acme` registers as `jig-acme`. With nothing else configured it is the only company, so it is active everywhere. A person who also
+works for another company names when Acme applies, in `~/.pi/agent/jig.json`:
+
+```json
+{
+    "profiles": {
+        "acme": { "plugin": "jig-acme", "when": { "folders": ["~/work/acme/**"], "remotes": ["github.com:acme-org/*"] } }
+    }
+}
+```
+
+Outside those folders and repositories, Acme is dormant: its environments, defaults and skills do not apply
+([Profiles](../../plugins/jig-core/docs/profiles.md)). Its Jira rules are an overlay, not a second skill, so the model reads one `jira`
+skill whichever company it works for. The tests for this are in [`test/profiles.test.ts`](test/profiles.test.ts).
 
 ## Configure
 
@@ -88,7 +107,8 @@ A user who does not want `cmd` turns it off, and `/jig` lists the backends that 
 jig-acme/
   package.json        the manifest: pi.extensions and pi.skills
   src/                index.ts and one small file per seam; defaults/ has one file per plugin; jig/ is the handle
-  skills/acme-jira/   the overlay skill
+  overlays/jira.md    the overlay for the generic jira skill
+  skills/acme-releases/   a skill only this company has
   test/               the real plugins in a fake Pi, and fake servers and programs; support/ has the loaders
 ```
 

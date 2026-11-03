@@ -54,6 +54,14 @@ export interface WorldOptions {
     acme?: JigAcmeOptions;
     /** Leave jig-acme out, to see what a call looks like without the company's additions. Default: true. */
     company?: boolean;
+    /** The working folder of the session. Default: the process's. */
+    cwd?: string;
+    /** Other plugins to load after jig-acme, such as a second company. */
+    extra?: ExtensionFactory[];
+    /** List Jig's real `jira` skill among the skills Pi loaded, as Pi's `getCommands` reports it. */
+    genericSkills?: boolean;
+    /** The entries of the session's branch, such as an earlier `/profile` choice. */
+    branch?: unknown[];
     /** What the fake screen answers when jig-core asks the user: an option of the question, or nothing (a declined question). */
     answer?: string;
 }
@@ -75,6 +83,9 @@ function jigPlugins(): ExtensionFactory[] {
         themePlugin,
     ] as ExtensionFactory[];
 }
+
+/** Jig's own `jira` skill, which jig-acme's overlay is added to. */
+const JIRA_SKILL = path.resolve(import.meta.dirname, "../../../../plugins/jig-jira/skills/jira/SKILL.md");
 
 const SAVED = ["JIG_STATE_DIR", "PI_CODING_AGENT_DIR"] as const;
 
@@ -99,7 +110,14 @@ export async function startWorld(options: WorldOptions = {}): Promise<World> {
     if (options.plugins !== false) for (const plugin of jigPlugins()) await plugin(host.pi);
     if (company && options.acmeFirst !== true) acme(host.pi as ExtensionAPI);
 
-    const { ctx, log } = fakeContext({ ui: { select: () => options.answer }, mode: "rpc" });
+    for (const plugin of options.extra ?? []) await plugin(host.pi);
+    if (options.genericSkills === true) host.skills.push({ name: "jira", path: JIRA_SKILL });
+    const { ctx, log } = fakeContext({
+        ui: { select: () => options.answer },
+        mode: "rpc",
+        ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+        ...(options.branch === undefined ? {} : { branch: options.branch }),
+    });
     await host.fire("session_start", { reason: "startup" }, ctx);
 
     async function jigLines(argument = ""): Promise<string[]> {

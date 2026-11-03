@@ -10,6 +10,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- Company profiles. `profiles` and `profile` in `jig.json` choose which company plugin applies to the work at hand, by working folder or git remote; `/profile` shows the choice and why, and `/profile <name>` sets it for the session. A company plugin registers with `profiles.register`, and only the active company's environments, rules, section defaults, secret settings, status and skills apply. With no `profiles` section and one company plugin, it is active as before. See `plugins/jig-core/docs/profiles.md`.
+- Skill overlays. A company plugin ships `overlays/<skill>.md`; jig-core merges it into the generic skill (a `## <Company> rules` section) under the state folder and points the skill list at the merged file, so the model reads one skill instead of a generic one and a company one. `examples/jig-acme` moves `acme-jira` to an overlay.
 - `deploy` with a pin (a version line in a control repository): the catalog's `pin` method and a read-only `pinned` entry for production; `deploy status` says what is pinned, for whom, who changed it last and the open pin pull requests; `deploy plan` shows the line a run would change; and a `ci trigger` preview says what the environment is pinned to. Reads only; `deploy run` for a pin comes later.
 - `/lens web`: a page of charts and tables over `jig-lens`'s index, served by Pi on `127.0.0.1` behind a secret link,
   read-only, with nothing to install: cost per day, sessions and tickets, every turn and call of a session with child

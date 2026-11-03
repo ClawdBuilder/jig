@@ -10,7 +10,8 @@ first time it uses it, where that helps.
 | **Pi** | The coding agent Jig plugs into ([pi.dev](https://pi.dev)). Its extensions are TypeScript. |
 | **Plugin** | A Pi package of Jig's, such as `jig-core` or `jig-git`, or a private company plugin. |
 | **Company plugin** | A private plugin with one employer's environments, sign-in, tools and backends. See [Writing a company plugin](company-plugin.md). |
-| **Overlay skill** | A company's own rules, added to a generic plugin's skill. The tool stays the same. |
+| **Overlay skill** | A company's own rules (`overlays/<skill>.md`), merged into a generic plugin's skill so the model reads one skill. The tool stays the same. |
+| **Profile** | A named company setup in `jig.json`, chosen by working folder or git remote; the others stay dormant. See [Profiles](../plugins/jig-core/docs/profiles.md). |
 | **Tool** | Something the model can call: Pi's own `read` or `bash`, or a plugin's `git` or `pr`. |
 | **Action** | One operation of a tool with several, such as `git push` or `pr comment`. |
 | **Kind** | In a tool table: `read`, `local write` (this machine) or `external write` (a service). |

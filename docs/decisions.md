@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-03: company profiles, and skill overlays instead of paired skills](#2026-11-03-company-profiles-and-skill-overlays-instead-of-paired-skills)
 - [2026-11-03: deferred tools and stage tools](#2026-11-03-deferred-tools-and-stage-tools)
 - [2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file](#2026-11-02-the-review-screens-browser-page-is-served-over-localhost-not-opened-as-a-file)
 - [2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files](#2026-11-02-a-gradle-builds-tests-pick-an-installed-jdk-that-fits-from-files)
@@ -185,6 +186,41 @@ Teams that deploy with Concourse start a job by hand, and read its builds, the w
 - **Commit dates.** A rebase and a cherry-pick keep the author date, an amend keeps it too, and two machines' clocks differ.
 - **Taking merge commits only.** A fast-forward and a rebase have no merge commit.
 - **Taking the incoming files off the list.** A file the merge changed and the agent then edited would drop out whole.
+
+## 2026-11-03: company profiles, and skill overlays instead of paired skills
+
+A company plugin added its own skill next to each generic one (`acme-jira` beside `jira`). Two descriptions were always in the
+context for one trigger, and the company's rules were read only if the model also loaded the second skill. And a person can work for
+more than one company, while only one company's setup should apply to the work at hand.
+
+**Decided**
+- **Profiles.** `profiles` in `jig.json` names profiles, each pointing at a company plugin with `when.folders` and `when.remotes`;
+  `profile` is `auto` (the default), `none` or a name. A company plugin registers with `profiles.register(name, options)` and gives
+  its parts through the view that returns. `/profile` shows the choice and why, and `/profile <name>` makes one for the session.
+- **The choice** is the session's `/profile`, then `profile` in the file, then `auto` (first matching profile), then, only when there
+  is no `profiles` section and one company plugin, that company. Nothing else is guessed: no match means no company.
+- **Dormant** means environments, rules, classification rules, section defaults, secret commands and backends, status lines, skills and
+  overlays do not apply. Protected paths and mask fields still apply, because they can only protect. A plugin that never registers
+  applies always, so existing company plugins and users are unchanged.
+- **Overlays.** A company plugin ships `overlays/<skill>.md` (plain Markdown, no front matter). For the active company jig-core writes
+  `<state>/skills/<profile>/<skill>/SKILL.md`, the generic file unchanged plus a `## <Company> rules` section, with the skill's other
+  files copied beside it, and points the skill in each turn's list (`before_agent_start`, `systemPromptOptions.skills`) at that file.
+
+**Why**
+- **One description per trigger.** The model sees the generic description once, and the context no longer holds a pair.
+- **The rules are always read.** They are in the file the model opens for the generic skill, so they cannot be skipped.
+- **A single source of truth.** The generic skill is read from where it is and never copied by hand, so a change in Jig reaches the
+  merged copy at the next start, and the company file holds only what is the company's.
+- **Safety with several employers.** A dormant company's production names must not count as test, and its allow rules must not weaken
+  another company's work. Making dormancy a rule of the API, not each plugin's care, keeps that true.
+
+**Rejected**
+- **Keeping paired skills.** It is the cost above, and a company skill that is not loaded is silently missing.
+- **Editing the generic skill's file, or Pi's skill objects, in place.** The file belongs to a package that is not ours, and Pi's
+  objects are shared; a merged copy under the state folder and a new list per turn change neither.
+- **Choosing by an environment variable or a flag.** The working folder and the git remote are what already tell the work apart.
+- **Falling back to a sole company when profiles are configured.** Writing profiles says where each company applies; an unmatched
+  folder is the case the profile is for.
 
 ## 2026-11-03: deferred tools and stage tools
 

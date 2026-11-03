@@ -116,6 +116,8 @@ describe("the API", () => {
             "http.request()",
             "mask.text()",
             "mask.value()",
+            "profiles.active()",
+            "profiles.register()",
             "protectedPaths.list()",
             "sandbox.canRun",
             "sandbox.register()",
@@ -169,6 +171,14 @@ describe("the API", () => {
         ]);
     });
 
+    test("jig-core checks two more sections of its own, which no plugin can register or give defaults for: profiles and profile", async () => {
+        const { PROFILES_SECTION, PROFILE_SECTION } = await import("../src/profiles.ts");
+        assert.equal(PROFILES_SECTION, "profiles");
+        assert.equal(PROFILE_SECTION, "profile");
+        const { PROFILE_ENTRY } = await import("../src/profile-command.ts");
+        assert.equal(PROFILE_ENTRY, "jig-profile", "the session-file entry that keeps /profile <name>");
+    });
+
     test("the events on Pi's event bus are these", async () => {
         const { JIG_EVENTS } = await import("../src/contract.ts");
         assert.deepEqual({ ...JIG_EVENTS }, { decision: "jig:decision", watchDone: "jig:watch-done" });
@@ -204,6 +214,8 @@ describe("what plugins import", () => {
             "OpenedTunnel",
             "PollOutcome",
             "Preview",
+            "ProfileRegistration",
+            "ProfileSelection",
             "ProtectedPathInfo",
             "Rule",
             "RunOptions",

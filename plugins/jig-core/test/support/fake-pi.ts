@@ -39,6 +39,8 @@ export interface FakePi {
     /** The renderers extensions registered, by the type they draw (`registerEntryRenderer`, `registerMessageRenderer`). */
     entryRenderers: Map<string, unknown>;
     messageRenderers: Map<string, unknown>;
+    /** The skills `pi.getCommands()` lists (as `skill:<name>` commands). Default none. */
+    skills: Array<{ name: string; path: string }>;
     /** What `pi.getThinkingLevel()` answers. Default `off`. */
     thinkingLevel: string;
     /** Runs every handler of an event, in order, and returns the last answer that was not undefined. */
@@ -56,6 +58,7 @@ export function fakePi(tools: FakeTool[] = []): FakePi {
     const entryRenderers = new Map<string, unknown>();
     const messageRenderers = new Map<string, unknown>();
     const fake = { thinkingLevel: "off" };
+    const skills: FakePi["skills"] = [];
     const pi = {
         on(type: string, handler: Handler) {
             handlers.set(type, [...(handlers.get(type) ?? []), handler]);
@@ -85,6 +88,12 @@ export function fakePi(tools: FakeTool[] = []): FakePi {
             messageRenderers.set(customType, renderer);
         },
         getThinkingLevel: () => fake.thinkingLevel,
+        getCommands: () =>
+            skills.map((skill) => ({
+                name: `skill:${skill.name}`,
+                source: "skill",
+                sourceInfo: { path: skill.path, source: "test", scope: "user", origin: "package" },
+            })),
         // Pi lists the tools extensions registered along with the ones it was given.
         getAllTools: () => [
             ...tools,
@@ -112,6 +121,7 @@ export function fakePi(tools: FakeTool[] = []): FakePi {
         userMessages,
         entryRenderers,
         messageRenderers,
+        skills,
         get thinkingLevel() {
             return fake.thinkingLevel;
         },

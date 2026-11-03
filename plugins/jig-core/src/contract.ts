@@ -706,6 +706,25 @@ export interface JigApi {
         register(plugin: string, lines: () => readonly string[]): void;
     };
 
+    /**
+     * Company profiles: several company plugins can be loaded, and only the one the work at hand belongs to applies. Always
+     * present in `jig-core`; optional here only so that a test's stand-in for `jig-core` need not have it. See
+     * `docs/profiles.md`.
+     */
+    readonly profiles?: {
+        /**
+         * Registers a company plugin under a name (the `plugin` of a `profiles` entry in `jig.json`) and returns a view of this
+         * API for it. What the plugin gives through that view (`config.addEnvironments`, `addRules`, `addClassifyRules`,
+         * `addSecretCommands`, `enableSecretBackends`, `addSectionDefaults` and `status.register`) applies only while its
+         * company is active; `addProtectedPaths` and `addMaskFields` apply always, because they can only protect. Everything
+         * else on the view is the plain API. A plugin that never registers keeps working as before: what it adds through
+         * `jig()` applies always. Registering the same name again replaces the earlier registration.
+         */
+        register(name: string, options: ProfileRegistration): JigApi;
+        /** Which company is active now, and why. A copy. */
+        active(): ProfileSelection;
+    };
+
     /** Runs programs from an argument list, never a shell. */
     readonly exec: {
         /** Refuses a program whose real path is in a folder the agent's shell can write: the working folder, and with a
@@ -717,6 +736,34 @@ export interface JigApi {
          *  holds a setting that would run a command, because the agent's shell can write that file. */
         git(repo: string, args: readonly string[], options?: RunOptions): Promise<RunResult>;
     };
+}
+
+/** What a company plugin tells jig-core when it registers (`profiles.register`). */
+export interface ProfileRegistration {
+    /** The company's name as people read it. The merged skills get a section `## <displayName> rules`. */
+    displayName: string;
+    /** Absolute folder with `<skill-name>.md` files: the company's rules for generic skills, plain Markdown with no front matter. */
+    overlays?: string;
+    /** Names of the skills the company ships that have no generic counterpart. They are listed for the model only while the
+     *  company is active. */
+    skills?: readonly string[];
+    /** Called when the company becomes active or dormant, and once at session start with the state it begins in: where a
+     *  plugin hides or shows the tools only it has (`exposure: "hidden"` when dormant). It must not throw; if it does, the
+     *  error is reported by `/jig`. */
+    onChange?(active: boolean): void;
+}
+
+/** Which company is active and why (`profiles.active`, `/profile`). */
+export interface ProfileSelection {
+    /** `session`: `/profile <name>`; `explicit`: `profile` in `jig.json`; `folder` and `remote`: `auto` matched; `sole`: no
+     *  profiles are configured and one company plugin is loaded; `none`: no company is active. */
+    reason: "session" | "explicit" | "folder" | "remote" | "sole" | "none";
+    /** The profile's name, or undefined when no company is active. */
+    profile?: string;
+    /** The name the active company plugin registered under, or undefined. */
+    plugin?: string;
+    /** One sentence that says why. */
+    why: string;
 }
 
 /** Events jig-core publishes on Pi's event bus (`pi.events`). */

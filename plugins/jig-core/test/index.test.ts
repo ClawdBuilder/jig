@@ -28,10 +28,11 @@ afterEach(() => {
 });
 
 describe("the factory", () => {
-    test("registers the hooks it needs, the /jig command and the watch tool", () => {
+    test("registers the hooks it needs, the /jig and /profile commands and the watch tool", () => {
         const host = fakePi();
         jigCore()(host.pi);
         assert.deepEqual([...host.handlers.keys()].sort(), [
+            "before_agent_start",
             "session_shutdown",
             "session_start",
             "tool_call",
@@ -40,6 +41,7 @@ describe("the factory", () => {
             "turn_end",
         ]);
         assert.ok(host.commands.has("jig"));
+        assert.ok(host.commands.has("profile"));
         assert.deepEqual([...host.registered.keys()], ["watch"]);
         withdrawJig(jig());
     });

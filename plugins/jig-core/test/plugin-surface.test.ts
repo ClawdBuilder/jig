@@ -28,7 +28,7 @@ interface Given {
 }
 
 const EXPECTED: Record<string, Given> = {
-    "jig-core": { tools: { watch: ["list", "stop"] }, commands: ["jig"], sections: [] },
+    "jig-core": { tools: { watch: ["list", "stop"] }, commands: ["jig", "profile"], sections: [] },
     "jig-sandbox": {
         tools: { bash: [], bg_kill: [], bg_list: [], bg_output: [] },
         commands: ["ps", "sandbox"],

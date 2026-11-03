@@ -15,6 +15,9 @@ import type { ApprovalKind, Decision, EnvironmentKind, Preview, SandboxProvider,
 import type { DecisionSource } from "./decide.ts";
 import { errorMessage } from "./errors.ts";
 import { createGates } from "./gates.ts";
+import { announce, effectiveDefaults, newProfileState, settleProfile } from "./profile-state.ts";
+import type { CompanyEntry, ProfileState } from "./profile-state.ts";
+import { PROFILE_SECTION, PROFILES_SECTION, validateProfilesSection, validateProfileSection } from "./profiles.ts";
 import type { Gates } from "./gates.ts";
 import { createMasker, dailyMaskKey } from "./mask/index.ts";
 import type { Masker } from "./mask/index.ts";
@@ -101,11 +104,19 @@ export interface JigState {
     now: () => Date;
     declarations: Map<string, ToolDeclaration>;
     personal: LoadedConfig;
+    /** What company plugins added, as policy and secrets read it: `globalCompany` and the active company's additions. */
     company: CompanyAdditions;
+    /** What plugins that never registered with `profiles.register` added: it always applies. */
+    globalCompany: CompanyAdditions;
+    /** The company plugins that registered, by the name they registered under. */
+    companies: Map<string, CompanyEntry>;
+    /** Which company is active and what follows from it (src/profile-state.ts). */
+    profile: ProfileState;
     /** The sections of jig.json that plugins registered, with their checks. Registered when plugins load, before
      *  the file is read at session start. */
     sectionChecks: Map<string, SectionCheck>;
-    /** Company defaults per plugin section, laid under the personal section. */
+    /** Defaults of plugins that never registered with `profiles.register`, per plugin section, laid under the personal section.
+     *  The active company's defaults come on top of them (`effectiveDefaults`). */
     sectionDefaults: Map<string, unknown>;
     /** The paths that replace the company's defaults instead of merging into them, per plugin section. */
     sectionReplace: Map<string, readonly string[]>;
@@ -217,6 +228,9 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             invalid: new Set(),
         },
         company: emptyAdditions(),
+        globalCompany: emptyAdditions(),
+        companies: new Map(),
+        profile: newProfileState(),
         sectionChecks: new Map(),
         sectionDefaults: new Map(),
         sectionReplace: new Map(),
@@ -354,16 +368,27 @@ export function rememberCall(state: JigState, call: CallState): void {
 
 /** Reads jig.json, with the sections plugins registered, and rebuilds the policy. Run at session start. */
 export function loadPersonalConfig(state: JigState, file: string = state.configPath()): void {
-    // jig-core's own `tools` section is checked like a plugin's, so a company plugin can give defaults for it, but it is
-    // not a plugin's: it stays out of `sectionChecks`, which `/jig` lists as the plugins' sections.
-    const checks = new Map([[TOOLS_SECTION, validateToolsSection], ...state.sectionChecks]);
-    state.personal = loadConfigFile(file, checks, {
-        defaults: state.sectionDefaults,
-        replace: state.sectionReplace,
-        oneOf: state.sectionOneOf,
-        union: state.sectionUnion,
-    });
+    // jig-core's own `tools`, `profiles` and `profile` sections are checked like a plugin's, so a company plugin can give
+    // defaults for `tools`, but they are not a plugin's: they stay out of `sectionChecks`, which `/jig` lists as the plugins' sections.
+    const checks = new Map([
+        [TOOLS_SECTION, validateToolsSection],
+        [PROFILES_SECTION, validateProfilesSection],
+        [PROFILE_SECTION, validateProfileSection],
+        ...state.sectionChecks,
+    ]);
+    const read = (): LoadedConfig =>
+        loadConfigFile(file, checks, {
+            defaults: effectiveDefaults(state),
+            replace: state.sectionReplace,
+            oneOf: state.sectionOneOf,
+            union: state.sectionUnion,
+        });
+    state.personal = read();
     state.configLoaded = true;
+    // The profile is chosen from the file, and the chosen company's section defaults lie under the file's sections:
+    // when the choice changed, the file is read again with them.
+    if (settleProfile(state)) state.personal = read();
+    announce(state);
     state.invalidatePolicy();
 }
 

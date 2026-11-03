@@ -10,8 +10,13 @@
 //   masking          field names that hold personal data                                    masking.ts
 //   protected paths  files the agent must not read                                          protection.ts
 //   status           a line for /jig                                                        status.ts
+//   profile          the name this company registers under, its overlays and its own skills  here
 //
-// The skills (skills/acme-jira) are not registered here: the package manifest lists them and Pi loads them.
+// Everything below is given through the view that `profiles.register` returns, so it applies only while the Acme profile is active
+// (a person who also works for another company loads both plugins). The company-only skill (skills/acme-releases) is loaded by Pi from
+// the package manifest and listed for the model only while Acme is active; the overlay (overlays/jira.md) is not a skill: jig-core
+// merges it into the generic `jira` skill.
+import { fileURLToPath } from "node:url";
 import type { ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { proxyOf, settingsOf, validateAcme, DEFAULT_GATEWAY_PROXY } from "./config.ts";
 import { registerDefaults } from "./defaults/index.ts";
@@ -36,9 +41,22 @@ export interface JigAcmeOptions {
 }
 
 /** The extension. Pi loads the default export below. */
+/** The name Acme's plugin registers under: the `plugin` of a `profiles` entry in jig.json. */
+export const ACME_PLUGIN = "jig-acme";
+
+/** The folder of Acme's rules for generic skills: `jira.md` is added to the `jira` skill. */
+const OVERLAYS = fileURLToPath(new URL("../overlays", import.meta.url));
+
 export function jigAcme(options: JigAcmeOptions = {}): ExtensionFactory {
     return () => {
-        withJig((api) => {
+        withJig((jig) => {
+            // Older jig-core without profiles: what is added applies always, as it did.
+            const api =
+                jig.profiles?.register(ACME_PLUGIN, {
+                    displayName: "Acme",
+                    overlays: OVERLAYS,
+                    skills: ["acme-releases"],
+                }) ?? jig;
             const settings = () => settingsOf(api);
             const hosts = options.hosts ?? ACME_HOSTS;
             api.config.registerSection("acme", validateAcme);

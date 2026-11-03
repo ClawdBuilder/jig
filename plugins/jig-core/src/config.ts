@@ -770,6 +770,27 @@ export function addCompanySecretBackends(additions: CompanyAdditions, raw: unkno
         if (!additions.secretBackends.includes(name)) additions.secretBackends.push(name);
 }
 
+/** Several sets of company additions as one: the environments (production wins and a mask stays on, as when one plugin
+ *  names a name twice), the rules and classification rules in order, the paths, commands and backends added up, and every
+ *  problem. The parts are not changed. */
+export function mergeAdditions(parts: readonly CompanyAdditions[]): CompanyAdditions {
+    const out = emptyAdditions();
+    for (const part of parts) {
+        addCompanyEnvironments(out, part.environments);
+        out.rules.push(...part.rules);
+        out.classify.push(...part.classify);
+        out.protectedPaths.secret.push(...part.protectedPaths.secret);
+        out.protectedPaths.guarded.push(...part.protectedPaths.guarded);
+        Object.assign(out.secretCommands, part.secretCommands);
+        for (const backend of part.secretBackends)
+            if (!out.secretBackends.includes(backend)) out.secretBackends.push(backend);
+        out.problems.push(...part.problems);
+        out.received.rules += part.received.rules;
+        out.received.classify += part.received.classify;
+    }
+    return out;
+}
+
 /** `rules[1].tool` becomes `rules[4].tool` when three rules came before this call. */
 function shiftIndex(key: string, section: string, offset: number): string {
     return key.replace(

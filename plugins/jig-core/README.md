@@ -34,6 +34,7 @@ This tool lists and stops the watches of every plugin.
 | `/jig` | Status: tools governed, plugins loaded, environments and who defined them, open watches, configuration problems |
 | `/jig rules [tool]` | The effective decision per tool and action, and where each came from |
 | `/jig records` | Where today's records are, and a one-line summary of the day |
+| `/profile` | Which company's setup is active and why; `/profile <name>` chooses one for this session, `auto` and `none` too |
 
 What each one shows in full is in the
 [configuration reference](docs/configuration.md#the-jig-commands).
@@ -82,6 +83,8 @@ All fields are optional.
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
 | `approvals.openInBrowser` | `"on-key"` | `"always"` opens a review screen's preview in the browser as soon as it appears |
 | `tools.deferred` | none | Jig tools whose descriptions stay out of the context until Pi's `tool_search` finds them |
+| `profiles` | none | Named company profiles: `{ "plugin": "jig-acme", "when": { "folders": [...], "remotes": [...] } }`. See [Profiles](docs/profiles.md) |
+| `profile` | `"auto"` | Which profile applies: `"auto"` (the first whose folder or remote matches), `"none"`, or a name |
 | `startChecks` | none | Up to 16 TCP checks made when a session starts: `name`, `tcp` (`host:port`), `hint` |
 
 What each field means, with its limits, is in the
@@ -117,6 +120,8 @@ on Linux first; any store with a command line works through `cmd:`, see
   databases;
 - defaults for other plugins' sections of `jig.json` (`config.addSectionDefaults`), which your own
   section is laid over, and for `tools` (which tools are deferred);
+- a registered name and its overlays (`profiles.register`), so that only the company the work belongs to applies and its rules are
+  added to the generic skills ([Profiles](docs/profiles.md));
 - secret commands (`config.addSecretCommands`), the secret backends its references need
   (`config.enableSecretBackends`) and protected paths (`config.addProtectedPaths`) for its own
   tools.
@@ -150,6 +155,7 @@ jig-core/
 - [Records](docs/records.md): the line per call and per turn, facts, error kinds
 - [Configuration](docs/configuration.md): the fields, rule matching, secrets, sections, variables
 - [Running programs](docs/running-programs.md): no shell, and the checks on git
+- [Profiles](docs/profiles.md): which company applies, what dormant means, skill overlays
 - [Plugin contract](docs/plugin-contract.md): what a plugin gets from `jig-core`
 - [Reuse](../../docs/reuse.md#tool-manager): what `jig-core` borrows from
   `@gotgenes/pi-permission-system`, and why it is not a dependency
