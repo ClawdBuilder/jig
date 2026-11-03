@@ -10,6 +10,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- Herdr Review tab: a `Diff | File | Patch` switch in the diff header; `File` and `Patch` show the file's text or the diff's text in a read-only editor where the mouse drags a selection and `Ctrl+C` copies it (the view is remembered), and shift-click in `Diff` now takes focus first so the range extends.
 - Herdr Review tab: the file list is resizable (drag the divider; the width is remembered), and code can be copied. Click a diff line (shift-click to extend, `Escape` to clear) and press `Ctrl+C` or `Copy N lines` to copy it without markers or line numbers; `Copy file` and `Copy path` are in the diff header.
 - Company profiles. `profiles` and `profile` in `jig.json` choose which company plugin applies to the work at hand, by working folder or git remote; `/profile` shows the choice and why, and `/profile <name>` sets it for the session. A company plugin registers with `profiles.register`, and only the active company's environments, rules, section defaults, secret settings, status and skills apply. With no `profiles` section and one company plugin, it is active as before. See `plugins/jig-core/docs/profiles.md`.
 - Skill overlays. A company plugin ships `overlays/<skill>.md`; jig-core merges it into the generic skill (a `## <Company> rules` section) under the state folder and points the skill list at the merged file, so the model reads one skill instead of a generic one and a company one. `examples/jig-acme` moves `acme-jira` to an overlay.
