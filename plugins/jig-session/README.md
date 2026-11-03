@@ -56,7 +56,7 @@ its meaning, needs `schema: 2` and a [Decisions](../../docs/decisions.md) entry.
 | `tools` | object | `{ active, total }`: tools declared to the model, and registered |
 | `ticket` | object or null | `{ key, title?, url? }` |
 | `workflow` | object or null | `{ name, stages, current, since?, prs, problem? }` |
-| `outputs` | list | `{ path, action, at, repo }`, newest first, one per path; up to 50 with `repo` null and up to 50 with a repo |
+| `outputs` | list | `{ path, action, at, repo }`, newest first, one per path; up to 50 with `repo` null and up to 50 with a repo. Built from the successful `edit` and `write` calls in the session's transcript (so a resumed or restarted session keeps them) and the live ones, plus the active ticket's user-facing files (notes, plans, other `.md`, `.txt` and `.json` reports, and `evidence/` except the tool outputs Jig saves there by itself, two levels deep; never `ticket.json`, `workflow.json` or `history/`), with the file's modification time as `at`. The newest `at` wins per path; the ticket folder is re-read every 10 s |
 | `recent` | list | The last 15 tool calls, newest first: `{ at, tool, action?, decision?, answer?, outcome }` |
 | `contextDetail` | object or null | What fills the context, part by part, and the tools, skills and context files behind it |
 | `lastRequest` | object or null | `{ id, ok, message, at, reload? }`: the answer to the last request |

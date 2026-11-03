@@ -49,6 +49,13 @@ function hasGit(dir: string): boolean {
     }
 }
 
+/** Keeps the first MAX_OUTPUTS of each kind. The cap is per kind, so edits inside repositories cannot push ticket files out. */
+function capOutputs(all: Output[]): Output[] {
+    let loose = 0;
+    let inRepo = 0;
+    return all.filter((o) => (o.repo === null ? ++loose : ++inRepo) <= MAX_OUTPUTS);
+}
+
 const NAME = /^[A-Za-z0-9_.:/-]{1,80}$/;
 const clip = (value: unknown): string | undefined =>
     typeof value === "string" && NAME.test(value) ? value : undefined;
@@ -67,8 +74,12 @@ export class Activity {
         this.now = now;
     }
 
+    /** Files of the active ticket's folder (notes, plans, evidence), read from disk; see `ticketFiles`. */
+    ticketOutputs: Output[] = [];
+
     reset(): void {
         this.outputs = [];
+        this.ticketOutputs = [];
         this.recent = [];
         this.pending.clear();
         this.byId.clear();
@@ -97,6 +108,60 @@ export class Activity {
         // Every folder walked on the way up has the same answer: the root found, or none.
         for (const w of walked) this.roots.set(w, found);
         return found;
+    }
+
+    /**
+     * Rebuilds the outputs from the transcript of a branch (after a start, resume or reload): the successful `edit` and
+     * `write` calls, their paths only. A write to a path not yet seen is a creation, an edit an edit.
+     */
+    replay(branch: readonly unknown[], cwd: string): void {
+        const calls = new Map<string, { path: string; tool: string; at: string }>();
+        const found = new Map<string, Output>();
+        for (const entry of branch) {
+            const e = entry as { type?: unknown; timestamp?: unknown; message?: Record<string, unknown> };
+            const message = e?.message;
+            if (e?.type !== "message" || message === undefined || message === null) continue;
+            const stamp = (e.timestamp ?? message.timestamp) as unknown;
+            const when = new Date(typeof stamp === "string" || typeof stamp === "number" ? stamp : Number.NaN);
+            const at = Number.isNaN(when.getTime()) ? this.now().toISOString() : when.toISOString();
+            if (message.role === "assistant" && Array.isArray(message.content)) {
+                for (const block of message.content as Array<Record<string, unknown>>) {
+                    if (block?.type !== "toolCall" || typeof block.id !== "string") continue;
+                    if (typeof block.name !== "string" || !FILE_TOOLS.has(block.name)) continue;
+                    const given = (block.arguments as { path?: unknown } | undefined)?.path;
+                    if (typeof given !== "string" || given === "" || given.includes("\0")) continue;
+                    calls.set(block.id, { path: absolute(given, cwd), tool: block.name, at });
+                }
+            } else if (message.role === "toolResult" && typeof message.toolCallId === "string") {
+                const call = calls.get(message.toolCallId);
+                calls.delete(message.toolCallId);
+                if (call === undefined || message.isError === true) continue;
+                const before = found.get(call.path);
+                const action: Output["action"] =
+                    before?.action === "created" || (call.tool === "write" && before === undefined)
+                        ? "created"
+                        : "edited";
+                found.set(call.path, { path: call.path, action, at: call.at, repo: this.repoOf(call.path) });
+            }
+        }
+        this.outputs = capOutputs([...found.values()].reverse());
+    }
+
+    /** The live outputs and the ticket folder's files, one per path (the newest `at` wins), newest first, capped per kind. */
+    allOutputs(): Output[] {
+        if (this.ticketOutputs.length === 0) return this.outputs;
+        const byPath = new Map<string, Output>();
+        for (const o of [...this.ticketOutputs, ...this.outputs]) {
+            const other = byPath.get(o.path);
+            if (other === undefined) byPath.set(o.path, o);
+            else {
+                const newer = Date.parse(o.at) >= Date.parse(other.at) ? o : other;
+                const action = o.action === "created" || other.action === "created" ? "created" : newer.action;
+                byPath.set(o.path, { ...newer, action });
+            }
+        }
+        const sorted = [...byPath.values()].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+        return capOutputs(sorted);
     }
 
     private entry(toolCallId: string, tool: string): Recent {
@@ -154,10 +219,7 @@ export class Activity {
             { path: file.path, action, at: this.now().toISOString(), repo: this.repoOf(file.path) },
             ...this.outputs.filter((o) => o.path !== file.path),
         ];
-        // The cap is per kind, so edits inside repositories cannot push ticket files out.
-        let loose = 0;
-        let inRepo = 0;
-        this.outputs = all.filter((o) => (o.repo === null ? ++loose : ++inRepo) <= MAX_OUTPUTS);
+        this.outputs = capOutputs(all);
         return true;
     }
 }
