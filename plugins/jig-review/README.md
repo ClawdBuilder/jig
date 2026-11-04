@@ -89,7 +89,9 @@ On approval the plugin:
   a request without the cookie, or from another host or origin, is refused
   ([Server security](docs/server-security.md)).
 - **Approval does not rest on the secret.** A stolen cookie can comment as you; it cannot approve.
-- **Records stay out of the agent's reach.** Reviews, settings and passkeys live under Pi's agent folder.
+- **Records are the agent's to read, not to write.** Reviews, settings and passkeys live under Pi's agent
+  folder, which the file tools can read but not write and the sandbox's shell cannot reach. None of them is a
+  secret: a passkey is a public key, and a review holds the diff the agent already knows.
 - **Git goes through `jig-core`,** with hooks off and a repository's risky `.git/config` refused.
 
 ## Configure
