@@ -1,0 +1,111 @@
+# Setup and doctor
+
+`/jig doctor` looks at this machine, your Jig settings and the tools Jig uses, and says in plain words what is
+wrong and what to do. The doctor reads only: it changes no setting, signs in to nothing, and never shows a password
+or a token. `/jig setup` fills in what is missing, and writes only what you confirm.
+
+## Run it
+
+```text
+/jig doctor
+```
+
+The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
+the network, the sandbox and the records folder.
+
+## Setting up
+
+```text
+/jig setup
+```
+
+Setup asks one question at a time about the parts a company plugin or a validator says are incomplete or wrong.
+It never asks for a password or a token: credentials come in a later step.
+
+Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
+Nothing is written until you confirm. It keeps a backup next to the file and asks you to run `/reload`.
+
+If your settings file is a link, as a dotfiles setup often makes it, setup follows the link, says which file it
+will change, and writes that file. The link stays a link. A link that points nowhere, or to a folder, is refused
+and nothing changes.
+
+## The four words
+
+| Word | What it means |
+|---|---|
+| `ok` | This works. |
+| `warn` | This works, but something is worth knowing. |
+| `fail` | A tool that needs this will fail. |
+| `skip` | This was not checked, or does not apply here. |
+
+Each `warn` and `fail` has a `fix:` line under it. The fix is a command or an action for you; Jig does not run it.
+
+## What it looks at
+
+| Area | What it checks |
+|---|---|
+| This machine | Node.js, Pi, Jig, the system and Pi's folder |
+| Configuration | the settings file, each plugin section, and the protected files |
+| Secrets | the stores that are on, and each reference: found, missing, locked or not checked |
+| Logins | `gh` and `glab`, only when your settings use them |
+| Network | only with `--network`: the configured hosts and the latest release |
+| Sandbox | whether `bash` is sandboxed, and the programs it needs |
+| Records | where today's records go, and whether they can be written |
+
+A `skip` is not a failure. The `keychain`, `op` and `cmd` stores are not opened to check a reference yet. The
+Logins group checks `gh` and `glab` when your settings use them.
+
+## Fixing a finding
+
+- **A missing secret.** The fix is your own store's command, such as `pass insert work/jira-token`. Run it in your
+  own terminal; Jig never asks for the value.
+- **A section that is not loaded.** The message names the key. A company's defaults can wait for the part only you
+  know, such as your login on a bastion host.
+- **A login tool that is not signed in.** The fix is its own command, such as `gh auth login`.
+- **A program that is missing.** The fix is the install command. Jig installs nothing.
+
+## The report file
+
+```text
+/jig doctor --json
+```
+
+writes `doctor.json` to Jig's state folder: `~/.local/state/jig` unless `JIG_STATE_DIR` says otherwise. The output
+says the path.
+
+The file is JSON with `"schema": 1`. A later version may add fields, but does not change or remove one. It holds no
+password, token or secret reference: for a reference it says which store was asked and what was found, and the fix
+may name the entry to add.
+
+## Checking the network
+
+```text
+/jig doctor --network
+```
+
+This is opt-in. It makes one TCP connection to each host and closes it: in parallel, 3 seconds each, with nothing
+sent. The hosts are the `startChecks` in your settings and the addresses written in the plugin sections.
+
+It also checks the latest Jig release, from the repository named in Jig's `package.json`, at most once a day. A host
+that does not answer, a release page that cannot be read, or a repository that is not on GitHub is a warning or a
+skip, never a failure.
+
+## Less noise
+
+```text
+/jig doctor --quiet
+```
+
+shows only the warnings and failures, with the summary. The full report is still what `--json` writes.
+
+## What it never does
+
+- It never asks for, shows, stores or records a secret value.
+- It never signs in, unlocks a store, or refreshes a login.
+- The doctor never changes `jig.json`; setup writes only the fields you confirm, and never rules, protected
+  paths or the list of stores you turned off.
+- It never installs a program or runs a fix.
+- It never contacts a host without `--network`.
+
+The checks in detail are in [Configuration](../plugins/jig-core/docs/configuration.md#the-jig-commands). Where a reference comes from is in
+[Secrets](secrets.md#later).

@@ -106,7 +106,7 @@ describe("the extension", () => {
         const jig = installFakeJig();
         try {
             load();
-            assert.deepEqual(jig.sectionReplace.get("api"), ["environments.*"]);
+            assert.deepEqual(jig.sectionReplace.get("api"), ["environments.*", "collections.*"]);
             assert.deepEqual(jig.sectionReplace.get("api"), API_REPLACE);
 
             // A company routes Staging through its transport; you would rather use a sign-in service of your own.

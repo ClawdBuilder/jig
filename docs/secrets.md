@@ -150,7 +150,9 @@ A request names a reference, a sign-in service or a transport in `auth`, and
 
 ## Later
 
-A read-only status that a side panel or `/jig` can show. For each reference the session's tools name, it
-says **found**, **missing** or **store locked**, and never a value. It decides without decrypting where
-the backend allows (for `pass`, the entry file exists), and for a missing one it gives the command that
-adds it. This is not built.
+`/jig doctor` has the first part: a read-only status for every reference in the effective settings, saying
+**found**, **missing** or **not checked** (and **locked** when a store reports it), never a value. For
+`pass`, `env` and `file` it decides without decrypting: the entry file exists, the variable is set, the
+file has a first line. `keychain`, `op` and `cmd` are not checked yet and say so; a `cmd` reference is
+checked only when the login tool has a status command. A missing one comes with the command that adds it.
+Still to come: a side panel, and a check for the other three backends.

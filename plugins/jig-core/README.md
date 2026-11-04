@@ -32,6 +32,8 @@ This tool lists and stops the watches of every plugin.
 | Command | What it does |
 |---|---|
 | `/jig` | Status: tools governed, plugins loaded, environments and who defined them, open watches, configuration problems |
+| `/jig setup` | Fills in the missing parts of plugin settings, in plain words, after you confirm |
+| `/jig doctor` | What is wrong with this setup, with one plain fix for each finding |
 | `/jig rules [tool]` | The effective decision per tool and action, and where each came from |
 | `/jig records` | Where today's records are, and a one-line summary of the day |
 | `/profile` | Which company's setup is active and why; `/profile <name>` chooses one for this session, `auto` and `none` too |
@@ -147,6 +149,7 @@ jig-core/
 ## More detail
 
 - [Code map](docs/code-map.md): every file, who calls it, and one tool call followed through the gate
+- [Setup and doctor](../../docs/setup-and-doctor.md): what `/jig doctor` checks, the report file, and the fix lines
 - [Watches](docs/watches.md): kinds, polling, finish lines, messages, saving
 - [Credential sources](docs/sign-in-and-transports.md): where a request's credential comes from, and why Jig never signs in
 - [What asks](docs/approval-screens.md): the order of a decision, and the screens

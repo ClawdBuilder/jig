@@ -43,7 +43,10 @@ fixed (`/jig` lists the problems).
 - **`secrets`:** secret variables, by name, mapped to secret references, or per
   environment: `{ "token": { "Staging": "pass:a", "Prod": "pass:b" } }`.
 - **`reads`:** requests that read although their method is not `GET`, such as a
-  search sent as `POST`.
+  search sent as `POST`. It applies outside production only: in production a
+  request reads only with `GET`, `HEAD` or `OPTIONS`, so a `POST` search there is
+  a write and `jig-core`'s floor denies it. That keeps the list from talking a
+  production write past the floor.
 - **`adHoc`:** `jig-core` test environments where `call` is allowed. Each must be
   one that `environments` maps to.
 - **`timeoutSec`:** seconds to wait for an answer when a call gives none: 1 to

@@ -1,7 +1,9 @@
 // The `/jig` commands:
 //   /jig               status
+//   /jig doctor        what is wrong with this setup, and what to do about it
 //   /jig rules [tool]  the effective decision per tool and action, and where each came from
 //   /jig records       where today's records are, and a one-line summary
+import { homedir } from "node:os";
 import type { ExtensionAPI, ExtensionCommandContext, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { classify } from "./classify.ts";
 import type { Classification, ClassSource } from "./classify.ts";
@@ -14,6 +16,14 @@ import { activeCompany } from "./profile-state.ts";
 import { FILE_TOOLS } from "./protected-paths.ts";
 import type { ProtectedKind, ProtectedSource } from "./protected-paths.ts";
 import { formatDuration, summarize } from "./records.ts";
+import { doctorContext } from "./doctor-checks.ts";
+import { doctorReportFile, writeDoctorReport } from "./doctor-json.ts";
+import { countQuickIssues } from "./doctor-secrets.ts";
+import { formatDoctor, runDoctor } from "./doctor.ts";
+import { stateDir } from "./paths.ts";
+import { shorten } from "./secret-status.ts";
+import { runSetup } from "./setup.ts";
+import { sectionState } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
 import type { JigState } from "./state.ts";
@@ -24,17 +34,25 @@ const MAX_RULE_LINES = 300;
 
 export function registerCommands(pi: ExtensionAPI, state: JigState): void {
     pi.registerCommand("jig", {
-        description: "Jig tool manager: status, rules per tool, records",
+        description: "Jig tool manager: status, setup, doctor, rules per tool, records",
         getArgumentCompletions: (prefix) => {
-            const matches = ["rules", "records"].filter((word) => word.startsWith(prefix));
+            const matches = ["doctor", "records", "rules", "setup"].filter((word) => word.startsWith(prefix));
             return matches.length === 0 ? null : matches.map((word) => ({ value: word, label: word }));
         },
         handler: async (args, ctx) => {
-            const [word, ...rest] = args.trim().split(/\s+/);
+            const [word, ...rest] = args
+                .trim()
+                .split(/\s+/)
+                .filter((part) => part !== "");
             if (word === undefined || word === "") return show(ctx, "jig status", statusLines(state));
+            if (word === "setup") {
+                if (rest.length > 0) return show(ctx, "jig setup", ["Usage: /jig setup"]);
+                return runSetup(state, ctx);
+            }
+            if (word === "doctor") return show(ctx, "jig doctor", await doctorLines(state, rest));
             if (word === "rules") return show(ctx, "jig rules", ruleLines(state, rest[0], ctx.hasUI));
             if (word === "records") return show(ctx, "jig records", recordsLines(state));
-            return show(ctx, "jig", ["Usage: /jig, /jig rules [tool], /jig records"]);
+            return show(ctx, "jig", ["Usage: /jig, /jig setup, /jig doctor, /jig rules [tool], /jig records"]);
         },
     });
 }
@@ -42,6 +60,26 @@ export function registerCommands(pi: ExtensionAPI, state: JigState): void {
 async function show(ctx: ExtensionCommandContext, title: string, lines: string[]): Promise<void> {
     if (lines.length <= NOTICE_LINES) ctx.ui.notify(lines.join("\n"), "info");
     else await ctx.ui.select(title, lines);
+}
+
+const DOCTOR_FLAGS = new Set(["--json", "--network", "--quiet"]);
+
+/** Runs the doctor, and with `--json` writes the report to the state folder and says where. */
+async function doctorLines(state: JigState, args: readonly string[]): Promise<string[]> {
+    const unknown = args.filter((word) => !DOCTOR_FLAGS.has(word));
+    if (unknown.length > 0) return ["Usage: /jig doctor [--json] [--network] [--quiet]"];
+    const flags = new Set(args);
+    const report = await runDoctor(doctorContext(state), { network: flags.has("--network") });
+    const lines = formatDoctor(report, { quiet: flags.has("--quiet") });
+    if (!flags.has("--json")) return lines;
+    const file = doctorReportFile(stateDir(state.env));
+    try {
+        writeDoctorReport(report, file, state.now());
+        lines.push("", `Report: ${shorten(file, homedir())}`);
+    } catch (error) {
+        lines.push("", `The report could not be saved: ${errorMessage(error)}`);
+    }
+    return lines;
 }
 
 // ---- helpers ----------------------------------------------------------------------------------------------------------
@@ -121,11 +159,16 @@ export function statusLines(state: JigState): string[] {
             ? `Configuration: ${state.personal.file}`
             : `Configuration: none found (${state.personal.file || "not loaded yet"}), defaults apply`,
     ];
+    const issues = countQuickIssues(doctorContext(state));
+    if (issues > 0) {
+        const things = issues === 1 ? "1 thing needs" : `${issues} things need`;
+        lines.push(`Setup: ${things} you. Run /jig setup.`);
+    }
     const deferred = deferredNames(state);
     if (deferred.length > 0) lines.push(`Deferred tools (found with tool_search): ${deferred.join(", ")}`);
     const sections = [...state.sectionChecks.keys()];
     if (sections.length > 0) {
-        const shown = sections.map((name) => `${name} (${sectionState(state, name)})`);
+        const shown = sections.map((name) => `${name} (${sectionState(state.personal, name)})`);
         lines.push(`Plugin sections in the file: ${shown.join(", ")}`);
     }
     lines.push(...pluginLines(state));
@@ -237,19 +280,6 @@ export function startLines(state: JigState): string[] {
         for (const check of startChecks) lines.push(`  ${check.name} (${check.tcp}): ${state.startChecks.last(check)}`);
     }
     return lines;
-}
-
-/**
- * What `/jig` says about one registered section: loaded, waiting for the part only you can give, "not set" when nothing
- * (no company defaults, nothing in the file) set it, and otherwise a section that did not load. A file that could not be
- * read as a whole says nothing of its sections, so they are not called "not set".
- */
-function sectionState(state: JigState, name: string): string {
-    const { personal } = state;
-    if (personal.sections.has(name)) return "loaded";
-    if (personal.incomplete.has(name)) return "company defaults incomplete";
-    const unreadable = personal.problems.some((problem) => problem.key === "(file)");
-    return personal.invalid.has(name) || unreadable ? "not set or invalid" : "not set";
 }
 
 /** `Open watches: 3 (1 paused, 1 waiting for its plugin)`: each watch not finished, and why some do not poll. */

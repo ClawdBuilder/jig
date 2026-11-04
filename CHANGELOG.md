@@ -6,6 +6,14 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `/jig setup`: fills in the missing or invalid fields of plugin sections one question at a time, in plain
+  words, and writes only the fields you confirm. It keeps a backup beside `jig.json`, asks you to run
+  `/reload`, and never asks for a secret value. When `jig.json` is a link, setup follows it and leaves the
+  link in place.
+- `/jig doctor`: a read-only check of the machine, the settings, every secret reference, the login tools,
+  the sandbox and the records folder, with `ok`, `warn`, `fail` and `skip` levels and one plain fix per
+  finding. It never reads a secret value. `--json` writes the report to the state folder, `--network` tests
+  the configured hosts and the latest release, and `--quiet` keeps only warnings and failures.
 - An audit of every tool: `plugins/jig-core/test/audit.test.ts` checks each action against its plugin's documentation and the
   effect and approval its `classify` returns, pins the classification of all of them, and reports the actions no test names.
 

@@ -109,9 +109,10 @@ jig().config.addSectionDefaults("workflow", {
 
 Your own `workflow` section is laid over it. An object such as `tests` merges key by key, and `folders` adds
 up: the company's folders first, then yours, each once, so a folder of yours never takes the company's away.
-(`jig-core` does this because the plugin registers `folders` as a list that adds up; any other list in a
-section is still replaced by yours.) A company file and a personal one with the same name: the personal one
-wins, because personal folders are read later.
+So does `disabled`: the company's names stay left out and yours add to them, so a teammate's list cannot
+re-enable a workflow the company disabled. (`jig-core` does this because the plugin registers both lists as
+lists that add up; any other list in a section is still replaced by yours.) A company file and a personal one
+with the same name: the personal one wins, because personal folders are read later.
 
 To drop a company workflow you do not want, list its name in `workflow.disabled`:
 
