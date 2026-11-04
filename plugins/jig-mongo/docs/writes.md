@@ -8,7 +8,7 @@ How a write is previewed, compared with what was approved, sent once, and checke
 | Environment | What happens |
 |---|---|
 | a test environment | `jig-core` asks, with the preview below |
-| production | refused when the call is classified, before anything is asked. `jig-core`'s floor denies it as well |
+| production | denied by `jig-core`'s floor, which no rule reaches past, and refused again by the tool when it plans the call |
 
 A write is `insert`, `update`, `replace`, `delete`, `bulk`, `create-index`, `drop-index`, and an `aggregate` whose last stage is `$out`
 or `$merge`. Nothing in a write is sent until the call has been planned: the collection, every field it names and every operator are

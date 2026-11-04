@@ -4,8 +4,9 @@ What the model is shown, and what is recorded. Back to the [jig-mongo overview](
 
 ## Extended JSON in and out
 
-Filters, documents, updates and pipelines are Extended JSON. The typed values are checked while the call is classified, so a bad one is
-blocked before anything connects, and turned into BSON only where the driver is called:
+Filters, documents, updates and pipelines are Extended JSON. The typed values are checked when the call is planned, so a bad one is
+refused before anything connects — blocked before anyone is asked when the call is a write, and the tool's own refusal when it is a
+read — and turned into BSON only where the driver is called:
 
 | Written as | Becomes |
 |---|---|

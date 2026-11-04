@@ -11,9 +11,13 @@ afterEach(async () => h.close());
 
 const target = { database: "orders", collection: "orders" };
 const classify = (input: Record<string, unknown>) => h.declaration.classify(input);
-const refused = (input: Record<string, unknown>, pattern: RegExp, what = "") =>
-    assert.throws(
-        () => classify(input),
+/**
+ * A call whose input is invalid: `classify` no longer reads the section, so the refusal comes from the preview, which is
+ * where jig-core builds what it would show before anyone is asked. A TypeError here is what blocks the call.
+ */
+const refused = async (input: Record<string, unknown>, pattern: RegExp, what = "") =>
+    assert.rejects(
+        Promise.resolve(h.declaration.preview?.(input, new AbortController().signal)),
         (error: unknown) => error instanceof TypeError && pattern.test((error as Error).message),
         `${what}: ${JSON.stringify(input).slice(0, 100)}`,
     );
@@ -103,16 +107,16 @@ describe("production is read-only, refused at classification through the kind of
         { action: "aggregate", ...target, pipeline: [{ $match: { status: "open" } }, { $out: "orders" }] },
     ];
 
-    test("every write and index change is refused, with the environment named", () => {
+    test("every write and index change is refused, with the environment named", async () => {
         for (const input of writes)
-            refused(
+            await refused(
                 { environment: "production", ...input },
                 /production is production, which is read-only: .* is not allowed there/,
                 String(input.action),
             );
     });
 
-    test("whatever the environment is called: jig-core's answer for the name decides", () => {
+    test("whatever the environment is called: jig-core's answer for the name decides", async () => {
         // `staging` with an allow list is valid as a test environment and as production.
         h.configure({
             ...defaultSection(),
@@ -123,7 +127,7 @@ describe("production is read-only, refused at classification through the kind of
         });
         classify({ environment: "staging", ...writes[1] });
         h.jig.kinds.set("staging", "production");
-        refused({ environment: "staging", ...writes[1] }, /staging is production, which is read-only/);
+        await refused({ environment: "staging", ...writes[1] }, /staging is production, which is read-only/);
         h.jig.kinds.set("staging", "test");
         classify({ environment: "staging", ...writes[1] });
         const connections = {
@@ -135,24 +139,24 @@ describe("production is read-only, refused at classification through the kind of
             connections,
             access: { ...(defaultSection().access as object), prod: { allow: { "orders.orders": ["_id", "status"] } } },
         });
-        refused({ environment: "prod", ...writes[0] }, /prod is production/);
+        await refused({ environment: "prod", ...writes[0] }, /prod is production/);
         assert.equal(classify({ environment: "prod", action: "count", ...target })?.effect, "read");
     });
 
-    test("a read of a collection or a field that is not listed is refused, so nothing is asked", () => {
-        refused(
+    test("a read of a collection or a field that is not listed is refused, so nothing is asked", async () => {
+        await refused(
             { environment: "production", action: "find", database: "orders", collection: "payments" },
             /not in the allow list/,
         );
-        refused(
+        await refused(
             { environment: "production", action: "find", ...target, filter: { internalNotes: 1 } },
             /"internalNotes" is not allowed/,
         );
-        refused(
+        await refused(
             { environment: "production", action: "find", ...target, projection: { internalNotes: 1 } },
             /not allowed/,
         );
-        refused(
+        await refused(
             {
                 environment: "production",
                 action: "aggregate",
@@ -164,45 +168,45 @@ describe("production is read-only, refused at classification through the kind of
         classify({ environment: "production", action: "find", ...target, filter: { status: "open" } });
     });
 
-    test("production with no allow list reads nothing", () => {
+    test("production with no allow list reads nothing", async () => {
         h.configure({ connections: defaultSection().connections as object });
-        refused({ environment: "production", action: "find", ...target }, /nothing is allowed yet/);
+        await refused({ environment: "production", action: "find", ...target }, /nothing is allowed yet/);
         classify({ environment: "staging", action: "find", ...target });
     });
 });
 
 describe("input that is invalid blocks the call without asking", () => {
-    test("an unknown environment lists the configured ones", () => {
-        refused(
+    test("an unknown environment lists the configured ones", async () => {
+        await refused(
             { environment: "qa", action: "find", ...target },
             /unknown environment "qa"; configured: staging, production/,
         );
-        refused({ action: "find", ...target }, /needs environment/);
+        await refused({ action: "find", ...target }, /needs environment/);
     });
 
-    test("a database or collection that is denied: by the system, by the deny list, by a missing allow", () => {
-        refused(
+    test("a database or collection that is denied: by the system, by the deny list, by a missing allow", async () => {
+        await refused(
             { environment: "staging", action: "find", database: "admin", collection: "users" },
             /always denied/,
             "admin",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "find", database: "local", collection: "oplog" },
             /always denied/,
             "local",
         );
-        refused({ environment: "staging", action: "collections", database: "config" }, /always denied/, "config");
-        refused(
+        await refused({ environment: "staging", action: "collections", database: "config" }, /always denied/, "config");
+        await refused(
             { environment: "staging", action: "find", database: "orders", collection: "system.profile" },
             /system collections/,
             "system.profile",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "find", database: "billing", collection: "cards" },
             /billing\.cards is denied/,
             "deny list",
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "insert",
@@ -213,7 +217,7 @@ describe("input that is invalid blocks the call without asking", () => {
             /billing\.cards is denied/,
             "a write to a denied collection",
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "create-index",
@@ -224,7 +228,7 @@ describe("input that is invalid blocks the call without asking", () => {
             /billing\.cards is denied/,
             "an index on a denied collection",
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "aggregate",
@@ -236,39 +240,39 @@ describe("input that is invalid blocks the call without asking", () => {
         );
     });
 
-    test("a field that is denied, in a filter, a projection, a sort, distinct, a pipeline or a write", () => {
-        refused(
+    test("a field that is denied, in a filter, a projection, a sort, distinct, a pipeline or a write", async () => {
+        await refused(
             { environment: "staging", action: "find", ...target, filter: { password: "x" } },
             /credential/,
             "filter",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "find", ...target, filter: { notes: "x" } },
             /"notes" is denied by the access list/,
             "filter, deny list",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "find", ...target, projection: { apiKey: 1 } },
             /credential/,
             "projection",
         );
-        refused({ environment: "staging", action: "find", ...target, sort: { token: 1 } }, /credential/, "sort");
-        refused(
+        await refused({ environment: "staging", action: "find", ...target, sort: { token: 1 } }, /credential/, "sort");
+        await refused(
             { environment: "staging", action: "distinct", ...target, field: "customer.secret" },
             /credential/,
             "distinct",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "count", ...target, filter: { $or: [{ clientSecret: 1 }] } },
             /credential/,
             "count",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "aggregate", ...target, pipeline: [{ $project: { x: "$password" } }] },
             /credential/,
             "a rename",
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "aggregate",
@@ -287,7 +291,7 @@ describe("input that is invalid blocks the call without asking", () => {
             /billing\.cards is denied/,
             "a lookup",
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "update",
@@ -299,7 +303,7 @@ describe("input that is invalid blocks the call without asking", () => {
             /credential/,
             "an update",
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "update",
@@ -311,28 +315,28 @@ describe("input that is invalid blocks the call without asking", () => {
             /denied/,
             "an update's filter",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "insert", ...target, documents: [{ a: { token: "t" } }] },
             /credential/,
             "an insert",
         );
-        refused(
+        await refused(
             { environment: "staging", action: "explain", ...target, filter: { password: 1 } },
             /credential/,
             "explain",
         );
     });
 
-    test("server-side JavaScript: $where, $function and $accumulator, in a filter, a pipeline or an update", () => {
-        refused(
+    test("server-side JavaScript: $where, $function and $accumulator, in a filter, a pipeline or an update", async () => {
+        await refused(
             { environment: "staging", action: "find", ...target, filter: { $where: "this.a == 1" } },
             /\$where runs JavaScript/,
         );
-        refused(
+        await refused(
             { environment: "staging", action: "count", ...target, filter: { $or: [{ $where: "true" }] } },
             /\$where runs JavaScript/,
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "aggregate",
@@ -341,7 +345,7 @@ describe("input that is invalid blocks the call without asking", () => {
             },
             /\$function runs JavaScript/,
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "aggregate",
@@ -365,7 +369,7 @@ describe("input that is invalid blocks the call without asking", () => {
             },
             /\$accumulator runs JavaScript/,
         );
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "update",
@@ -378,7 +382,7 @@ describe("input that is invalid blocks the call without asking", () => {
         );
     });
 
-    test("an environment may allow JavaScript; once jig-core calls it production the section is refused, because it never can", () => {
+    test("an environment may allow JavaScript; once jig-core calls it production the section is refused, because it never can", async () => {
         h.configure({
             ...defaultSection(),
             access: {
@@ -391,13 +395,13 @@ describe("input that is invalid blocks the call without asking", () => {
             "read",
         );
         h.jig.kinds.set("staging", "production");
-        refused(
+        await refused(
             { environment: "staging", action: "find", ...target, filter: { $where: "true" } },
             /mongo is not set up/,
         );
     });
 
-    test("an update or a delete with an empty filter would change every document", () => {
+    test("an update or a delete with an empty filter would change every document", async () => {
         const update = {
             environment: "staging",
             action: "update",
@@ -405,28 +409,28 @@ describe("input that is invalid blocks the call without asking", () => {
             update: { $set: { a: 1 } },
             which: "many",
         };
-        refused({ ...update, filter: {} }, /the filter is empty, so it would change every document/);
-        refused({ ...update, which: "one", filter: {} }, /the filter is empty/);
-        refused(
+        await refused({ ...update, filter: {} }, /the filter is empty, so it would change every document/);
+        await refused({ ...update, which: "one", filter: {} }, /the filter is empty/);
+        await refused(
             { environment: "staging", action: "delete", ...target, filter: {}, which: "many" },
             /the filter is empty/,
         );
-        refused(
+        await refused(
             { environment: "staging", action: "replace", ...target, filter: {}, replacement: { a: 1 } },
             /the filter is empty/,
         );
-        refused(
+        await refused(
             { environment: "staging", action: "bulk", ...target, operations: [{ deleteMany: { filter: {} } }] },
             /bulk operation 1: the filter is empty|the filter is empty/,
         );
-        refused(
+        await refused(
             { environment: "staging", action: "update", ...target, update: { $set: { a: 1 } }, which: "many" },
             /needs filter/,
         );
     });
 
-    test("limit raises the cap of a write of many, and does nothing for one", () => {
-        refused(
+    test("limit raises the cap of a write of many, and does nothing for one", async () => {
+        await refused(
             {
                 environment: "staging",
                 action: "update",
@@ -447,7 +451,7 @@ describe("input that is invalid blocks the call without asking", () => {
             which: "many",
             limit: 2000,
         });
-        refused(
+        await refused(
             {
                 environment: "staging",
                 action: "insert",
@@ -465,22 +469,22 @@ describe("input that is invalid blocks the call without asking", () => {
         });
     });
 
-    test("the shape of the call: unknown action, missing parameters, a parameter the action does not use", () => {
-        refused({ environment: "staging", action: "launch" }, /unknown action/);
-        refused({ environment: "staging", action: "find", database: "orders" }, /needs collection/);
-        refused({ environment: "staging", action: "count", ...target, sort: { a: 1 } }, /does not use sort/);
-        refused(
+    test("the shape of the call: unknown action, missing parameters, a parameter the action does not use", async () => {
+        await refused({ environment: "staging", action: "launch" }, /unknown action/);
+        await refused({ environment: "staging", action: "find", database: "orders" }, /needs collection/);
+        await refused({ environment: "staging", action: "count", ...target, sort: { a: 1 } }, /does not use sort/);
+        await refused(
             { environment: "staging", action: "update", ...target, filter: { a: 1 }, which: "one" },
             /needs update/,
         );
     });
 
-    test("the section is invalid or absent: the tool is not set up", () => {
+    test("the section is invalid or absent: the tool is not set up", async () => {
         h.configure({
             connections: { staging: { uri: "mongodb://agent:pw@db.example.com:27017", user: "a", password: "pass:x" } },
         });
-        refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
+        await refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
         h.jig.setSection("mongo", undefined);
-        refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
+        await refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
     });
 });
