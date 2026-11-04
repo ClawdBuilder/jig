@@ -12,17 +12,23 @@ to run the command.
 jig doctor [--json] [--network] [--quiet]
 ```
 
-The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
+It says "Checking your setup…" at once, then loads the same packages Pi loads. The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
 the network, the sandbox and the records folder.
 
-Exit code `0` means no failures, `1` means at least one; `--json` prints the report itself, for a script. It works when
-`jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not a crash, because that is
-exactly when you need it.
+Exit code `0` means no failures, `1` means at least one; `--json` prints the report itself, for a script (and nothing
+else on stdout). It works when `jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not
+a crash, because that is exactly when you need it. If Jig is not installed in Pi, or Pi itself is not found, the machine
+group has a failure with the command to install it: the doctor does not give an all-clear for a Jig Pi will not load.
+Two copies with different versions are a warning.
 
 **Getting the command.** Pi's `pi install` copies a package but does not link programs. Install Jig with npm, which
-does: `npm install -g <the Jig package>` puts `jig` on your PATH (the same folder as `node` and `npm`), on Linux, WSL
-and macOS. A checkout works too: `npm link` inside it, or run `node <checkout>/bin/jig.mjs`. Setup never edits your
-shell files.
+does: `npm install -g github:Dev-Mriganka/jig` puts `jig` on your PATH (the same folder as `node` and `npm`), on Linux,
+WSL and macOS. For a checkout, `npm install -g --install-links <checkout>` does the same from the folder, and `npm link`
+inside it is for development. Setup never edits your shell files.
+
+The command runs from `node_modules`, where Node will not strip TypeScript itself: its first line installs a small loader
+that does, so the installed copy behaves like a checkout. If `jig` cannot find Pi, it says so with the folder to set in
+`PI_HOST_DIR`.
 
 ## Setting up
 

@@ -251,9 +251,9 @@ export function recordsChecks(context: DoctorContext, options: DoctorOptions): D
                 {
                     id: "records.writable",
                     group: "records",
-                    level: "warn",
+                    level: "ok",
                     title: "Records",
-                    detail: `${shown} does not exist yet; it is made on first use.`,
+                    detail: `${shown} will be made on first use.`,
                 },
             ];
         }

@@ -6,11 +6,35 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { register } from "node:module";
 import { delimiter, dirname, join } from "node:path";
 
+// A globally installed package lives under node_modules, where Node will not strip TypeScript itself. The hook below does
+// it, and says so without the experimental warning Node prints for the API it uses.
+process.removeAllListeners("warning");
+process.on("warning", (warning) => {
+    if (/stripTypeScriptTypes|Type Stripping|type stripping/i.test(warning.message)) return;
+    process.stderr.write(`${warning.stack ?? warning.message}\n`);
+});
+register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+
 const PI = "@earendil-works/pi-coding-agent";
+
+/** The package.json of a folder that is Pi, or undefined. */
+function isPi(folder) {
+    const manifest = join(folder, "package.json");
+    if (!existsSync(manifest)) return false;
+    try {
+        return JSON.parse(readFileSync(manifest, "utf8")).name === PI;
+    } catch {
+        return false;
+    }
+}
 
 function piHostDir() {
     const named = process.env.JIG_PI_HOST ?? process.env.PI_HOST_DIR;
-    if (named !== undefined && existsSync(join(named, "package.json"))) return named;
+    if (named !== undefined && isPi(named)) return named;
+    // Next to the node this runs on: npm's global folder, where `npm install -g` puts Pi (nvm, the usual mac and Linux
+    // layouts). This is the common case and does not depend on PATH holding anything but `pi`'s name.
+    const globalRoot = join(dirname(process.execPath), "..", "lib", "node_modules", PI);
+    if (isPi(globalRoot)) return globalRoot;
     for (const folder of (process.env.PATH ?? "").split(delimiter)) {
         const candidate = join(folder, "pi");
         if (!existsSync(candidate)) continue;
@@ -49,8 +73,8 @@ try {
         );
         process.exit(1);
     }
-    process.env.JIG_PI_HOST = host;
-    register(new URL("./jig-host-hooks.mjs", import.meta.url), import.meta.url);
+    // The hook runs on Node's loader thread, which does not see a variable set now: the folder travels in its URL.
+    register(new URL(`./jig-host-hooks.mjs?host=${encodeURIComponent(host)}`, import.meta.url), import.meta.url);
 }
 
 const { main } = await import("../plugins/jig-core/src/cli/main.ts");

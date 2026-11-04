@@ -75,11 +75,13 @@ function runSetup(expectations: Array<{ when: string; answer: string }>) {
     });
 }
 
+/** Pi's settings with the Jig package this test runs from, as a real install lists it, and any others. */
 const settingsWith = (...packages: string[]): void =>
-    writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages }));
+    writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [ROOT, ...packages] }));
 
 describe("jig doctor", () => {
-    test("runs without Pi and exits 0 when nothing failed", async () => {
+    test("runs without a Pi session and exits 0 when nothing failed", async () => {
+        settingsWith();
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
         assert.match(result.stdout, /Jig doctor/);
@@ -114,6 +116,15 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /boom at load/);
     });
 
+    test("Jig is a failure when Pi's settings do not list it, not an all-clear", async () => {
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1);
+        assert.match(result.stdout, /fail Jig/);
+        assert.match(result.stdout, /not installed in Pi yet/);
+        assert.match(result.stdout, /pi install git:/);
+    });
+
     test("--json prints the report and keeps the exit code", async () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--json"]);
@@ -130,6 +141,15 @@ describe("jig setup", () => {
         assert.equal(result.code, 1);
         assert.match(result.stderr, /^Setup needs a terminal with a screen\. Run jig setup from a terminal\./);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
+    });
+
+    test("stops before the questions when Pi does not load Jig", async () => {
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
+        const result = await runSetup([{ when: "Jig is not installed in Pi yet", answer: "" }]);
+        assert.equal(result.code, 1);
+        assert.match(result.stdout, /Jig is not installed in Pi yet/);
+        assert.match(result.stdout, /pi install git:/);
+        assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
     test("starts with the company, writes the profile, then asks the onboarding field", async () => {
@@ -149,5 +169,54 @@ describe("jig setup", () => {
         assert.equal(written.profiles["fixture-co"].plugin, "fixture-co");
         assert.equal(written.fixture.login, "jdoe");
         assert.match(result.stdout, /Start Pi again, or run \/reload in it, to apply\./);
+    });
+});
+
+describe("a real global install", () => {
+    test("npm install -g --prefix ... --install-links, then that jig doctor runs and exits 0", {
+        timeout: 240_000,
+    }, async () => {
+        const prefix = path.join(home, "prefix");
+        const install = spawn(
+            "npm",
+            [
+                "install",
+                "-g",
+                "--prefix",
+                prefix,
+                "--install-links",
+                ROOT,
+                "--no-audit",
+                "--no-fund",
+                "--ignore-scripts",
+                "--prefer-offline",
+            ],
+            { env: env(), cwd: work },
+        );
+        let log = "";
+        install.stdout.on("data", (chunk: Buffer) => (log += chunk.toString()));
+        install.stderr.on("data", (chunk: Buffer) => (log += chunk.toString()));
+        const installed = await new Promise<number | null>((resolve, reject) => {
+            install.on("error", reject);
+            install.on("close", resolve);
+        });
+        assert.equal(installed, 0, log.slice(-1500));
+        const jig = path.join(prefix, "bin", "jig");
+        assert.ok(existsSync(jig), "the install links the command");
+        // The copy npm installed is what Pi would load, so settings name it.
+        const installedPackage = path.join(prefix, "lib/node_modules/jig");
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [installedPackage] }));
+        const doctor = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+            const child = spawn(jig, ["doctor", "--quiet"], { env: env(), cwd: work });
+            let stdout = "";
+            let stderr = "";
+            child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
+            child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+            child.on("error", reject);
+            child.on("close", (code) => resolve({ code, stdout, stderr }));
+        });
+        assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
+        assert.match(doctor.stdout, /Jig doctor/);
+        assert.doesNotMatch(doctor.stderr, /ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING/);
     });
 });

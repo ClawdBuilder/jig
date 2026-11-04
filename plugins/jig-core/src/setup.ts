@@ -11,7 +11,7 @@ import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { probeSecret, shorten } from "./secret-status.ts";
 import type { SecretProbe } from "./secret-status.ts";
 import { applyAnswer, buildSetupPlan } from "./setup-plan.ts";
-import { buildReference, storeChoiceLabel, storeLabel } from "./setup-reference.ts";
+import { buildReference, describeReference, storeChoiceLabel, storeLabel } from "./setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
 import type { ReferenceParts } from "./setup-reference.ts";
 import type { SetupChange, SetupField, SetupPlan, SetupState } from "./setup-plan.ts";
@@ -189,7 +189,7 @@ async function askReference(
         const shape = choice.suggested?.[store];
         if (shape !== undefined) {
             const use = await ui.select(`${storeLabel(store)}: use the company's suggestion?`, [
-                `Use ${shape}`,
+                `Use ${describeReference(shape)}`,
                 "Build it another way",
             ]);
             if (use === undefined) return "cancel";
@@ -203,7 +203,7 @@ async function askReference(
                     ui,
                     store,
                     shape,
-                    "the company's suggestion",
+                    `read from ${describeReference(shape)} (the company's suggestion)`,
                 );
                 if (settled === "ok" || settled === "cancel") return settled;
             }
@@ -336,7 +336,7 @@ function statusText(store: SecretBackend, probe: SecretProbe): { text: string; l
         };
     }
     if (probe.status === "missing")
-        return { text: `Missing from ${name}. ${probe.detail ?? ""}`.trim(), level: "warning" };
+        return { text: `Not in ${name} yet.${probe.fix === undefined ? "" : " Add it with:"}`, level: "warning" };
     if (probe.status === "locked")
         return { text: `Locked: ${probe.detail ?? `the store is locked`}.`, level: "warning" };
     if (probe.status === "invalid") return { text: "That place cannot be used.", level: "warning" };

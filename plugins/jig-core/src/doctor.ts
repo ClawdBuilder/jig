@@ -66,6 +66,9 @@ export interface DoctorContext {
     onboarding?: OnboardingEntry;
     /** True in the `jig` command: there is no Pi session here, so a sandbox that has not started is not a failure. */
     standalone?: boolean;
+    /** In the `jig` command: whether Pi's settings name the Jig package, and the version of the copy Pi loads. */
+    jigInPi?: boolean;
+    jigInPiVersion?: string;
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;

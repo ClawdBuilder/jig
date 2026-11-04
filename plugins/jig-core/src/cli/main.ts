@@ -10,10 +10,10 @@ import { doctorContext } from "../doctor-checks.ts";
 import { formatDoctor, runDoctor } from "../doctor.ts";
 import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
-import { piVersion, jigPackage } from "../pi-version.ts";
+import { installLocation, piVersion, jigPackage } from "../pi-version.ts";
 import { loadPersonalConfig } from "../state.ts";
 import type { JigState } from "../state.ts";
-import { agentDirFor, loadHeadless } from "./headless.ts";
+import { agentDirFor, loadHeadless, ownPackage } from "./headless.ts";
 import type { LoadFailure } from "./headless.ts";
 import { terminalUi } from "./terminal.ts";
 import { writeSetup } from "../setup-write.ts";
@@ -44,6 +44,9 @@ async function doctor(args: readonly string[]): Promise<number> {
         process.stderr.write(`Unknown option ${unknown[0]}\n${USAGE}\n`);
         return 2;
     }
+    if (process.stdout.isTTY === true && !flags.has("--json")) {
+        process.stdout.write("Checking your setup…\n");
+    }
     let loaded: Awaited<ReturnType<typeof loadHeadless>>;
     try {
         loaded = await loadHeadless();
@@ -51,11 +54,20 @@ async function doctor(args: readonly string[]): Promise<number> {
         process.stderr.write(`jig doctor could not start: ${errorMessage(error)}\n`);
         return 1;
     }
+    if (process.env.JIG_TIMINGS === "1") {
+        for (const timing of loaded.timings.slice(0, 5))
+            process.stderr.write(`${timing.ms.toFixed(0)}ms ${timing.name}\n`);
+    }
     const loadedFailures = failureLines(loaded.failures);
     let report: DoctorReport;
     try {
         report = await runDoctor(
-            { ...doctorContext(loaded.state), standalone: true },
+            {
+                ...doctorContext(loaded.state),
+                standalone: true,
+                jigInPi: loaded.jigInPi,
+                ...(loaded.jigInPiVersion === undefined ? {} : { jigInPiVersion: loaded.jigInPiVersion }),
+            },
             {
                 network: flags.has("--network"),
                 ...(flags.has("--json") ? { jigVersion: undefined } : {}),
@@ -110,7 +122,7 @@ async function companyStep(state: JigState, ui: SetupUi): Promise<"ok" | "cancel
     if (choice === undefined) return "cancel";
     if (choice === "None, just me") {
         const change: SetupChange = { section: "profile", path: "", label: "Company setup", value: "none" };
-        return writeProfile(state, ui, [change]);
+        return writeProfile(state, ui, [change], "Company setup: none, just me.");
     }
     const index = labels.indexOf(choice);
     const company = companies[index];
@@ -139,17 +151,25 @@ async function companyStep(state: JigState, ui: SetupUi): Promise<"ok" | "cancel
                   },
                   { section: "profile", path: "", label: "Company setup", value: "auto" },
               ];
-    return writeProfile(state, ui, changes);
+    const summary =
+        where === "Everywhere"
+            ? `Company setup: ${company.displayName}, in every folder.`
+            : `Company setup: ${company.displayName}, only in ${process.cwd()}.`;
+    return writeProfile(state, ui, changes, summary);
 }
 
 /** Writes the profile choice with the same gate as the rest: read again, back up, replace atomically. */
-async function writeProfile(state: JigState, ui: SetupUi, changes: SetupChange[]): Promise<"ok" | "cancel" | "failed"> {
+async function writeProfile(
+    state: JigState,
+    ui: SetupUi,
+    changes: SetupChange[],
+    summary: string,
+): Promise<"ok" | "cancel" | "failed"> {
     const built = buildSetupPlan(setupStateFrom(state));
     if ("problem" in built) {
         ui.notify(built.problem, "warning");
         return "failed";
     }
-    const summary = [...new Set(changes.map((change) => `${change.label}: ${String(change.value)}`))].join("\n");
     const ok = await ui.confirm(
         "Save this company choice?",
         `${summary}\n\nA backup is kept next to your settings file.`,
@@ -172,14 +192,26 @@ async function setup(): Promise<number> {
         process.stderr.write("Setup needs a terminal with a screen. Run jig setup from a terminal.\n");
         return 1;
     }
+    const ui = terminalUi();
+    ui.notify("Starting jig setup…", "info");
     let loaded: Awaited<ReturnType<typeof loadHeadless>>;
     try {
         loaded = await loadHeadless();
     } catch (error) {
-        process.stderr.write(`jig setup could not start: ${errorMessage(error)}\n`);
+        ui.notify(`jig setup could not start: ${errorMessage(error)}`, "error");
+        ui.close();
         return 1;
     }
-    const ui = terminalUi();
+    if (!loaded.jigInPi) {
+        const pkg = ownPackage();
+        const where = installLocation(pkg.repository) ?? "Dev-Mriganka/jig";
+        ui.notify(
+            `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install git:${where}\nThen run jig setup again.`,
+            "error",
+        );
+        ui.close();
+        return 1;
+    }
     try {
         const step = await companyStep(loaded.state, ui);
         if (step === "cancel") return 130;

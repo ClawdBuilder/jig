@@ -6,7 +6,7 @@ import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
-import { meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
+import { installLocation, meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionState } from "./section-state.ts";
@@ -71,28 +71,61 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
             detail: `${node} (Jig needs ${required} or later)`,
             ...(meetsMinimum(node, required) ? {} : { fix: `Install Node.js ${required} or later.` }),
         },
-        {
-            id: "machine.pi",
-            group: "machine",
-            // Not being able to read Pi's version says nothing about the session: it is a skip, not a problem to fix.
-            level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
-            title: "Pi",
-            detail:
-                pi === undefined
-                    ? "version unknown"
-                    : meetsMinimum(pi, "1.4.0")
-                      ? pi
-                      : `${pi} (Jig needs 1.4 or later)`,
-            ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
-        },
-        {
-            id: "machine.jig",
-            group: "machine",
-            level: jig === undefined ? "warn" : "ok",
-            title: "Jig",
-            detail: jig ?? "could not be read",
-            ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
-        },
+        context.standalone === true && pi === undefined
+            ? {
+                  id: "machine.pi",
+                  group: "machine",
+                  level: "fail",
+                  title: "Pi",
+                  detail: "not found: Jig runs inside Pi, and the setup questions read its packages.",
+                  fix: "Install Pi: npm install -g @earendil-works/pi-coding-agent",
+              }
+            : {
+                  id: "machine.pi",
+                  group: "machine",
+                  // Not being able to read Pi's version says nothing about the session: it is a skip, not a problem to fix.
+                  level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
+                  title: "Pi",
+                  detail:
+                      pi === undefined
+                          ? "version unknown"
+                          : meetsMinimum(pi, "1.4.0")
+                            ? pi
+                            : `${pi} (Jig needs 1.4 or later)`,
+                  ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
+              },
+        context.standalone === true && context.jigInPi === false
+            ? {
+                  id: "machine.jig",
+                  group: "machine",
+                  level: "fail",
+                  title: "Jig",
+                  detail: "not installed in Pi yet, so Pi does not load Jig's plugins.",
+                  fix: `Install it: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "Dev-Mriganka/jig"}`,
+              }
+            : {
+                  id: "machine.jig",
+                  group: "machine",
+                  level: jig === undefined ? "warn" : "ok",
+                  title: "Jig",
+                  detail: jig ?? "could not be read",
+                  ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
+              },
+        ...(context.standalone === true &&
+        jig !== undefined &&
+        context.jigInPiVersion !== undefined &&
+        context.jigInPiVersion !== jig
+            ? [
+                  {
+                      id: "machine.jig.copies",
+                      group: "machine" as const,
+                      level: "warn" as const,
+                      title: "Two copies of Jig",
+                      detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
+                      fix: `Install one version: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "Dev-Mriganka/jig"}`,
+                  },
+              ]
+            : []),
         { id: "machine.system", group: "machine", level: "ok", title: "System", detail: system },
     ];
 

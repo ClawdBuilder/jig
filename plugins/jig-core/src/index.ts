@@ -35,14 +35,13 @@ import { registerWatchTool } from "./watch/tool.ts";
 
 export type { JigCoreOptions };
 
-/** The state of the jig-core runtime loaded in this process, for the `jig` command: what a headless run reads after the
- *  plugins are loaded. Undefined before jig-core's extension is loaded, or after it is withdrawn. */
+/** The extension, with parts a test can replace (the masker, the browser). Pi loads the default export below. */
+/** The state of the jig-core runtime loaded in this process, for tests that drive the whole extension. */
 let running: JigState | undefined;
 export function runningJigState(): JigState | undefined {
     return running;
 }
 
-/** The extension, with parts a test can replace (the masker, the browser). Pi loads the default export below. */
 export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const state = createState(pi, options);
