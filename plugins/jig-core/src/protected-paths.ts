@@ -1,7 +1,8 @@
 // Protected paths: files that Pi's own file tools (`read`, `write`, `edit`, `grep`, `find`, `ls`) must not touch.
 //
 // Two kinds, and both are part of the floor, so configuration can add paths and never remove one:
-//   secret    no reading and no writing: credential files, such as `~/.ssh` or `gh`'s token file;
+//   secret    no reading and no writing: credential files, such as `~/.ssh` or `gh`'s token file, and Jig's own masking
+//             keys and preview pages, which would undo a mask or show text that was never masked;
 //   guarded   reading is allowed, writing is not: Pi's agent folder, where `jig.json`, Pi's settings, extensions and
 //             Jig's own state live. An agent that could write there could load code or loosen a rule.
 //
@@ -42,6 +43,10 @@ export interface DefaultsInput extends PathContext {
     /** Pi's agent folder (`getAgentDir()`). Empty when not known: the entries inside it are left out. */
     agentDir: string;
     home: string;
+    /** Jig's state folder (`paths.stateDir()`). Empty when not known. Two folders in it are secret: the masking keys, and
+     *  the preview pages the browser reads when the local server cannot serve them, both of which can hold text that was
+     *  never masked. The rest of it stays readable: a spill file is the rest of a result the model was given. */
+    stateDir?: string;
     /** Where `XDG_CONFIG_HOME`, `APPDATA` and the variables that move a credential store are read from. */
     env?: Env;
     /** The folders `secrets.pass` of `jig.json` binds `pass` to, as written (absolute, or starting with `~/`). */
@@ -219,6 +224,12 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     // The bound folders first: when `secrets.pass` and the environment name one folder, the entry says `secrets.pass`.
     if (input.pass !== undefined) out.push(...boundStores(input.pass, home, input.platform));
     if (input.env !== undefined) out.push(...relocatedStores(input.env, home, input.platform));
+    // The masking keys would let a reader confirm a masked value, and a preview page holds text that was never masked.
+    // Both are read by Jig itself and by the browser, never by Pi's file tools.
+    if (input.stateDir !== undefined && input.stateDir !== "") {
+        out.push(make(pathApi.join(input.stateDir, "mask"), "secret"));
+        out.push(make(pathApi.join(input.stateDir, "previews"), "secret"));
+    }
     // Last, so a message about a file inside it names the more specific secret entry first.
     if (agentDir !== "") out.push(make(agentDir, "guarded"));
     return dedupe(out, input.platform);

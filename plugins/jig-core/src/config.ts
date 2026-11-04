@@ -219,7 +219,7 @@ export function parseConfig(
         }
         written.add(key);
         const read = readSection(key, raw, check, layers);
-        if (read.use) sections.set(key, read.value);
+        if (read.use) sections.set(key, frozenSection(read.value));
         else invalid.add(key);
         for (const message of read.messages) sectionProblems.push({ source, key: printable(key), message });
     }
@@ -252,6 +252,26 @@ interface SectionRead {
     value: unknown;
     use: boolean;
     messages: string[];
+}
+
+/** A frozen copy of a section and of every value in it: a plugin that changes what it was given changes nothing. A
+ *  value that cannot be cloned (no section should hold one) is frozen where it is, so the promise still holds. */
+function frozenSection(value: unknown): unknown {
+    let copy = value;
+    try {
+        copy = structuredClone(value);
+    } catch {
+        copy = value;
+    }
+    return deepFreeze(copy);
+}
+
+function deepFreeze<T>(value: T): T {
+    if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
+        Object.freeze(value);
+        for (const inner of Object.values(value)) deepFreeze(inner);
+    }
+    return value;
 }
 
 /**
@@ -296,7 +316,7 @@ function companyOnly(
         const check = checks.get(name);
         // Nobody registered the section, so there is nothing to check it by.
         const messages = check === undefined ? [] : runSectionCheck(check, defaults);
-        if (messages.length === 0) sections.set(name, defaults);
+        if (messages.length === 0) sections.set(name, frozenSection(defaults));
         else incomplete.set(name, messages);
     }
     return { sections, incomplete };

@@ -321,7 +321,13 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
                 const home = homedir();
                 const agentDir = state.agentDir();
                 const entries = mergeProtected(
-                    defaultProtectedPaths({ agentDir, home, env, pass: state.personal.config.secrets.pass }),
+                    defaultProtectedPaths({
+                        agentDir,
+                        home,
+                        stateDir: stateDir(),
+                        env,
+                        pass: state.personal.config.secrets.pass,
+                    }),
                     // The code Pi loads at its next start, with no sandbox: the local packages and extensions of its settings.
                     loadedCodePaths({
                         agentDir,
