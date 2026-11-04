@@ -1,7 +1,7 @@
 // The environment a sandboxed command starts with: credentials out, the rest as Pi has it.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { looksLikeCredential, scrubEnvironment } from "../src/env.ts";
+import { looksLikeCredential, looksLikeCredentialValue, scrubEnvironment } from "../src/env.ts";
 
 describe("which names are removed", () => {
     test("names that look like credentials, whatever their case", () => {
@@ -34,6 +34,16 @@ describe("which names are removed", () => {
         }
     });
 
+    test("names that hold a password or a secret address without saying so", () => {
+        for (const name of ["MYSQL_PWD", "SENTRY_DSN", "SLACK_WEBHOOK", "JIRA_PAT", "MONGO_PWD"]) {
+            assert.equal(looksLikeCredential(name), true, name);
+        }
+        for (const name of ["PWD", "DSN", "WEBHOOK_URL"]) {
+            // The suffix alone is the sign, not a word inside a longer name.
+            assert.equal(looksLikeCredential(name), false, name);
+        }
+    });
+
     test("ordinary names are kept", () => {
         for (const name of [
             "PATH",
@@ -49,6 +59,25 @@ describe("which names are removed", () => {
             "CI",
         ]) {
             assert.equal(looksLikeCredential(name), false, name);
+        }
+    });
+});
+
+describe("a value with a password in its address", () => {
+    test("is a credential whatever the variable is called", () => {
+        for (const value of [
+            "postgres://user:hunter2@db.example/orders",
+            "mysql://root:secret@127.0.0.1:3306/app",
+            "redis://:pw@cache:6379/0",
+            "mongodb+srv://u:p@cluster.example/db",
+        ]) {
+            assert.equal(looksLikeCredentialValue(value), true, value);
+        }
+    });
+
+    test("an address without a password, or a plain value, is not", () => {
+        for (const value of ["https://example.com/path", "mongodb://db.example/app", "postgres://db/app", "hello"]) {
+            assert.equal(looksLikeCredentialValue(value), false, value);
         }
     });
 });
@@ -72,6 +101,20 @@ describe("scrubEnvironment", () => {
             ["key-value-long-enough", "ghs_0123456789abcdef"],
             "longest first, and a value of three letters is not scrubbed from output",
         );
+    });
+
+    test("a variable named like nothing in particular is removed when its value holds a password", () => {
+        const result = scrubEnvironment(
+            { DATABASE_URL: "postgres://user:hunter2@db.example/orders", MONGO_URL: "mongodb://db.example/app" },
+            { keep: [] },
+        );
+        assert.deepEqual(
+            result.env,
+            { MONGO_URL: "mongodb://db.example/app" },
+            "no password, so no reason to remove it",
+        );
+        assert.deepEqual(result.removed, ["DATABASE_URL"]);
+        assert.deepEqual(result.values, ["postgres://user:hunter2@db.example/orders"]);
     });
 
     test("`env.keep` passes a named variable through, without regard to case", () => {
