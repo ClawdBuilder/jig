@@ -85,7 +85,11 @@ test("a host in a remote address, with or without a user; and the paths that rea
     ]) {
         assert.deepEqual(addressOf(path), { kind: "local" }, path);
     }
-    assert.deepEqual(addressOf("C:\\work\\orders-api"), { kind: "local" });
+    // A drive prefix is a path on Windows and an ssh address to the host "C" everywhere else.
+    assert.deepEqual(addressOf("C:\\work\\orders-api", "win32"), { kind: "local" });
+    assert.deepEqual(addressOf("C:/repos/x", "win32"), { kind: "local" });
+    assert.deepEqual(addressOf("C:/repos/x", "linux"), { kind: "host", host: "c" });
+    assert.deepEqual(addressOf("C:/repos/x", "darwin"), { kind: "host", host: "c" });
     assert.deepEqual(addressOf("orders-api"), { kind: "local" });
 });
 

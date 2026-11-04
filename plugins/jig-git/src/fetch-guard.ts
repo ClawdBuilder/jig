@@ -34,7 +34,7 @@ const SCHEME = /^([a-z][a-z0-9+.-]*):\/\//i;
  * with or without a user. Anything else is `unknown`, and the gate asks about it: a form this function cannot read is not
  * a reason to let a fetch run.
  */
-export function addressOf(url: string): RemoteAddress {
+export function addressOf(url: string, platform: NodeJS.Platform = process.platform): RemoteAddress {
     const text = url.trim();
     if (text === "") return { kind: "unknown", shown: "" };
     const scheme = SCHEME.exec(text);
@@ -49,8 +49,9 @@ export function addressOf(url: string): RemoteAddress {
             .toLowerCase();
         return host === "" ? { kind: "unknown", shown: text } : { kind: "host", host };
     }
-    // A Windows drive is a path, not a host called "C".
-    if (/^[A-Za-z]:[\\/]/.test(text)) return { kind: "local" };
+    // A drive prefix is a path only on Windows, where git reads it as one. Everywhere else git reads `C:/repos/x` as an
+    // scp-like address to the host "C", which a DNS search domain can resolve, so it must ask rather than pass.
+    if (platform === "win32" && /^[A-Za-z]:[\\/]/.test(text)) return { kind: "local" };
     // scp-like with a user.
     const withUser = /^[^@/\s]+@([^/:\s]+):/.exec(text);
     if (withUser !== null) return { kind: "host", host: (withUser[1] as string).toLowerCase() };
