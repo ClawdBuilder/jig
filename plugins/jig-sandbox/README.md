@@ -169,10 +169,12 @@ install, the sandbox is part of the system. Native Windows is not supported yet.
 
 ## Company part (in the company plugin)
 
-Hosts to deny (production databases) and to allow in `ask` mode, and more hidden or
-locked paths, through `jig-core`'s section defaults and protected paths. A deny list does
-nothing in the default `open` mode, so a company that wants it applied also defaults
-`network.mode` to `filtered` or `ask`; otherwise `/sandbox` warns each user.
+Hosts to deny (production databases) and to allow in `ask` mode, more hidden or
+locked paths, and the environment names it keeps out: through `jig-core`'s section
+defaults and protected paths. The company's `env.remove` and yours add up, so a
+teammate's own list extends it rather than replacing it. A deny list does nothing in the
+default `open` mode, so a company that wants it applied also defaults `network.mode` to
+`filtered` or `ask`; otherwise `/sandbox` warns each user.
 
 ## Later
 
