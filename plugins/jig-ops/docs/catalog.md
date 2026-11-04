@@ -292,6 +292,23 @@ When an environment has both a `health` address and a health path in a pod,
 `runtime health` uses the address. A check in a pod is for test environments
 that have no address.
 
+## Why a call reads the catalog
+
+The tools read this section while they classify a call, before `jig-core` decides whether to ask. That is not an oversight
+to be refactored away: for these tools the catalog is part of the decision.
+
+- **A CI call acts where the service's CI acts.** `ci trigger` and `ci rerun` are writes in the environment the service's
+  `ci.environment` names — the job that deploys there — not in the environment a call happens to mention, which only picks
+  the job. Read from the call alone, a trigger that deploys to production would look like a staging write and the floor
+  would never see it.
+- **A production deploy is refused before anyone is asked.** The kind of an environment comes from `jig-core`, and the
+  catalog says whether the environment has a deploy method at all; both are needed to refuse in the classification, with the
+  line that fixes the configuration, rather than after a question.
+- **An unsupported action is refused, not asked about.** Which CI system a service has, and what that system can do, is in
+  the catalog; a `trigger` on a system that has none is blocked with the adapter's name.
+
+The section is parsed once per object, so this costs a lookup, not a parse (`catalogOf` in `src/catalog.ts`).
+
 ## Examples
 
 A service deployed with Helm, with a values file and a value, whose health is
