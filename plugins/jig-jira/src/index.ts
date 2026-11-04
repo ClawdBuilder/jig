@@ -14,7 +14,9 @@ export function jigJira(options: JiraOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const tool = createTool(options);
         withJig((api) => {
-            api.config.registerSection("jira", validateJira, { replace: ["auth"] });
+            // `auth` is one choice among four, so a teammate's replaces the company's whole. `privateNames` is a list
+            // that protects against leaking an internal name: a teammate's adds to the company's and cannot drop them.
+            api.config.registerSection("jira", validateJira, { replace: ["auth"], union: ["privateNames"] });
             api.declareTool({ tool: "jira", plugin: "jig-jira", classify: tool.classify, preview: tool.preview });
         });
         registerJigTool(pi, tool.definition);

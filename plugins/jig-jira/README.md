@@ -139,7 +139,7 @@ is.
   through a secret reference;
 - the project keys, so that `search` needs no JQL for them and `create` cannot
   name another project;
-- default fields: friendly names, the fields `update` may set, private names;
+- default fields: friendly names, the fields `update` may set, and private names — its `privateNames` and yours add up;
 - the environment name, when it is not `external`.
 
 ## Layout
