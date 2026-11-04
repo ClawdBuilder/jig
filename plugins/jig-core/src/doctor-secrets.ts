@@ -5,9 +5,10 @@ import { accessSync, constants, existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { effectiveBackends } from "./config.ts";
+import { run as runProgram } from "./exec.ts";
 import type { SecretBackend } from "./config.ts";
 import type { DoctorContext, DoctorLine, DoctorOptions } from "./doctor.ts";
-import { probeSecret, shorten, storeName } from "./secret-status.ts";
+import { probeSecret, probeSecretQuick, shorten, storeName } from "./secret-status.ts";
 import type { SecretProbe, SecretProbeOptions } from "./secret-status.ts";
 import { plainLabel } from "./plain-label.ts";
 import { parseSecretReference } from "./secrets.ts";
@@ -92,7 +93,7 @@ export function sectionTexts(context: DoctorContext): string[] {
 }
 
 /** The secret checks: stores, the pass folder, every reference, and the commands they name. */
-export function checkSecrets(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
+export async function checkSecrets(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
     const lines: DoctorLine[] = [];
     const { on, byCompany, off } = effectiveBackends(context.personal.config.secrets, context.company);
     if (on.length === 0) {
@@ -224,7 +225,9 @@ export function checkSecrets(context: DoctorContext, options: DoctorOptions): Do
                 continue;
             }
         }
-        lines.push(referenceLine(found, probeSecret(found.ref, probeOptions(context, options)), context, options));
+        lines.push(
+            referenceLine(found, await probeSecret(found.ref, probeOptions(context, options)), context, options),
+        );
     }
     if (truncated) {
         lines.push({
@@ -238,11 +241,28 @@ export function checkSecrets(context: DoctorContext, options: DoctorOptions): Do
     return lines;
 }
 
-/** How many plugin sections `/jig setup` can ask about: incomplete, or invalid. A missing credential is not one. */
+/** What setup can act on: unfinished sections, and a credential whose cheap status is missing or invalid. */
 export function countQuickIssues(context: DoctorContext): number {
     const sections = new Set(context.sectionChecks.keys());
     let count = context.personal.incomplete.size;
     for (const problem of context.personal.problems) if (sections.has(problem.key)) count++;
+    const { on } = effectiveBackends(context.personal.config.secrets, context.company);
+    const quick = {
+        env: context.env,
+        passStoreDir: passStoreDir(context),
+        agentDir: context.agentDir,
+        platform: process.platform,
+        home: homedir(),
+    };
+    for (const found of collectReferences(context).refs) {
+        if (!on.includes(found.backend)) {
+            count++;
+            continue;
+        }
+        if (found.backend !== "pass" && found.backend !== "env" && found.backend !== "file") continue;
+        const probe = probeSecretQuick(found.ref, quick);
+        if (probe.status === "missing" || probe.status === "invalid" || probe.status === "locked") count++;
+    }
     return count;
 }
 
@@ -326,7 +346,15 @@ function referenceLine(
     const title = found.label;
     switch (probe.status) {
         case "found":
-            return { id: referenceId(found), group: "secrets", level: "ok", title, detail: foundDetail(found, probe) };
+            return {
+                id: referenceId(found),
+                group: "secrets",
+                level: probe.warning === undefined ? "ok" : "warn",
+                title,
+                detail: [foundDetail(found, probe), probe.warning === undefined ? undefined : `${probe.warning}.`]
+                    .filter((part): part is string => part !== undefined)
+                    .join(" "),
+            };
         case "missing":
             return {
                 id: referenceId(found),
@@ -342,8 +370,11 @@ function referenceLine(
                 group: "secrets",
                 level: "warn",
                 title,
-                detail: `Your ${title} is in ${storeName(found.backend)}, but the store is locked.`,
-                fix: `Unlock ${storeName(found.backend)} with its own tool, then run /jig doctor again.`,
+                detail:
+                    probe.detail === undefined
+                        ? `Your ${title} is in ${storeName(found.backend)}, but the store is locked.`
+                        : `${probe.detail}.`,
+                fix: probe.fix ?? `Unlock ${storeName(found.backend)} with its own tool, then run /jig doctor again.`,
             };
         case "invalid":
             return {
@@ -396,6 +427,8 @@ function probeOptions(context: DoctorContext, options: DoctorOptions): SecretPro
         agentDir: context.agentDir,
         ...(options.platform === undefined ? {} : { platform: options.platform }),
         home: home(options),
+        run: options.run ?? runProgram,
+        ...(context.workingDir === "" ? {} : { cwd: context.workingDir }),
     };
 }
 

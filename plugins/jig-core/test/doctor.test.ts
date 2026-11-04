@@ -1,7 +1,7 @@
 // `/jig doctor`: the levels, the plain sentences and the fix line for each finding. The checks run against a context
 // built by hand, so no test starts a login tool or reads a real store.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -273,16 +273,31 @@ describe("/jig doctor secrets", () => {
         assert.equal(line?.level, "fail");
         assert.match(line?.fix ?? "", /Create/);
 
-        const { writeFileSync } = await import("node:fs");
-        writeFileSync(path.join(home, "api-key"), "abc\n");
+        const file = path.join(home, "api-key");
+        writeFileSync(file, "abc\n", { mode: 0o600 });
+        chmodSync(file, 0o600);
         const found = await runDoctor(
             context({
-                sections: new Map([["api", { key: `file:${path.join(home, "api-key")}` }]]),
+                sections: new Map([["api", { key: `file:${file}` }]]),
                 overrides: { personal: withBackends("file") },
             }),
             options(),
         );
         assert.equal(found.lines.find((entry) => entry.id === "secrets.ref.api.key")?.level, "ok");
+
+        if (process.platform !== "win32") {
+            chmodSync(file, 0o644);
+            const readable = await runDoctor(
+                context({
+                    sections: new Map([["api", { key: `file:${file}` }]]),
+                    overrides: { personal: withBackends("file") },
+                }),
+                options(),
+            );
+            const line = readable.lines.find((entry) => entry.id === "secrets.ref.api.key");
+            assert.equal(line?.level, "warn");
+            assert.match(line?.detail ?? "", /other users can read this file/);
+        }
     });
 
     test("a malformed reference fails, and its text never appears", async () => {
@@ -321,20 +336,48 @@ describe("/jig doctor secrets", () => {
         );
     });
 
-    test("1Password is not read to check it, and the report says so", async () => {
+    test("cmd:gh is found when the login tool is signed in", async () => {
+        const calls: string[][] = [];
+        const report = await runDoctor(
+            context({
+                sections: new Map([["orders", { token: "cmd:gh" }]]),
+                overrides: { personal: withBackends("cmd"), commands: { gh: ["gh", "auth", "token"] } },
+            }),
+            options({
+                pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
+                run: async (file, args) => {
+                    calls.push([file, ...args]);
+                    return { code: 0, stdout: "", stderr: "", timedOut: false };
+                },
+            }),
+        );
+        const line = report.lines.find((entry) => entry.id === "secrets.ref.orders.token");
+        assert.equal(line?.level, "ok");
+        assert.match(line?.detail ?? "", /signed in/);
+        assert.ok(calls.some((call) => call[1] === "auth" && call[2] === "status"));
+    });
+
+    test("1Password is asked for an item list, and its field is not verified", async () => {
+        const calls: string[][] = [];
         const report = await runDoctor(
             context({
                 sections: new Map([["orders", { token: "op://Work/Orders/token" }]]),
                 overrides: { personal: withBackends("op") },
             }),
-            options(),
+            options({
+                run: async (file, args) => {
+                    calls.push([file, ...args]);
+                    return { code: 0, stdout: '[{"title":"Orders"}]', stderr: "", timedOut: false };
+                },
+            }),
         );
         const line = report.lines.find((entry) => entry.id === "secrets.ref.orders.token");
-        assert.equal(line?.level, "skip");
-        assert.match(line?.detail ?? "", /does not read it/);
+        assert.equal(line?.level, "ok");
+        assert.match(line?.detail ?? "", /field is not verified/);
+        assert.deepEqual(calls[0], ["op", "item", "list", "--vault", "Work", "--format", "json"]);
     });
 
-    test("the nudge counts sections setup can ask about, not a missing credential", () => {
+    test("the nudge counts sections and a missing cheap credential", () => {
         const incomplete = context({
             overrides: { personal: loaded({ incomplete: new Map([["acme", ["acme.user is required"]]]) }) },
         });
@@ -342,7 +385,7 @@ describe("/jig doctor secrets", () => {
         const missingReference = context({
             sections: new Map([["jira", { token: "pass:work/jira-token" }]]),
         });
-        assert.equal(countQuickIssues(missingReference), 0);
+        assert.equal(countQuickIssues(missingReference), 1);
         assert.equal(countQuickIssues(context()), 0);
     });
 });

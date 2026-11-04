@@ -1,17 +1,18 @@
 // What `/jig setup` still needs, from the states `/jig` already knows, the plugin validators and the company defaults.
 //
-// It reads the person's file once, works out which fields a validator names and asks about one field at a time. A field
-// that is a secret reference is not asked for: credentials are a later step. Nothing here writes or talks to Pi.
+// It reads the person's file once, works out which fields a validator names and asks about one field at a time. A
+// credential is asked for as WHERE it is kept, never as a value. Nothing here writes or talks to Pi.
 import { lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import type { LoadedConfig, SectionCheck } from "./config.ts";
-import { humanize } from "./plain-label.ts";
+import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
+import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
 import { layered } from "./section-defaults.ts";
 import { setValuePath } from "./setup-write.ts";
 import { shorten } from "./secret-status.ts";
 import { sectionState } from "./section-state.ts";
 import { parseSecretReference } from "./secrets.ts";
+import { referenceChoice } from "./setup-reference.ts";
 
 /** The part of jig-core the plan reads. `JigState` fits it once the defaults are gathered; a test can build one. */
 export interface SetupState {
@@ -23,9 +24,22 @@ export interface SetupState {
     oneOf: ReadonlyMap<string, readonly (readonly string[])[]>;
     union: ReadonlyMap<string, readonly string[]>;
     configPath: string;
+    /** Pi's environment, for an `env:` choice. */
+    env: NodeJS.ProcessEnv;
+    platform: NodeJS.Platform;
+    /** Finds a program on PATH without starting it, so setup offers only stores this machine has. */
+    pathLookup: (program: string, env: NodeJS.ProcessEnv) => string | undefined;
+    /** The stores that can resolve a reference now: the user's, a company's, less disabled. */
+    enabledBackends: readonly SecretBackend[];
+    /** The person's veto list; never written or removed by setup. */
+    disabledBackends: readonly SecretBackend[];
+    /** The backends a company turned on; its preference is the first of these. */
+    companyBackends: readonly SecretBackend[];
+    /** The commands a `cmd:` reference may name. */
+    commands: Readonly<Record<string, readonly string[]>>;
 }
 
-export type SetupFieldKind = "text" | "number" | "boolean";
+export type SetupFieldKind = "text" | "number" | "boolean" | "reference";
 
 /** One question. `current` is for the placeholder, never a secret and never a raw reference. */
 export interface SetupField {
@@ -37,6 +51,20 @@ export interface SetupField {
     kind: SetupFieldKind;
     current?: string | number | boolean;
     reason: string;
+    /** For a credential: where the person may keep it, and which choice is the company's. */
+    reference?: SetupReferenceChoice;
+}
+
+export interface SetupReferenceChoice {
+    /** The stores to offer, the company's choice first. */
+    stores: SecretBackend[];
+    /** The store marked "(company default)", when the company named one. */
+    preferred?: SecretBackend;
+    /** The stores that are already on; a choice outside this adds one to `secrets.backends`. */
+    enabled: SecretBackend[];
+    /** The stores the person turned off; they are not offered, and setup says so. */
+    disabled: SecretBackend[];
+    commands: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface SetupSection {
@@ -77,6 +105,10 @@ export interface SetupChange {
     label: string;
     oldValue?: unknown;
     value: unknown;
+    /** A plain phrase for a reference's place, such as "pass entry work/jira-token". Never a reference. */
+    note?: string;
+    /** A store to turn on in `secrets.backends`, when the chosen store is not on yet. */
+    enableBackend?: SecretBackend;
 }
 
 /** The plan: read the file, then ask only about the fields a validator names. */
@@ -218,7 +250,22 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
                 continue;
             }
             if (isSecret(last, current, defaultValue, message)) {
-                notes.push(`${label}: credentials come in a later step; run /jig setup again after updating.`);
+                const reference = referenceChoice(state, current, defaultValue);
+                if (reference.stores.length === 0) {
+                    notes.push(
+                        `${label}: no secret store is available. Turn one on in your settings, then run /jig setup again.`,
+                    );
+                    continue;
+                }
+                fields.push({
+                    section: name,
+                    path,
+                    label,
+                    question: `Where do you keep the ${label}?`,
+                    reason: "Jig reads the value from there when a tool needs it.",
+                    kind: "reference",
+                    reference,
+                });
                 continue;
             }
             const kind = fieldKind(current, message, last);
@@ -272,7 +319,12 @@ export function applyAnswer(
     if (trimmed === "") return { problem: `Please enter a value for ${field.label}.` };
 
     let value: unknown;
-    if (field.kind === "number") {
+    if (field.kind === "reference") {
+        if (parseSecretReference(trimmed) === undefined) {
+            return { problem: "That is not a place Jig can read a value from." };
+        }
+        value = trimmed;
+    } else if (field.kind === "number") {
         const number = Number(trimmed);
         if (!Number.isFinite(number)) return { problem: `${field.label} must be a number.` };
         value = number;
@@ -341,90 +393,6 @@ function unsafePath(path: string): boolean {
     return path
         .split(".")
         .some((part) => part === "" || /^\d+$/.test(part) || ["__proto__", "constructor", "prototype"].includes(part));
-}
-
-function isSecret(last: string, current: unknown, defaultValue: unknown, message: string): boolean {
-    const name = last.toLowerCase();
-    return (
-        /secret reference/i.test(message) || SECRET_NAMES.has(name) || isReference(current) || isReference(defaultValue)
-    );
-}
-
-const SECRET_NAMES = new Set([
-    "token",
-    "password",
-    "passwd",
-    "secret",
-    "key",
-    "apikey",
-    "api_key",
-    "clientsecret",
-    "client_secret",
-    "accesskey",
-    "secretkey",
-    "credential",
-    "credentials",
-]);
-
-function isReference(value: unknown): boolean {
-    return typeof value === "string" && parseSecretReference(value) !== undefined;
-}
-
-function fieldKind(current: unknown, message: string, last: string): SetupFieldKind {
-    if (typeof current === "boolean") return "boolean";
-    if (typeof current === "number") return "number";
-    if (/true or false|boolean/i.test(message)) return "boolean";
-    if (/number|whole number/i.test(message) || /^port$/i.test(last)) return "number";
-    return "text";
-}
-
-function fieldLabel(section: string, path: string): string {
-    const parts = path.split(".");
-    const last = parts.pop() ?? path;
-    const words = [humanize(section), ...parts.map(humanize)];
-    const LAST: Record<string, string> = {
-        user: "login",
-        username: "login",
-        userid: "login",
-        url: "address",
-        baseurl: "address",
-    };
-    words.push(LAST[last.toLowerCase()] ?? humanize(last));
-    const label = words.filter((word) => word !== "").join(" ");
-    return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function labelOf(section: string): string {
-    const label = humanize(section);
-    return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function reasonFor(message: string): string {
-    if (/required|missing|must be set|needs a value/i.test(message)) return "This is still needed.";
-    if (/number|whole number/i.test(message)) return "This needs a number.";
-    if (/true or false|boolean/i.test(message)) return "This needs yes or no.";
-    return "This needs a valid value.";
-}
-
-function placeholderFor(kind: SetupFieldKind, current: unknown, last: string): string | undefined {
-    if (kind === "boolean") return "yes or no";
-    if (isPrimitive(current) && current !== "") {
-        const shown = String(current)
-            .replace(/[\u0000-\u001f\u007f]/g, " ")
-            .slice(0, 80);
-        if (isReference(shown)) return "A value Jig reads when needed";
-        return `Now: ${shown}`;
-    }
-    if (kind === "number") return "A number";
-    const examples: Record<string, string> = {
-        user: "For example: jdoe",
-        username: "For example: jdoe",
-        site: "For example: https://staging.example.com",
-        url: "For example: https://staging.example.com",
-        baseurl: "For example: https://staging.example.com",
-        host: "For example: api.staging.example.com",
-    };
-    return examples[last.toLowerCase()] ?? undefined;
 }
 
 function plainProblem(field: SetupField, message: string): string {

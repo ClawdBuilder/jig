@@ -150,9 +150,19 @@ A request names a reference, a sign-in service or a transport in `auth`, and
 
 ## Later
 
-`/jig doctor` has the first part: a read-only status for every reference in the effective settings, saying
-**found**, **missing** or **not checked** (and **locked** when a store reports it), never a value. For
-`pass`, `env` and `file` it decides without decrypting: the entry file exists, the variable is set, the
-file has a first line. `keychain`, `op` and `cmd` are not checked yet and say so; a `cmd` reference is
-checked only when the login tool has a status command. A missing one comes with the command that adds it.
-Still to come: a side panel, and a check for the other three backends.
+`/jig doctor` and `/jig setup` share one read-only status for every reference in the effective settings,
+saying **found**, **missing**, **locked** or **not checked**, never a value. Each store is asked for metadata
+only:
+- **`pass`:** the entry file exists.
+- **`env`:** the variable is set in this Pi process; its value and length are not shown.
+- **`file`:** the path is a regular, non-empty file; its mode is checked, and a file other users can read is
+  a warning. The file is never read.
+- **`keychain`:** `security find-generic-password -s <service> -a <account>`, without `-w` or `-g`.
+- **`op`:** `op item list --vault <vault> --format json`, matched by item title. The field is not verified;
+  `op item get` and `op read` are never run.
+- **`cmd`:** the login tool's own status (`gh auth status --no-refresh`, `glab auth status`). Other commands
+  are not checked, because checking them would mean reading what they print.
+
+A missing one comes with the store's own command to add it, and setup offers **Check again**. Setup asks
+where a credential is kept and builds the reference itself; a chosen store that was off is added to
+`secrets.backends`, and `secrets.disabledBackends` is never written or removed. Still to come: a side panel.

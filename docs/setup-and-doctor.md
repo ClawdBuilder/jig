@@ -20,7 +20,15 @@ the network, the sandbox and the records folder.
 ```
 
 Setup asks one question at a time about the parts a company plugin or a validator says are incomplete or wrong.
-It never asks for a password or a token: credentials come in a later step.
+It never asks for a password or a token. For a credential it asks **where** it is kept, never what it is: choose
+1Password, the macOS Keychain, pass, an environment variable, a file, or a tool that owns the login. The company's
+choice comes first and is marked. Then setup asks the plain parts, such as the vault, item and field, and builds the
+reference itself; you never type `op://` or `pass:`.
+
+After each credential it says **Found**, **Missing**, **Locked** or **Not checked**, never a value. A missing one
+comes with the store's own command to add it, and **Check again**. A file is the weakest choice: it is plain text
+on disk, and setup warns before using one. If the store was off, setup turns it on as a place Jig reads from; it
+never changes the stores you turned off.
 
 Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
 Nothing is written until you confirm. It keeps a backup next to the file and asks you to run `/reload`.
@@ -52,13 +60,14 @@ Each `warn` and `fail` has a `fix:` line under it. The fix is a command or an ac
 | Sandbox | whether `bash` is sandboxed, and the programs it needs |
 | Records | where today's records go, and whether they can be written |
 
-A `skip` is not a failure. The `keychain`, `op` and `cmd` stores are not opened to check a reference yet. The
-Logins group checks `gh` and `glab` when your settings use them.
+A `skip` is not a failure. Every store is asked for metadata only: an entry exists, a variable is set, a file's
+size and mode, a Keychain lookup without the password, a 1Password item list without its fields, or a login
+tool's own status. A field's value is never read to check it.
 
 ## Fixing a finding
 
-- **A missing secret.** The fix is your own store's command, such as `pass insert work/jira-token`. Run it in your
-  own terminal; Jig never asks for the value.
+- **A missing secret.** Setup shows your own store's command, such as `pass insert work/jira-token`, and offers
+  Check again. Run it in your own terminal; Jig never asks for the value.
 - **A section that is not loaded.** The message names the key. A company's defaults can wait for the part only you
   know, such as your login on a bastion host.
 - **A login tool that is not signed in.** The fix is its own command, such as `gh auth login`.
