@@ -253,6 +253,7 @@ describe("what plugins import", () => {
             "abort.ts",
             "browser.ts",
             "files.ts",
+            "git-settings.ts",
             "http-error.ts",
             "http.ts",
             "oauth.ts",
@@ -267,6 +268,7 @@ describe("what plugins import", () => {
             "abort.ts": ["untilAborted"],
             "browser.ts": ["browserCommand"],
             "files.ts": ["createFileDurably", "replaceFileDurably", "syncFolder"],
+            "git-settings.ts": ["isDangerousGitSetting"],
             "http-error.ts": ["HttpError", "isHttpError"],
             "http.ts": [
                 "DEFAULT_MAX_BYTES",

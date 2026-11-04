@@ -124,6 +124,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/abort.ts` | Waiting for work that may ignore its signal | `kit/http.ts` |
 | `kit/browser.ts` | The program and arguments that open an address, from `$BROWSER` or the platform's opener | `preview-html.ts`, `jig-review`'s `open.ts` |
 | `kit/files.ts` | Writing a file so it survives a crash: synced, renamed into place, its folder synced | `paths.ts`, `mask/key.ts`, plugins' stores |
+| `kit/git-settings.ts` | The git settings that make git run a program or redirect a remote: one table for the guard and the sandbox | `git-config-guard.ts`, `jig-sandbox`'s `gitconfig.ts` |
 | `kit/role-policy.ts` | The policy a role gives its child agent in `JIG_ROLE_POLICY`: written, read, and checked | `jig-agents`, `jig-sandbox`; no file here |
 | `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |

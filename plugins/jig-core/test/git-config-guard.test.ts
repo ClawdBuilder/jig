@@ -110,6 +110,13 @@ describe("which keys are dangerous", () => {
         assert.equal(isDangerousKey("Credential.Helper", "x"), true);
     });
 
+    test("a shell alias in a repository's own configuration is refused, and a plain alias is not", () => {
+        for (const value of ["!touch /tmp/x", "  !sh -c 'x'"])
+            assert.equal(isDangerousKey("alias.deploy", value), true, value);
+        for (const value of ["status", "log --oneline", undefined])
+            assert.equal(isDangerousKey("alias.st", value), false, String(value));
+    });
+
     test("submodule.<name>.update is dangerous only when it runs a command", () => {
         for (const value of ["!touch /tmp/x", "  !sh -c 'x'"])
             assert.equal(isDangerousKey("submodule.orders.update", value), true, value);

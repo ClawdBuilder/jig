@@ -77,6 +77,19 @@ describe("what is dangerous", () => {
         }
     });
 
+    test("the settings the guard refuses are refused here too, from the one table they share", () => {
+        for (const text of [
+            "[gc]\n\trecentObjectsHook = evil\n",
+            "[core]\n\talternateRefsCommand = evil\n",
+            '[remote "origin"]\n\tuploadpack = evil\n',
+            '[remote "origin"]\n\treceivepack = evil\n',
+            '[gpg "ssh"]\n\tdefaultKeyCommand = evil\n',
+            '[submodule "orders"]\n\tupdate = !evil\n',
+        ]) {
+            assert.equal(dangerous(text), true, text);
+        }
+    });
+
     test("ordinary settings are not", () => {
         for (const text of [
             "[core]\n\tbare = false\n\tfilemode = true\n\tfsmonitor = false\n",
