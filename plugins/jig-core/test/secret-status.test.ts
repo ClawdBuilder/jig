@@ -86,7 +86,8 @@ describe("probeSecret", () => {
     });
 
     test("a file is found by its size, and an empty one is missing", async () => {
-        writeFileSync(path.join(home, "token"), "abc\n");
+        writeFileSync(path.join(home, "token"), "abc\n", { mode: 0o600 });
+        chmodSync(path.join(home, "token"), 0o600);
         assert.equal((await probeSecret(`file:${path.join(home, "token")}`, options)).status, "found");
 
         writeFileSync(path.join(home, "empty"), "");
