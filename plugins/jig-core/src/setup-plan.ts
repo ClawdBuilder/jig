@@ -2,11 +2,14 @@
 //
 // It reads the person's file once, works out which fields a validator names and asks about one field at a time. A field
 // that is a secret reference is not asked for: credentials are a later step. Nothing here writes or talks to Pi.
-import { readFileSync, statSync } from "node:fs";
+import { lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
 import type { LoadedConfig, SectionCheck } from "./config.ts";
 import { humanize } from "./plain-label.ts";
 import { layered } from "./section-defaults.ts";
 import { setValuePath } from "./setup-write.ts";
+import { shorten } from "./secret-status.ts";
 import { sectionState } from "./section-state.ts";
 import { parseSecretReference } from "./secrets.ts";
 
@@ -45,7 +48,12 @@ export interface SetupSection {
 }
 
 export interface SetupPlan {
+    /** The path in the settings, which may be a link. */
     file: string;
+    /** The regular file read and written: the link's target, or the same path when it is not a link. */
+    target: string;
+    /** True when `file` is a link and `target` is where it points. */
+    link: boolean;
     exists: boolean;
     before: string;
     mode: number;
@@ -79,17 +87,58 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
     let exists = false;
     let before = "";
     let mode = 0o600;
+    let target = state.configPath;
+    let link = false;
     try {
-        const info = statSync(state.configPath);
-        if (!info.isFile()) return { problem: "Your Jig settings are not a file. /jig doctor names the problem." };
-        exists = true;
-        mode = info.mode & 0o777;
-        before = readFileSync(state.configPath, "utf8");
+        const entry = lstatSync(state.configPath);
+        if (entry.isSymbolicLink()) {
+            link = true;
+            try {
+                target = realpathSync(state.configPath);
+            } catch {
+                let written = "";
+                try {
+                    written = readlinkSync(state.configPath);
+                } catch {
+                    // The link is there; its text is not readable.
+                }
+                const shown =
+                    written === ""
+                        ? "a missing target"
+                        : shorten(
+                              path.isAbsolute(written)
+                                  ? written
+                                  : path.resolve(path.dirname(state.configPath), written),
+                              homedir(),
+                          );
+                return {
+                    problem: `Your settings file is a link to ${shown}, which does not exist. Fix the link, then run /jig setup again.`,
+                };
+            }
+            const info = statSync(target);
+            if (!info.isFile()) {
+                return {
+                    problem: `Your settings file is a link to ${shorten(target, homedir())}, which is not a file. Setup changes nothing.`,
+                };
+            }
+            exists = true;
+            mode = info.mode & 0o777;
+            before = readFileSync(target, "utf8");
+        } else if (entry.isFile()) {
+            exists = true;
+            mode = entry.mode & 0o777;
+            before = readFileSync(state.configPath, "utf8");
+        } else {
+            return { problem: "Your Jig settings are not a file. /jig doctor names the problem." };
+        }
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
             return { problem: "Your Jig settings could not be read. /jig doctor names the problem." };
         }
     }
+    const linkNote = link
+        ? `Your settings file is a link to ${shorten(target, homedir())}; that file will be changed.`
+        : undefined;
 
     let raw: unknown = {};
     if (exists) {
@@ -195,12 +244,14 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
     return {
         plan: {
             file: state.configPath,
+            target,
+            link,
             exists,
             before,
             mode,
             raw,
             sections: candidates.map((candidate) => candidate.section),
-            notes: [],
+            notes: linkNote === undefined ? [] : [linkNote],
             defaults: state.defaults,
             checks: state.sectionChecks,
             replace: state.replace,

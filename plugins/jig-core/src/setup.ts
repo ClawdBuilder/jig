@@ -85,7 +85,8 @@ export async function runSetup(state: JigState, ctx: ExtensionCommandContext): P
     try {
         const result = writeSetup(plan, changes, state.now());
         const count = result.changes === 1 ? "1 change" : `${result.changes} changes`;
-        const lines = [`Saved ${count} to ${shorten(result.file, homedir())}.`];
+        const where = shorten(result.file, homedir());
+        const lines = [`Saved ${count} to ${where}${plan.link ? " (through your link)" : ""}.`];
         if (result.backup !== undefined) lines.push(`Backup: ${shorten(result.backup, homedir())}`);
         lines.push("Run /reload to apply.");
         ctx.ui.notify(lines.join("\n"), "info");

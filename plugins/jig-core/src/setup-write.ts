@@ -1,7 +1,7 @@
 // The last part of `/jig setup`: the plain summary, the exact JSON behind its choice, and the write gate that re-reads,
 // backs up beside the file, and replaces it whole and atomically. It never decides what to ask; setup-plan.ts does.
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { createFileDurably, replaceFileDurably } from "./kit/files.ts";
 import type { SetupChange, SetupPlan } from "./setup-plan.ts";
 import { parseSecretReference } from "./secrets.ts";
@@ -12,7 +12,7 @@ export function summaryLines(plan: SetupPlan, changes: readonly SetupChange[]): 
         (change) =>
             `${change.label}: ${displayValue(change.value)} (${change.oldValue === undefined ? "new" : "changed"})`,
     );
-    return [...lines, ...plan.sections.flatMap((section) => section.notes)];
+    return [...plan.notes, ...lines, ...plan.sections.flatMap((section) => section.notes)];
 }
 
 /** The JSON of exactly the changed fields, for the "Show the exact change" choice and nowhere else. */
@@ -37,9 +37,25 @@ export interface SetupWriteResult {
 export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now: Date): SetupWriteResult {
     if (changes.length === 0) throw new SetupRefused("There is nothing to save.");
 
+    if (plan.link) {
+        let nowTarget: string;
+        try {
+            nowTarget = realpathSync(plan.file);
+        } catch {
+            throw new SetupRefused(
+                "Your settings file is a link whose target cannot be read, so nothing was written. Run /jig setup again.",
+            );
+        }
+        if (nowTarget !== plan.target) {
+            throw new SetupRefused(
+                "Your settings file is a link that now points somewhere else, so nothing was written. Run /jig setup again.",
+            );
+        }
+    }
+
     let current: string | undefined;
     try {
-        current = readFileSync(plan.file, "utf8");
+        current = readFileSync(plan.target, "utf8");
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
             throw new SetupRefused("Your settings file could not be read, so nothing was written.");
@@ -65,15 +81,15 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
     let backup: string | undefined;
     if (plan.exists) {
         const stamp = now.toISOString().replace(/[:.]/g, "-");
-        backup = `${plan.file}.${stamp}.${randomBytes(3).toString("hex")}.bak`;
+        backup = `${plan.target}.${stamp}.${randomBytes(3).toString("hex")}.bak`;
         createFileDurably(backup, plan.before, plan.mode === 0 ? 0o600 : plan.mode);
     }
     replaceFileDurably(
-        plan.file,
+        plan.target,
         `${JSON.stringify(after, null, indentOf(plan.before))}\n`,
         plan.exists ? (plan.mode === 0 ? 0o600 : plan.mode) : 0o600,
     );
-    return { file: plan.file, ...(backup === undefined ? {} : { backup }), changes: changes.length };
+    return { file: plan.target, ...(backup === undefined ? {} : { backup }), changes: changes.length };
 }
 
 function displayValue(value: unknown): string {

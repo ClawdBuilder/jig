@@ -101,8 +101,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `setup.ts` | `/jig setup`: the questions, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
-| `setup-plan.ts` | What setup asks, from the section states and the validators, and the answer round trip | `setup.ts` |
-| `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
+| `setup-plan.ts` | What setup asks, from the section states and the validators, and the answer round trip; it follows a linked settings file to its target | `setup.ts` |
+| `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
 | `plain-label.ts` | Plain names for configuration paths, shared by the doctor and setup: "Jira auth token", not `jira.auth.token` | `doctor-secrets.ts`, `setup-plan.ts` |
 
 ### Profiles (which company applies)

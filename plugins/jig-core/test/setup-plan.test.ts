@@ -3,12 +3,15 @@ import assert from "node:assert/strict";
 import {
     chmodSync,
     existsSync,
+    lstatSync,
     mkdirSync,
     mkdtempSync,
     readFileSync,
     readdirSync,
+    realpathSync,
     rmSync,
     statSync,
+    symlinkSync,
     writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -346,6 +349,72 @@ describe("the write gate", () => {
         assert.equal(result.backup, undefined);
         assert.ok(existsSync(missing));
         assert.equal(JSON.parse(readFileSync(missing, "utf8")).acme.bastion.user, "jdoe");
+    });
+});
+
+describe("a linked settings file", () => {
+    const skip = process.platform === "win32" ? "symlinks need a privilege on Windows" : false;
+
+    test("is followed: the link stays a link and the target is written", { skip }, () => {
+        const targetDir = path.join(home, "dotfiles", "pi");
+        mkdirSync(targetDir, { recursive: true });
+        const target = path.join(targetDir, "jig.json");
+        const text = JSON.stringify(rawConfig, null, 4);
+        writeFileSync(target, text);
+        const link = path.join(home, "agent", "jig.json");
+        symlinkSync(target, link);
+
+        const plan = planFor(rawConfig, link);
+        assert.equal(plan.link, true);
+        assert.equal(plan.target, realpathSync(target));
+        assert.equal(plan.before, text);
+        assert.match(plan.notes[0] ?? "", /is a link to .*jig\.json; that file will be changed\./);
+
+        const draft = structuredClone(plan.raw);
+        const changes = [];
+        for (const field of [plan.sections[1]?.fields[0], plan.sections[0]?.fields[0]]) {
+            assert.ok(field);
+            const answer = applyAnswer(plan, draft, field, field.kind === "number" ? "8080" : "jdoe");
+            assert.ok("change" in answer);
+            changes.push(answer.change);
+        }
+        const summary = summaryLines(plan, changes).join("\n");
+        assert.match(summary, /Your settings file is a link to .* that file will be changed\./);
+        assert.ok(!summary.includes("{"));
+
+        const result = writeSetup(plan, changes, new Date("2026-11-04T17:00:00.000Z"));
+        assert.equal(result.file, realpathSync(target));
+        assert.ok(result.backup);
+        assert.equal(lstatSync(link).isSymbolicLink(), true);
+        assert.equal(realpathSync(link), realpathSync(target));
+        assert.equal(JSON.parse(readFileSync(target, "utf8")).acme.bastion.user, "jdoe");
+        assert.equal(JSON.parse(readFileSync(link, "utf8")).lens.port, 8080);
+        assert.deepEqual(readdirSync(targetDir).filter((name) => name.endsWith(".bak")).length, 1);
+        assert.deepEqual(
+            readdirSync(path.dirname(link)).filter((name) => name.endsWith(".bak")),
+            [],
+        );
+    });
+
+    test("a broken link refuses, and changes nothing", { skip }, () => {
+        const link = path.join(home, "agent", "jig.json");
+        symlinkSync(path.join(home, "missing.json"), link);
+        const built = buildSetupPlan(stateFor({}, link));
+        assert.ok("problem" in built);
+        assert.match(built.problem, /is a link to/);
+        assert.match(built.problem, /does not exist/);
+        assert.equal(lstatSync(link).isSymbolicLink(), true);
+        assert.equal(existsSync(path.join(home, "missing.json")), false);
+    });
+
+    test("a link to a folder refuses", { skip }, () => {
+        const folder = path.join(home, "dotfiles", "folder");
+        mkdirSync(folder, { recursive: true });
+        const link = path.join(home, "agent", "jig.json");
+        symlinkSync(folder, link);
+        const built = buildSetupPlan(stateFor({}, link));
+        assert.ok("problem" in built);
+        assert.match(built.problem, /which is not a file/);
     });
 });
 

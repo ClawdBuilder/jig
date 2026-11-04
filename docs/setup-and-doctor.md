@@ -25,6 +25,10 @@ It never asks for a password or a token: credentials come in a later step.
 Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
 Nothing is written until you confirm. It keeps a backup next to the file and asks you to run `/reload`.
 
+If your settings file is a link, as a dotfiles setup often makes it, setup follows the link, says which file it
+will change, and writes that file. The link stays a link. A link that points nowhere, or to a folder, is refused
+and nothing changes.
+
 ## The four words
 
 | Word | What it means |
