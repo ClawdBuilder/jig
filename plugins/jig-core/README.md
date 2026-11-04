@@ -32,6 +32,7 @@ This tool lists and stops the watches of every plugin.
 | Command | What it does |
 |---|---|
 | `/jig` | Status: tools governed, plugins loaded, environments and who defined them, open watches, configuration problems |
+| `/jig setup` | Fills in the missing parts of plugin settings, in plain words, after you confirm |
 | `/jig doctor` | What is wrong with this setup, with one plain fix for each finding |
 | `/jig rules [tool]` | The effective decision per tool and action, and where each came from |
 | `/jig records` | Where today's records are, and a one-line summary of the day |

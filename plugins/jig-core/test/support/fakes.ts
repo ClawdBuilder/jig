@@ -6,6 +6,7 @@ import type { Masker } from "../../src/mask/index.ts";
 export interface FakeUiLog {
     selects: Array<{ title: string; options: string[] }>;
     inputs: Array<{ title: string }>;
+    confirms: Array<{ title: string; message: string }>;
     customs: number;
     notifications: Array<{ message: string; type: string | undefined }>;
     active: number;
@@ -16,6 +17,8 @@ export interface FakeUiScript {
     /** Answers a selector: the option to choose, or undefined to close it without an answer. */
     select?: (title: string, options: string[]) => string | undefined | Promise<string | undefined>;
     input?: (title: string) => string | undefined | Promise<string | undefined>;
+    /** Answers the final confirmation; the default is no, so a test must say yes to write anything. */
+    confirm?: (title: string, message: string) => boolean | Promise<boolean>;
     /** Runs the component factory the way Pi does: it gets a fake terminal, a theme, keybindings and `done`. */
     custom?: (
         factory: (tui: unknown, theme: unknown, keybindings: unknown, done: (value: unknown) => void) => unknown,
@@ -24,7 +27,15 @@ export interface FakeUiScript {
 }
 
 export function fakeUi(script: FakeUiScript = {}): { ui: ExtensionUIContext; log: FakeUiLog } {
-    const log: FakeUiLog = { selects: [], inputs: [], customs: 0, notifications: [], active: 0, maxActive: 0 };
+    const log: FakeUiLog = {
+        selects: [],
+        inputs: [],
+        confirms: [],
+        customs: 0,
+        notifications: [],
+        active: 0,
+        maxActive: 0,
+    };
     // Counts questions open at the same moment, to prove they are asked one at a time.
     async function counted<T>(work: () => Promise<T>): Promise<T> {
         log.active++;
@@ -47,7 +58,12 @@ export function fakeUi(script: FakeUiScript = {}): { ui: ExtensionUIContext; log
                 log.inputs.push({ title });
                 return script.input?.(title);
             }),
-        confirm: async () => false,
+        confirm: (title: string, message: string) =>
+            counted(async () => {
+                log.confirms.push({ title, message });
+                await Promise.resolve();
+                return script.confirm?.(title, message) ?? false;
+            }),
         notify: (message: string, type?: string) => {
             log.notifications.push({ message, type });
         },
