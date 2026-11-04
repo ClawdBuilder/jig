@@ -13,7 +13,7 @@ without installing Grafana. Back to the [jig-lens overview](../README.md).
 | Overview, tables | Which session and which ticket cost the most, failed most, or waited for you longest |
 | Tickets | Which tickets had work in the range; type a key to open any ticket |
 | Ticket | Every session of one ticket, over all time: cost, duration, tools used, failures, waits |
-| Session | Every turn and call in order, with child agents nested under the session that started them |
+| Session | Every turn and call in order, with child agents nested under the session that started them, a lane timeline of where the time went, and a panel with one call's arguments and result |
 | Tools | Calls, failures and p50 and p95 duration per tool; calls refused, by who decided and why |
 | Tools, loops | Where the agent tried the same failing thing 3 times or more in a row |
 | Your time | Questions asked, how you answered, the total, median and longest waits, by tool and ticket |
@@ -22,6 +22,13 @@ without installing Grafana. Back to the [jig-lens overview](../README.md).
   in the summary. A ticket's page covers all time.
 - **Every table sorts** when you click a column, and a session or ticket
   anywhere opens its own view.
+- **Where the time went** draws each turn as one bar in three lanes: model time, tool time, and the time waiting for
+  you. A turn runs from its start to the next turn's start; its calls give the tool and waiting times, and the rest of the
+  interval is the model's. Calls of a child agent are in the child's own lanes, so a child never counts twice.
+- **One call's text** opens when you click a call in the session timeline: a panel beside the page shows the arguments
+  and the result, read from Pi's own session file for that session alone. The file holds what `jig-core` masked at
+  `tool_result`, so the text shown is the masked text; it is cut at 20,000 characters, only that one call is read, and the
+  panel goes away with the page. Nothing is copied into the index.
 - **The session timeline** shows, for a call: the tool and action, where it
   acted, the decision and who made it, your answer and how long it waited, the
   outcome with its error kind and line, the duration and the facts. For a turn:

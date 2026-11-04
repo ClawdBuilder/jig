@@ -218,7 +218,12 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
     }
 
     // The page of this session. Nothing listens until `/lens web`, and it stops with the session.
-    const web = new LensWeb({ index: () => deps.paths().index, now: () => deps.now(), names: modelNames.names });
+    const web = new LensWeb({
+        index: () => deps.paths().index,
+        now: () => deps.now(),
+        names: modelNames.names,
+        sessionsDir: () => deps.sessionsDir(),
+    });
     pi.on("session_shutdown", () => web.stop());
 
     /** `/lens web`: import, start the page (or reuse it), and open it. */

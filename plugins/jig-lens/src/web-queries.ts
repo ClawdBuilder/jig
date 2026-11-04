@@ -464,6 +464,60 @@ export function nameModels(timeline: Timeline, label: (id: string) => string): T
     };
 }
 
+// ---- lanes ----------------------------------------------------------------------------------------------------------
+
+/** One turn, split into the time the model worked, the time tools ran, and the time spent waiting for the person. */
+export interface Lane {
+    index: number;
+    start: number;
+    end: number;
+    modelMs: number;
+    toolMs: number;
+    waitedMs: number;
+    cost: number;
+    model: string;
+}
+
+export interface Lanes {
+    turns: Lane[];
+    /** Set when the timeline was longer than `max` turns. */
+    cut: boolean;
+}
+
+/** At most this many turns are drawn; the page says the rest is cut. */
+export const MAX_LANES = 500;
+
+/**
+ * The session's turns as lanes. A turn runs from its start to the next turn's start (the last one to the session's last
+ * line); the calls in between are its tool time and its waiting time, and what is left of the interval is model time.
+ * Calls are top-level only: a child's time is in the child's own lanes.
+ */
+export function lanesOf(timeline: Timeline, max = MAX_LANES): Lanes {
+    const turns = timeline.lines.filter((line) => line.kind === "turn");
+    const calls = timeline.lines.filter((line) => line.kind === "call");
+    const lanes: Lane[] = [];
+    for (const [index, turn] of turns.entries()) {
+        if (index >= max) break;
+        const start = turn.time;
+        const end = index + 1 < turns.length ? (turns[index + 1] as { time: number }).time : timeline.last;
+        const inside = calls.filter((call) => call.time >= start && call.time < end);
+        const toolMs = inside.reduce((sum, call) => sum + (call.durationMs ?? 0), 0);
+        const waitedMs = inside.reduce((sum, call) => sum + (call.waitedMs ?? 0), 0);
+        const span = Math.max(0, (end - start) * 1000);
+        lanes.push({
+            index,
+            start,
+            end,
+            modelMs: Math.max(0, span - toolMs - waitedMs),
+            toolMs,
+            waitedMs,
+            cost: turn.cost,
+            model: turn.model,
+        });
+    }
+    return { turns: lanes, cut: turns.length > max };
+}
+
 // ---- tools ----------------------------------------------------------------------------------------------------------
 
 export interface ToolRow extends ToolName {
