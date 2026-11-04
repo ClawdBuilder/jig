@@ -1,6 +1,6 @@
 {
     "name": "jig",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "private": true,
     "description": "One tool manager and a set of plugins for the Pi coding agent: permissions per tool and environment, approvals, secrets and records.",
     "type": "module",

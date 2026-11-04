@@ -4,15 +4,14 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
-### Fixed
-
-- The Herdr Work panel's Outputs no longer empty after Pi restarts or a session resumes: `jig-session` rebuilds them from the session's `edit` and `write` calls and lists the active ticket's notes, plans and evidence files (not `ticket.json`, `workflow.json` or `history/`).
-
-### Changed
-
-- The Herdr Work panel's Outputs list shows only files outside git repositories (ticket notes, plans, reports); a line under it counts the files changed in repositories and opens the Changes section. `jig-session` adds `repo` to each output (the working tree's root, or null) and caps the two kinds separately.
+## [0.3.0] - 2026-11-04
 
 ### Added
+
+- Contributing and security pages, code owners, and issue and pull request templates: the rules a person follows, beside the
+  [AGENTS.md](AGENTS.md) guide the coding agents read.
+- `docs/releases.md`, `scripts/release.mjs` and a Release workflow: a release is one command and one tag, and the GitHub
+  release's notes are that version's changelog section.
 
 - Herdr Review tab: a `Diff | File | Patch` switch in the diff header; `File` and `Patch` show the file's text or the diff's text in a read-only editor where the mouse drags a selection and `Ctrl+C` copies it (the view is remembered), and shift-click in `Diff` now takes focus first so the range extends.
 - Herdr Review tab: the file list is resizable (drag the divider; the width is remembered), and code can be copied. Click a diff line (shift-click to extend, `Escape` to clear) and press `Ctrl+C` or `Copy N lines` to copy it without markers or line numbers; `Copy file` and `Copy path` are in the diff header.
@@ -48,12 +47,19 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- The install section says how to pin a release (`@v0.3.0`) as well as how to follow `main`, and [Releases](docs/releases.md)
+  says what a version number means.
+
+- The Herdr Work panel's Outputs list shows only files outside git repositories (ticket notes, plans, reports); a line under it counts the files changed in repositories and opens the Changes section. `jig-session` adds `repo` to each output (the working tree's root, or null) and caps the two kinds separately.
+
 - After a push, the result says how the agent will hear when CI finishes (a running `ci` watch, or the call that starts one), and the model is told that a promise to report on CI needs a watch.
 - A command that fails because the sandbox makes no Unix socket (a JVM attaching to itself, Docker, a socket tool) says so in one line, and how to run it outside with the user's approval.
 - The `## Now` reminder stops only when `## Now` itself changes, not at any edit of `notes.md`, and the notes message and the
   reminder say today's local date.
 
 ### Fixed
+
+- The Herdr Work panel's Outputs no longer empty after Pi restarts or a session resumes: `jig-session` rebuilds them from the session's `edit` and `write` calls and lists the active ticket's notes, plans and evidence files (not `ticket.json`, `workflow.json` or `history/`).
 
 - The `o` key on the review screen opens the preview over `http://localhost` from a small server on this machine, not as a file, so it opens in a Windows browser under WSL; it says which address it opened, and why when it could not (the launcher failed, or the server could not start; off WSL a file is then used, and under WSL, or with a Windows program as the opener, none is, because Windows warns about a network file).
 - Files Jig writes for itself (its state, ticket notes and evidence, the Postman copy, themes, passkeys, the sandbox's lists) are
