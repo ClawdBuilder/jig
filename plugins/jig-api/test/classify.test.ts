@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, before, beforeEach, describe, test } from "node:test";
 import type { CallClass } from "../../jig-core/src/contract.ts";
+import { decide } from "../../jig-core/src/decide.ts";
 import { acmeSection, useAcme } from "./support/acme.ts";
 import { ok, setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
@@ -104,6 +105,30 @@ describe("the class of a run", () => {
         assert.equal(classify(run("Search orders")).effect, "write");
         h.configure(acmeSection(h, { reads: ["Cancel order"] }));
         assert.equal(classify(run("Cancel order")).effect, "read", "the configuration's word is taken, for any method");
+    });
+
+    test("`reads` applies outside production only: there a POST search is a write, and the floor denies it", () => {
+        const staging = classify(run("Search orders"));
+        assert.deepEqual([staging.environment, staging.effect], ["staging", "read"]);
+        const production = classify(run("Search orders", { environment: "Production" }));
+        assert.deepEqual(production, { action: "Search orders", environment: "production", effect: "write" });
+        // What jig-core does with that class: the floor denies it, so the list cannot talk a production write past it.
+        const verdict = decide({
+            call: {
+                tool: "api",
+                action: production.action,
+                environment: production.environment,
+                environmentKind: "production",
+                effect: production.effect,
+                unknown: false,
+            },
+            rules: [],
+            sessionAllows: new Set<string>(),
+            hasUI: true,
+        });
+        assert.equal(verdict.decision, "deny");
+        assert.equal(verdict.floor, "production-write");
+        assert.equal(verdict.reason, "writes to production are never allowed");
     });
 
     test("only the request and the environment decide: not the values the agent gives", () => {
