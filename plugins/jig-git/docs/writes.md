@@ -22,6 +22,31 @@ A call that did not ask has no preview to compare.
 A call with the wrong parameters is refused with the usage line before it asks
 anything.
 
+## A fetch from a host your configuration does not name
+
+A `fetch` is a read, and reads run without asking. It is still the one read that offers your SSH key outward: git connects
+to the remote's host and authenticates with the agent's key. Which host that is comes from the repository's own
+configuration, which the agent can write in `bash` (`git remote add`, `git remote set-url origin`), so "the same host as
+origin" proves nothing.
+
+The hosts that run without a question are the ones your own configuration names as forges:
+
+- `github.com` and `gitlab.com`;
+- `git.cloneHost`;
+- every host in `git.forges`, both the name the remote uses and an object entry's real `host`.
+
+Every URL the remote holds is read (`git config --get-all`), and a fetch asks if any of them is on a host the configuration
+does not name: `git config --get` shows only the last URL, while fetch uses the first, so one URL cannot vouch for another.
+An address that cannot be read as a host or as a path — including a remote with no URL — asks too, naming it, because an
+unreadable address is not a reason to let a fetch run.
+
+Any other host asks, with its name: `fetch from elsewhere.example? Your SSH key will be offered there.` Answering
+**This session** remembers that host alone, so a fork whose upstream is fetched repeatedly asks once; another host asks
+again. A local-path or `file://` remote reaches no host, offers no key, and does not ask.
+
+`git config` is read, so `url.*.insteadOf` is not applied: a repository that sets it is refused before any fetch runs
+(see [Permissions](../../../docs/permissions.md)).
+
 ## When a reply is lost
 
 A write to GitHub or GitLab can time out, lose its connection, get a gateway error,
