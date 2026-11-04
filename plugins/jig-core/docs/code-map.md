@@ -93,17 +93,19 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
-| `secret-status.ts` | One reference's status, found by metadata only: never resolves it and never reads a value | `doctor-secrets.ts` |
+| `secret-status.ts` | One reference's status, found by metadata only: pass/env/file, a Keychain lookup without `-w`, an op item list, or a login tool's status; never a value | `doctor-secrets.ts`, `setup.ts` |
 | `pi-version.ts` | Pi's version from the package Pi loaded, and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts` |
 
 ### Setup
 
 | File | What it does | Called by |
 |---|---|---|
-| `setup.ts` | `/jig setup`: the questions, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
+| `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
 | `setup-plan.ts` | What setup asks, from the section states and the validators, and the answer round trip; it follows a linked settings file to its target | `setup.ts` |
+| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
+| `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
-| `plain-label.ts` | Plain names for configuration paths, shared by the doctor and setup: "Jira auth token", not `jira.auth.token` | `doctor-secrets.ts`, `setup-plan.ts` |
+| `plain-label.ts` | Plain names for configuration paths, shared by the doctor and setup: "Jira auth token", not `jira.auth.token` | `doctor-secrets.ts`, `setup-fields.ts` |
 
 ### Profiles (which company applies)
 

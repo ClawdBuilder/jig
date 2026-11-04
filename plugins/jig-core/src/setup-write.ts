@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { createFileDurably, replaceFileDurably } from "./kit/files.ts";
+import type { SecretBackend } from "./config.ts";
 import type { SetupChange, SetupPlan } from "./setup-plan.ts";
 import { parseSecretReference } from "./secrets.ts";
 
@@ -10,10 +11,25 @@ import { parseSecretReference } from "./secrets.ts";
 export function summaryLines(plan: SetupPlan, changes: readonly SetupChange[]): string[] {
     const lines = changes.map(
         (change) =>
-            `${change.label}: ${displayValue(change.value)} (${change.oldValue === undefined ? "new" : "changed"})`,
+            `${change.label}: ${change.note ?? displayValue(change.value)} (${
+                change.oldValue === undefined ? "new" : "changed"
+            })`,
     );
-    return [...plan.notes, ...lines, ...plan.sections.flatMap((section) => section.notes)];
+    const enabling = [
+        ...new Set(changes.flatMap((change) => (change.enableBackend === undefined ? [] : [change.enableBackend]))),
+    ];
+    const backendLines = enabling.map((store) => `Turn on ${BACKEND_LABEL[store]} as a place Jig reads from.`);
+    return [...plan.notes, ...lines, ...backendLines, ...plan.sections.flatMap((section) => section.notes)];
 }
+
+const BACKEND_LABEL: Record<SecretBackend, string> = {
+    op: "1Password",
+    keychain: "the macOS Keychain",
+    pass: "pass",
+    env: "an environment variable",
+    file: "a file",
+    cmd: "a tool that owns the login",
+};
 
 /** The JSON of exactly the changed fields, for the "Show the exact change" choice and nowhere else. */
 export function exactChangeLines(changes: readonly SetupChange[]): string[] {
@@ -76,6 +92,32 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
     for (const change of changes) {
         if (!isObject(after[change.section])) after[change.section] = {};
         setValuePath(after[change.section] as Record<string, unknown>, change.path, change.value);
+    }
+    const enabling = [
+        ...new Set(changes.flatMap((change) => (change.enableBackend === undefined ? [] : [change.enableBackend]))),
+    ];
+    if (enabling.length > 0) {
+        if (after.secrets !== undefined && !isObject(after.secrets)) {
+            throw new SetupRefused("Your settings have a secrets section setup cannot change. /jig doctor names it.");
+        }
+        const secrets = isObject(after.secrets) ? after.secrets : {};
+        if (secrets.backends !== undefined && !Array.isArray(secrets.backends)) {
+            throw new SetupRefused("Your settings have a secret store list setup cannot change. /jig doctor names it.");
+        }
+        const backends = Array.isArray(secrets.backends)
+            ? secrets.backends.filter((value): value is string => typeof value === "string")
+            : [];
+        const disabled = Array.isArray(secrets.disabledBackends)
+            ? secrets.disabledBackends.filter((value): value is string => typeof value === "string")
+            : [];
+        for (const store of enabling) {
+            if (disabled.includes(store)) {
+                throw new SetupRefused("You turned that store off, so setup does not turn it on.");
+            }
+            if (!backends.includes(store)) backends.push(store);
+        }
+        secrets.backends = backends;
+        after.secrets = secrets;
     }
 
     let backup: string | undefined;

@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, test } from "node:test";
 import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
 import { applyAnswer, buildSetupPlan, messagePaths, safePath } from "../src/setup-plan.ts";
+import { buildReference } from "../src/setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "../src/setup-write.ts";
 import type { SetupPlan, SetupState } from "../src/setup-plan.ts";
 
@@ -75,11 +76,61 @@ function stateFor(raw: unknown, path = file): SetupState {
         oneOf: new Map(),
         union: new Map(),
         configPath: path,
+        env: {},
+        platform: "linux",
+        pathLookup: () => "/usr/bin/program",
+        enabledBackends: ["pass"],
+        disabledBackends: [],
+        companyBackends: [],
+        commands: {},
     };
 }
 
-function planFor(raw: unknown = rawConfig, path = file): SetupPlan {
-    const built = buildSetupPlan(stateFor(raw, path));
+const credentialChecks = new Map<string, SectionCheck>([
+    [
+        "acme",
+        (raw) => {
+            const value = raw as { bastion?: { user?: unknown }; sso?: { token?: unknown } };
+            const errors: string[] = [];
+            if (typeof value?.bastion?.user !== "string" || value.bastion.user === "") {
+                errors.push("acme.bastion.user is required");
+            }
+            if (typeof value?.sso?.token !== "string") errors.push("acme.sso.token is required");
+            return errors;
+        },
+    ],
+    ["lens", (raw) => (typeof (raw as { port?: unknown }).port === "number" ? [] : ["lens.port must be a number"])],
+]);
+
+const credentialDefaults = new Map<string, unknown>([["acme", { bastion: {}, sso: {} }]]);
+
+/** A state with a company section that needs a login and a credential. */
+function credentialState(path = file): SetupState {
+    return {
+        personal: loadConfigFile(path, credentialChecks, {
+            defaults: credentialDefaults,
+            replace: new Map(),
+            oneOf: new Map(),
+            union: new Map(),
+        }),
+        sectionChecks: credentialChecks,
+        defaults: credentialDefaults,
+        replace: new Map(),
+        oneOf: new Map(),
+        union: new Map(),
+        configPath: path,
+        env: {},
+        platform: "linux",
+        pathLookup: () => "/usr/bin/program",
+        enabledBackends: ["pass"],
+        disabledBackends: [],
+        companyBackends: [],
+        commands: {},
+    };
+}
+
+function planFor(raw: unknown = rawConfig, path = file, state: SetupState = stateFor(raw, path)): SetupPlan {
+    const built = buildSetupPlan(state);
     if ("problem" in built) throw new Error(`expected a plan, got: ${built.problem}`);
     return built.plan;
 }
@@ -118,46 +169,80 @@ describe("the plan", () => {
         assert.match(plan.sections[1]?.fields[0]?.placeholder ?? "", /Now: high/);
     });
 
-    test("skips a credential, and says when it will be asked for", () => {
-        const secretDefaults = new Map<string, unknown>([["acme", { sso: {}, bastion: {} }]]);
-        const secretChecks = new Map<string, SectionCheck>([
-            [
-                "acme",
-                (raw) => {
-                    const value = raw as { bastion?: { user?: unknown }; sso?: { token?: unknown } };
-                    const errors: string[] = [];
-                    if (typeof value?.bastion?.user !== "string" || value.bastion.user === "") {
-                        errors.push("acme.bastion.user is required");
-                    }
-                    if (typeof value?.sso?.token !== "string") errors.push("acme.sso.token is required");
-                    return errors;
-                },
-            ],
-        ]);
+    test("asks where a credential is kept, in plain words, and never shows a reference", () => {
         const path = file;
         writeFileSync(path, JSON.stringify({}, null, 4));
-        const state: SetupState = {
-            personal: loadConfigFile(path, secretChecks, {
-                defaults: secretDefaults,
-                replace: new Map(),
-                oneOf: new Map(),
-                union: new Map(),
-            }),
-            sectionChecks: secretChecks,
-            defaults: secretDefaults,
-            replace: new Map(),
-            oneOf: new Map(),
-            union: new Map(),
-            configPath: path,
-        };
+        const state = credentialState(path);
         const built = buildSetupPlan(state);
         assert.ok("plan" in built);
         const section = built.plan.sections.find((entry) => entry.name === "acme");
         assert.deepEqual(
             section?.fields.map((field) => field.path),
-            ["bastion.user"],
+            ["bastion.user", "sso.token"],
         );
-        assert.match(section?.notes.join(" ") ?? "", /Acme SSO token: credentials come in a later step/);
+        const token = section?.fields.find((field) => field.path === "sso.token");
+        assert.equal(token?.kind, "reference");
+        assert.equal(token?.label, "Acme SSO token");
+        assert.equal(token?.question, "Where do you keep the Acme SSO token?");
+        assert.ok(token?.reference?.stores.includes("pass"));
+        assert.deepEqual(token?.reference?.enabled, ["pass"]);
+        assert.ok(!JSON.stringify(section).includes("op://"));
+        assert.ok(!JSON.stringify(section).includes("pass:"));
+    });
+
+    test("leaves a store the person turned off out of the choices, and puts the company's first", () => {
+        const path = file;
+        writeFileSync(path, JSON.stringify({}, null, 4));
+        const state = credentialState(path);
+        state.disabledBackends = ["pass"];
+        state.companyBackends = ["op"];
+        state.enabledBackends = ["pass", "op"];
+        const built = buildSetupPlan(state);
+        assert.ok("plan" in built);
+        const token = built.plan.sections
+            .find((section) => section.name === "acme")
+            ?.fields.find((field) => field.path === "sso.token");
+        assert.deepEqual(token?.reference?.disabled, ["pass"]);
+        assert.ok(!token?.reference?.stores.includes("pass"));
+        assert.equal(token?.reference?.preferred, "op");
+        assert.equal(token?.reference?.stores[0], "op");
+    });
+
+    test("builds the reference from plain parts, and the note never holds it", () => {
+        const op = buildReference("op", { vault: "Work", item: "Jira", field: "token" }, {});
+        assert.ok("reference" in op);
+        assert.equal(op.reference, "op://Work/Jira/token");
+        assert.match(op.note, /1Password item "Jira" in vault "Work"/);
+        assert.ok(!op.note.includes("op://"));
+
+        const keychain = buildReference("keychain", { service: "svc", account: "jdoe" }, {});
+        assert.ok("reference" in keychain);
+        assert.equal(keychain.reference, "keychain:svc/jdoe");
+        assert.equal(
+            (buildReference("pass", { entry: "work/token" }, {}) as { reference: string }).reference,
+            "pass:work/token",
+        );
+        assert.equal(
+            (buildReference("env", { name: "JIRA_TOKEN" }, {}) as { reference: string }).reference,
+            "env:JIRA_TOKEN",
+        );
+        assert.equal(
+            (buildReference("file", { file: "~/token" }, {}) as { reference: string }).reference,
+            "file:~/token",
+        );
+        const command = buildReference("cmd", { command: "gh" }, { gh: ["gh", "auth", "token"] });
+        assert.ok("reference" in command);
+        assert.equal(command.reference, "cmd:gh");
+
+        assert.match(
+            (buildReference("op", { vault: "Work" }, {}) as { problem: string }).problem,
+            /vault, item and field/,
+        );
+        assert.match((buildReference("env", { name: "1BAD" }, {}) as { problem: string }).problem, /not valid/);
+        assert.match(
+            (buildReference("cmd", { command: "nope" }, { gh: [] }) as { problem: string }).problem,
+            /declare/,
+        );
     });
 
     test("does not ask about a section nothing set up", () => {
@@ -177,6 +262,13 @@ describe("the plan", () => {
             oneOf: new Map(),
             union: new Map(),
             configPath: path,
+            env: {},
+            platform: "linux",
+            pathLookup: () => "/usr/bin/program",
+            enabledBackends: ["pass"],
+            disabledBackends: [],
+            companyBackends: [],
+            commands: {},
         };
         const built = buildSetupPlan(state);
         assert.ok("plan" in built);
@@ -315,6 +407,52 @@ describe("the write gate", () => {
         assert.equal(after.acme.bastion.user, "jdoe");
         assert.equal(after.lens.port, 8080);
         assert.deepEqual(changes, changes2);
+    });
+
+    test("turns on a chosen store, never removes a disabled one, and refuses to enable a disabled store", () => {
+        before = JSON.stringify(rawConfig, null, 4);
+        writeFileSync(file, before);
+        const plan = planFor(rawConfig, file, credentialState(file));
+        const draft = structuredClone(plan.raw);
+        const port = plan.sections.find((section) => section.name === "lens")?.fields[0];
+        const acme = plan.sections.find((section) => section.name === "acme");
+        const login = acme?.fields.find((field) => field.path === "bastion.user");
+        const token = acme?.fields.find((field) => field.path === "sso.token");
+        assert.ok(port && login && token);
+        const changes = [];
+        for (const [field, text] of [
+            [port, "8080"],
+            [login, "jdoe"],
+            [token, "env:JIRA_TOKEN"],
+        ] as const) {
+            const answer = applyAnswer(plan, draft, field, text);
+            assert.ok("change" in answer);
+            changes.push(answer.change);
+        }
+        const referenceChange = changes.at(-1);
+        assert.ok(referenceChange);
+        referenceChange.note = "read from environment variable JIRA_TOKEN";
+        referenceChange.enableBackend = "env";
+        const summary = summaryLines(plan, changes).join("\n");
+        assert.match(summary, /Turn on an environment variable as a place Jig reads from/);
+        assert.ok(!summary.includes("env:"));
+
+        const badDraft = structuredClone(plan.raw);
+        const badField = plan.sections.find((section) => section.name === "lens")?.fields[0];
+        assert.ok(badField);
+        const badAnswer = applyAnswer(plan, badDraft, badField, "8080");
+        assert.ok("change" in badAnswer);
+        badAnswer.change.enableBackend = "op";
+        assert.throws(
+            () => writeSetup(plan, [badAnswer.change], new Date("2026-11-04T17:00:00.000Z")),
+            (error: unknown) => error instanceof SetupRefused && /turned that store off/.test(error.message),
+        );
+
+        const result = writeSetup(plan, changes, new Date("2026-11-04T17:00:00.000Z"));
+        assert.ok(result.backup);
+        const after = JSON.parse(readFileSync(file, "utf8"));
+        assert.deepEqual(after.secrets.backends, ["env"]);
+        assert.deepEqual(after.secrets.disabledBackends, ["op"]);
     });
 
     test("refuses when the file changed while setup was open, and writes nothing", () => {

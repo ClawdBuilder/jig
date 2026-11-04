@@ -3,10 +3,17 @@
 import { homedir } from "node:os";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { errorMessage } from "./errors.ts";
+import { run as runProgram } from "./exec.ts";
+import { effectiveBackends } from "./config.ts";
+import type { SecretBackend } from "./config.ts";
+import { findOnPath } from "./doctor-secrets.ts";
 import { effectiveDefaults } from "./profile-state.ts";
-import { shorten } from "./secret-status.ts";
+import { probeSecret, shorten } from "./secret-status.ts";
+import type { SecretProbe } from "./secret-status.ts";
 import { applyAnswer, buildSetupPlan } from "./setup-plan.ts";
+import { buildReference, storeChoiceLabel, storeLabel } from "./setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
+import type { ReferenceParts } from "./setup-reference.ts";
 import type { SetupChange, SetupField, SetupPlan, SetupState } from "./setup-plan.ts";
 import type { JigState } from "./state.ts";
 
@@ -51,7 +58,7 @@ export async function runSetup(state: JigState, ctx: ExtensionCommandContext): P
         if (choice === undefined || choice === "Cancel setup") return cancel(ctx);
         if (choice === "Skip this section") continue;
         for (const field of section.fields) {
-            if ((await ask(plan, field, draft, changes, ctx)) === "cancel") return cancel(ctx);
+            if ((await ask(state, plan, field, draft, changes, ctx)) === "cancel") return cancel(ctx);
         }
     }
 
@@ -102,12 +109,14 @@ export async function runSetup(state: JigState, ctx: ExtensionCommandContext): P
 
 /** One question at a time; a rejection is a plain sentence, then the same question again. */
 async function ask(
+    state: JigState,
     plan: SetupPlan,
     field: SetupField,
     draft: Record<string, unknown>,
     changes: SetupChange[],
     ctx: ExtensionCommandContext,
 ): Promise<"ok" | "cancel"> {
+    if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ctx);
     for (;;) {
         ctx.ui.notify(`${field.label}: ${field.reason}`, "info");
         const text = await ctx.ui.input(field.question, field.placeholder);
@@ -121,12 +130,178 @@ async function ask(
     }
 }
 
+/** A credential: where it is kept, then the parts, then a status that never shows a value. */
+async function askReference(
+    state: JigState,
+    plan: SetupPlan,
+    field: SetupField,
+    draft: Record<string, unknown>,
+    changes: SetupChange[],
+    ctx: ExtensionCommandContext,
+): Promise<"ok" | "cancel"> {
+    const choice = field.reference;
+    if (choice === undefined || choice.stores.length === 0) {
+        ctx.ui.notify("No secret store is available for this. /jig doctor names the problem.", "warning");
+        return "cancel";
+    }
+    if (choice.disabled.length > 0) {
+        ctx.ui.notify(
+            `You turned off ${choice.disabled.map(storeLabel).join(", ")}, so ${
+                choice.disabled.length === 1 ? "it is" : "they are"
+            } not offered.`,
+            "info",
+        );
+    }
+
+    for (;;) {
+        const labels = choice.stores.map(
+            (store) => `${storeChoiceLabel(store)}${choice.preferred === store ? " (company default)" : ""}`,
+        );
+        const picked = await ctx.ui.select(field.question, labels);
+        if (picked === undefined || !labels.includes(picked)) return "cancel";
+        const index = labels.indexOf(picked);
+        const store = choice.stores[index];
+        if (store === undefined) continue;
+
+        if (store === "file") {
+            const ok = await ctx.ui.confirm(
+                "Use a file?",
+                "A file is plain text on disk. A password store or 1Password is safer.",
+            );
+            if (!ok) continue;
+        }
+
+        for (;;) {
+            const parts = await askParts(store, choice.commands, ctx);
+            if (parts === undefined) return "cancel";
+            const built = buildReference(store, parts, choice.commands);
+            if ("problem" in built) {
+                ctx.ui.notify(built.problem, "warning");
+                continue;
+            }
+            const answer = applyAnswer(plan, draft, field, built.reference);
+            if ("problem" in answer) {
+                ctx.ui.notify(answer.problem, "warning");
+                continue;
+            }
+            const change = answer.change;
+            change.note = `read from ${built.note}`;
+            if (!choice.enabled.includes(store)) change.enableBackend = store;
+
+            for (;;) {
+                const probe = await probeSecret(built.reference, probeOptions(state));
+                const status = statusText(store, probe);
+                ctx.ui.notify(status.text, status.level);
+                if (probe.status === "found" || probe.status === "unknown") {
+                    changes.push(change);
+                    return "ok";
+                }
+                if (probe.status === "invalid") {
+                    ctx.ui.notify("That place cannot be used. Choose another.", "warning");
+                    break;
+                }
+                if (probe.fix !== undefined) ctx.ui.notify(probe.fix, "info");
+                const next = await ctx.ui.select("Not found yet", [
+                    "Check again",
+                    "Continue without it",
+                    "Cancel setup",
+                ]);
+                if (next === "Check again") continue;
+                if (next === "Continue without it") {
+                    change.note = `${change.note} (not found yet)`;
+                    changes.push(change);
+                    return "ok";
+                }
+                return "cancel";
+            }
+        }
+    }
+}
+
+/** The plain questions for one store. It never asks for a value, and never shows a reference. */
+async function askParts(
+    store: SecretBackend,
+    commands: Readonly<Record<string, readonly string[]>>,
+    ctx: ExtensionCommandContext,
+): Promise<ReferenceParts | undefined> {
+    const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
+        const value = await ctx.ui.input(title, placeholder);
+        return value === undefined ? undefined : value.trim();
+    };
+    if (store === "op") {
+        const vault = await ask("Which 1Password vault?", "Work");
+        if (vault === undefined) return undefined;
+        const item = await ask("Which item in that vault?", "Jira");
+        if (item === undefined) return undefined;
+        const field = await ask("Which field of that item?", "token");
+        if (field === undefined) return undefined;
+        return { vault, item, field };
+    }
+    if (store === "keychain") {
+        const service = await ask("Which macOS Keychain service?", "example-tool");
+        if (service === undefined) return undefined;
+        const account = await ask("Which Keychain account?", "jdoe");
+        if (account === undefined) return undefined;
+        return { service, account };
+    }
+    if (store === "pass") {
+        const entry = await ask("Which entry in your password store?", "work/jira-token");
+        return entry === undefined ? undefined : { entry };
+    }
+    if (store === "env") {
+        const name = await ask("Which environment variable?", "JIRA_TOKEN");
+        return name === undefined ? undefined : { name };
+    }
+    if (store === "file") {
+        const file = await ask("Which file?", "~/.config/tool/token");
+        return file === undefined ? undefined : { file };
+    }
+    const command = await ctx.ui.select("Which command owns that login?", Object.keys(commands));
+    return command === undefined ? undefined : { command };
+}
+
+/** A found/missing/locked sentence in plain words. It never repeats the reference or a value. */
+function statusText(store: SecretBackend, probe: SecretProbe): { text: string; level: "info" | "warning" } {
+    const name = storeLabel(store);
+    if (probe.status === "found") {
+        const extra =
+            probe.backend === "op"
+                ? " The item is there; the field is not verified."
+                : probe.backend === "file"
+                  ? " The first line is not read until a tool needs it."
+                  : "";
+        return {
+            text: `Found in ${name}.${extra}${probe.warning === undefined ? "" : ` ${probe.warning}.`}`,
+            level: probe.warning === undefined ? "info" : "warning",
+        };
+    }
+    if (probe.status === "missing")
+        return { text: `Missing from ${name}. ${probe.detail ?? ""}`.trim(), level: "warning" };
+    if (probe.status === "locked")
+        return { text: `Locked: ${probe.detail ?? `the store is locked`}.`, level: "warning" };
+    if (probe.status === "invalid") return { text: "That place cannot be used.", level: "warning" };
+    return { text: `Not checked: ${probe.detail ?? "Jig cannot check this store."}.`, level: "info" };
+}
+
+function probeOptions(state: JigState) {
+    return {
+        env: state.env,
+        passStoreDir: state.secrets.passStoreDir(),
+        agentDir: state.agentDir(),
+        platform: process.platform,
+        home: homedir(),
+        run: runProgram,
+        cwd: state.workingDir,
+    };
+}
+
 function cancel(ctx: ExtensionCommandContext): void {
     ctx.ui.notify("Nothing was written.", "info");
 }
 
 /** The checked part of a running jig-core, with the company's defaults gathered for `layered()`. */
 function setupState(state: JigState): SetupState {
+    const backends = effectiveBackends(state.personal.config.secrets, state.company);
     return {
         personal: state.personal,
         sectionChecks: state.sectionChecks,
@@ -135,5 +310,12 @@ function setupState(state: JigState): SetupState {
         oneOf: state.sectionOneOf,
         union: state.sectionUnion,
         configPath: state.configPath(),
+        env: state.env,
+        platform: process.platform,
+        pathLookup: (program, env) => findOnPath(program, env, process.platform),
+        enabledBackends: backends.on,
+        disabledBackends: state.personal.config.secrets.disabledBackends,
+        companyBackends: backends.byCompany,
+        commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
     };
 }

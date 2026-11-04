@@ -61,6 +61,20 @@ function declareGit(api: JigApi): void {
     });
 }
 
+/** A company section that needs a login and a credential, for the setup questions. */
+function credentialSections(api: JigApi): void {
+    api.config.addSectionDefaults("acme", { bastion: {}, sso: {} });
+    api.config.registerSection("acme", (raw) => {
+        const value = raw as { bastion?: { user?: unknown }; sso?: { token?: unknown } };
+        const errors: string[] = [];
+        if (typeof value?.bastion?.user !== "string" || value.bastion.user === "") {
+            errors.push("acme.bastion.user is required");
+        }
+        if (typeof value?.sso?.token !== "string") errors.push("acme.sso.token is required");
+        return errors;
+    });
+}
+
 /** An incomplete company section and an invalid user section, the two shapes setup asks about. */
 function setupSections(api: JigApi): void {
     api.config.addSectionDefaults("acme", { bastion: {} });
@@ -147,6 +161,74 @@ describe("/jig", () => {
         const before = readFileSync(file, "utf8");
         assert.match(await jigCommand(harness, "setup"), /Nothing was written/);
         assert.equal(readFileSync(file, "utf8"), before);
+    });
+
+    test("counts a missing credential in the setup nudge", async () => {
+        const harness = await begin({
+            config: { jira: { token: "pass:work/jig-test-does-not-exist" } },
+            plugins: (api) => api.config.registerSection("jira", () => []),
+        });
+        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run \/jig setup\./);
+    });
+
+    test("setup does not offer a store the person turned off, and says so", async () => {
+        const harness = await begin({
+            config: { secrets: { disabledBackends: ["env"] } },
+            plugins: credentialSections,
+            ui: {
+                select: (title) => {
+                    if (title.startsWith("Acme")) return "Answer these";
+                    if (title.startsWith("Where do you keep")) return undefined;
+                    return undefined;
+                },
+                input: (title) => (title === "Acme bastion login" ? "jdoe" : undefined),
+            },
+        });
+        const shown = await jigCommand(harness, "setup");
+        assert.match(shown, /You turned off an environment variable/);
+        const storeSelect = harness.ui.selects.find((entry) => entry.title.startsWith("Where do you keep"));
+        assert.ok(storeSelect);
+        assert.ok(!storeSelect.options.includes("An environment variable"));
+    });
+
+    test("setup asks where a credential is kept, never shows it, and offers check again", async () => {
+        delete process.env.JIRA_TOKEN;
+        const harness = await begin({
+            config: {},
+            plugins: credentialSections,
+            ui: {
+                select: (title) => {
+                    if (title.startsWith("Acme")) return "Answer these";
+                    if (title.startsWith("Where do you keep")) return "An environment variable";
+                    if (title === "Not found yet") {
+                        process.env.JIRA_TOKEN = "test-value";
+                        return "Check again";
+                    }
+                    if (title === "Review these changes") return "Save these changes";
+                    return undefined;
+                },
+                input: (title) => {
+                    if (title === "Acme bastion login") return "jdoe";
+                    if (title === "Which environment variable?") return "JIRA_TOKEN";
+                    return undefined;
+                },
+                confirm: () => true,
+            },
+        });
+        try {
+            const shown = await jigCommand(harness, "setup");
+            assert.match(shown, /Missing from an environment variable/);
+            assert.match(shown, /Acme SSO token: read from environment variable JIRA_TOKEN \(new\)/);
+            assert.match(shown, /Turn on an environment variable as a place Jig reads from/);
+            assert.doesNotMatch(shown, /env:JIRA_TOKEN|op:\/\/|pass:/);
+            assert.ok(!shown.includes("{"));
+            const after = JSON.parse(readFileSync(path.join(harness.agentDir, "jig.json"), "utf8"));
+            assert.equal(after.acme.sso.token, "env:JIRA_TOKEN");
+            assert.ok(after.secrets.backends.includes("env"));
+            assert.equal(harness.ui.confirms.length, 1);
+        } finally {
+            delete process.env.JIRA_TOKEN;
+        }
     });
 
     test("setup asks again after a rejection, in plain words", async () => {

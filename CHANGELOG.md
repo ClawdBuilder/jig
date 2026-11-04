@@ -7,7 +7,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Added
 
 - `/jig setup`: fills in the missing or invalid fields of plugin sections one question at a time, in plain
-  words, and writes only the fields you confirm. It keeps a backup beside `jig.json`, asks you to run
+  words, and writes only the fields you confirm. A credential is asked for as **where** it is kept: setup
+  probes each store for metadata only, offers Check again, and turns on the chosen store. It keeps a backup beside `jig.json`, asks you to run
   `/reload`, and never asks for a secret value. When `jig.json` is a link, setup follows it and leaves the
   link in place.
 - `/jig doctor`: a read-only check of the machine, the settings, every secret reference, the login tools,
