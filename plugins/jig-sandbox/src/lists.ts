@@ -257,36 +257,6 @@ export const ASK_FIRST_BY_ENV: ReadonlyArray<{ variable: string; sub: string }> 
     { variable: "GOPATH", sub: "bin" },
 ];
 
-/** Git settings that make git run a program or redirect a remote: taken back out after a command. Lower case. */
-export const GIT_PLAIN_KEYS: ReadonlySet<string> = new Set([
-    "core.sshcommand",
-    "core.pager",
-    "core.editor",
-    "core.askpass",
-    "core.hookspath",
-    "core.gitproxy",
-    "core.fsmonitor",
-    "credential.helper",
-    "diff.external",
-    "protocol.allow",
-    "uploadpack.packobjectshook",
-    "gpg.program",
-    "sequence.editor",
-    "include.path",
-]);
-
-/** Variables that are dangerous under any subsection (`filter.<name>.clean`), by section. Lower case. */
-export const GIT_SUBSECTION_KEYS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
-    ["credential", new Set(["helper"])],
-    ["filter", new Set(["clean", "smudge", "process"])],
-    ["diff", new Set(["textconv", "command"])],
-    ["merge", new Set(["driver"])],
-    ["url", new Set(["insteadof", "pushinsteadof"])],
-    ["protocol", new Set(["allow"])],
-    ["gpg", new Set(["program"])],
-    ["includeif", new Set(["path"])],
-]);
-
 /**
  * Output that gives away a block the sandbox makes without a record of it. A signature counts only in the output of a command that
  * failed, and the line it earns says the failure "looks like" the sandbox: the tool's own words are a good guide, not proof.

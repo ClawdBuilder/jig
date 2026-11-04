@@ -16,6 +16,11 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
     /^GH_/i,
     /^GITHUB_/i,
     /^VAULT_/i,
+    // Names that hold a password or a secret URL without saying "password" or "token".
+    /_PWD$/i,
+    /_DSN$/i,
+    /_WEBHOOK$/i,
+    /_PAT$/i,
 ];
 
 /** Names removed whole. `NPM_TOKEN` and the `GOOGLE_*` credential file are named, as the pattern list cannot guess them. */
@@ -36,6 +41,20 @@ export const MIN_SCRUBBED_LENGTH = 8;
 export function looksLikeCredential(name: string): boolean {
     const upper = name.toUpperCase();
     return CREDENTIAL_NAMES.has(upper) || CREDENTIAL_PATTERNS.some((pattern) => pattern.test(name));
+}
+
+/** A value with a password in its address: `postgres://user:hunter2@db/orders`, whatever the variable is called. */
+const ADDRESS_WITH_PASSWORD = /^[a-z][a-z0-9+.-]*:\/\/[^/\s:@]*:[^/\s@]+@/i;
+
+/** Whether a value carries a password in a URL, so it is a credential however its name reads. */
+export function looksLikeCredentialValue(value: string): boolean {
+    return ADDRESS_WITH_PASSWORD.test(value);
+}
+
+/** Whether a variable is removed: its name says credential, or its value is an address with a password. `keep` wins. */
+function isCredential(name: string, value: string, keep: ReadonlySet<string>): boolean {
+    if (keep.has(name.toUpperCase())) return false;
+    return looksLikeCredential(name) || looksLikeCredentialValue(value);
 }
 
 export interface ScrubbedEnvironment {
@@ -64,7 +83,7 @@ export function scrubEnvironment(source: NodeJS.ProcessEnv, options: Environment
     const values: string[] = [];
     for (const [name, value] of Object.entries(source)) {
         if (value === undefined) continue;
-        if (looksLikeCredential(name) && !keep.has(name.toUpperCase())) {
+        if (isCredential(name, value, keep)) {
             removed.push(name);
             if (value.length >= MIN_SCRUBBED_LENGTH) values.push(value);
             continue;

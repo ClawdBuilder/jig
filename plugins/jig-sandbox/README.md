@@ -8,13 +8,19 @@ written from the runtime's documentation and not yet tested on a Mac.
 `jig-sandbox` runs the `bash` commands the agent sends inside an operating-system
 sandbox, and keeps two promises:
 - **the agent cannot read your credentials:** SSH keys, cloud and cluster logins,
-  tokens, the secret files of your projects;
+  tokens, the secret files of your projects — and a command does not start with an
+  environment variable that names one, or with an address that carries a password;
 - **the agent cannot plant anything that runs later outside the sandbox:** in your
   shell start-up files, your `PATH`, git hooks, Pi's settings, build init scripts.
 
 Everything else works as it does outside: builds and their caches, git, package
 installs, the network, servers on `localhost`. When a command does hit a rule, it
 says which rule and why, and offers a way through.
+
+Removed values are also replaced in a command's own output when they appear exactly. That
+is a backstop, not a guarantee: output that encodes a value another way is not recognised.
+[The environment a command starts with](docs/rules.md#the-environment-a-command-starts-with)
+says exactly which variables go.
 
 ![Pi, Jig's tools, your own commands and the broker run on the host; the agent's bash runs in the sandbox, where paths are hidden, locked, ask-first or writable](../../docs/img/sandbox-boundary.svg)
 

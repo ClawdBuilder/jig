@@ -452,7 +452,8 @@ export interface SandboxProvider {
     readonly mode?: SandboxNetworkMode;
     /** One line for `/jig` that says why the sandbox is not active, or anything else the user should know. */
     readonly note?: string;
-    /** Whether a command in the sandbox can write this path: absolute, links followed. A program there is not one Jig may run. */
+    /** Whether a command in the sandbox can write this path: absolute, links followed. A program there is not one Jig may run.
+     *  `true` means writable, or that the question could not be answered: a caller that must not be wrong treats it as a maybe. */
     canWrite(path: string): boolean;
     /** Settles when the sandbox has started, or failed to, so that session start can say which. */
     whenReady?(): Promise<void>;

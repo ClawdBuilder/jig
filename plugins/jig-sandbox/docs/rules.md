@@ -106,6 +106,25 @@ out of it.
   `/tmp` and the session's scratch folder stay writable. Nothing in your section opens them again: `share` is
   ignored, and an ask-first folder in the home folder is answered by this lock, so nobody is asked.
 
+## The environment a command starts with
+
+A command gets Pi's environment without the variables that name a credential, and without
+the variables that reach an agent or a desktop session. A variable is removed when:
+
+- its name says so: `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `_KEY`, `APIKEY`,
+  `CREDENTIAL`, the `AWS_`, `AZURE_`, `GH_`, `GITHUB_` and `VAULT_` prefixes, and the
+  `_PWD`, `_DSN`, `_WEBHOOK` and `_PAT` endings;
+- its value is an address with a password in it, whatever the name is:
+  `postgres://user:hunter2@db/orders`. An address without a password, such as
+  `mongodb://db.example/app`, stays.
+
+`env.keep` names a variable to pass through anyway. The values that were removed are also
+replaced in the command's own output, when they appear exactly, so a command that prints
+one does not show it. **That is a backstop, not a guarantee:** output that encodes a value
+another way — base64, a hash, a fragment of an address built from parts — is not
+recognised. The environment is where a credential is kept out; the output is only where an
+accident is caught.
+
 ## Ask first: writable once you say yes
 
 Toolchain managers put programs on your `PATH`, so a write there can run outside the

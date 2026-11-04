@@ -3,7 +3,7 @@
 // are normal work), but git runs outside it, with the user's credentials, when the repository is opened in an editor or
 // Jig's git tool runs. So after each command the file is compared with what it was, and a new dangerous setting is taken
 // out. This is a text comparison: it needs no git, which would itself read the file it is judging.
-import { GIT_PLAIN_KEYS, GIT_SUBSECTION_KEYS } from "./lists.ts";
+import { isDangerousGitSetting } from "../../jig-core/src/kit/git-settings.ts";
 
 /** One setting, with the lines it occupies. */
 export interface ConfigEntry {
@@ -32,28 +32,10 @@ export function fullName(entry: Pick<ConfigEntry, "section" | "subsection" | "ke
         : `${entry.section}.${entry.subsection}.${entry.key}`;
 }
 
-/** Git's boolean false: `false`, `no`, `off`, `0` or an empty value. A bare key is true. */
-function isFalse(value: string | undefined): boolean {
-    if (value === undefined) return false;
-    const text = value.trim().toLowerCase();
-    return text === "" || text === "false" || text === "no" || text === "off" || /^[+-]?0+$/.test(text);
-}
-
-/** Whether git would run a program or redirect a remote because of this setting. */
+/** Whether git would run a program or redirect a remote because of this setting. The table is jig-core's, shared with
+ *  the guard that refuses such a repository before Jig's git runs, so a setting one side knows is known to both. */
 export function isDangerous(entry: ConfigEntry): boolean {
-    const name = fullName(entry);
-    const lower = name.toLowerCase();
-    const first = lower.indexOf(".");
-    const last = lower.lastIndexOf(".");
-    if (first < 0) return false;
-    // An alias that starts with `!` runs a shell command.
-    if (entry.section === "alias") return (entry.value ?? "").trim().startsWith("!");
-    if (first === last) {
-        // `core.fsmonitor=false` is the safe setting, and the one Jig's own git calls set.
-        if (lower === "core.fsmonitor") return !isFalse(entry.value);
-        return GIT_PLAIN_KEYS.has(lower);
-    }
-    return GIT_SUBSECTION_KEYS.get(lower.slice(0, first))?.has(lower.slice(last + 1)) === true;
+    return isDangerousGitSetting(fullName(entry), entry.value);
 }
 
 /** The settings of a file, in order. A line that is not a header, a setting or a comment is skipped. */
