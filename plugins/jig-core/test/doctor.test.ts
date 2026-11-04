@@ -115,6 +115,26 @@ describe("/jig doctor checks", () => {
         assert.match(node?.fix ?? "", /Install Node\.js 22\.19\.0 or later/);
     });
 
+    test("quiet keeps only warnings and failures, with the summary of the whole report", async () => {
+        const report = await runDoctor(context({ overrides: { sandbox: undefined } }), options());
+        const quiet = formatDoctor(report, { quiet: true }).join("\n");
+        assert.match(quiet, /^Jig doctor · \d+ ok · \d+ warning · \d+ failure/m);
+        assert.match(quiet, /^  warn Sandbox/m);
+        assert.doesNotMatch(quiet, /^  ok /m);
+        assert.doesNotMatch(quiet, /^  skip /m);
+        assert.doesNotMatch(quiet, /This machine/);
+        assert.match(quiet, /Nothing is blocked/);
+    });
+
+    test("the metadata says what was checked and whether the network was", async () => {
+        const report = await runDoctor(context(), options());
+        assert.equal(report.meta.jig, "0.3.0");
+        assert.equal(report.meta.pi, "1.5.0");
+        assert.equal(report.meta.node, "24.15.0");
+        assert.equal(report.meta.platform, "linux");
+        assert.equal(report.meta.network, false);
+    });
+
     test("the Jig reinstall line follows the package's repository, and is plain without one", async () => {
         const known = await runDoctor(
             context(),

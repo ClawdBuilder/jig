@@ -3,6 +3,7 @@
 import { homedir } from "node:os";
 import path from "node:path";
 import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./doctor.ts";
+import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
 import { meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
@@ -20,6 +21,7 @@ export const DOCTOR_CHECKS: ReadonlyArray<
     ["config", configChecks],
     ["secrets", checkSecrets],
     ["logins", loginChecks],
+    ["network", networkChecks],
     ["sandbox", sandboxChecks],
     ["records", recordsChecks],
 ];
