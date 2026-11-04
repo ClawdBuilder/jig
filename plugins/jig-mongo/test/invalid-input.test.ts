@@ -84,8 +84,11 @@ test("classification is from the input alone: no section, no environment lookup"
         tool.classify({ action: "aggregate", environment: "staging", pipeline: [{ $out: "odd.ball" }] })?.effect,
         "write",
     );
-    // An action the tool does not have is left unknown, so it is checked before anyone is asked.
+    // An action the tool does not have is left unknown, so it is checked before anyone is asked — and a name every
+    // object's prototype carries is not an action.
     assert.equal(tool.classify({ action: "nonesuch", environment: "staging" }), undefined);
+    for (const name of ["toString", "constructor", "__proto__", "hasOwnProperty"])
+        assert.equal(tool.classify({ action: name, environment: "staging" }), undefined, name);
 });
 
 test("an empty filter is blocked before anyone is asked", async () => {

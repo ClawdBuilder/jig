@@ -278,7 +278,9 @@ export function createTool(options: MongoOptions = {}): MongoTool {
         // world. An action this tool does not have is left unknown, so the call is checked before anyone is asked.
         classify(input) {
             const action = typeof input.action === "string" ? input.action : "";
-            if (!(action in ACTIONS)) return undefined;
+            // hasOwn, not `in`: "toString" and "constructor" are on every object's prototype, and `in` would treat them
+            // as actions of this tool.
+            if (!Object.hasOwn(ACTIONS, action)) return undefined;
             const environment = typeof input.environment === "string" ? input.environment : "";
             const pipeline = Array.isArray(input.pipeline) ? (input.pipeline as Call["pipeline"]) : undefined;
             const effect =
