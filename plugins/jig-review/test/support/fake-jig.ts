@@ -3,6 +3,7 @@
 // the plugin tells jig-core (declarations) is recorded for the tests, and `config.section` serves what a test sets.
 import { spawn } from "node:child_process";
 import type { JigApi, RunOptions, RunResult, ToolDeclaration } from "../../../jig-core/src/contract.ts";
+import { createApprovals } from "../../../jig-core/src/approvals.ts";
 import { publishJig, withdrawJig } from "../../../jig-core/src/client.ts";
 
 /** git's own flags that jig-core puts before every subcommand: no hooks, no fsmonitor, no colour. */
@@ -10,6 +11,8 @@ const GIT_FLAGS = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null
 
 export interface FakeJig {
     api: JigApi;
+    /** jig-core's real question queue, so the plugin's questions are ordered as they are under Pi. */
+    approvals: ReturnType<typeof createApprovals>;
     declared: Map<string, ToolDeclaration>;
     /** Every git command started: the repository and the arguments (the fixed flags left out). */
     gitCalls: Array<{ repo: string; args: string[] }>;
@@ -62,6 +65,7 @@ function runGit(repo: string, args: readonly string[], options: RunOptions): Pro
 
 export function installFakeJig(): FakeJig {
     const declared = new Map<string, ToolDeclaration>();
+    const approvals = createApprovals();
     const gitCalls: FakeJig["gitCalls"] = [];
     const sections = new Map<string, unknown>();
     const api = {
@@ -71,6 +75,7 @@ export function installFakeJig(): FakeJig {
             registerSection: () => {},
             section: (name: string) => sections.get(name),
         },
+        approvals: { inTurn: approvals.inTurn },
         protectedPaths: { list: () => [] },
         sandbox: { register: () => undefined },
         exec: {
@@ -86,6 +91,7 @@ export function installFakeJig(): FakeJig {
     publishJig(api);
     return {
         api,
+        approvals,
         declared,
         gitCalls,
         setSection: (name, value) => void sections.set(name, value),

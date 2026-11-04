@@ -38,8 +38,9 @@ export class ApprovalError extends Error {
 export interface ApprovalHost {
     /** The review the page is showing as the one to approve; undefined when none is open. */
     current(): ReviewRecord | undefined;
-    /** Asks the user in Pi. "unavailable" when Pi has nobody to ask (no interactive session, or the session ended). */
-    ask(title: string, message: string): Promise<"yes" | "no" | "unavailable">;
+    /** Asks the user in Pi. "unavailable" when Pi has nobody to ask (no interactive session, or the session ended);
+     *  "busy" when another package's question holds the one dialog slot, so this one never opened. */
+    ask(title: string, message: string): Promise<"yes" | "no" | "unavailable" | "busy">;
     /** The page's Approve was clicked without a passkey: notes it on the record. Not an approval. */
     pageApproved(review: ReviewRecord): Promise<void>;
     /** Pi answered `n` to a page approval. */
@@ -317,7 +318,7 @@ export class ApprovalService {
             if (answer !== "yes") {
                 await this.host.pageDeclined(review);
                 this.host.changed();
-                return { ok: false, message: answer === "no" ? "Not approved: you declined in Pi." : unavailable() };
+                return { ok: false, message: approvalMessage(answer) };
             }
             if (
                 now === undefined ||
@@ -372,6 +373,14 @@ export class ApprovalService {
             throw error;
         }
     }
+}
+
+/** What the page is told when Pi answered nothing. A full dialog slot is its own message: pressing Approve again after
+ *  the other question is answered works. */
+function approvalMessage(answer: "no" | "unavailable" | "busy"): string {
+    if (answer === "no") return "Not approved: you declined in Pi.";
+    if (answer === "busy") return "Another question is open in Pi. Answer it, then approve again from this page.";
+    return unavailable();
 }
 
 function unavailable(): string {
