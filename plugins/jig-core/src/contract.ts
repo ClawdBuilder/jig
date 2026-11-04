@@ -708,6 +708,16 @@ export interface JigApi {
     };
 
     /**
+     * What this company's people must supply, for `/jig setup` and `/jig doctor`: the company writes the list once, in its
+     * own order and words, and setup asks only what is still missing. Optional: a plugin without a list falls back to the
+     * section validators. Always present in `jig-core`; optional here only so that a test's stand-in need not have it.
+     */
+    readonly onboarding?: {
+        /** Registers the list. Registering again replaces it; one company plugin's list applies, the active one's. */
+        register(entry: OnboardingEntry): void;
+    };
+
+    /**
      * Company profiles: several company plugins can be loaded, and only the one the work at hand belongs to applies. Always
      * present in `jig-core`; optional here only so that a test's stand-in for `jig-core` need not have it. See
      * `docs/profiles.md`.
@@ -753,6 +763,71 @@ export interface ProfileRegistration {
      *  error is reported by `/jig`. */
     onChange?(active: boolean): void;
 }
+
+/** What a company's people must supply, in the order setup asks (`onboarding.register`). */
+export interface OnboardingEntry {
+    /** The company's preferred secret store for its references, such as `"op"` or `"pass"`. */
+    preferredStore?: OnboardingStore;
+    /** Ask these in this order. Each names where the answer goes, or says something before the questions. */
+    items: readonly OnboardingItem[];
+}
+
+/** The secret stores a company can prefer. The names are `jig.json`'s. */
+export type OnboardingStore = "pass" | "env" | "keychain" | "op" | "cmd" | "file";
+
+/** One step of a company's onboarding list. */
+export type OnboardingItem =
+    | {
+          kind: "text";
+          /** The section of `jig.json` the answer goes to, such as `"acme"`. */
+          section: string;
+          /** A dotted path inside it, such as `"bastion.user"`. */
+          path: string;
+          label: string;
+          why?: string;
+          placeholder?: string;
+          optional?: boolean;
+      }
+    | {
+          kind: "pick";
+          section: string;
+          path: string;
+          label: string;
+          choices: readonly string[];
+          why?: string;
+      }
+    | {
+          kind: "reference";
+          section: string;
+          path: string;
+          label: string;
+          /** The stores to offer; left out, all the stores this machine has. */
+          stores?: readonly OnboardingStore[];
+          /** The store marked as the company's choice; overrides the entry's `preferredStore`. */
+          preferredStore?: OnboardingStore;
+          /** A reference *shape* per store, never a value: `{ "pass": "acme/sso-token" }`. */
+          suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          /** What to tell the person to add it, per store: `{ "pass": "pass insert acme/sso-token" }`. */
+          addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          why?: string;
+      }
+    | {
+          kind: "login";
+          /** The program that owns the login, such as `"gh"`. */
+          tool: string;
+          /** The command that asks whether it is logged in; the answer's exit code is the check. */
+          status: readonly string[];
+          /** The command the person runs to log in. */
+          login: string;
+          label: string;
+          why?: string;
+      }
+    | {
+          kind: "info";
+          label: string;
+          detail?: string;
+          url?: string;
+      };
 
 /** Which company is active and why (`profiles.active`, `/profile`). */
 export interface ProfileSelection {

@@ -12,7 +12,15 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
     const lookup =
         options.pathLookup ?? ((program: string, env: NodeJS.ProcessEnv) => findOnPath(program, env, options.platform));
     const lines: DoctorLine[] = [];
-    const checks = [
+    const checks: Array<{
+        tool: string;
+        word: string;
+        args: string[];
+        login: string;
+        label: string;
+        why?: string;
+        needed?: boolean;
+    }> = [
         {
             tool: "gh",
             word: "github",
@@ -22,8 +30,23 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
         },
         { tool: "glab", word: "gitlab", args: ["auth", "status"], login: "glab auth login", label: "GitLab login" },
     ];
+    for (const item of context.onboarding?.items ?? []) {
+        if (item.kind !== "login" || checks.some((check) => check.tool === item.tool)) continue;
+        checks.push({
+            tool: item.tool,
+            word: item.label.toLowerCase(),
+            args: [...item.status],
+            login: item.login,
+            label: item.label,
+            needed: true,
+            ...(item.why === undefined ? {} : { why: item.why }),
+        });
+    }
     for (const check of checks) {
-        const used = Object.hasOwn(context.commands, check.tool) || texts.some((text) => text.includes(check.word));
+        const used =
+            check.needed === true ||
+            Object.hasOwn(context.commands, check.tool) ||
+            texts.some((text) => text.includes(check.word));
         if (!used) {
             lines.push({
                 id: `logins.${check.tool}`,
@@ -66,7 +89,7 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
                     group: "logins",
                     level: "ok",
                     title: check.label,
-                    detail: "signed in.",
+                    detail: check.why === undefined ? "signed in." : `signed in. ${check.why}`,
                 });
             } else {
                 lines.push({

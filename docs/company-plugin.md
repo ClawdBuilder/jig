@@ -230,7 +230,52 @@ Skills come in two kinds:
   `acme`: the few things that differ from one person to the next.
 - **`status.register`** for lines in `/jig`, as [`status.ts`](../examples/jig-acme/src/status.ts) does: what is set up, and what this
   user is still missing.
+- **`onboarding.register`** for what each person must supply, so `/jig setup` asks in your words and order, and `/jig doctor` says
+  what is still missing (see 9).
 - **Events** from `jig-lens` (names for the models) and `jig-theme` (footer parts), described in their READMEs.
+
+### 9. Onboarding: what your people must supply
+
+Setup and doctor can ask about your company's fields in your words, in your order: where a token lives, your login on the
+bastion host, which proxy to use, and the logins your tools need. It is optional. A plugin with no list is still set up from
+its section validators, with plainer labels; a list only makes the flow read like your company.
+
+```ts
+api.onboarding?.register({
+    preferredStore: "cmd",
+    items: [
+        { kind: "info", label: "Acme SSO", detail: "The acme-sso command signs you in." },
+        {
+            kind: "reference",
+            section: "acme",
+            path: "sso.token",
+            label: "The Acme SSO token",
+            stores: ["cmd", "pass", "op", "env"],
+            suggested: { cmd: "cmd:acme-sso", pass: "pass:acme/sso-token" },
+            addHints: { cmd: "acme-sso login", pass: "pass insert acme/sso-token" },
+        },
+        { kind: "text", section: "acme", path: "bastion.user", label: "Your login on the bastion host", placeholder: "jdoe" },
+        { kind: "login", tool: "gh", status: ["gh", "auth", "status", "--no-refresh"], login: "gh auth login", label: "GitHub login" },
+    ],
+});
+```
+
+- **`section` and `path` are where the answer goes:** a dotted path inside one of your sections (`bastion.user`, `sso.token`),
+  so the validator you already wrote is the check.
+- **`reference` is a credential, never a value.** `suggested` gives a reference *shape* per store and `addHints` what to tell the
+  person to add it; setup shows both, and `preferredStore` (on the item, or the entry) is offered first. Setup never asks for the
+  token itself.
+- **`login` is a command, not a credential.** Doctor runs `status` and says whether it is signed in; setup prints `login` and does
+  not run it. A tool already checked by Jig (gh, glab) is not checked twice.
+- **`info` comes before the questions and `pick` offers your plain choices.** Items are asked in your order, and the sections you
+  name come first; the rest of the settings keep their own order.
+- **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never
+  registers a profile applies always, as with every other seam.
+- **Keep every label and hint plain.** They are what a person reads on their first day: say where a thing lives and why it is
+  needed, not what the setting is called.
+
+`jig-acme`'s list is [`src/onboarding.ts`](../examples/jig-acme/src/onboarding.ts); its test checks it with jig-core's own
+validator, and `plugins/jig-core/test/setup-onboarding.test.ts` shows the plan that comes out.
 
 ## How your `jig.json` layers over the defaults
 

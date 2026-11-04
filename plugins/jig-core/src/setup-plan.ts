@@ -6,6 +6,8 @@ import { lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from "n
 import { homedir } from "node:os";
 import path from "node:path";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
+import type { OnboardingEntry, OnboardingItem } from "./contract.ts";
+import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
 import { layered } from "./section-defaults.ts";
 import { setValuePath } from "./setup-write.ts";
@@ -37,9 +39,11 @@ export interface SetupState {
     companyBackends: readonly SecretBackend[];
     /** The commands a `cmd:` reference may name. */
     commands: Readonly<Record<string, readonly string[]>>;
+    /** The active company's onboarding list, when it wrote one: its order, labels and hints. */
+    onboarding?: OnboardingEntry;
 }
 
-export type SetupFieldKind = "text" | "number" | "boolean" | "reference";
+export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick";
 
 /** One question. `current` is for the placeholder, never a secret and never a raw reference. */
 export interface SetupField {
@@ -53,6 +57,8 @@ export interface SetupField {
     reason: string;
     /** For a credential: where the person may keep it, and which choice is the company's. */
     reference?: SetupReferenceChoice;
+    /** For a pick: the plain answers, from the company's list. */
+    choices?: readonly string[];
 }
 
 export interface SetupReferenceChoice {
@@ -65,6 +71,10 @@ export interface SetupReferenceChoice {
     /** The stores the person turned off; they are not offered, and setup says so. */
     disabled: SecretBackend[];
     commands: Readonly<Record<string, readonly string[]>>;
+    /** A reference *shape* per store, from the company's list, never a value. */
+    suggested?: Readonly<Partial<Record<SecretBackend, string>>>;
+    /** What the company says to do to add it, per store. */
+    addHints?: Readonly<Partial<Record<SecretBackend, string>>>;
 }
 
 export interface SetupSection {
@@ -89,6 +99,10 @@ export interface SetupPlan {
     sections: SetupSection[];
     /** File-level notes, when there is nothing to ask but something to say. */
     notes: string[];
+    /** What the company says before the questions, from its `info` items. */
+    intro: string[];
+    /** Logins the company names, and the command that performs each: setup shows it and does not check it. */
+    logins: Array<{ label: string; command: string; why?: string }>;
     defaults: ReadonlyMap<string, unknown>;
     checks: ReadonlyMap<string, SectionCheck>;
     replace: ReadonlyMap<string, readonly string[]>;
@@ -97,6 +111,144 @@ export interface SetupPlan {
 }
 
 export type SetupPlanResult = { plan: SetupPlan } | { problem: string };
+
+/** The question for a credential, built from the company's label without doubling its article. */
+function referenceQuestion(label: string): string {
+    const named = label.replace(/^the\s+/i, "").trim();
+    return `Where does the ${named} live?`;
+}
+
+/** Adds a field for each onboarding item whose value is not set yet and which the validators did not name. */
+function addOnboardingFields(
+    entry: OnboardingEntry,
+    state: SetupState,
+    raw: Record<string, unknown>,
+    candidates: Array<{ section: SetupSection; order: number }>,
+): void {
+    const byName = new Map(candidates.map((candidate) => [candidate.section.name, candidate]));
+    for (const [index, item] of entry.items.entries()) {
+        if (item.kind === "info" || item.kind === "login") continue;
+        if (!state.sectionChecks.has(item.section)) continue;
+        if (!safePath(item.path) || !PATH_SHAPE.test(item.path)) continue;
+        let candidate = byName.get(item.section);
+        if (candidate === undefined) {
+            candidate = {
+                section: { name: item.section, label: labelOf(item.section), fields: [], notes: [] },
+                order: 10_000 + index,
+            };
+            byName.set(item.section, candidate);
+            candidates.push(candidate);
+        }
+        if (candidate.section.fields.some((field) => field.path === item.path)) continue;
+        const rawValue = raw[item.section];
+        const rawSection = isObject(rawValue) ? rawValue : {};
+        if (!parentIsObject(rawSection, item.path)) continue;
+        const defaults = state.defaults.get(item.section);
+        const merged = layered(
+            defaults,
+            rawSection,
+            state.replace.get(item.section) ?? [],
+            state.oneOf.get(item.section) ?? [],
+            state.union.get(item.section) ?? [],
+        );
+        if (getPath(merged, item.path) !== undefined) continue;
+        candidate.section.fields.push(onboardingField(entry, state, item, index));
+    }
+}
+
+const PATH_SHAPE = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
+
+/** The plain question for one onboarding item whose value is not set. */
+function onboardingField(
+    entry: OnboardingEntry,
+    state: SetupState,
+    item: Exclude<OnboardingItem, { kind: "info" } | { kind: "login" }>,
+    index: number,
+): SetupField {
+    const reason = item.why ?? "The company's list says its tools need it.";
+    if (item.kind === "reference") {
+        const reference = referenceChoice(state, undefined, undefined);
+        const preferred = item.preferredStore ?? entry.preferredStore;
+        if (preferred !== undefined && reference.stores.includes(preferred)) {
+            reference.preferred = preferred;
+            reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
+        }
+        if (item.suggested !== undefined) reference.suggested = item.suggested;
+        if (item.addHints !== undefined) reference.addHints = item.addHints;
+        return {
+            section: item.section,
+            path: item.path,
+            label: item.label,
+            question: referenceQuestion(item.label),
+            kind: "reference",
+            reason,
+            reference,
+        };
+    }
+    if (item.kind === "pick") {
+        return {
+            section: item.section,
+            path: item.path,
+            label: item.label,
+            question: item.label,
+            kind: "pick",
+            choices: [...item.choices],
+            reason,
+        };
+    }
+    return {
+        section: item.section,
+        path: item.path,
+        label: item.label,
+        question: item.label,
+        ...(item.placeholder === undefined ? {} : { placeholder: item.placeholder }),
+        kind: "text",
+        reason,
+    };
+}
+
+/** Lays the company's labels, words and hints over the fields the validators named, and orders them by the list. */
+function applyOnboarding(entry: OnboardingEntry, candidates: Array<{ section: SetupSection; order: number }>): void {
+    const position = new Map<string, number>();
+    for (const [index, item] of entry.items.entries()) {
+        if (item.kind === "info" || item.kind === "login") continue;
+        position.set(`${item.section}.${item.path}`, index);
+    }
+    for (const { section } of candidates) {
+        section.fields.sort(
+            (left, right) =>
+                (position.get(`${left.section}.${left.path}`) ?? Number.MAX_SAFE_INTEGER) -
+                (position.get(`${right.section}.${right.path}`) ?? Number.MAX_SAFE_INTEGER),
+        );
+        for (const field of section.fields) {
+            const item = onboardingItemAt(entry, field.section, field.path);
+            if (item === undefined || item.kind === "info" || item.kind === "login") continue;
+            field.label = item.label;
+            field.question = item.kind === "reference" ? referenceQuestion(item.label) : item.label;
+            if (item.why !== undefined) field.reason = item.why;
+            if (item.kind === "text") {
+                if (item.placeholder !== undefined) field.placeholder = item.placeholder;
+                continue;
+            }
+            if (item.kind === "pick") {
+                field.kind = "pick";
+                field.choices = [...item.choices];
+                field.placeholder = undefined;
+                continue;
+            }
+            // A reference: only a field the validator already treats as a credential can carry the company's hints.
+            const reference = field.reference;
+            if (field.kind !== "reference" || reference === undefined) continue;
+            const preferred = item.preferredStore ?? entry.preferredStore;
+            if (preferred !== undefined && reference.stores.includes(preferred)) {
+                reference.preferred = preferred;
+                reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
+            }
+            if (item.suggested !== undefined) reference.suggested = item.suggested;
+            if (item.addHints !== undefined) reference.addHints = item.addHints;
+        }
+    }
+}
 
 /** A change the person accepted: one field, its plain label, and what was there before. */
 export interface SetupChange {
@@ -287,7 +439,34 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
         }
     }
 
-    candidates.sort((left, right) => left.priority - right.priority || left.order - right.order);
+    const entry = state.onboarding;
+    const intro: string[] = [];
+    const logins: Array<{ label: string; command: string; why?: string }> = [];
+    if (entry !== undefined) {
+        for (const item of entry.items) {
+            if (item.kind === "info") {
+                intro.push([item.label, item.detail, item.url].filter((part) => part !== undefined).join(" — "));
+            } else if (item.kind === "login") {
+                logins.push({
+                    label: item.label,
+                    command: item.login,
+                    ...(item.why === undefined ? {} : { why: item.why }),
+                });
+            }
+        }
+        addOnboardingFields(entry, state, raw, candidates);
+        applyOnboarding(entry, candidates);
+        const order = onboardingOrder(entry);
+        candidates.sort(
+            (left, right) =>
+                (order.get(left.section.name) ?? Number.MAX_SAFE_INTEGER) -
+                    (order.get(right.section.name) ?? Number.MAX_SAFE_INTEGER) ||
+                left.priority - right.priority ||
+                left.order - right.order,
+        );
+    } else {
+        candidates.sort((left, right) => left.priority - right.priority || left.order - right.order);
+    }
     return {
         plan: {
             file: state.configPath,
@@ -299,6 +478,8 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
             raw,
             sections: candidates.map((candidate) => candidate.section),
             notes: linkNote === undefined ? [] : [linkNote],
+            intro,
+            logins,
             defaults: state.defaults,
             checks: state.sectionChecks,
             replace: state.replace,

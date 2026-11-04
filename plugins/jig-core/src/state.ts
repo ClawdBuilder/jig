@@ -11,7 +11,15 @@ import type { Classification } from "./classify.ts";
 import { buildPolicy, defaultConfig, effectiveBackends, emptyAdditions, loadConfigFile } from "./config.ts";
 import type { CompanyAdditions, LoadedConfig, Policy, SectionCheck } from "./config.ts";
 import { JIG_EVENTS } from "./contract.ts";
-import type { ApprovalKind, Decision, EnvironmentKind, Preview, SandboxProvider, ToolDeclaration } from "./contract.ts";
+import type {
+    ApprovalKind,
+    Decision,
+    EnvironmentKind,
+    OnboardingEntry,
+    Preview,
+    SandboxProvider,
+    ToolDeclaration,
+} from "./contract.ts";
 import type { DecisionSource } from "./decide.ts";
 import { errorMessage } from "./errors.ts";
 import { createGates } from "./gates.ts";
@@ -104,6 +112,8 @@ export interface JigState {
     now: () => Date;
     declarations: Map<string, ToolDeclaration>;
     personal: LoadedConfig;
+    /** The onboarding list a company plugin without profiles registered; the active company's lives on its entry. */
+    onboarding: OnboardingEntry | undefined;
     /** What company plugins added, as policy and secrets read it: `globalCompany` and the active company's additions. */
     company: CompanyAdditions;
     /** What plugins that never registered with `profiles.register` added: it always applies. */
@@ -228,6 +238,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             invalid: new Set(),
         },
         company: emptyAdditions(),
+        onboarding: undefined,
         globalCompany: emptyAdditions(),
         companies: new Map(),
         profile: newProfileState(),

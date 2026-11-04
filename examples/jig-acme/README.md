@@ -31,6 +31,7 @@ knowledge, an overlay skill the agent reads.*
 | [`src/masking.ts`](src/masking.ts) | Two field names for the masker: `memberAlias`, `loyaltyCardHolder` | The names that hold personal data in its own systems |
 | [`src/protection.ts`](src/protection.ts) | One secret path: `~/.acme/credentials.json` | Where its own tools keep a login |
 | [`src/status.ts`](src/status.ts) | Lines for `/jig`: the sign-in, transport and tunnel it adds, and what this user still has to set | What a user needs to see at a glance |
+| [`src/onboarding.ts`](src/onboarding.ts) | What each Acme person must supply, in Acme's order and words: the SSO token's place, the bastion login, a proxy, the GitHub login | So `/jig setup` reads like Acme, not like a schema |
 | [`overlays/jira.md`](overlays/jira.md) | The company's Jira conventions as an overlay: jig-core adds it to the generic `jira` skill as a section `## Acme rules`, so the model reads one skill | Its projects, fields, workflow and manners |
 | [`skills/acme-releases`](skills/acme-releases/SKILL.md) | A skill with no generic counterpart, listed for the model only while the Acme profile is active | Rules for something only this company has |
 | [`src/index.ts`](src/index.ts) | Registers the plugin as `jig-acme` (`profiles.register`), with its overlays and its own skill, and gives everything else through the view that returns | The name and the folder of overlays |

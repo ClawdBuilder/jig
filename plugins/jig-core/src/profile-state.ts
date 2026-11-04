@@ -3,6 +3,7 @@
 // seams: `settleProfile` (called when jig.json has been read), `syncSkills` (session start, and the first turn that sees a
 // different skill list) and `beforeTurn` (the `before_agent_start` hook).
 import { emptyAdditions, mergeAdditions } from "./config.ts";
+import type { OnboardingEntry } from "./contract.ts";
 import type { CompanyAdditions } from "./config.ts";
 import { errorMessage } from "./errors.ts";
 import { applyToPrompt, syncOverlays } from "./overlays.ts";
@@ -21,6 +22,8 @@ export interface CompanyEntry {
     additions: CompanyAdditions;
     defaults: Map<string, unknown>;
     statusLines: Map<string, () => readonly string[]>;
+    /** What this company's people must supply, from `onboarding.register`; undefined when it gave none. */
+    onboarding: OnboardingEntry | undefined;
     /** What `onChange` was last told; undefined before the first time. */
     announced: boolean | undefined;
 }
@@ -52,6 +55,11 @@ export function activeCompany(state: JigState): CompanyEntry | undefined {
     return plugin === undefined ? undefined : state.companies.get(plugin);
 }
 
+/** The onboarding list that applies now: the active company's, or the one a plugin without profiles registered. */
+export function activeOnboarding(state: JigState): OnboardingEntry | undefined {
+    return state.onboarding ?? activeCompany(state)?.onboarding;
+}
+
 /** The company defaults that lie under the user's sections now: those of plugins that never registered, then the active company's. */
 export function effectiveDefaults(state: JigState): Map<string, unknown> {
     const defaults = new Map(state.sectionDefaults);
@@ -78,6 +86,7 @@ export function newCompanyEntry(name: string, displayName: string): CompanyEntry
         additions: emptyAdditions(),
         defaults: new Map(),
         statusLines: new Map(),
+        onboarding: undefined,
         announced: undefined,
     };
 }

@@ -2,7 +2,7 @@
 // wrong in plain words and gives one thing to do about it. The checks themselves are in doctor-checks.ts and
 // doctor-secrets.ts; this file only runs them, counts them and lays the report out.
 import type { CompanyAdditions, LoadedConfig, SectionCheck } from "./config.ts";
-import type { ProtectedPathInfo, RunOptions, RunResult, SandboxProvider } from "./contract.ts";
+import type { OnboardingEntry, ProtectedPathInfo, RunOptions, RunResult, SandboxProvider } from "./contract.ts";
 import { DOCTOR_CHECKS } from "./doctor-checks.ts";
 import { errorMessage } from "./errors.ts";
 import { jigPackage, piVersion } from "./pi-version.ts";
@@ -62,6 +62,8 @@ export interface DoctorContext {
     sections: ReadonlyMap<string, unknown>;
     /** The commands `cmd:` may run, by name: the company's and the person's. */
     commands: Readonly<Record<string, readonly string[]>>;
+    /** The active company's onboarding list: what its people must supply, in its words. */
+    onboarding?: OnboardingEntry;
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;

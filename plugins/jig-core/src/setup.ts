@@ -7,7 +7,7 @@ import { run as runProgram } from "./exec.ts";
 import { effectiveBackends } from "./config.ts";
 import type { SecretBackend } from "./config.ts";
 import { findOnPath } from "./doctor-secrets.ts";
-import { effectiveDefaults } from "./profile-state.ts";
+import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { probeSecret, shorten } from "./secret-status.ts";
 import type { SecretProbe } from "./secret-status.ts";
 import { applyAnswer, buildSetupPlan } from "./setup-plan.ts";
@@ -36,6 +36,13 @@ export async function runSetup(state: JigState, ctx: ExtensionCommandContext): P
     if (plan.sections.length === 0) {
         ctx.ui.notify("Nothing needs you right now. /jig doctor has the full check.", "info");
         return;
+    }
+    if (plan.intro.length > 0) ctx.ui.notify(plan.intro.join("\n"), "info");
+    for (const login of plan.logins) {
+        ctx.ui.notify(
+            `${login.label}: run \`${login.command}\` in another terminal.${login.why === undefined ? "" : ` ${login.why}`}`,
+            "info",
+        );
     }
     const notes = plan.sections.flatMap((section) => section.notes);
     if (plan.sections.every((section) => section.fields.length === 0)) {
@@ -117,6 +124,18 @@ async function ask(
     ctx: ExtensionCommandContext,
 ): Promise<"ok" | "cancel"> {
     if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ctx);
+    if (field.kind === "pick") {
+        const choices = field.choices ?? [];
+        const picked = await ctx.ui.select(`${field.label}: ${field.reason}`, [...choices]);
+        if (picked === undefined || !choices.includes(picked)) return "cancel";
+        const result = applyAnswer(plan, draft, field, picked);
+        if ("change" in result) {
+            changes.push(result.change);
+            return "ok";
+        }
+        ctx.ui.notify(result.problem, "warning");
+        return "ok";
+    }
     for (;;) {
         ctx.ui.notify(`${field.label}: ${field.reason}`, "info");
         const text = await ctx.ui.input(field.question, field.placeholder);
@@ -171,6 +190,30 @@ async function askReference(
             if (!ok) continue;
         }
 
+        // The company's suggestion, when it wrote one for this store: a reference shape, never a value.
+        const shape = choice.suggested?.[store];
+        if (shape !== undefined) {
+            const use = await ctx.ui.select(`${storeLabel(store)}: use the company's suggestion?`, [
+                `Use ${shape}`,
+                "Build it another way",
+            ]);
+            if (use === undefined) return "cancel";
+            if (use.startsWith("Use ")) {
+                const settled = await settleReference(
+                    state,
+                    plan,
+                    field,
+                    draft,
+                    changes,
+                    ctx,
+                    store,
+                    shape,
+                    "the company's suggestion",
+                );
+                if (settled === "ok" || settled === "cancel") return settled;
+            }
+        }
+
         for (;;) {
             const parts = await askParts(store, choice.commands, ctx);
             if (parts === undefined) return "cancel";
@@ -179,42 +222,64 @@ async function askReference(
                 ctx.ui.notify(built.problem, "warning");
                 continue;
             }
-            const answer = applyAnswer(plan, draft, field, built.reference);
-            if ("problem" in answer) {
-                ctx.ui.notify(answer.problem, "warning");
-                continue;
-            }
-            const change = answer.change;
-            change.note = `read from ${built.note}`;
-            if (!choice.enabled.includes(store)) change.enableBackend = store;
-
-            for (;;) {
-                const probe = await probeSecret(built.reference, probeOptions(state));
-                const status = statusText(store, probe);
-                ctx.ui.notify(status.text, status.level);
-                if (probe.status === "found" || probe.status === "unknown") {
-                    changes.push(change);
-                    return "ok";
-                }
-                if (probe.status === "invalid") {
-                    ctx.ui.notify("That place cannot be used. Choose another.", "warning");
-                    break;
-                }
-                if (probe.fix !== undefined) ctx.ui.notify(probe.fix, "info");
-                const next = await ctx.ui.select("Not found yet", [
-                    "Check again",
-                    "Continue without it",
-                    "Cancel setup",
-                ]);
-                if (next === "Check again") continue;
-                if (next === "Continue without it") {
-                    change.note = `${change.note} (not found yet)`;
-                    changes.push(change);
-                    return "ok";
-                }
-                return "cancel";
-            }
+            const settled = await settleReference(
+                state,
+                plan,
+                field,
+                draft,
+                changes,
+                ctx,
+                store,
+                built.reference,
+                `read from ${built.note}`,
+            );
+            if (settled === "ok" || settled === "cancel") return settled;
         }
+    }
+}
+
+/** Checks, probes and records one built reference: "ok", "cancel", or "retry" for another try at this store. */
+async function settleReference(
+    state: JigState,
+    plan: SetupPlan,
+    field: SetupField,
+    draft: Record<string, unknown>,
+    changes: SetupChange[],
+    ctx: ExtensionCommandContext,
+    store: SecretBackend,
+    reference: string,
+    note: string,
+): Promise<"ok" | "cancel" | "retry"> {
+    const choice = field.reference;
+    const answer = applyAnswer(plan, draft, field, reference);
+    if ("problem" in answer) {
+        ctx.ui.notify(answer.problem, "warning");
+        return "retry";
+    }
+    const change = answer.change;
+    change.note = note;
+    if (choice !== undefined && !choice.enabled.includes(store)) change.enableBackend = store;
+    for (;;) {
+        const probe = await probeSecret(reference, probeOptions(state));
+        const status = statusText(store, probe);
+        ctx.ui.notify(status.text, status.level);
+        if (probe.status === "found" || probe.status === "unknown") {
+            changes.push(change);
+            return "ok";
+        }
+        if (probe.status === "invalid") {
+            ctx.ui.notify("That place cannot be used. Choose another.", "warning");
+            return "retry";
+        }
+        if (probe.fix !== undefined) ctx.ui.notify(probe.fix, "info");
+        const next = await ctx.ui.select("Not found yet", ["Check again", "Continue without it", "Cancel setup"]);
+        if (next === "Check again") continue;
+        if (next === "Continue without it") {
+            change.note = `${change.note} (not found yet)`;
+            changes.push(change);
+            return "ok";
+        }
+        return "cancel";
     }
 }
 
@@ -317,5 +382,6 @@ function setupState(state: JigState): SetupState {
         disabledBackends: state.personal.config.secrets.disabledBackends,
         companyBackends: backends.byCompany,
         commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
+        onboarding: activeOnboarding(state),
     };
 }

@@ -101,7 +101,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
-| `setup-plan.ts` | What setup asks, from the section states and the validators, and the answer round trip; it follows a linked settings file to its target | `setup.ts` |
+| `setup-plan.ts` | What setup asks, from the section states and the validators, the company's onboarding list laid over it, and the answer round trip; it follows a linked settings file to its target | `setup.ts`, `onboarding.ts` |
+| `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |

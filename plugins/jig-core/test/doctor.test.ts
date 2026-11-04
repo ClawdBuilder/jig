@@ -92,6 +92,34 @@ function text(report: Awaited<ReturnType<typeof runDoctor>>): string {
 }
 
 describe("/jig doctor checks", () => {
+    test("a company's onboarding list becomes a 'you need' line for each field still missing", async () => {
+        const report = await runDoctor(
+            context({
+                checks: [["acme", () => ["acme: must hold a login"]]],
+                overrides: {
+                    onboarding: {
+                        preferredStore: "pass",
+                        items: [
+                            {
+                                kind: "text",
+                                section: "acme",
+                                path: "bastion.user",
+                                label: "Your Acme login",
+                                why: "The gateway asks for it.",
+                            },
+                        ],
+                    },
+                },
+            }),
+            options(),
+        );
+        const line = report.lines.find((entry) => entry.title === "You need: Your Acme login");
+        assert.ok(line, text(report));
+        assert.equal(line.group, "config");
+        assert.equal(line.detail, "The gateway asks for it.");
+        assert.equal(line.fix, "Run /jig setup and it asks for this.");
+    });
+
     test("a working setup passes, with a summary and the groups a person expects", async () => {
         const report = await runDoctor(context(), options());
         const shown = text(report);
