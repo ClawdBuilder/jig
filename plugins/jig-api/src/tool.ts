@@ -9,6 +9,7 @@ import type { CallClass, Preview } from "../../jig-core/src/contract.ts";
 import { checkTimeout } from "./ad-hoc.ts";
 import { loadCatalog } from "./catalog.ts";
 import { settingsOf } from "./config.ts";
+import type { SavedRequest } from "./model.ts";
 import type { ApiSettings } from "./config.ts";
 import { createHttp } from "./engine/http.ts";
 import type { Http, HttpOptions, Sent } from "./engine/http.ts";
@@ -22,7 +23,7 @@ import { parameters, parseCall } from "./params.ts";
 import type { Call } from "./params.ts";
 import { planCall, planRequest } from "./planning.ts";
 import type { PlanContext } from "./planning.ts";
-import { listText, readsOf, showText } from "./show.ts";
+import { listText, showText } from "./show.ts";
 import { WORKSPACE_ID } from "./sources/postman-api.ts";
 import type { EnvironmentList } from "./sources/postman-api.ts";
 import type { EnvironmentLister } from "./sources/source.ts";
@@ -141,6 +142,16 @@ function environmentsText(name: string, workspace: string | undefined, list: Env
     return [head, ...lines, ...more, ...(count === 0 ? [] : ["", use])].join("\n");
 }
 
+/**
+ * Whether a saved request counts as a read in the environment it runs in. A name in `api.reads` makes a write method a read
+ * outside production only: in production only GET, HEAD and OPTIONS are reads, so a POST there is a write and jig-core's
+ * floor denies it. `api.reads` can therefore never talk a production write past the floor.
+ */
+function readsHere(ctx: PlanContext, request: SavedRequest, jigEnvironment: string): boolean {
+    if (READ_METHODS.has(request.method)) return true;
+    return ctx.kindOf(jigEnvironment) !== "production" && ctx.settings.reads.has(request.name);
+}
+
 /** Plans every request the call sends. Throws an InputError for anything invalid. */
 function prepare(ctx: PlanContext, call: Extract<Call, { action: "run" | "run-folder" | "call" }>): Prepared {
     if (call.action === "call") {
@@ -167,7 +178,7 @@ function prepare(ctx: PlanContext, call: Extract<Call, { action: "run" | "run-fo
         return {
             plans: [plan],
             action: request.name,
-            effect: readsOf(ctx.settings, request) ? "read" : "write",
+            effect: readsHere(ctx, request, plan.jigEnvironment) ? "read" : "write",
             environment: plan.jigEnvironment,
         };
     }
@@ -190,9 +201,9 @@ function prepare(ctx: PlanContext, call: Extract<Call, { action: "run" | "run-fo
             variables: Object.fromEntries(given.filter(([name]) => request.variables.includes(name))),
         }),
     );
-    const writes = found.requests.some((request) => !readsOf(ctx.settings, request));
     const first = plans[0] as Plan;
-    // A folder is as strict as its strictest request: one write makes it a write.
+    // A folder is as strict as its strictest request, in the environment they all run in: one write makes it a write.
+    const writes = found.requests.some((request) => !readsHere(ctx, request, first.jigEnvironment));
     return {
         plans,
         action: `${found.collection.name}/${found.folder}`,
