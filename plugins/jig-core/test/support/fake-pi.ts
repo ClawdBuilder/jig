@@ -59,6 +59,8 @@ export function fakePi(tools: FakeTool[] = []): FakePi {
     const messageRenderers = new Map<string, unknown>();
     const fake = { thinkingLevel: "off" };
     const skills: FakePi["skills"] = [];
+    // The tools the model has active: Pi's own plus the registered ones until a test says otherwise.
+    let active: string[] | undefined;
     const pi = {
         on(type: string, handler: Handler) {
             handlers.set(type, [...(handlers.get(type) ?? []), handler]);
@@ -103,6 +105,10 @@ export function fakePi(tools: FakeTool[] = []): FakePi {
                 parameters: tool.parameters,
             })),
         ],
+        getActiveTools: () => active ?? [...tools.map((tool) => tool.name), ...registered.keys()],
+        setActiveTools: (names: string[]) => {
+            active = [...names];
+        },
         events: {
             emit: (channel: string, data: unknown) => {
                 emitted.push({ channel, data });
