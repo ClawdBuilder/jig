@@ -110,6 +110,9 @@ paths.
     each such path.
   - *Secret*, the store and the GnuPG home that `secrets.pass` in `jig.json` binds `pass` to (see
     [Where pass looks](secrets.md#where-pass-looks)). `/jig rules` says that `secrets.pass` named them.
+  - *Secret*, Jig's own masking keys and the preview pages it writes when the local server cannot serve them, inside its
+    state folder: `<state>/mask` and `<state>/previews`, where `<state>` is `~/.local/state/jig` or `JIG_STATE_DIR`. The
+    rest of the state folder stays readable: a spill file is the rest of a result the model was given.
   - *Guarded* (readable, not writable): the whole agent folder (`~/.pi/agent`,
     or where `PI_CODING_AGENT_DIR` points).
   - *Guarded*, the code Pi loads at its next start, which runs with no sandbox. `/jig rules` says what named each path,
