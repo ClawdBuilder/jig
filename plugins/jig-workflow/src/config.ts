@@ -3,6 +3,7 @@
 import os from "node:os";
 import path from "node:path";
 import { expandedEnv, validateEnv } from "./environment.ts";
+import { isObject } from "../../jig-core/src/kit/values.ts";
 
 export interface TestRule {
     /** A repository name or a path pattern. */
@@ -37,10 +38,6 @@ const MAX_COMMAND = 1000;
 const MAX_DISABLED = 100;
 /** A workflow's name, as a file is named (see definition.ts). */
 const WORKFLOW_NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/;
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isTimeout(value: unknown): value is number {
     return (

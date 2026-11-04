@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Forge } from "./forge.ts";
 import type { Host } from "./host.ts";
 import type { CiRecord, Observation, ReviewRecord } from "./store.ts";
+import { isObject } from "../../jig-core/src/kit/values.ts";
 
 export const REVIEW_APPROVED_EVENT = "jig-review:approved";
 export const CI_FINISHED_EVENT = "jig-ops:ci-finished";
@@ -16,10 +17,6 @@ const SLUG = /^[A-Za-z0-9_.-]{1,100}(?:\/[A-Za-z0-9_.-]{1,100}){1,19}$/;
 
 /** The finish lines of a CI watch that cover the required checks, as the CI adapters name them. */
 const COVERING_FINISH = new Set(["required", "pipeline", "jobs", "build", "stages"]);
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function realOrResolved(target: string): string {
     try {

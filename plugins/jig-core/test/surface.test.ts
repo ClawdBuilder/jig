@@ -300,7 +300,7 @@ describe("what plugins import", () => {
                 "writeRolePolicy",
             ],
             "schema.ts": ["stringEnum"],
-            "text.ts": ["printable", "stringOf"],
+            "text.ts": ["oneLine", "printable", "shortList", "stringOf"],
             "tools.ts": [
                 "NOT_DEFERRABLE",
                 "TOOLS_SECTION",
@@ -310,7 +310,7 @@ describe("what plugins import", () => {
                 "registerJigTool",
                 "transcriptTools",
             ],
-            "values.ts": ["InputError", "isObject"],
+            "values.ts": ["InputError", "NotConfiguredError", "isObject"],
         };
         for (const module of modules) {
             assert.deepEqual(exportedNames(path.join(kit, module)), (expected[module] ?? []).sort(), module);

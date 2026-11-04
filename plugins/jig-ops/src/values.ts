@@ -2,13 +2,16 @@
 // kubectl's JSON, and ways to put a value or a piece of cluster text into a message.
 import { createHash } from "node:crypto";
 import type { Facts } from "../../jig-core/src/contract.ts";
-import { stringOf } from "../../jig-core/src/kit/text.ts";
+import { oneLine, stringOf } from "../../jig-core/src/kit/text.ts";
 import { InputError, isObject } from "../../jig-core/src/kit/values.ts";
 
 /** Shared with the other plugins (jig-core's `kit/values.ts`). A mistake in a call's input is an InputError, a
  *  TypeError that jig-core reads as "invalid input"; `classifying` keeps a TypeError from a bug here from being reported
  *  as the model's mistake. */
 export { InputError, isObject };
+
+/** Shared with the other plugins (jig-core's `kit/text.ts`), so a fix lands once. */
+export { oneLine };
 
 /**
  * What leaves a tool's classify or preview: an InputError as it is, so jig-core blocks the call without asking, and any
@@ -101,12 +104,6 @@ export function shortList(items: readonly string[], max = 160): string {
 /** `1 pod`, `2 pods`. */
 export function plural(count: number, noun: string): string {
     return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-/** The text on one line, cut after `max` characters. */
-export function oneLine(text: string, max = 200): string {
-    const line = text.replace(/\s+/g, " ").trim();
-    return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }
 
 /** 300 000 -> "5m00s", 45 000 -> "45s". */

@@ -150,9 +150,10 @@ closed instead of running ungoverned.
 they do `client.ts`, so that copies stop drifting. Nothing in it holds state or
 talks to Pi.
 
-- **`kit/values.ts`:** `isObject(value)`, and `InputError`: a `TypeError` named
+- **`kit/values.ts`:** `isObject(value)`, `InputError`: a `TypeError` named
   `InputError`, which `jig-core` reads as "invalid input" when a tool's classify
-  or preview throws it.
+  or preview throws it, and `NotConfiguredError`, an `InputError` for a section
+  the tool needs and the user has not set up.
 - **`kit/role-policy.ts`:** what a role gives its child agent to obey, as one environment variable,
   `JIG_ROLE_POLICY`: `writeRolePolicy(policy)` and `readRolePolicy(env)`. The policy holds the role's name,
   whether it `writes`, the only `actions` some tools may run, and the actions that must `ask`.
@@ -164,7 +165,8 @@ talks to Pi.
 - **`kit/text.ts`:** `printable(text)` makes a name or header from outside safe
   in a message (control characters become `?`, cut at 60 characters).
   `stringOf(value)` is `String(value)`, or a stand-in when the value's own
-  `toString` throws.
+  `toString` throws. `oneLine(text, max)` collapses whitespace and cuts one line;
+  `shortList(items, separator, max)` joins choices and counts the rest.
 - **`kit/http.ts`:** `createHttp(deps)` is the request logic behind
   `http.request`, which takes its fetch, secrets, sign-in services and
   transports as parameters.

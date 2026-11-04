@@ -1,5 +1,6 @@
 // Reading what Jira sends back. Jira's answers differ by version and by edition, so every reader here accepts a missing
 // or oddly shaped value and gives an empty one, and only the code that needs a field decides that its absence is an error.
+import { oneLine, shortList } from "../../jig-core/src/kit/text.ts";
 import { InputError, isObject } from "../../jig-core/src/kit/values.ts";
 
 export type Obj = Record<string, unknown>;
@@ -7,6 +8,9 @@ export type Obj = Record<string, unknown>;
 /** Shared with the other plugins (jig-core's `kit/values.ts`). A mistake in a call's input is an InputError, a
  *  TypeError that jig-core reads as "invalid input"; tool.ts keeps a TypeError from a bug here from being mistaken for one. */
 export { InputError, isObject };
+
+/** Shared with the other plugins (jig-core's `kit/text.ts`), so a fix lands once. */
+export { oneLine, shortList };
 export const obj = (value: unknown): Obj => (isObject(value) ? value : {});
 export const arr = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 export const str = (value: unknown): string => (typeof value === "string" ? value : "");
@@ -75,11 +79,6 @@ export const day = (stamp: unknown): string => str(stamp).slice(0, 10);
 /** `2026-10-12T14:03:22.123+0000` as `2026-10-12 14:03`. */
 export const minute = (stamp: unknown): string => str(stamp).slice(0, 16).replace("T", " ");
 
-export function oneLine(text: string, max = 200): string {
-    const line = text.replace(/\s+/g, " ").trim();
-    return line.length > max ? `${line.slice(0, max - 1)}…` : line;
-}
-
 /** One value of any field on one line: the names of objects, lists joined, long text cut. */
 export function describeValue(value: unknown): string {
     if (value === null || value === undefined || value === "") return "(empty)";
@@ -107,18 +106,4 @@ export function comparable(value: unknown): string {
         if (found[key] !== undefined && found[key] !== null) return comparable(found[key]);
     }
     return JSON.stringify(value);
-}
-
-/**
- * The items joined, cut after about `max` characters with a count of the rest. jig-core shows a blocked call's reason to
- * the model cut at 200 characters, so a message that lists choices lists only the first few.
- */
-export function shortList(items: readonly string[], separator = ", ", max = 100): string {
-    let text = "";
-    for (const [index, item] of items.entries()) {
-        const next = text === "" ? item : `${text}${separator}${item}`;
-        if (text !== "" && next.length > max) return `${text} (and ${items.length - index} more)`;
-        text = next;
-    }
-    return text;
 }
