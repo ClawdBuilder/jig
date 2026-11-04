@@ -14,7 +14,7 @@ import type { GitSettings } from "./config.ts";
 import { checkRemote } from "./names.ts";
 import { originHost, GITHUB_COM, GITLAB_COM, isSshOrigin } from "./origin-host.ts";
 import { resolveRepo } from "./repo.ts";
-import { gitTry, scrub } from "./run.ts";
+import { git, scrub } from "./run.ts";
 
 /** The gate's name, as `/jig` shows it. */
 export const FETCH_GATE = "git-fetch-host";
@@ -23,14 +23,48 @@ export const FETCH_GATE = "git-fetch-host";
  *  as types only (the plugin's rules test asks for that), and this is the one value it needs. */
 const DECISION_EVENT = "jig:decision";
 
-/** A host read from a remote address: scp-like (`git@host:path`) or a URL. Undefined for a local path, which offers no key. */
-export function hostOfRemoteUrl(url: string): string | undefined {
+/** What a remote address is: a local path, a host, or text that cannot be read as either. */
+export type RemoteAddress = { kind: "local" } | { kind: "host"; host: string } | { kind: "unknown"; shown: string };
+
+const SCHEME = /^([a-z][a-z0-9+.-]*):\/\//i;
+
+/**
+ * The address as git reads it. A local path — absolute, `./` or `../`, `~/`, a Windows drive, `file://`, or a name with no
+ * colon — reaches no host and offers no key. A host is read from a URL's authority or from git's scp-like `host:path`,
+ * with or without a user. Anything else is `unknown`, and the gate asks about it: a form this function cannot read is not
+ * a reason to let a fetch run.
+ */
+export function addressOf(url: string): RemoteAddress {
     const text = url.trim();
-    const scp = /^[^@/\s]+@([^/:\s]+):/.exec(text);
-    if (scp !== null) return (scp[1] as string).toLowerCase();
-    const scheme = /^[a-z][a-z0-9+.-]*:\/\/(?:[^@/\s]*@)?(\[[^\]]+\]|[^/:\s]+)/i.exec(text);
-    if (scheme === null) return undefined;
-    return (scheme[1] as string).replace(/^\[|\]$/g, "").toLowerCase();
+    if (text === "") return { kind: "unknown", shown: "" };
+    const scheme = SCHEME.exec(text);
+    if (scheme !== null) {
+        if (scheme[1]?.toLowerCase() === "file") return { kind: "local" };
+        const rest = text.slice(scheme[0].length);
+        const authority = rest.split(/[/?#]/)[0] ?? "";
+        const hostPart = authority.includes("@") ? authority.slice(authority.lastIndexOf("@") + 1) : authority;
+        const host = hostPart
+            .replace(/:\d+$/, "")
+            .replace(/^\[([^\]]+)\]$/, "$1")
+            .toLowerCase();
+        return host === "" ? { kind: "unknown", shown: text } : { kind: "host", host };
+    }
+    // A Windows drive is a path, not a host called "C".
+    if (/^[A-Za-z]:[\\/]/.test(text)) return { kind: "local" };
+    // scp-like with a user.
+    const withUser = /^[^@/\s]+@([^/:\s]+):/.exec(text);
+    if (withUser !== null) return { kind: "host", host: (withUser[1] as string).toLowerCase() };
+    const colon = text.indexOf(":");
+    const slash = text.indexOf("/");
+    // scp-like without a user: `host:path`, a colon before any slash. Git reads it as ssh.
+    if (colon > 0 && (slash === -1 || colon < slash)) {
+        const host = text.slice(0, colon);
+        return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(host)
+            ? { kind: "host", host: host.toLowerCase() }
+            : { kind: "unknown", shown: text };
+    }
+    // A path, absolute or relative, or a plain name: nothing is reached over ssh.
+    return { kind: "local" };
 }
 
 /** The hosts the user's own configuration treats as forges: never asked about. */
@@ -49,62 +83,119 @@ export function isTrustedHost(host: string, settings: GitSettings, allowed: Read
     return trustedHosts(settings).has(host) || allowed.has(host);
 }
 
-/** The remote's address, as the repository's configuration holds it, with any credentials in it removed. `git config`
- *  reads the URL a person set: `insteadOf` is not applied, and the guard refuses a repository that sets it. */
-async function remoteUrl(repo: string, remote: string, signal?: AbortSignal): Promise<string | undefined> {
-    const out = await gitTry(repo, ["config", "--get", `remote.${remote}.url`], { signal, timeoutMs: 3000 });
-    return out === undefined ? undefined : scrub(out.trim());
+/** What the question is about, for one address of the remote. */
+export interface FetchTarget {
+    /** The text the question names, as the address shows it, scrubbed. */
+    shown: string;
+    /** What a session answer is filed under: the host, or the unreadable address. */
+    key: string;
+    /** The host the address names, when it names one. */
+    host?: string;
+    /** The real host behind an ssh alias, which the configuration may name instead. */
+    real?: string;
 }
 
-/** What the gate decided a fetch's host is: the answer to `check`, without opening a question. */
+/** What the gate decided about a fetch: every address of the remote that needs a question. */
 export interface FetchCheck {
     /** True when the call is a fetch this gate has something to say about. */
     fetch: boolean;
-    /** The host the fetch would reach. A local path reaches no host, so it offers no key and has none. */
-    host?: string;
-    /** The alias in the address that stands for `host`, which the question names. */
-    alias?: string;
+    /** One entry per address that is not a local path. Empty when nothing can be reached over ssh. */
+    targets: FetchTarget[];
 }
 
-/** Reads the call's repository and remote. A call the tool would refuse anyway gets no answer from here. */
+/**
+ * Every URL a remote has, in the order git holds them. `--get-all` rather than `--get`: a remote can hold several, and
+ * `--get` prints only the last while fetch uses the first, which is a way to show the gate one address and fetch another.
+ */
+async function remoteUrls(
+    repo: string,
+    remote: string,
+    signal?: AbortSignal,
+): Promise<{ ok: true; urls: string[] } | { ok: false }> {
+    try {
+        const result = await git(repo, ["config", "--get-all", `remote.${remote}.url`], { signal, timeoutMs: 3000 });
+        if (result.timedOut) return { ok: false };
+        if (result.code === 0) {
+            return {
+                ok: true,
+                urls: result.stdout
+                    .split("\n")
+                    .map((line) => line.trim())
+                    .filter((line) => line !== ""),
+            };
+        }
+        // A remote with no URL at all: nothing to read, so nothing to trust.
+        return result.code === 1 && result.stdout.trim() === "" ? { ok: true, urls: [] } : { ok: false };
+    } catch {
+        return { ok: false };
+    }
+}
+
+const shownAddress = (url: string, remote: string): string => {
+    const scrubbed = scrub(url).trim();
+    const shown = scrubbed === "" ? `remote ${remote}` : scrubbed;
+    return shown.length > 80 ? `${shown.slice(0, 80)}...` : shown;
+};
+
+/** Reads the call's repository and remote, and says what I would ask about. A call the tool would refuse anyway gets no target. */
 export async function inspectFetch(
     call: Pick<GateCall, "tool" | "action" | "input">,
     signal?: AbortSignal,
 ): Promise<FetchCheck> {
-    if (call.tool !== "git" || call.action !== "fetch") return { fetch: false };
+    if (call.tool !== "git" || call.action !== "fetch") return { fetch: false, targets: [] };
     const input = call.input as { repo?: unknown; remote?: unknown };
     let remote: string;
     try {
         remote = input.remote === undefined ? "origin" : checkRemote(input.remote);
     } catch {
-        return { fetch: true };
+        return { fetch: true, targets: [] };
     }
     let root: string;
     try {
         root = (await resolveRepo(typeof input.repo === "string" ? input.repo : undefined, signal)).root;
     } catch {
-        return { fetch: true };
+        return { fetch: true, targets: [] };
     }
-    const url = await remoteUrl(root, remote, signal);
-    const alias = url === undefined ? undefined : hostOfRemoteUrl(url);
-    if (alias === undefined) return { fetch: true };
-    // An ssh alias stands for the host `ssh -G` names, and the configuration may name either, so both are looked at.
-    const real = isSshOrigin(url as string) ? (await originHost(url as string, alias, gitSettings())).real : alias;
-    return { fetch: true, alias, host: real };
+    const listed = await remoteUrls(root, remote, signal);
+    if (!listed.ok) {
+        // The addresses could not be read: ask about the remote itself rather than let it run unblessed.
+        const shown = `remote ${remote}`;
+        return { fetch: true, targets: [{ shown, key: `?${shown}` }] };
+    }
+    if (listed.urls.length === 0) {
+        const shown = `remote ${remote}`;
+        return { fetch: true, targets: [{ shown, key: `?${shown}` }] };
+    }
+    const targets: FetchTarget[] = [];
+    for (const url of listed.urls) {
+        const address = addressOf(url);
+        if (address.kind === "local") continue;
+        if (address.kind === "unknown") {
+            const shown = shownAddress(url, remote);
+            targets.push({ shown, key: `?${shown}` });
+            continue;
+        }
+        // An ssh alias stands for the host `ssh -G` names, and the configuration may name either.
+        const real = isSshOrigin(url) ? (await originHost(url, address.host, gitSettings())).real : address.host;
+        targets.push({ shown: address.host, key: address.host, host: address.host, real });
+    }
+    return { fetch: true, targets };
 }
 
-/** Whether a fetch runs without a question: the host, or the alias standing for it, is one the user's configuration names. */
-export function isTrustedFetch(
-    check: FetchCheck,
+/** Whether one target needs no question: its host, its real host, or its address was allowed this session. */
+export function isTrustedTarget(
+    target: FetchTarget,
     settings: GitSettings,
     allowed: ReadonlySet<string> = new Set(),
 ): boolean {
-    if (check.host === undefined) return true;
+    if (allowed.has(target.key)) return true;
+    if (target.host === undefined) return false;
     return (
-        isTrustedHost(check.host, settings, allowed) ||
-        (check.alias !== undefined && isTrustedHost(check.alias, settings, allowed))
+        isTrustedHost(target.host, settings, allowed) ||
+        (target.real !== undefined && isTrustedHost(target.real, settings, allowed))
     );
 }
+
 /** A gate and the session's memory of the hosts the user allowed, which the answer to the question provides. */
 export interface FetchGuard {
     gate: Gate;
@@ -141,15 +232,16 @@ export function createFetchGuard(pi: Pick<ExtensionAPI, "events">): FetchGuard {
         plugin: "jig-git",
         async check(call, signal): Promise<GateVerdict | undefined> {
             const found = await inspectFetch(call, signal);
-            if (!found.fetch || found.host === undefined) return undefined;
-            if (isTrustedFetch(found, gitSettings(), allowed)) return undefined;
+            if (!found.fetch) return undefined;
+            const settings = gitSettings();
+            // Every address is looked at: one remote can hold several, and fetch uses the first while `--get` shows the last.
+            const open = found.targets.filter((target) => !isTrustedTarget(target, settings, allowed));
+            if (open.length === 0) return undefined;
+            const first = open[0] as FetchTarget;
             // The answer is remembered by its call id, so only this host is allowed for the session.
-            asked.set(call.toolCallId, found.host);
+            asked.set(call.toolCallId, first.key);
             if (asked.size > 100) asked.delete(asked.keys().next().value as string);
-            return {
-                decision: "ask",
-                reason: `fetch from ${found.alias ?? found.host}? Your SSH key will be offered there.`,
-            };
+            return { decision: "ask", reason: `fetch from ${first.shown}? Your SSH key will be offered there.` };
         },
     };
     return {

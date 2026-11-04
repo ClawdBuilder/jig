@@ -2,10 +2,12 @@
 // the host comes from a configuration the agent can write. Only a host the user's own configuration names as a forge runs
 // without a question; every other one asks, and a "this session" answer is remembered for that host alone.
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { after, before, beforeEach, test } from "node:test";
 import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
 import type { GateCall } from "../../jig-core/src/contract.ts";
-import { createFetchGuard, hostOfRemoteUrl, inspectFetch, isTrustedFetch } from "../src/fetch-guard.ts";
+import { addressOf, createFetchGuard, inspectFetch, isTrustedTarget } from "../src/fetch-guard.ts";
 import { gitSettings } from "../src/config.ts";
 import { git, makeRepo } from "./support/repos.ts";
 import { setupHarness } from "./support/harness.ts";
@@ -66,21 +68,34 @@ const call = (input: Record<string, unknown>, toolCallId = "call-1"): GateCall =
 const verdict = (guard: ReturnType<typeof createFetchGuard>, gateCall: GateCall) =>
     guard.gate.check(gateCall, undefined as never);
 
-test("a host in a remote address: scp-like, ssh, https; a local path has none", () => {
-    assert.equal(hostOfRemoteUrl("git@github.com:acme/orders-api.git"), "github.com");
-    assert.equal(hostOfRemoteUrl("ssh://git@gitlab.example.com:2222/g/p.git"), "gitlab.example.com");
-    assert.equal(hostOfRemoteUrl("https://user@GitHub.com/acme/orders-api.git"), "github.com");
-    assert.equal(hostOfRemoteUrl("/srv/git/orders-api.git"), undefined);
-    assert.equal(hostOfRemoteUrl("../elsewhere/orders-api"), undefined);
-    assert.equal(hostOfRemoteUrl("file:///srv/git/orders-api.git"), undefined);
+test("a host in a remote address, with or without a user; and the paths that reach none", () => {
+    assert.deepEqual(addressOf("git@github.com:acme/orders-api.git"), { kind: "host", host: "github.com" });
+    assert.deepEqual(addressOf("elsewhere.example:t/r.git"), { kind: "host", host: "elsewhere.example" });
+    assert.deepEqual(addressOf("ssh://git@gitlab.example.com:2222/g/p.git"), {
+        kind: "host",
+        host: "gitlab.example.com",
+    });
+    assert.deepEqual(addressOf("https://user@GitHub.com/acme/orders-api.git"), { kind: "host", host: "github.com" });
+    for (const path of [
+        "/srv/git/orders-api.git",
+        "../elsewhere/orders-api",
+        "./rel",
+        "~/work/x",
+        "file:///srv/git/x.git",
+    ]) {
+        assert.deepEqual(addressOf(path), { kind: "local" }, path);
+    }
+    assert.deepEqual(addressOf("C:\\work\\orders-api"), { kind: "local" });
+    assert.deepEqual(addressOf("orders-api"), { kind: "local" });
 });
 
 test("github.com runs without a question", async () => {
     const r = makeRepo(h.sb, `fetch-github-${++counter}`, "acme", "github.com");
     const found = await inspectFetch(call({ repo: r.name }));
     assert.equal(found.fetch, true);
-    assert.equal(found.host, "github.com");
-    assert.equal(isTrustedFetch(found, gitSettings()), true);
+    assert.equal(found.targets.length, 1);
+    assert.equal(found.targets[0]?.host, "github.com");
+    assert.equal(isTrustedTarget(found.targets[0] as never, gitSettings()), true);
     const guard = createFetchGuard(fakePi().pi);
     try {
         assert.equal(await verdict(guard, call({ repo: r.name })), undefined);
@@ -126,6 +141,87 @@ test("a host `git.forges` names, and its object form's real host, do not ask", a
     try {
         assert.equal(await verdict(guard, call({ repo: selfHosted.name })), undefined);
         assert.equal(await verdict(guard, call({ repo: alias.name })), undefined);
+    } finally {
+        guard.stop();
+    }
+});
+
+test("an scp-like address with no user is still a host: git reads `host:path` as ssh", async () => {
+    const r = makeRepo(h.sb, `fetch-nouser-${++counter}`, "acme", "github.com");
+    // The form git itself writes for a host with no user name in the URL.
+    git(r.dir, "remote", "add", "other", "elsewhere.example:t/r.git");
+    const guard = createFetchGuard(fakePi().pi);
+    try {
+        const answer = await verdict(guard, call({ repo: r.name, remote: "other" }));
+        assert.equal(answer?.decision, "ask");
+        assert.equal(answer?.reason, "fetch from elsewhere.example? Your SSH key will be offered there.");
+    } finally {
+        guard.stop();
+    }
+});
+
+test("every URL of a remote is checked: `--get` shows the last, fetch uses the first", async () => {
+    const r = makeRepo(h.sb, `fetch-multi-${++counter}`, "acme", "github.com");
+    // First the address fetch will use, then one that looks trusted and would be the only one `--get` printed.
+    git(r.dir, "remote", "set-url", "origin", "git@elsewhere.example:t/r.git");
+    git(r.dir, "config", "--add", "remote.origin.url", "git@github.com:acme/orders-api.git");
+    const guard = createFetchGuard(fakePi().pi);
+    try {
+        assert.equal(git(r.dir, "config", "--get", "remote.origin.url"), "git@github.com:acme/orders-api.git");
+        const answer = await verdict(guard, call({ repo: r.name }));
+        assert.equal(answer?.decision, "ask", "the second URL does not hide the first");
+        assert.equal(answer?.reason, "fetch from elsewhere.example? Your SSH key will be offered there.");
+    } finally {
+        guard.stop();
+    }
+});
+
+test("a trusted first URL does not excuse an untrusted second one", async () => {
+    const r = makeRepo(h.sb, `fetch-multi2-${++counter}`, "acme", "github.com");
+    git(r.dir, "config", "--add", "remote.origin.url", "git@elsewhere.example:t/r.git");
+    const guard = createFetchGuard(fakePi().pi);
+    try {
+        assert.equal((await verdict(guard, call({ repo: r.name })))?.decision, "ask");
+    } finally {
+        guard.stop();
+    }
+});
+
+test("an address the gate cannot read asks, naming the raw address, scrubbed", async () => {
+    const r = makeRepo(h.sb, `fetch-unknown-${++counter}`, "acme", "github.com");
+    // A URL git accepts and a person might write, which is neither a path nor a host this parser can trust.
+    git(r.dir, "config", "remote.origin.url", "user:pw@elsewhere.example:t/r.git");
+    const guard = createFetchGuard(fakePi().pi);
+    try {
+        const answer = await verdict(guard, call({ repo: r.name }));
+        assert.equal(answer?.decision, "ask");
+        assert.doesNotMatch(answer?.reason ?? "", /user:pw@/, "the question holds no credential");
+        assert.match(answer?.reason ?? "", /elsewhere\.example/);
+    } finally {
+        guard.stop();
+    }
+});
+
+test("a remote with no readable address asks rather than passing", async () => {
+    const r = makeRepo(h.sb, `fetch-ghost-${++counter}`, "acme", "github.com");
+    // A remote section with no url line, as a hand-edited configuration can leave.
+    fs.appendFileSync(path.join(r.dir, ".git", "config"), '\n[remote "ghost"]\n');
+    const guard = createFetchGuard(fakePi().pi);
+    try {
+        const answer = await verdict(guard, call({ repo: r.name, remote: "ghost" }));
+        assert.equal(answer?.decision, "ask");
+        assert.match(answer?.reason ?? "", /remote ghost/);
+    } finally {
+        guard.stop();
+    }
+});
+
+test("a remote whose every url is trusted runs without a question", async () => {
+    const r = makeRepo(h.sb, `fetch-both-${++counter}`, "acme", "github.com");
+    git(r.dir, "config", "--add", "remote.origin.url", "https://github.com/acme/mirror.git");
+    const guard = createFetchGuard(fakePi().pi);
+    try {
+        assert.equal(await verdict(guard, call({ repo: r.name })), undefined);
     } finally {
         guard.stop();
     }

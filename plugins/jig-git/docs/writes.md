@@ -35,6 +35,11 @@ The hosts that run without a question are the ones your own configuration names 
 - `git.cloneHost`;
 - every host in `git.forges`, both the name the remote uses and an object entry's real `host`.
 
+Every URL the remote holds is read (`git config --get-all`), and a fetch asks if any of them is on a host the configuration
+does not name: `git config --get` shows only the last URL, while fetch uses the first, so one URL cannot vouch for another.
+An address that cannot be read as a host or as a path — including a remote with no URL — asks too, naming it, because an
+unreadable address is not a reason to let a fetch run.
+
 Any other host asks, with its name: `fetch from elsewhere.example? Your SSH key will be offered there.` Answering
 **This session** remembers that host alone, so a fork whose upstream is fetched repeatedly asks once; another host asks
 again. A local-path or `file://` remote reaches no host, offers no key, and does not ask.
