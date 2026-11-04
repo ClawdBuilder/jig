@@ -57,7 +57,8 @@ export function createAftermath(deps: AftermathDeps): Aftermath {
                 if (input.ctx.hasUI) for (const notice of result.notices) input.ctx.ui.notify(notice, "warning");
             } catch (error) {
                 lines.push(
-                    `[sandbox] the check of what the command changed failed (${(error as Error).message}); look at your shell start-up files and git hooks.`,
+                    `[sandbox] the check of what the command changed failed (${(error as Error).message}), so anything it planted was not undone: ` +
+                        "look at your shell start-up files, git hooks and git configuration before running anything outside the sandbox.",
                 );
             }
             const failed = typeof input.exitCode === "number" && input.exitCode !== 0;
