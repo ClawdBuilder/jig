@@ -307,9 +307,10 @@ export function readApi(raw: unknown): { settings?: ApiSettings; errors: string[
 
 /**
  * Where an object of yours replaces a company's whole, when a company plugin gives defaults for the section: an
- * environment's entry names a sign-in service or a transport, never both, and merging two would name both.
+ * environment's entry names a sign-in service or a transport, never both, and merging two would name both; a collection's
+ * entry names exactly one source, and merging a company's and a teammate's would name two and lose the whole section.
  */
-export const API_REPLACE: readonly string[] = ["environments.*"];
+export const API_REPLACE: readonly string[] = ["environments.*", "collections.*"];
 
 /** The error messages for a raw section, for `registerSection`. An empty list means the section is valid. */
 export function validateApi(raw: unknown): string[] {
