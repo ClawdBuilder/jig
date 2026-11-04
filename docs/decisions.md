@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words](#2026-11-04-jig-doctor-reads-and-jig-setup-writes-in-the-persons-words)
 - [2026-11-03: company profiles, and skill overlays instead of paired skills](#2026-11-03-company-profiles-and-skill-overlays-instead-of-paired-skills)
 - [2026-11-03: deferred tools and stage tools](#2026-11-03-deferred-tools-and-stage-tools)
 - [2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file](#2026-11-02-the-review-screens-browser-page-is-served-over-localhost-not-opened-as-a-file)
@@ -60,6 +61,47 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words
+
+`/jig doctor` is built; `/jig setup` is next. Both exist so a teammate who does not edit JSON can set Jig up,
+with their own preferences and their own way of keeping credentials, over a company plugin's defaults.
+
+**Decided**
+- **`/jig doctor` is read-only.** It reports the machine, the settings and each plugin section, every secret
+  reference, the login tools the settings use, the sandbox and the records folder, at `ok`, `warn`, `fail` or
+  `skip`, with one plain fix per finding. It never resolves a reference, signs in, unlocks a store or writes a
+  setting. A reference's status is metadata only: a `pass` entry file, an environment variable, a file's size.
+- **`/jig setup` may write the person's `jig.json`**, and nothing else but a backup beside it. The person
+  types the command, sees what will change, confirms once, and runs `/reload`. It is a slash command, not a
+  tool, so the agent and the model cannot run it. It refuses an invalid file or one that changed while it was
+  open, keeps a backup, and replaces the file in one atomic step.
+- **Plain words first; JSON only on request.** Every screen says what the change means for the person, such
+  as "Jira: your token will be read from 1Password (vault Work, item Jira, field token)" or "GitHub: you sign
+  in with gh; nothing is stored". A reference such as `op://...` or `pass:...` appears only behind "Show the
+  exact change", beside the JSON diff.
+- **No value, ever.** Setup asks where a credential lives, never for the credential. It offers the stores
+  this machine has, preselects the company's choice, and prints the store's own command to add a missing
+  secret. It never signs in and never stores a value.
+- **The person's file is theirs.** Setup writes only the fields they chose, leaves every other key and a
+  company plugin's defaults alone, and never changes rules, protected paths or the floor.
+
+**Why**
+- A file that only an expert can edit is a setup step most of a team skips, and a skipped setup is a tool that
+  fails later with a message about a reference. The doctor and the setup are how a person who does not read
+  JSON gets to a working, safe session.
+- The write is the one thing that could break the rule that an agent does not change its own rules. A command
+  a person runs, which shows the change in their words and asks once, keeps the person in charge; a tool the
+  model calls would not.
+
+**Rejected**
+- **A setup tool the model can call.** The model would be able to change its own rules, and a prompt could
+  reach it.
+- **A password field or panel in Jig.** It is still Jig taking a secret, which is the rule that does not move.
+- **Rewriting the whole file from a template.** It would lose what Jig does not understand and make every
+  write a review of the whole file instead of the three lines that changed.
+- **A doctor with `--fix` in the first release.** A check that changes the thing it is checking is trusted
+  less, and repair needs its own reversible, named actions.
 
 ## 2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make
 

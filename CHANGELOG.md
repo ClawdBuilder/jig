@@ -6,6 +6,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `/jig doctor`: a read-only check of the machine, the settings, every secret reference, the login tools,
+  the sandbox and the records folder, with `ok`, `warn`, `fail` and `skip` levels and one plain fix per
+  finding. It never reads a secret value.
 - An audit of every tool: `plugins/jig-core/test/audit.test.ts` checks each action against its plugin's documentation and the
   effect and approval its `classify` returns, pins the classification of all of them, and reports the actions no test names.
 
