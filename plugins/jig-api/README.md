@@ -62,7 +62,8 @@ to their local copy and says what changed.
 
 - **`list`** can filter by text, and says whether each request reads.
 - **`run`:** `GET`, `HEAD` and `OPTIONS` read; other methods write, unless the
-  request is in `reads`.
+  request is in `reads` — and in production only those three methods read, so a
+  `POST` search listed there is a write there and the floor denies it.
 - **`run-folder`** gives one line per request.
 - **`postman-environments`** uses a Postman cloud collection's key, to find the id to map
   ([Listing environments](docs/postman-cloud.md#listing-environments)).
@@ -109,7 +110,7 @@ then does nothing until the file is fixed (`/jig` lists the problems).
 | `collections` | Named sources: `postman`, `http`, `bruno` or `openapi`. Paths start with `~/` or `/` |
 | `environments` | Your collections' environment names, mapped to `jig-core`'s |
 | `secrets` | Secret variables, by name, mapped to secret references |
-| `reads` | Requests that read although their method is not `GET` |
+| `reads` | Requests that read although their method is not `GET`. Outside production only: in production only `GET`, `HEAD` and `OPTIONS` read |
 | `adHoc` | `jig-core` test environments where `call` is allowed |
 | `timeoutSec` | Seconds to wait for an answer: 1 to 120, default 30 |
 | `allowPlainLocal` | Allows `http://127.0.0.1` and `http://localhost`. Default `false` |
