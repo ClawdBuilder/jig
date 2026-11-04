@@ -125,6 +125,11 @@ export function createDeployTool(options: DeployOptions = {}): DeployTool {
     }
 
     return {
+        /**
+         * Reads the catalog, on purpose. The decision needs it: the environment's kind is what refuses a production deploy
+         * before anyone is asked, and the catalog is what says whether an environment has a deploy method at all. A later
+         * "make classify pure" refactor must not remove this read — see docs/catalog.md, "Why a call reads the catalog".
+         */
         classify(input) {
             return classifying(() => {
                 const call = parseCall(input, currentCatalog());
