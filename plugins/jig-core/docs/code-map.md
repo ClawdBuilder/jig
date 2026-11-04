@@ -87,9 +87,10 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `doctor.ts` | `/jig doctor`: the check list, the levels, the counts and the text report | `commands.ts` |
-| `doctor-checks.ts` | The machine, configuration and protected-file checks, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
+| `doctor.ts` | `/jig doctor`: the check list, the levels, the counts, the metadata and the text report | `commands.ts` |
+| `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
+| `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
 | `secret-status.ts` | One reference's status, found by metadata only: never resolves it and never reads a value | `doctor-secrets.ts` |
 | `pi-version.ts` | Pi's version from the package Pi loaded, and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts` |

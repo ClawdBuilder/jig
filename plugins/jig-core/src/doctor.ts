@@ -5,11 +5,14 @@ import type { CompanyAdditions, LoadedConfig, SectionCheck } from "./config.ts";
 import type { ProtectedPathInfo, RunOptions, RunResult, SandboxProvider } from "./contract.ts";
 import { DOCTOR_CHECKS } from "./doctor-checks.ts";
 import { errorMessage } from "./errors.ts";
+import { jigPackage, piVersion } from "./pi-version.ts";
+import type { Connector } from "./start-checks.ts";
+import type { Timers } from "./watch/timers.ts";
 
 /** `ok` works, `warn` is worth knowing, `fail` will stop a tool, `skip` was not checked or does not apply. */
 export type DoctorLevel = "ok" | "warn" | "fail" | "skip";
 
-export type DoctorGroupId = "machine" | "config" | "secrets" | "logins" | "sandbox" | "records";
+export type DoctorGroupId = "machine" | "config" | "secrets" | "logins" | "network" | "sandbox" | "records";
 
 /** The groups, in the order the report shows them. */
 export const DOCTOR_GROUPS: ReadonlyArray<{ id: DoctorGroupId; title: string }> = [
@@ -17,6 +20,7 @@ export const DOCTOR_GROUPS: ReadonlyArray<{ id: DoctorGroupId; title: string }> 
     { id: "config", title: "Configuration" },
     { id: "secrets", title: "Secrets" },
     { id: "logins", title: "Logins" },
+    { id: "network", title: "Network" },
     { id: "sandbox", title: "Sandbox" },
     { id: "records", title: "Records" },
 ];
@@ -29,11 +33,23 @@ export interface DoctorLine {
     title: string;
     detail?: string;
     fix?: string;
+    /** A few machine-readable facts a screen does not show, such as a host and port. Never a value. */
+    data?: Record<string, string | number | boolean>;
+}
+
+/** What the report is about, for the JSON file. Versions that could not be read are `null`. */
+export interface DoctorMeta {
+    jig: string | null;
+    pi: string | null;
+    node: string;
+    platform: NodeJS.Platform;
+    network: boolean;
 }
 
 export interface DoctorReport {
     lines: DoctorLine[];
     counts: Record<DoctorLevel, number>;
+    meta: DoctorMeta;
 }
 
 /** The part of jig-core the checks read. `JigState` fits it; a test can build one by hand. */
@@ -60,6 +76,9 @@ export interface DoctorContext {
 /** Starts a program, as `exec.run` does. Tests pass a fake. */
 export type RunProgram = (file: string, args: readonly string[], options?: RunOptions) => Promise<RunResult>;
 
+/** One plain HTTP GET for the latest release, without a credential. Tests pass a fake. */
+export type ReleaseFetcher = (url: string, signal: AbortSignal) => Promise<{ status: number; text: string }>;
+
 export interface DoctorOptions {
     /** How programs are started for the login checks. Default: `exec.run`. */
     run?: RunProgram;
@@ -76,6 +95,14 @@ export interface DoctorOptions {
     home?: string;
     /** How long one login check may take. Default 5 seconds. */
     timeoutMs?: number;
+    /** Run the network checks. Off unless the person adds `--network`. */
+    network?: boolean;
+    /** Makes the one TCP connection of a network check. Default: a real one. */
+    connect?: Connector;
+    /** The timers a network check's 3-second limit runs on. Default: Node's. */
+    timers?: Timers;
+    /** Fetches the latest release. Default: one HTTPS GET to the API. Tests pass a fake. */
+    fetchText?: ReleaseFetcher;
 }
 
 /** Runs every check. Never throws: a check that crashes is one failed finding, and the rest still run. */
@@ -97,17 +124,35 @@ export async function runDoctor(context: DoctorContext, options: DoctorOptions =
     }
     const counts: Record<DoctorLevel, number> = { ok: 0, warn: 0, fail: 0, skip: 0 };
     for (const line of lines) counts[line.level]++;
-    return { lines, counts };
+    const pkg = jigPackage();
+    const jig = options.jigVersion === null ? undefined : (options.jigVersion ?? pkg.version);
+    const pi = (options.piVersion ?? piVersion)();
+    return {
+        lines,
+        counts,
+        meta: {
+            jig: jig ?? null,
+            pi: pi ?? null,
+            node: options.nodeVersion ?? process.versions.node,
+            platform: options.platform ?? process.platform,
+            network: options.network === true,
+        },
+    };
 }
 
-/** The report as lines for Pi's screen: a summary, one section per group, and what to do about it. */
-export function formatDoctor(report: DoctorReport): string[] {
+/** The report as lines for Pi's screen: a summary, one section per group, and what to do about it. `quiet` keeps only
+ *  the warnings and failures, with the summary of the whole report. */
+export function formatDoctor(report: DoctorReport, options: { quiet?: boolean } = {}): string[] {
     const { ok, warn, fail, skip } = report.counts;
+    const shown =
+        options.quiet === true
+            ? report.lines.filter((line) => line.level === "warn" || line.level === "fail")
+            : report.lines;
     const out = [
         `Jig doctor · ${ok} ok · ${count(warn, "warning")} · ${count(fail, "failure")}${skip === 0 ? "" : ` · ${skip} skipped`}`,
     ];
     for (const group of DOCTOR_GROUPS) {
-        const lines = report.lines.filter((line) => line.group === group.id);
+        const lines = shown.filter((line) => line.group === group.id);
         if (lines.length === 0) continue;
         out.push("", group.title);
         for (const line of lines) {
