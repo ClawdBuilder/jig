@@ -135,6 +135,13 @@ company plugin's own tools can be deferred the same way.
   - **`not set or invalid`** means your file has the section and it failed the
     plugin's check (the problem is listed under it), or the file could not be read
     at all.
+- **`/jig doctor`** checks this machine and the setup, and gives one fix for each finding.
+  It reads and never writes. It reports the Node.js and Pi versions, the settings file
+  and the state of each plugin section, every secret reference in the effective
+  settings (found, missing or not checked), the login tools the settings use, the
+  sandbox and its programs, and the records folder. A level is `ok`, `warn`, `fail` or
+  `skip`, and the summary counts them. It never resolves a reference, starts a login
+  or unlocks a store; the fix line is a command for you to run.
 - **`/jig rules [tool]`** shows the effective decision per tool and action,
   with where each came from: declaration, rule, hint or default.
   - A tool whose schema lists its actions gets a line for each.

@@ -43,7 +43,8 @@ configuration. There is no `jig.json` yet, so it says `Configuration: none found
 plugin section reads `not set or invalid`. That is fine: the defaults are safe, and `/jig` is where problems
 show up as you change things.
 
-Two more commands help you look around:
+Three more commands help you look around:
+- `/jig doctor` checks the setup and says, in plain words, what is missing and what to run;
 - `/jig rules` shows the decision for every tool and action, and where it came from;
 - `/jig records` shows where today's records are.
 
