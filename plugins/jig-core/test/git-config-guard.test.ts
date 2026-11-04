@@ -59,6 +59,23 @@ const DANGEROUS: Array<{ key: string; section: string; variable: string; subsect
         variable: "path",
         value: "../elsewhere.cfg",
     },
+    { key: "core.alternaterefscommand", section: "core", variable: "alternateRefsCommand", value: "evil" },
+    { key: "gc.recentobjectshook", section: "gc", variable: "recentObjectsHook", value: "evil" },
+    {
+        key: "gpg.ssh.defaultkeycommand",
+        section: "gpg",
+        subsection: "ssh",
+        variable: "defaultKeyCommand",
+        value: "evil",
+    },
+    { key: "remote.origin.uploadpack", section: "remote", subsection: "origin", variable: "uploadpack", value: "evil" },
+    {
+        key: "remote.origin.receivepack",
+        section: "remote",
+        subsection: "origin",
+        variable: "receivepack",
+        value: "evil",
+    },
 ];
 
 const SAFE = [
@@ -91,6 +108,14 @@ describe("which keys are dangerous", () => {
         assert.equal(isDangerousKey("CORE.SSHCOMMAND", "x"), true);
         assert.equal(isDangerousKey("Url.X.InsteadOf", "x"), true);
         assert.equal(isDangerousKey("Credential.Helper", "x"), true);
+    });
+
+    test("submodule.<name>.update is dangerous only when it runs a command", () => {
+        for (const value of ["!touch /tmp/x", "  !sh -c 'x'"])
+            assert.equal(isDangerousKey("submodule.orders.update", value), true, value);
+        for (const value of ["checkout", "rebase", "none", undefined])
+            assert.equal(isDangerousKey("submodule.orders.update", value), false, String(value));
+        assert.equal(isDangerousKey("submodule.recurse", "true"), false);
     });
 
     test("core.fsmonitor is safe when false (any spelling), dangerous otherwise", () => {
@@ -138,6 +163,14 @@ describe("reading the listing of `git config --list --null --show-origin --show-
         const refusal =
             refusalFromList(entry("local", "file:.git/config", "url.https://evil.example/.insteadOf", "x"), "/r") ?? "";
         assert.match(refusal, /git config --unset 'url\.https:\/\/evil\.example\/\.insteadOf'/);
+    });
+
+    test("a local-path remote that names its own upload-pack is refused before a fetch runs it", () => {
+        const listing =
+            entry("local", "file:.git/config", "remote.origin.url", "../elsewhere") +
+            entry("local", "file:.git/config", "remote.origin.uploadpack", "touch /tmp/pwned");
+        const refusal = refusalFromList(listing, "/work/repo") ?? "";
+        assert.match(refusal, /sets remote\.origin\.uploadpack, which would run with your credentials/);
     });
 
     test("a clean listing is fine", () => {

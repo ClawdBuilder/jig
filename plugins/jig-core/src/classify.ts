@@ -115,6 +115,11 @@ function isValidClass(answer: CallClass): boolean {
         typeof answer.environment === "string" &&
         answer.environment !== "" &&
         (answer.effect === "read" || answer.effect === "write") &&
+        (answer.action === undefined || typeof answer.action === "string") &&
+        (answer.approval === undefined ||
+            answer.approval === "dialog" ||
+            answer.approval === "review" ||
+            answer.approval === "form") &&
         (answer.atLeast === undefined || answer.atLeast === "ask" || answer.atLeast === "deny")
     );
 }

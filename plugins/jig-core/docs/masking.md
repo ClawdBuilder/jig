@@ -52,7 +52,9 @@ How it decides:
     result and every spelling (case, spacing, IPv6 notation), and a different
     token tomorrow.
   - The key is 32 random bytes in `<state>/mask/<YYYY-MM-DD>.key` (file 0600,
-    folder 0700), and keys older than two days are deleted.
+    folder 0700), and keys older than two days are deleted. The folder is a
+    [protected path](../../../docs/permissions.md#protected-paths): Pi's file tools
+    neither read nor write it, and the sandbox hides it from `bash`.
 - **A company plugin adds field names** that hold personal data in its own data,
   with `config.addMaskFields(fields)`.
   - They are compared without case or separators, beat every built-in rule, and

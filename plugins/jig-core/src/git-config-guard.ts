@@ -24,6 +24,10 @@ const PLAIN = new Set([
     "gpg.program",
     "sequence.editor",
     "include.path",
+    // Fetch may run an automatic gc, and automatic gc runs this with the shell.
+    "gc.recentobjectshook",
+    // Listing the tips of a local alternate runs this with the shell.
+    "core.alternaterefscommand",
 ]);
 
 /** Variables that are dangerous under any subsection (`filter.<name>.clean`), by section. */
@@ -34,8 +38,10 @@ const SUBSECTION: ReadonlyMap<string, ReadonlySet<string>> = new Map([
     ["merge", new Set(["driver"])],
     ["url", new Set(["insteadof", "pushinsteadof"])],
     ["protocol", new Set(["allow"])],
-    ["gpg", new Set(["program"])],
+    ["gpg", new Set(["program", "defaultkeycommand"])],
     ["includeif", new Set(["path"])],
+    // For a local-path or file:// remote, git runs the named program on this machine on fetch or push.
+    ["remote", new Set(["uploadpack", "receivepack"])],
 ]);
 
 /** Git's boolean false: `false`, `no`, `off`, `0` or an empty value. A bare key (no `=`) is true. */
@@ -51,6 +57,8 @@ export function isDangerousKey(key: string, value?: string): boolean {
     const first = lower.indexOf(".");
     const last = lower.lastIndexOf(".");
     if (first < 0) return false;
+    // `submodule.<name>.update` runs a command only when its value starts with `!`; a checkout or a rebase is safe.
+    if (lower.startsWith("submodule.") && lower.endsWith(".update")) return (value ?? "").trimStart().startsWith("!");
     if (first === last) {
         // `core.fsmonitor=false` is the safe setting, and Jig's own fixed flags set exactly that.
         if (lower === "core.fsmonitor") return !isFalse(value);

@@ -170,6 +170,56 @@ describe("the defaults", () => {
     });
 });
 
+describe("the state folder", () => {
+    const state = path.join(root, "state");
+    const ctx = (): CheckContext => ({
+        entries: defaultProtectedPaths({ agentDir: agent, home, stateDir: state, env: {} }),
+        cwd: project,
+        home,
+    });
+
+    test("the masking keys and the preview pages are secret: no reading and no writing", () => {
+        for (const target of [
+            path.join(state, "mask", "2026-11-04.key"),
+            path.join(state, "mask", "2026-11-04.key.123.abcd.tmp"),
+            path.join(state, "previews", "6f1c.html"),
+        ]) {
+            for (const tool of ["read", "write", "edit"]) {
+                const refusal = checkFileTool(tool, { path: target }, ctx());
+                assert.notEqual(refusal, undefined, `${tool} ${target}`);
+                assert.match(refusal?.reason ?? "", /holds credentials/);
+            }
+        }
+    });
+
+    test("the rest of the state folder stays readable: a spill file is the rest of a result", () => {
+        for (const target of [
+            path.join(state, "records", "2026-11-04.jsonl"),
+            path.join(state, "spill", "session-1", "result.txt"),
+            path.join(state, "watches", "abc.json"),
+            path.join(state, "skills", "acme", "jira", "SKILL.md"),
+        ]) {
+            assert.equal(checkFileTool("read", { path: target }, ctx()), undefined, target);
+        }
+    });
+
+    test("a search of the state folder is refused, because it holds a secret folder", () => {
+        const refusal = checkFileTool("grep", { path: state }, ctx());
+        assert.match(refusal?.reason ?? "", /contains .*holds credentials/);
+    });
+
+    test("a state folder that does not exist yet is protected by its name", () => {
+        const missing = path.join(root, "not-made-yet");
+        const entries = defaultProtectedPaths({ agentDir: agent, home, stateDir: missing, env: {} });
+        const refusal = checkFileTool(
+            "read",
+            { path: path.join(missing, "mask", "x.key") },
+            { entries, cwd: project, home },
+        );
+        assert.notEqual(refusal, undefined);
+    });
+});
+
 describe("stores that the environment moves", () => {
     const moved = (env: Env, platform?: NodeJS.Platform, homeFolder = home) =>
         relocatedStores(env, homeFolder, platform);
@@ -789,6 +839,18 @@ describe("the tool_call hook", () => {
         assert.equal(record?.decisionSource, "floor");
         assert.equal(record?.errorKind, "denied");
         assert.ok(!rawRecords(harness.stateDir).includes("id_ed25519"), "the record holds no path the user typed");
+    });
+
+    test("denies a read of the masking key, and allows a read of the spill file", async () => {
+        const harness = await begin();
+        const key = path.join(harness.stateDir, "mask", "2026-01-01.key");
+        const read = await harness.call({ tool: "read", input: { path: key } });
+        assert.equal(read.blocked, true);
+        assert.match(read.reason ?? "", /holds credentials/);
+
+        const spill = path.join(harness.stateDir, "spill", "session-1", "result.txt");
+        const allowed = await harness.call({ tool: "read", input: { path: spill } });
+        assert.equal(allowed.blocked, false);
     });
 
     test("denies a write to the agent folder, and allows a read of it", async () => {

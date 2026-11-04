@@ -33,6 +33,29 @@ describe("sections in the file", () => {
         return file;
     }
 
+    test("a section is a frozen copy, nested values included, so a plugin that changes it changes nothing", () => {
+        const file = write({ git: { timeout: 30, hops: [{ host: "a" }] } });
+        const loaded = loadConfigFile(file, new Map([["git", gitCheck]]));
+        const section = loaded.sections.get("git") as { timeout: number; hops: Array<{ host: string }> };
+        assert.equal(Object.isFrozen(section), true);
+        assert.equal(Object.isFrozen(section.hops), true);
+        assert.equal(Object.isFrozen(section.hops[0]), true);
+        assert.throws(() => {
+            section.timeout = 1;
+        }, TypeError);
+        assert.equal(section.timeout, 30);
+    });
+
+    test("a company default that the user has no section for is a frozen copy too, and the company's own object is not frozen", () => {
+        const defaults = { timeout: 5, hops: [{ host: "a" }] };
+        const layers = { defaults: new Map([["git", defaults]]), replace: new Map() };
+        const loaded = loadConfigFile(write({}), new Map([["git", gitCheck]]), layers);
+        const section = loaded.sections.get("git") as { timeout: number; hops: Array<{ host: string }> };
+        assert.equal(Object.isFrozen(section), true);
+        assert.equal(Object.isFrozen(section.hops[0]), true);
+        assert.equal(Object.isFrozen(defaults), false, "the company keeps its own object");
+    });
+
     test("a registered section that loads", () => {
         const file = write({ git: { timeout: 30 }, rules: [{ tool: "t", decision: "ask" }] });
         const loaded = loadConfigFile(file, new Map([["git", gitCheck]]));

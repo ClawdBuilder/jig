@@ -126,6 +126,8 @@ describe("1. the tool's own declaration", () => {
             { environment: "", effect: "read" },
             { environment: "local", effect: "delete" },
             { environment: "local", effect: "read", atLeast: "never" },
+            { environment: "local", effect: "read", approval: "banana" },
+            { environment: "local", effect: "read", action: 7 },
             { effect: "read" },
         ];
         for (const answer of bad) {
