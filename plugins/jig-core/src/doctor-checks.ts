@@ -74,19 +74,16 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
         {
             id: "machine.pi",
             group: "machine",
-            level: pi === undefined ? "warn" : "ok",
+            // Not being able to read Pi's version says nothing about the session: it is a skip, not a problem to fix.
+            level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
             title: "Pi",
             detail:
                 pi === undefined
-                    ? "could not be read"
+                    ? "version unknown"
                     : meetsMinimum(pi, "1.4.0")
                       ? pi
                       : `${pi} (Jig needs 1.4 or later)`,
-            ...(pi === undefined
-                ? { fix: "Run pi --version in a terminal." }
-                : meetsMinimum(pi, "1.4.0")
-                  ? {}
-                  : { fix: "Update Pi: pi update." }),
+            ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
         },
         {
             id: "machine.jig",
@@ -312,8 +309,8 @@ function onboardingLines(context: DoctorContext, settingsShown: string): DoctorL
             title: `You need: ${item.label}`,
             detail:
                 item.why ??
-                `Add ${item.section}.${item.path} to ${settingsShown}, or run /jig setup and it asks for it.`,
-            fix: hint ?? "Run /jig setup and it asks for this.",
+                `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
+            fix: hint ?? "Run jig setup and it asks for this.",
         });
     }
     return lines;

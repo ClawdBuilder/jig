@@ -117,7 +117,7 @@ describe("/jig doctor checks", () => {
         assert.ok(line, text(report));
         assert.equal(line.group, "config");
         assert.equal(line.detail, "The gateway asks for it.");
-        assert.equal(line.fix, "Run /jig setup and it asks for this.");
+        assert.equal(line.fix, "Run jig setup and it asks for this.");
     });
 
     test("a working setup passes, with a summary and the groups a person expects", async () => {
@@ -180,9 +180,11 @@ describe("/jig doctor checks", () => {
         );
     });
 
-    test("an unreadable Pi version is a warning, not a crash", async () => {
+    test("an unreadable Pi version is a skip, not a warning to fix, and not a crash", async () => {
         const report = await runDoctor(context(), options({ piVersion: () => undefined }));
-        assert.equal(report.lines.find((line) => line.id === "machine.pi")?.level, "warn");
+        const line = report.lines.find((entry) => entry.id === "machine.pi");
+        assert.equal(line?.level, "skip");
+        assert.equal(line?.fix, undefined, "nothing to run: Pi's version is not the problem");
     });
 
     test("a missing settings file is fine; it says the defaults apply", async () => {
@@ -326,6 +328,14 @@ describe("/jig doctor secrets", () => {
             assert.equal(line?.level, "warn");
             assert.match(line?.detail ?? "", /other users can read this file/);
         }
+    });
+
+    test("a store no reference uses is not checked: no warning about a pass folder that is not there", async () => {
+        const report = await runDoctor(context({ overrides: { personal: withBackends("pass") } }), options());
+        const line = report.lines.find((entry) => entry.id === "secrets.pass");
+        assert.equal(line?.level, "skip");
+        assert.match(line?.detail ?? "", /not used by any reference/);
+        assert.equal(line?.fix, undefined);
     });
 
     test("a malformed reference fails, and its text never appears", async () => {

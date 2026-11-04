@@ -117,8 +117,21 @@ export async function checkSecrets(context: DoctorContext, options: DoctorOption
         });
     }
 
+    const references = collectReferences(context).refs;
+    const preferred = byCompany.includes("pass");
+    const usedStores = new Set(references.map((reference) => reference.backend));
     const passDir = passStoreDir(context);
-    if (on.includes("pass")) {
+    if (on.includes("pass") && !usedStores.has("pass") && !preferred) {
+        // A store being on is not a reason to check its folder: a newcomer with no reference yet has no pass store, and
+        // nothing needs one. The line says it is not used, and a missing folder is not a warning.
+        lines.push({
+            id: "secrets.pass",
+            group: "secrets",
+            level: "skip",
+            title: "pass store",
+            detail: "not used by any reference, and no company prefers it.",
+        });
+    } else if (on.includes("pass")) {
         if (passDir === "") {
             lines.push({
                 id: "secrets.pass",

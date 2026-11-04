@@ -130,6 +130,17 @@ export function sandboxChecks(context: DoctorContext, options: DoctorOptions): D
             },
         ];
     }
+    if (!provider.active && context.standalone === true) {
+        return [
+            {
+                id: "sandbox.provider",
+                group: "sandbox",
+                level: "skip",
+                title: "Sandbox",
+                detail: "the sandbox starts with Pi, so this is not checked here.",
+            },
+        ];
+    }
     if (!provider.active) {
         return [
             {

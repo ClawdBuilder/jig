@@ -64,6 +64,8 @@ export interface DoctorContext {
     commands: Readonly<Record<string, readonly string[]>>;
     /** The active company's onboarding list: what its people must supply, in its words. */
     onboarding?: OnboardingEntry;
+    /** True in the `jig` command: there is no Pi session here, so a sandbox that has not started is not a failure. */
+    standalone?: boolean;
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;
@@ -144,7 +146,7 @@ export async function runDoctor(context: DoctorContext, options: DoctorOptions =
 
 /** The report as lines for Pi's screen: a summary, one section per group, and what to do about it. `quiet` keeps only
  *  the warnings and failures, with the summary of the whole report. */
-export function formatDoctor(report: DoctorReport, options: { quiet?: boolean } = {}): string[] {
+export function formatDoctor(report: DoctorReport, options: { quiet?: boolean; command?: string } = {}): string[] {
     const { ok, warn, fail, skip } = report.counts;
     const shown =
         options.quiet === true
@@ -162,14 +164,14 @@ export function formatDoctor(report: DoctorReport, options: { quiet?: boolean } 
             if (line.fix !== undefined) out.push(`       fix: ${line.fix}`);
         }
     }
-    out.push("", ending(report.counts));
+    out.push("", ending(report.counts, options.command ?? "/jig"));
     return out;
 }
 
-function ending(counts: Record<DoctorLevel, number>): string {
+function ending(counts: Record<DoctorLevel, number>, command: string): string {
     if (counts.fail > 0) {
         const things = counts.fail === 1 ? "1 thing needs" : `${counts.fail} things need`;
-        return `${things} you. Fix ${counts.fail === 1 ? "it" : "them"} above, then run /jig doctor again.`;
+        return `${things} you. Fix ${counts.fail === 1 ? "it" : "them"} above, then run ${command} doctor again.`;
     }
     if (counts.warn > 0)
         return `Nothing is blocked. ${count(counts.warn, "warning")} ${counts.warn === 1 ? "is" : "are"} worth a look.`;
