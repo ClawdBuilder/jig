@@ -86,8 +86,9 @@ On approval the plugin:
 - **The page is local.** Served on `127.0.0.1`, on a random port, and opened at `localhost`, because a
   passkey cannot use an IP address.
 - **Its link carries a per-session secret,** swapped for an HttpOnly cookie. The link goes only to you;
-  a request without the cookie, or from another host or origin, is refused
-  ([Server security](docs/server-security.md)).
+  a request without the cookie is refused, and a write that names an `Origin` other than
+  this server's is refused too (a request with no `Origin`, as a program makes, is allowed;
+  approval never rests on this check). See [Server security](docs/server-security.md).
 - **Approval does not rest on the secret.** A stolen cookie can comment as you; it cannot approve.
 - **Records are the agent's to read, not to write.** Reviews, settings and passkeys live under Pi's agent
   folder, which the file tools can read but not write and the sandbox's shell cannot reach. None of them is a
