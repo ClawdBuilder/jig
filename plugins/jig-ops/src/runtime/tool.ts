@@ -109,6 +109,12 @@ export function createRuntimeTool(options: RuntimeOptions = {}): RuntimeTool {
     }
 
     return {
+        /**
+         * Reads the catalog, on purpose. It maps a service and an environment to a target, and it says whether a health
+         * check would run curl inside a pod — the one read this tool refuses in production, which must happen before
+         * anyone is asked. A later "make classify pure" refactor must not remove this read: see docs/catalog.md,
+         * "Why a call reads the catalog".
+         */
         classify(input) {
             // An unknown service or environment, a call that breaks the limits, and a
             // health check that would run in a production pod all throw a TypeError

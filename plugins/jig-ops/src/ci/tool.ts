@@ -121,6 +121,13 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
     }
 
     return {
+        /**
+         * Reads the catalog, on purpose: for a CI call the catalog *is* the decision. The environment a trigger or a rerun
+         * acts in is the service's `ci.environment` (the CI job that deploys it), not the environment in the input, which
+         * only picks the job — so classifying from the input alone would call a production trigger a staging write and the
+         * floor would never see it. The catalog also says which CI system the service has and what it can do, which is what
+         * blocks an unsupported action before anyone is asked. See docs/catalog.md, "Why a call reads the catalog".
+         */
         classify(input) {
             // An unknown service, an action the CI system lacks, and a parameter it does not take all throw a TypeError
             // that says what to change, and jig-core blocks the call without asking.
