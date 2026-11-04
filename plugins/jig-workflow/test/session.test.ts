@@ -432,6 +432,28 @@ describe("a company's folders and yours add up", () => {
         assert.match(text, /^feature: /m, "and the one from your folder");
     });
 
+    test("the company's disabled list and yours add up: neither can re-enable what the other left out", async (t) => {
+        const w = await world(t, {
+            // The world's own folder holds `feature` (the example file).
+            company: (api, workspace) => {
+                const folder = path.join(workspace, "company-workflows");
+                mkdirSync(folder, { recursive: true });
+                for (const name of ["policy", "delivery"]) {
+                    writeFileSync(
+                        path.join(folder, `${name}.json`),
+                        JSON.stringify({ name, stages: [{ id: "only" }] }),
+                    );
+                }
+                api.config.addSectionDefaults("workflow", { folders: [folder], disabled: ["policy"] });
+            },
+            userWorkflow: { folders: ["$workflows"], disabled: ["feature"] },
+        });
+        const text = (await w.call({ action: "list" })).text;
+        assert.match(text, /^delivery$/m, "a workflow neither list leaves out is there");
+        assert.doesNotMatch(text, /^policy$/m, "the company disabled it");
+        assert.doesNotMatch(text, /^feature: /m, "the teammate disabled it");
+    });
+
     test("when both have a file of one name, yours wins, because your folders are read after the company's", async (t) => {
         const w = await world(t, { company: company(), userWorkflow: { folders: ["$workflows"] } });
         const text = (await w.call({ action: "list" })).text;
