@@ -90,8 +90,8 @@ describe("background tasks in the real sandbox", { skip }, () => {
             10_000,
             "the children",
         );
-        const pids = pidsOf(/^sleep 31[12]$/);
-        assert.equal(pids.length, 2, "the children run");
+        // The shell prints before both children have exec'd, so wait for the tree to exist rather than assume it.
+        await until(() => pidsOf(/^sleep 31[12]$/).length === 2, 5_000, "the children to run");
         const report = await s.call("bg_kill", { id });
         assert.match(report.text, new RegExp(`^${id} stopped by SIGTERM`));
         await until(() => pidsOf(/^sleep 31[12]$/).length === 0, 8_000, "the children to be gone");
