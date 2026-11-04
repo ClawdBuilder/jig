@@ -4,6 +4,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Changed
+
+- The Release workflow can be run by hand for a tag that has no GitHub release page, which publishes an older tag's notes
+  without marking it the latest release.
+
 ## [0.3.0] - 2026-11-04
 
 ### Added

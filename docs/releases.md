@@ -21,6 +21,9 @@ The tag starts the [Release workflow](../.github/workflows/release.yml). It fail
 `package.json`, or when the changelog has no section for it, and otherwise writes the GitHub release with that section as
 its notes. A second run edits the release rather than failing.
 
+A tag that was pushed before that workflow existed has a tag but no page. Run the workflow by hand (**Actions**, **Release**,
+**Run workflow**) and name the tag: it writes the page from that tag's own changelog, and does not mark it the latest release.
+
 `node scripts/release.mjs --dry-run` shows the change without writing it, and `npm test` covers both scripts.
 
 ## What a version means
@@ -53,8 +56,8 @@ pi install git:github.com/Dev-Mriganka/jig@v0.3.0
 
 ## The first tags
 
-Tags began with `v0.2.0`, at the commit that declared that version, and `v0.3.0` is the first release cut with the script.
-Older changelog entries have no tag of their own. A release's notes are always the section of [CHANGELOG.md](../CHANGELOG.md)
-named after its version, so they can be read without the tag.
+`v0.2.0` was tagged after the fact, at the commit that declared that version, and has no page of its own yet. `v0.3.0` is the
+first release cut with the script, and the first with a page. [CHANGELOG.md](../CHANGELOG.md) holds both sections, so a release's
+notes can be read without its tag.
 
 Back to [Contributing](../CONTRIBUTING.md).
