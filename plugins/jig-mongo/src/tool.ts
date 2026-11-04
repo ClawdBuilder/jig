@@ -17,6 +17,7 @@ import { planCall } from "./plan.ts";
 import type { Planned } from "./plan.ts";
 import { Session, systemSessionDeps } from "./session.ts";
 import type { SessionDeps } from "./session.ts";
+import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
 import { InputError, errorMessage, shortList, shown } from "./values.ts";
 import type { Prepared, WriteRun } from "./writes.ts";
 
@@ -53,7 +54,7 @@ export interface MongoTool {
 function requiredSettings(): MongoSettings {
     const settings = settingsOf(jig().config.section("mongo"));
     if (settings === undefined) {
-        throw new InputError(
+        throw new NotConfiguredError(
             'mongo is not set up: add a "mongo" section with "connections" to jig.json (/jig lists configuration problems)',
         );
     }

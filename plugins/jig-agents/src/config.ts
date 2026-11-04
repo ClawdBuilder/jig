@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { ACTION_NAME_PATTERN, TOOL_NAME_PATTERN } from "../../jig-core/src/kit/role-policy.ts";
 import type { ActionMap } from "../../jig-core/src/kit/role-policy.ts";
+import { isObject } from "../../jig-core/src/kit/values.ts";
 
 export interface Limits {
     maxTurns: number;
@@ -114,10 +115,6 @@ export const MAX_SKILLS = 30;
 export const MAX_PRELOAD = 10;
 const VARIABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,99}$/;
 const BRANCH_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/{}-]{0,99}$/;
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function inRange(value: unknown, min: number, max: number, whole: boolean): value is number {
     return (

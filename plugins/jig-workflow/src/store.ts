@@ -4,6 +4,7 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { isObject } from "../../jig-core/src/kit/values.ts";
 
 export const STATE_FILE = "workflow.json";
 export const HISTORY_FOLDER = "workflow-history";
@@ -150,10 +151,6 @@ export function readState(ticketDir: string): ReadState {
     return typeof state === "string"
         ? { kind: "invalid", problem: `${file} is not a workflow state (${state})` }
         : { kind: "state", state };
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 const str = (value: unknown): value is string => typeof value === "string";

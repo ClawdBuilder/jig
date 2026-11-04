@@ -2,6 +2,8 @@
 // conditions come from the fixed list below and the plugin checks each one itself, so a file never runs code. A file that does
 // not pass is rejected whole, with the key at fault, and never half-read.
 
+import { isObject } from "../../jig-core/src/kit/values.ts";
+
 /** The conditions a workflow can name. Each is decided by the plugin (see docs/conditions.md). */
 export const CONDITIONS = [
     "notes-updated",
@@ -78,10 +80,6 @@ const MAX_STAGES = 30;
 const MAX_HOLDS = 30;
 const MAX_CALLS = 30;
 const MAX_STAGE_TOOLS = 30;
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function quoted(text: unknown): string {
     const value = typeof text === "string" ? text : JSON.stringify(text);

@@ -4,6 +4,7 @@
 //
 // A call never names a context, a namespace, a release or an address. It names a service and an environment, and this
 // catalog says where that is, so nothing outside the catalog can be reached through the tools.
+import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
 import { checkCi, checkJob } from "./ci/config.ts";
 import type { CiConfig } from "./ci/config.ts";
 import { checkArtifacts, checkWatch } from "./ci/settings.ts";
@@ -78,8 +79,8 @@ const MAX_HEALTH_CHARS = 500;
 const NOT_SET_UP =
     'ops is not set up: add an "ops" section with "services" to jig.json (/jig lists configuration problems)';
 
-export function notSetUp(): InputError {
-    return new InputError(NOT_SET_UP);
+export function notSetUp(): NotConfiguredError {
+    return new NotConfiguredError(NOT_SET_UP);
 }
 
 /**

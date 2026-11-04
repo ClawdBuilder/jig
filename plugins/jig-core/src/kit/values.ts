@@ -17,3 +17,10 @@ export class InputError extends TypeError {
         this.name = "InputError";
     }
 }
+
+/**
+ * A section a tool needs from `jig.json` is missing or invalid, so there is no decision to take. It is an `InputError`, so
+ * jig-core blocks the call without asking and the message reads as one; the class is how a test tells "the tool is not
+ * configured" from "the call is wrong" without reading the text.
+ */
+export class NotConfiguredError extends InputError {}

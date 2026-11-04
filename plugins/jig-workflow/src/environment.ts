@@ -2,6 +2,7 @@
 // repository): what is accepted, how `~` expands, and the shell text that sets them where a run has no environment of its own.
 // A credential does not belong in this file, so a name that looks like one is refused with the way to give it properly.
 import path from "node:path";
+import { isObject } from "../../jig-core/src/kit/values.ts";
 
 export const MAX_ENV_ENTRIES = 20;
 /** The command and its variables are shown whole when a run needs your approval, and a long text cannot be read there. */
@@ -38,10 +39,6 @@ const CREDENTIAL_NAMES: ReadonlySet<string> = new Set([
 /** Whether a variable of this name looks like a credential: the sandbox would take it out of a command's environment. */
 export function looksLikeCredential(name: string): boolean {
     return CREDENTIAL_NAMES.has(name.toUpperCase()) || CREDENTIAL_PATTERNS.some((pattern) => pattern.test(name));
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** The errors in the `env` of an entry (`at` is the entry's key, as the messages write it). An empty list means it is valid. */
