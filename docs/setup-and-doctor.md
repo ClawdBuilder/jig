@@ -1,8 +1,8 @@
 # Setup and doctor
 
 `/jig doctor` looks at this machine, your Jig settings and the tools Jig uses, and says in plain words what is
-wrong and what to do. It reads only: it changes no setting, signs in to nothing, and never shows a password or a
-token.
+wrong and what to do. The doctor reads only: it changes no setting, signs in to nothing, and never shows a password
+or a token. `/jig setup` fills in what is missing, and writes only what you confirm.
 
 ## Run it
 
@@ -12,6 +12,18 @@ token.
 
 The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
 the network, the sandbox and the records folder.
+
+## Setting up
+
+```text
+/jig setup
+```
+
+Setup asks one question at a time about the parts a company plugin or a validator says are incomplete or wrong.
+It never asks for a password or a token: credentials come in a later step.
+
+Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
+Nothing is written until you confirm. It keeps a backup next to the file and asks you to run `/reload`.
 
 ## The four words
 
@@ -86,7 +98,9 @@ shows only the warnings and failures, with the summary. The full report is still
 
 - It never asks for, shows, stores or records a secret value.
 - It never signs in, unlocks a store, or refreshes a login.
-- It never changes `jig.json`, installs a program or runs a fix.
+- The doctor never changes `jig.json`; setup writes only the fields you confirm, and never rules, protected
+  paths or the list of stores you turned off.
+- It never installs a program or runs a fix.
 - It never contacts a host without `--network`.
 
 The checks in detail are in [Configuration](../plugins/jig-core/docs/configuration.md#the-jig-commands). Where a reference comes from is in

@@ -64,7 +64,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## 2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words
 
-`/jig doctor` is built; `/jig setup` is next. Both exist so a teammate who does not edit JSON can set Jig up,
+`/jig doctor` and `/jig setup` are built. Both exist so a teammate who does not edit JSON can set Jig up,
 with their own preferences and their own way of keeping credentials, over a company plugin's defaults.
 
 **Decided**

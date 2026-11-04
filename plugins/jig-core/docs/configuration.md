@@ -135,6 +135,9 @@ company plugin's own tools can be deferred the same way.
   - **`not set or invalid`** means your file has the section and it failed the
     plugin's check (the problem is listed under it), or the file could not be read
     at all.
+- **`/jig setup`** asks for the fields of plugin sections that are incomplete or invalid, one at a time,
+  and writes only those fields after showing a plain summary and asking once. It keeps a backup beside the
+  file. A field that is a secret reference is left for a later step. It is a command, not a tool.
 - **`/jig doctor`** checks this machine and the setup, and gives one fix for each finding.
   It reads and never writes. It reports the Node.js and Pi versions, the settings file
   and the state of each plugin section, every secret reference in the effective

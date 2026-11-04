@@ -48,13 +48,16 @@ Three more commands help you look around:
 - `/jig rules` shows the decision for every tool and action, and where it came from;
 - `/jig records` shows where today's records are.
 
-## 3. Configure one plugin: `jig-git`
+## 3. Set up one plugin: `jig-git`
 
-Jig reads one file, `~/.pi/agent/jig.json`. You edit it yourself: Pi's file tools refuse that folder, so the
-agent cannot change its own rules.
+Jig reads one file, `~/.pi/agent/jig.json`. When a company plugin leaves something for you, `/jig setup` asks
+for it one question at a time, shows each change in plain words, and writes only those fields after you confirm.
+It keeps a backup beside the file and asks you to run `/reload`. The command writes the file; the agent never can,
+because Pi's file tools refuse that folder.
 
-Create the file with a `git` section. This one names the branch new work starts from and the branches the
-tools will not change directly:
+In this scratch repository no company plugin is loaded, so there is nothing for setup to fill in. Create the
+`git` section yourself, as an example of the file's shape. It names the branch new work starts from and the
+branches the tools will not change directly:
 
 ```json
 {
@@ -65,7 +68,7 @@ tools will not change directly:
 }
 ```
 
-Run `/jig` again. It should now say `git (loaded)`. A typo in a field name is reported under
+Run `/reload`, then `/jig` again. It should now say `git (loaded)`. A typo in a field name is reported under
 `Configuration problems` with the key at fault, and the plugin then does nothing until you fix it.
 
 The other fields (patterns for branch names, commit messages and pull request titles, for example) are in
