@@ -39,7 +39,7 @@ to review and is refused.
 
 ## Approving it
 
-`workflow submit-plan` is a local write that always asks (the gate sees to it, [Holds](holds.md)).
+`workflow submit_plan` is a local write that always asks (the gate sees to it, [Holds](holds.md)).
 1. The tool reads `plan.md`, checks it, and builds the preview: the plan rendered as Markdown on
    `jig-core`'s review screen (`o` opens it in the browser), with a line for the scenarios, the
    repositories and the fingerprint.

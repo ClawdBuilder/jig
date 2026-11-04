@@ -1,4 +1,4 @@
-// The `postman-environments` action: the environments a Postman API key can see, by name and id, so the agent can map one in the
+// The `postman_environments` action: the environments a Postman API key can see, by name and id, so the agent can map one in the
 // configuration without fetching any variable. Tried against a fake Postman API on this machine. The answer it serves carries a
 // value that must never come back, and the key is a canary that must be in no result or error.
 import assert from "node:assert/strict";
@@ -76,9 +76,9 @@ beforeEach(() => {
 afterEach(() => fs.rmSync(state, { recursive: true, force: true }));
 
 test("lists names and ids, sorted, with the owner and time, and never a value or the key", async () => {
-    const result = await h.call({ action: "postman-environments" });
+    const result = await h.call({ action: "postman_environments" });
     const text = ok(result);
-    assert.deepEqual(result.cls, { action: "postman-environments", environment: "external", effect: "read" });
+    assert.deepEqual(result.cls, { action: "postman_environments", environment: "external", effect: "read" });
     assert.equal(
         text,
         [
@@ -102,17 +102,17 @@ test("lists names and ids, sorted, with the owner and time, and never a value or
 });
 
 test("a workspace narrows the list, and a bad workspace id is refused before anything is sent", async () => {
-    const text = ok(await h.call({ action: "postman-environments", workspace: "ws-1" }));
+    const text = ok(await h.call({ action: "postman_environments", workspace: "ws-1" }));
     assert.match(text, /^Postman environments in workspace ws-1, with the key of cloud: 1 /);
     assert.equal(postman.requests[0]?.query, "workspace=ws-1");
-    const blocked = await h.call({ action: "postman-environments", workspace: "../x" });
+    const blocked = await h.call({ action: "postman_environments", workspace: "../x" });
     assert.match(blocked.blocked ?? "", /workspace: must be the id of a Postman workspace/);
     assert.equal(postman.requests.length, 1);
 });
 
 test("a key that is not accepted is a failure in a few words, without the key", async () => {
     h.jig.secrets.set(KEY_REFERENCE, ["PMAK", "0000000000000000000000-wrong"].join("-"));
-    const result = await h.call({ action: "postman-environments" });
+    const result = await h.call({ action: "postman_environments" });
     assert.equal(
         result.error?.message,
         "Could not list the Postman environments with the key of cloud: the API key was not accepted (HTTP 401).",
@@ -122,20 +122,20 @@ test("a key that is not accepted is a failure in a few words, without the key", 
 test("without a Postman cloud collection, or with several and none named, the call is refused and says what to do", async () => {
     configure({ ledger: { http: path.join(h.dir, "ledger") } });
     assert.match(
-        (await h.call({ action: "postman-environments" })).blocked ?? "",
+        (await h.call({ action: "postman_environments" })).blocked ?? "",
         /No collection is a Postman cloud collection: add one under api\.collections/,
     );
     assert.match(
-        (await h.call({ action: "postman-environments", collection: "ledger" })).blocked ?? "",
+        (await h.call({ action: "postman_environments", collection: "ledger" })).blocked ?? "",
         /ledger is not a Postman cloud collection\. Postman cloud collections: none$/,
     );
     configure({ cloud: cloud(), other: cloud({ cloud: "12345678-bbbb" }) });
     assert.match(
-        (await h.call({ action: "postman-environments" })).blocked ?? "",
+        (await h.call({ action: "postman_environments" })).blocked ?? "",
         /Several Postman cloud collections \(cloud, other\): name the one whose key to use in collection$/,
     );
     assert.match(
-        ok(await h.call({ action: "postman-environments", collection: "other" })),
+        ok(await h.call({ action: "postman_environments", collection: "other" })),
         /with the key of other: 2 /,
     );
     assert.equal(postman.requests.length, 1);

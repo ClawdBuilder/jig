@@ -63,6 +63,6 @@ export interface Source<Config = unknown> {
     /** Set by a source that fetches: what `/api refresh` runs for this collection. */
     refresher?(config: Config, name: string): Refresher;
 
-    /** Set by a source whose service can list its environments: what the `postman-environments` action runs. */
+    /** Set by a source whose service can list its environments: what the `postman_environments` action runs. */
     environmentLister?(config: Config, name: string): EnvironmentLister;
 }

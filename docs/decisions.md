@@ -70,11 +70,30 @@ trust exists to stop: clone a hostile repository, run `jig doctor`, and its exte
 
 The command now applies Pi 1.5's rules itself, without importing Pi: the closest `true`/`false` in the agent folder's
 `trust.json` from the canonical cwd upward decides (`null` does not); without one, only the agent folder's
-`defaultProjectTrust` matters, and `"always"` is the only value that loads outside Pi's screen. A missing, unreadable or
-malformed trust file fails closed. Project packages are still read as facts (settings, manifests), but `import()` and
+`defaultProjectTrust` matters, and `"always"` is the only value that loads outside Pi's screen. A missing trust file is no saved
+decision; a malformed or unreadable one fails closed. Project packages are still read as facts (settings, manifests), but `import()` and
 factories wait for trust. The doctor shows a `skip` line naming what was skipped, and setup says the same rather than acting
 as if there is no company; Jig listed only in an untrusted project is a skip, not "not installed". User-scope packages are
 unchanged. The `project_trust` extension event is not imitated: there is no screen here, and under-loading is safe.
+
+## 2026-11-05: action names are snake_case
+
+Function-calling tools and MCP name actions `get_weather` and `create_pull_request`; a hyphen is not a letter in most
+languages that write scripts against a schema. Jig's actions now follow that: `run_folder`, `postman_environments`,
+`index_stats`, `create_index`, `drop_index`, `save_evidence`, `add_check`, `list_checks`, `close_check`, `submit_plan`.
+
+Tool names, slash commands, `jig.json` keys, CLI words and workflow condition names are unchanged: the first three are
+vocabularies people type by hand or already wrote, and the last is a file format, not a tool action.
+
+Renaming a public name is breaking ([Compatibility](compatibility.md)). The safety-sensitive half is a rule that denies or
+asks: if an old action name stopped matching silently, the rule would no longer apply. So the old names keep matching
+through 0.4.x, in three places where a person wrote them: rules and classification rules (`jig-core`), a role's `actions`
+and `ask` lists (agent file and `jig-agents` settings), and a workflow hold's action. `/jig` and `jig doctor` name every old
+name they find, with the new one, and say it stops applying in 0.5.0. 0.5.0 removes the aliases, which is a second, dated
+break; by then the notices have been in every release since 0.4.0.
+
+The pinned audit table, the READMEs, the skills, the overlays and the tests use
+the new names; nothing matches an action by a hard-coded old string.
 
 ## 2026-11-04: setup and doctor run as a standalone command
 
@@ -1283,7 +1302,6 @@ generic fix, in its own commit.
     sent. The message shows the pattern.
   - **An `edit` that does not set a title is not checked:** the rule is about
     what is written now, not about a title that was there before.
-
 
 ## 2026-10-30: Jig never signs in; it reads a credential and keeps it from the agent
 

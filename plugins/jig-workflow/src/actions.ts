@@ -3,7 +3,7 @@
 // puts them back under one name for tool.ts and commands.ts:
 //   action-support.ts  what they share: the parameters, the ticket, the started workflow
 //   action-start.ts    list, status, start and bind
-//   action-plan.ts     submit-plan and scenario
+//   action-plan.ts     submit_plan and scenario
 //   action-tests.ts    test
 //   action-stages.ts   advance and back
 export * from "./action-plan.ts";

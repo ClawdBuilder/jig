@@ -43,12 +43,12 @@ mongo find staging orders.orders: 2 documents, possibly partial (limit 2 reached
 | `sample` | a random sample of documents |
 | `schema` | `status: string\|null (in 18 of 20)` for each field path: types and counts, never values |
 | `stats` | the numbers of the collection or of the database |
-| `indexes`, `index-stats` | one line per index: name, keys, options; and for `index-stats` its use |
+| `indexes`, `index_stats` | one line per index: name, keys, options; and for `index_stats` its use |
 | `explain` | the plan as `FETCH > IXSCAN(status_1)`, a warning for `COLLSCAN`, and the rejected plans |
 
 - **`schema`:** `[]` marks array elements. The sample keeps the BSON type of each number, and `limit` is the sample size.
 - **`stats`:** `count`, `size`, `avgObjSize`, `storageSize`, `nindexes` and `totalIndexSize` for a collection.
-- **`index-stats`:** how many times each index was used, and since when.
+- **`index_stats`:** how many times each index was used, and since when.
 - **`explain`:** with `executionStats` (the default) it also gives documents returned, keys and documents examined, and the time.
   Where reads must use an index, `executionStats` runs the query and is checked first; `queryPlanner` is not
   ([Index check](index-check.md)).

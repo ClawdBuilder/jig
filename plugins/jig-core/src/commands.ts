@@ -19,6 +19,7 @@ import { formatDuration, summarize } from "./records.ts";
 import { doctorContext } from "./doctor-checks.ts";
 import { doctorReportFile, writeDoctorReport } from "./doctor-json.ts";
 import { countQuickIssues } from "./doctor-secrets.ts";
+import { renamedInRules } from "./kit/action-names.ts";
 import { formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
 import { shorten } from "./secret-status.ts";
@@ -164,6 +165,11 @@ export function statusLines(state: JigState): string[] {
             ? `Configuration: ${state.personal.file}`
             : `Configuration: none found (${state.personal.file || "not loaded yet"}), defaults apply`,
     ];
+    for (const renamed of renamedInRules([...state.personal.config.rules, ...state.personal.config.classify])) {
+        lines.push(
+            `Renamed action: a rule names ${renamed.tool} ${renamed.from}; it is ${renamed.to} since 0.4.0, and the old name stops applying in 0.5.0.`,
+        );
+    }
     const issues = countQuickIssues(doctorContext(state));
     if (issues > 0) {
         const things = issues === 1 ? "1 thing needs" : `${issues} things need`;

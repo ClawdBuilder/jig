@@ -182,7 +182,7 @@ describe("a run of a folder", () => {
                 { name: "Nested", item: [read("Six"), { name: "Deeper", item: [write("Seven")] }] },
             ]),
         );
-        const folder = (name: string) => classify({ action: "run-folder", folder: name, environment: "Staging" });
+        const folder = (name: string) => classify({ action: "run_folder", folder: name, environment: "Staging" });
         assert.deepEqual(folder("Checks"), { action: "flows/Checks", environment: "staging", effect: "read" });
         assert.deepEqual(folder("Mixed"), { action: "flows/Mixed", environment: "staging", effect: "write" });
         assert.deepEqual(folder("Nested"), { action: "flows/Nested", environment: "staging", effect: "write" });
@@ -197,12 +197,12 @@ describe("a run of a folder", () => {
         h.configure(
             collectionOf("flows", [{ name: "Mixed", item: [read("Three"), write("Search")] }], { reads: ["Search"] }),
         );
-        assert.equal(classify({ action: "run-folder", folder: "Mixed", environment: "Staging" }).effect, "read");
+        assert.equal(classify({ action: "run_folder", folder: "Mixed", environment: "Staging" }).effect, "read");
     });
 
     test("is in the environment the call names, and a folder of reads in production is a read in production", () => {
         h.configure(collectionOf("flows", [{ name: "Checks", item: [read("One")] }]));
-        assert.deepEqual(classify({ action: "run-folder", folder: "Checks", environment: "Prod" }), {
+        assert.deepEqual(classify({ action: "run_folder", folder: "Checks", environment: "Prod" }), {
             action: "flows/Checks",
             environment: "production",
             effect: "read",
@@ -211,22 +211,22 @@ describe("a run of a folder", () => {
 
     test("a folder with a request that cannot be run cannot be run: it is invalid input, not a partial run", () => {
         assert.throws(
-            () => classify({ action: "run-folder", folder: "Admin", collection: "acme", environment: "Staging" }),
+            () => classify({ action: "run_folder", folder: "Admin", collection: "acme", environment: "Staging" }),
             /"Rebuild index" is refused: it has a pre-request script \(the folder Admin\)/,
         );
         assert.throws(
-            () => classify({ action: "run-folder", folder: "Orders", collection: "acme", environment: "Staging" }),
+            () => classify({ action: "run_folder", folder: "Orders", collection: "acme", environment: "Staging" }),
             (error: unknown) => error instanceof TypeError && /^no value for /.test(error.message),
         );
         assert.deepEqual(
-            classify({ action: "run-folder", folder: "Smoke", collection: "acme", environment: "Staging" }),
+            classify({ action: "run_folder", folder: "Smoke", collection: "acme", environment: "Staging" }),
             { action: "acme/Smoke", environment: "staging", effect: "read" },
         );
     });
 
     test("an unknown folder is invalid input that names the folders there are", () => {
         assert.throws(
-            () => classify({ action: "run-folder", folder: "Nope", collection: "acme", environment: "Staging" }),
+            () => classify({ action: "run_folder", folder: "Nope", collection: "acme", environment: "Staging" }),
             (error: unknown) =>
                 error instanceof TypeError &&
                 /^no folder named "Nope"; folders: Orders, Smoke, Admin/.test(error.message),
@@ -294,7 +294,7 @@ describe("invalid input", () => {
         );
         rejected(
             { action: "fly" },
-            /^api: unknown action "fly"; use one of list, show, run, run-folder, call, postman-environments$/,
+            /^api: unknown action "fly"; use one of list, show, run, run_folder, call, postman_environments$/,
         );
         rejected({}, /^api: unknown action undefined; use one of/);
         rejected({ action: "list", collection: 5 }, /^api list: collection must be text \(got 5\)/);

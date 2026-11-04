@@ -2,6 +2,7 @@
 // conditions come from the fixed list below and the plugin checks each one itself, so a file never runs code. A file that does
 // not pass is rejected whole, with the key at fault, and never half-read.
 
+import { canonicalAction } from "../../jig-core/src/kit/action-names.ts";
 import { isObject } from "../../jig-core/src/kit/values.ts";
 
 /** The conditions a workflow can name. Each is decided by the plugin (see docs/conditions.md). */
@@ -99,7 +100,7 @@ export function parseCall(text: string): HoldCall | undefined {
     const [tool, action, ...rest] = parts;
     if (tool === undefined || !TOOL.test(tool) || rest.length > 0) return undefined;
     if (action === undefined) return { tool };
-    return ACTION.test(action) ? { tool, action } : undefined;
+    return ACTION.test(action) ? { tool, action: canonicalAction(tool, action) } : undefined;
 }
 
 /** Checks the text of a workflow file. `fileName` is the name without `.json`, which the workflow's `name` must equal. */

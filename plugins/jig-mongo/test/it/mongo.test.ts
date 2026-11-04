@@ -243,7 +243,7 @@ describeIt(
             assert.doesNotMatch(schema, /internalNote|secretToken/);
         });
 
-        test("indexes, explain, stats and index-stats: the plan uses the index that was made", async (t) => {
+        test("indexes, explain, stats and index_stats: the plan uses the index that was made", async (t) => {
             const h = harness(t);
             // A collection of its own, so that the indexes the production tests rely on stay as they are.
             await raw
@@ -267,13 +267,13 @@ describeIt(
                     },
                 ]);
             const created = await h.call({
-                action: "create-index",
+                action: "create_index",
                 ...on("explained"),
                 keys: { status: 1, createdAt: -1 },
             });
             assert.equal(
                 ok(created),
-                `mongo create-index staging ${db}.explained: created the index status_1_createdAt_-1`,
+                `mongo create_index staging ${db}.explained: created the index status_1_createdAt_-1`,
             );
             assert.match(created.preview?.body ?? "", /Existing indexes: _id_\./);
             const indexes = ok(await h.call({ action: "indexes", ...on("explained") }));
@@ -291,15 +291,15 @@ describeIt(
             assert.match(collscan, /COLLSCAN/);
             const stats = ok(await h.call({ action: "stats", ...on("explained") }));
             assert.match(stats, /"count":3,.*"nindexes":2,/);
-            const used = ok(await h.call({ action: "index-stats", ...on("explained") }));
+            const used = ok(await h.call({ action: "index_stats", ...on("explained") }));
             assert.match(used, /status_1_createdAt_-1/);
             // The user that may only read lacks the privilege of $indexStats, and the tool says whose it is to fix.
-            const denied = await h.call({ action: "index-stats", ...on("explained", "reader") });
+            const denied = await h.call({ action: "index_stats", ...on("explained", "reader") });
             assert.equal(
                 denied.error?.message,
-                `mongo index-stats reader ${db}.explained: the database user cannot do this in reader (Unauthorized): it needs another role`,
+                `mongo index_stats reader ${db}.explained: the database user cannot do this in reader (Unauthorized): it needs another role`,
             );
-            const dropped = await h.call({ action: "drop-index", ...on("explained"), name: "status_1_createdAt_-1" });
+            const dropped = await h.call({ action: "drop_index", ...on("explained"), name: "status_1_createdAt_-1" });
             assert.match(ok(dropped), /dropped the index status_1_createdAt_-1/);
             assert.equal((await raw.db(db).collection("explained").indexes()).length, 1);
         });
@@ -515,7 +515,7 @@ describeIt(
                     update: { $set: { a: 1 } },
                     which: "many",
                 },
-                { action: "create-index", ...on("orders", "production"), keys: { a: 1 } },
+                { action: "create_index", ...on("orders", "production"), keys: { a: 1 } },
             ]) {
                 const write = await h.call(input);
                 assert.match(

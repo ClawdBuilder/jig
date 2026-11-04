@@ -39,8 +39,8 @@ const REMEMBERED = 100;
 
 const DESCRIPTION =
     "MongoDB in your configured environments. Explore: databases, collections, schema, stats. Indexes and plans: indexes, " +
-    "index-stats, explain. Query: count, find, distinct, sample, aggregate. Write: insert, update, replace, delete, bulk, " +
-    "create-index, drop-index. Filters, documents and pipelines are Extended JSON. Writes show a count and ask first; " +
+    "index_stats, explain. Query: count, find, distinct, sample, aggregate. Write: insert, update, replace, delete, bulk, " +
+    "create_index, drop_index. Filters, documents and pipelines are Extended JSON. Writes show a count and ask first; " +
     "production is read-only. Fields that look like credentials are never returned.";
 
 export interface MongoTool {

@@ -19,7 +19,7 @@ fails when a file of `src/` is missing here or a file listed here is gone, so th
 
 | File | What it does | Called by |
 |---|---|---|
-| `tool.ts` | The `api` tool: classify and preview a call, run `list`, `show`, `run`, `run-folder`, `call`, `postman-environments` | `index.ts`, `refresh.ts` |
+| `tool.ts` | The `api` tool: classify and preview a call, run `list`, `show`, `run`, `run_folder`, `call`, `postman_environments` | `index.ts`, `refresh.ts` |
 | `params.ts` | The parameters, as one flat object; the action list, usage lines and checks all come from one table | `tool.ts` |
 | `ad-hoc.ts` | The checks on an ad-hoc `call`, the one request the agent writes itself | `planning.ts` |
 | `show.ts` | What `list` and `show` print: the saved requests, and one request in full | `tool.ts` |

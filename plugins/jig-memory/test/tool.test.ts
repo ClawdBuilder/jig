@@ -17,29 +17,29 @@ function start(t: import("node:test").TestContext) {
     return { folder, jig, pi };
 }
 
-test("the tool is declared to jig-core: every action is local, and only list-checks reads", (t) => {
+test("the tool is declared to jig-core: every action is local, and only list_checks reads", (t) => {
     const { jig } = start(t);
     assert.equal(jig.declared.get("ticket"), declaration);
-    assert.deepEqual(classify({ action: "list-checks" }), {
-        action: "list-checks",
+    assert.deepEqual(classify({ action: "list_checks" }), {
+        action: "list_checks",
         environment: "local",
         effect: "read",
     });
-    assert.deepEqual(classify({ action: "add-check", text: "x" }), {
-        action: "add-check",
+    assert.deepEqual(classify({ action: "add_check", text: "x" }), {
+        action: "add_check",
         environment: "local",
         effect: "write",
     });
-    assert.throws(() => classify({ action: "add-check" }), { name: "InputError", message: /needs text/ });
-    assert.throws(() => classify({ action: "list-checks", text: "x" }), /does not use text/);
-    assert.throws(() => classify({ action: "save-evidence", text: "x", label: "../up" }), /label: /);
-    assert.throws(() => classify({ action: "save-evidence", text: " ", label: "run" }), /text: empty/);
-    assert.throws(() => classify({ action: "save-evidence", text: "x".repeat(49 * 1024), label: "run" }), /in parts/);
+    assert.throws(() => classify({ action: "add_check" }), { name: "InputError", message: /needs text/ });
+    assert.throws(() => classify({ action: "list_checks", text: "x" }), /does not use text/);
+    assert.throws(() => classify({ action: "save_evidence", text: "x", label: "../up" }), /label: /);
+    assert.throws(() => classify({ action: "save_evidence", text: " ", label: "run" }), /text: empty/);
+    assert.throws(() => classify({ action: "save_evidence", text: "x".repeat(49 * 1024), label: "run" }), /in parts/);
 });
 
 test("without an active ticket every action says how to set one", async (t) => {
     const { pi } = start(t);
-    const result = await pi.tool({ action: "list-checks" });
+    const result = await pi.tool({ action: "list_checks" });
     assert.deepEqual(result, { text: "No active ticket: /ticket KEY makes one active.", isError: true });
 });
 
@@ -47,7 +47,7 @@ test("pasted text is masked, saved to evidence with an index line, and the model
     const { folder, jig, pi } = start(t);
     pi.input("PROJ-123 batch 3");
     const pasted = "batch 3: 40 removed, 2 failed\nfailed: ana@example.com, 7711\n";
-    const result = await pi.tool({ action: "save-evidence", text: pasted, label: "batch 3 output" });
+    const result = await pi.tool({ action: "save_evidence", text: pasted, label: "batch 3 output" });
     assert.equal(result.isError, false);
     assert.match(
         result.text,
@@ -72,7 +72,7 @@ test("pasted text that jig-core withheld is not saved", async (t) => {
     const replaced = pi.fire("tool_result", {
         toolName: "ticket",
         toolCallId: "call",
-        input: { action: "save-evidence", text: "x", label: "run" },
+        input: { action: "save_evidence", text: "x", label: "run" },
         content: [{ type: "text", text: "withheld" }],
         details: {},
         isError: true,
@@ -89,9 +89,9 @@ test("open checks are added, listed, shown with every prompt and in the notes, a
     pi.input("PROJ-123");
     assert.deepEqual(pi.fire("before_agent_start", { messageType: "user", prompt: "next" }), [undefined]);
 
-    const added = await pi.tool({ action: "add-check", text: "re-derive the locations before the next batch" });
+    const added = await pi.tool({ action: "add_check", text: "re-derive the locations before the next batch" });
     assert.match(added.text, /^Check #1 added to PROJ-123 \(1 open\)\. .*Before you hand the user a command/);
-    assert.match((await pi.tool({ action: "list-checks" })).text, /^PROJ-123: 1 open \(0 closed\)\.\n#1 re-derive/);
+    assert.match((await pi.tool({ action: "list_checks" })).text, /^PROJ-123: 1 open \(0 closed\)\.\n#1 re-derive/);
 
     const [turn] = pi.fire("before_agent_start", { messageType: "user", prompt: "batch 4 please" }) as Array<{
         message: { customType: string; content: string; display: boolean };
@@ -113,22 +113,22 @@ test("open checks are added, listed, shown with every prompt and in the notes, a
     const notes = pi.sent.filter((sent) => sent.message.customType === NOTES_MESSAGE).at(-1);
     assert.match(notes?.message.content ?? "", /\n\n\[ticket PROJ-123\] 1 open check:\n#1 re-derive/);
 
-    const closed = await pi.tool({ action: "close-check", id: 1, outcome: "done: 12 locations re-derived" });
+    const closed = await pi.tool({ action: "close_check", id: 1, outcome: "done: 12 locations re-derived" });
     assert.equal(closed.text, "Check #1 closed: done: 12 locations re-derived\nNo check is open.");
     assert.deepEqual(pi.fire("before_agent_start", { messageType: "user", prompt: "batch 4" }), [undefined]);
-    assert.match((await pi.tool({ action: "close-check", id: 1, outcome: "again" })).text, /closed already/);
+    assert.match((await pi.tool({ action: "close_check", id: 1, outcome: "again" })).text, /closed already/);
 });
 
 test("the reminder counts the open checks", async (t) => {
     const { pi } = start(t);
     pi.input("PROJ-123");
-    await pi.tool({ action: "add-check", text: "check the ids" });
+    await pi.tool({ action: "add_check", text: "check the ids" });
     let reminder = "";
     for (let n = 0; n < 15; n++) {
         const [change] = pi.result("bash", "output") as Array<{ content: Array<{ text?: string }> } | undefined>;
         reminder = change?.content.at(-1)?.text ?? reminder;
     }
-    assert.match(reminder, / 1 check is still open \(ticket list-checks\)\.$/);
+    assert.match(reminder, / 1 check is still open \(ticket list_checks\)\.$/);
 });
 
 test("empty files are reported to the agent and the user when a ticket becomes active and when it is restored", (t) => {

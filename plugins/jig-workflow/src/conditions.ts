@@ -166,14 +166,14 @@ function planApproved(ev: Evidence): ConditionResult {
     const text = ev.planText();
     const approved = ev.state.plan;
     if (text === "")
-        return result("plan-approved", false, ["plan.md does not exist: write it, then run workflow submit-plan"]);
+        return result("plan-approved", false, ["plan.md does not exist: write it, then run workflow submit_plan"]);
     if (approved === undefined)
-        return result("plan-approved", false, ["the plan has not been submitted: run workflow submit-plan"]);
+        return result("plan-approved", false, ["the plan has not been submitted: run workflow submit_plan"]);
     return approved.fingerprint === fingerprintOf(text)
         ? result("plan-approved", true, [
               `you approved this plan (${approved.scenarios} scenario${approved.scenarios === 1 ? "" : "s"})`,
           ])
-        : result("plan-approved", false, ["plan.md changed since you approved it: run workflow submit-plan again"]);
+        : result("plan-approved", false, ["plan.md changed since you approved it: run workflow submit_plan again"]);
 }
 
 function testsPassAtHead(ev: Evidence, only: string | undefined): Promise<ConditionResult> {

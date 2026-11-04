@@ -28,8 +28,8 @@ function targetTicket(rt: Runtime, input: Readonly<Record<string, unknown>>): st
 function mustAsk(rt: Runtime, call: GateCall): string | undefined {
     const ticket = targetTicket(rt, call.input);
     switch (call.action) {
-        case "submit-plan":
-            return "workflow submit-plan always asks: you approve this exact plan, with its fingerprint";
+        case "submit_plan":
+            return "workflow submit_plan always asks: you approve this exact plan, with its fingerprint";
         case "advance": {
             if (ticket === undefined) return undefined;
             const { read } = rt.work(ticket);

@@ -20,7 +20,7 @@ describe("the actions", () => {
             "schema",
             "stats",
             "indexes",
-            "index-stats",
+            "index_stats",
             "explain",
             "count",
             "find",
@@ -32,11 +32,11 @@ describe("the actions", () => {
             "replace",
             "delete",
             "bulk",
-            "create-index",
-            "drop-index",
+            "create_index",
+            "drop_index",
         ]);
         for (const name of ACTION_NAMES) {
-            const expected = ["insert", "update", "replace", "delete", "bulk", "create-index", "drop-index"].includes(
+            const expected = ["insert", "update", "replace", "delete", "bulk", "create_index", "drop_index"].includes(
                 name,
             )
                 ? "write"

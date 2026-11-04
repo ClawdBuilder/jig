@@ -466,7 +466,7 @@ describe("against a real MongoDB", { skip }, () => {
 
         test("an index change and a pipeline that writes: previewed, run, and checked", async () => {
             assert.match(
-                ok(await h.call({ action: "create-index", ...target, keys: { status: 1 } })),
+                ok(await h.call({ action: "create_index", ...target, keys: { status: 1 } })),
                 /created the index status_1/,
             );
             assert.match(
@@ -484,7 +484,7 @@ describe("against a real MongoDB", { skip }, () => {
                 /\$out wrote 3 documents to .*tool_copy/,
             );
             assert.match(
-                ok(await h.call({ action: "drop-index", ...target, name: "status_1" })),
+                ok(await h.call({ action: "drop_index", ...target, name: "status_1" })),
                 /dropped the index status_1/,
             );
             assert.match(

@@ -28,7 +28,7 @@ the agent works; evidence arrives
   workflow test       -> tests.ts: command per repository -> jig().sandbox.run (or an approved exec; or, for
                          a command set to run outside, the bash tool's own question through ctx.executeTool)
                          -> result saved with the commit and whether the tree was clean
-  workflow submit-plan-> plan.ts: check; jig-core shows plan.md; approved fingerprint saved
+  workflow submit_plan-> plan.ts: check; jig-core shows plan.md; approved fingerprint saved
   jig-review:approved -> sources.ts: saved when it covers commits of a bound repository
   jig-ops:ci-finished -> sources.ts: saved when it names a bound repository's commit
   workflow scenario   -> plan.ts: result saved with evidence for the scenario's current text
@@ -72,8 +72,8 @@ Each is small, and each plugin's own documentation describes it.
 |---|---|---|
 | Where do holds live? | A gate registered with `jig-core` | A hold must reach Pi's tools and everyone's, and `jig-core` already decides every call |
 | Can a gate loosen? | No: it answers ask or deny, or nothing | Otherwise a plugin could undo the floor or your rules |
-| How is a plan approved? | `submit-plan` is a call that always asks, and the preview is the plan | Approval inside the waiting call; the fingerprint ties it to the text |
-| What if a rule allows `submit-plan`? | The gate asks anyway | A rule or a session answer must not stand in for reading the plan |
+| How is a plan approved? | `submit_plan` is a call that always asks, and the preview is the plan | Approval inside the waiting call; the fingerprint ties it to the text |
+| What if a rule allows `submit_plan`? | The gate asks anyway | A rule or a session answer must not stand in for reading the plan |
 | Where do tests run? | In the sandbox; otherwise only after you approve the exact commands | An agent that can run anything on your account for its own checks is the thing the sandbox is for |
 | Can a test run outside it by choice? | Only for a repository whose entry says `outside`, and then through `bash`'s own question | The model cannot choose it, and the plugin invents no second way to ask |
 | What is a test result tied to? | The full HEAD and a clean tree | A pass on files that are not the commit proves nothing about the push |

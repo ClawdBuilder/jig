@@ -30,9 +30,9 @@ export const ACTIONS = {
     list: { required: [], optional: ["collection", "folder", "text"] },
     show: { required: ["request"], optional: ["collection", "folder", "environment"] },
     run: { required: ["request", "environment"], optional: ["collection", "folder", "variables", "timeoutSec"] },
-    "run-folder": { required: ["folder", "environment"], optional: ["collection", "variables", "timeoutSec"] },
+    run_folder: { required: ["folder", "environment"], optional: ["collection", "variables", "timeoutSec"] },
     call: { required: ["environment", "method", "url"], optional: ["collection", "body", "headers", "timeoutSec"] },
-    "postman-environments": { required: [], optional: ["collection", "workspace", "timeoutSec"] },
+    postman_environments: { required: [], optional: ["collection", "workspace", "timeoutSec"] },
 } as const satisfies Record<string, ActionSpec>;
 
 export type ActionName = keyof typeof ACTIONS;
@@ -94,7 +94,7 @@ export const parameters = Type.Object({
     workspace: Type.Optional(
         Type.String({
             description:
-                "postman-environments: a Postman workspace id, to list only its environments. Default: all the key can see",
+                "postman_environments: a Postman workspace id, to list only its environments. Default: all the key can see",
         }),
     ),
     timeoutSec: Type.Optional(
@@ -119,7 +119,7 @@ export type Call =
           timeoutSec?: number;
       }
     | {
-          action: "run-folder";
+          action: "run_folder";
           folder: string;
           environment: string;
           collection?: string;
@@ -136,7 +136,7 @@ export type Call =
           headers?: unknown;
           timeoutSec?: unknown;
       }
-    | { action: "postman-environments"; collection?: string; workspace?: string; timeoutSec?: number };
+    | { action: "postman_environments"; collection?: string; workspace?: string; timeoutSec?: number };
 
 const TEXT_PARAMS: readonly Param[] = [
     "collection",

@@ -251,7 +251,7 @@ for (const format of ["yaml", "json"] as const) {
 
         test("a folder runs the operations of a tag, one line each", async () => {
             const text = ok(
-                await h.call({ action: "run-folder", folder: "Smoke", collection: "acme", environment: "Staging" }),
+                await h.call({ action: "run_folder", folder: "Smoke", collection: "acme", environment: "Staging" }),
             );
             assert.match(
                 text,

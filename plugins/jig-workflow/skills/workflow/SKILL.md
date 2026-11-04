@@ -18,7 +18,7 @@ No workflow yet? `workflow start` picks the one whose pattern matches the ticket
 | Condition | You ask for it with | What the plugin records |
 |---|---|---|
 | `notes-updated` | writing what you learned in `notes.md` | that the notes changed since the stage began |
-| `plan-approved` | `workflow submit-plan` after writing `plan.md` | the user's yes to this exact text, by fingerprint |
+| `plan-approved` | `workflow submit_plan` after writing `plan.md` | the user's yes to this exact text, by fingerprint |
 | `tests-pass-at-head` | commit, then `workflow test` | the result at the full commit, on a clean tree |
 | `review-done` | `/code-review --branch`, approved by the user | a review that covers the commit |
 | `pull-request-open`, `checks-pass` | `git push`, `pr create`, then wait for the CI message | the pull request and its checks, read from GitHub |
@@ -35,7 +35,7 @@ A refusal that says `held by workflow` names the condition and what is missing. 
 
 ## Moving on
 
-`workflow advance` moves one stage when every exit condition holds, and otherwise lists what is missing. `workflow back` goes to an earlier stage and erases nothing. Some calls always ask the user, whatever the rules say: `submit-plan`, `advance` from a stage that needs them, `start` with `replace`, and `test` without a sandbox. Do not retry one that was declined; read why, and change what you do.
+`workflow advance` moves one stage when every exit condition holds, and otherwise lists what is missing. `workflow back` goes to an earlier stage and erases nothing. Some calls always ask the user, whatever the rules say: `submit_plan`, `advance` from a stage that needs them, `start` with `replace`, and `test` without a sandbox. Do not retry one that was declined; read why, and change what you do.
 
 ## Reading what comes back
 

@@ -600,8 +600,8 @@ describe("a pipeline: the ways to a denied field", () => {
     });
 
     test("stages the walk does not know are refused, and the reason points to the action that does it", () => {
-        bad([{ $collStats: {} }], /use the index-stats or stats action/, "$collStats");
-        bad([{ $indexStats: {} }], /use the index-stats or stats action/, "$indexStats");
+        bad([{ $collStats: {} }], /use the index_stats or stats action/, "$collStats");
+        bad([{ $indexStats: {} }], /use the index_stats or stats action/, "$indexStats");
         bad([{ $search: {} }], /not supported/, "$search");
         bad([{ $currentOp: {} }], /not supported/, "$currentOp");
         bad([{ $geoNear: {} }], /not supported/, "$geoNear");

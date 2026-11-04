@@ -44,7 +44,7 @@ Fields whose names look like credentials (password, secret, token, apiKey) are n
 ## Changing test data
 
 1. Read first: `count` and `find` the documents you mean to change.
-2. Say what you are about to change, and why. Then make one write: `update`, `replace`, `delete`, `insert`, `bulk`, `create-index` or `drop-index`.
+2. Say what you are about to change, and why. Then make one write: `update`, `replace`, `delete`, `insert`, `bulk`, `create_index` or `drop_index`.
 3. The user sees a preview with the filter, the change and how many documents match, counted just before. Make the filter as narrow as the task needs, usually an `_id`.
 4. Use `which: "one"` unless the task is a real change to many. A filter that is empty is refused. More than 1000 documents is refused unless you raise `limit` on purpose.
 5. After the write, read the document again and check the change.

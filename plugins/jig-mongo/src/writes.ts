@@ -338,7 +338,7 @@ function planCreateIndex(call: Call, access: Access): WriteRun {
         async prepare(backend, req) {
             const existing = (await backend.indexes(ns, req)).map((index) => String(index.name));
             const fingerprint = fingerprintOf({
-                action: "create-index",
+                action: "create_index",
                 environment: placeOf(call),
                 ns,
                 keys,
@@ -376,7 +376,7 @@ function planDropIndex(call: Call, access: Access): WriteRun {
     access.namespace(ns.db, ns.coll);
     const name = call.name as string;
     if (name === "_id_") throw new InputError("the _id index cannot be dropped");
-    if (name === "*") throw new InputError("drop-index takes the name of one index");
+    if (name === "*") throw new InputError("drop_index takes the name of one index");
     const label = labelOf(call);
     return {
         label,
@@ -386,7 +386,7 @@ function planDropIndex(call: Call, access: Access): WriteRun {
             if (found === undefined)
                 throw new InputError(`${label}: there is no index named ${name} (indexes lists them)`);
             const fingerprint = fingerprintOf({
-                action: "drop-index",
+                action: "drop_index",
                 environment: placeOf(call),
                 ns,
                 name,
@@ -490,9 +490,9 @@ export function planWrite(call: Call, access: Access): WriteRun {
             return planFiltered(call, access, "delete");
         case "bulk":
             return planBulk(call, access);
-        case "create-index":
+        case "create_index":
             return planCreateIndex(call, access);
-        case "drop-index":
+        case "drop_index":
             return planDropIndex(call, access);
         default:
             throw new InputError(`mongo ${call.action} is not a write`);

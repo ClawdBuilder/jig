@@ -34,8 +34,8 @@ export interface ApiOptions extends HttpOptions {
 }
 
 const DESCRIPTION =
-    "Run saved API requests by name, filling only their variables: list, show, run, run-folder; call for an ad-hoc one " +
-    "where allowed; postman-environments for ids. The tool signs in; non-2xx is a result.";
+    "Run saved API requests by name, filling only their variables: list, show, run, run_folder; call for an ad-hoc one " +
+    "where allowed; postman_environments for ids. The tool signs in; non-2xx is a result.";
 
 export interface ApiTool {
     definition: ToolDefinition<typeof parameters>;
@@ -79,7 +79,7 @@ function contextOf(): PlanContext {
     return { settings, catalog: loadCatalog(settings), kindOf: (name) => jig().environments.kindOf(name) };
 }
 
-/** The plans a `run`, `run-folder` or `call` makes, and what to call them. */
+/** The plans a `run`, `run_folder` or `call` makes, and what to call them. */
 interface Prepared {
     plans: Plan[];
     /** The class of the call: its action and effect. */
@@ -93,7 +93,7 @@ interface Prepared {
 /** The Postman cloud collection whose key lists the environments: the one named, or the only one. */
 function listerOf(
     settings: ApiSettings,
-    call: Extract<Call, { action: "postman-environments" }>,
+    call: Extract<Call, { action: "postman_environments" }>,
 ): { name: string; lister: EnvironmentLister } {
     checkTimeout(call.timeoutSec, settings.timeoutSec);
     if (call.workspace !== undefined && !WORKSPACE_ID.test(call.workspace)) {
@@ -153,7 +153,7 @@ function readsHere(ctx: PlanContext, request: SavedRequest, jigEnvironment: stri
 }
 
 /** Plans every request the call sends. Throws an InputError for anything invalid. */
-function prepare(ctx: PlanContext, call: Extract<Call, { action: "run" | "run-folder" | "call" }>): Prepared {
+function prepare(ctx: PlanContext, call: Extract<Call, { action: "run" | "run_folder" | "call" }>): Prepared {
     if (call.action === "call") {
         const plan = planCall(ctx, {
             environment: call.environment,
@@ -280,7 +280,7 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                 case "show":
                     requiredSettings();
                     return { action: call.action, environment: "local", effect: "read" };
-                case "postman-environments":
+                case "postman_environments":
                     // A read of the Postman API, outside the machine; the collection is found now, so a wrong one blocks.
                     listerOf(requiredSettings(), call);
                     return { action: call.action, environment: "external", effect: "read" };
@@ -296,9 +296,9 @@ export function createTool(options: ApiOptions = {}): ApiTool {
             try {
                 const call = parseCall(input);
                 if (call.action === "list" || call.action === "show") return { summary: `api ${call.action}` };
-                if (call.action === "postman-environments") {
+                if (call.action === "postman_environments") {
                     const { name } = listerOf(requiredSettings(), call);
-                    return { summary: `api postman-environments with the key of ${name}: names and ids only` };
+                    return { summary: `api postman_environments with the key of ${name}: names and ids only` };
                 }
                 const prepared = prepare(contextOf(), call);
                 return prepared.folder === undefined
@@ -314,7 +314,7 @@ export function createTool(options: ApiOptions = {}): ApiTool {
             label: "API",
             description: DESCRIPTION,
             promptSnippet:
-                "api: run the team's saved API requests by name (list, show, run, run-folder); call for an ad-hoc one",
+                "api: run the team's saved API requests by name (list, show, run, run_folder); call for an ad-hoc one",
             parameters,
             // One call at a time and in order: a write must be done before the read that checks it.
             executionMode: "sequential",
@@ -337,7 +337,7 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                     });
                 }
 
-                if (call.action === "postman-environments") {
+                if (call.action === "postman_environments") {
                     const settings = requiredSettings();
                     const { name, lister } = listerOf(settings, call);
                     const deps = {
@@ -350,7 +350,7 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                     if (!list.ok) throw new Error(environmentsText(name, call.workspace, list));
                     jig().addFacts(toolCallId, { environments: list.environments.length + list.more });
                     return text(environmentsText(name, call.workspace, list), {
-                        action: "postman-environments",
+                        action: "postman_environments",
                         collection: name,
                         environments: list.environments.length + list.more,
                     });
@@ -359,7 +359,7 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                 const prepared = prepare(contextOf(), call);
                 const first = prepared.plans[0] as Plan;
                 if (prepared.folder !== undefined) {
-                    guard(toolCallId, `api run-folder ${prepared.folder}`, fingerprintOfAll(prepared.plans));
+                    guard(toolCallId, `api run_folder ${prepared.folder}`, fingerprintOfAll(prepared.plans));
                     const folder = await runFolder(http, prepared, signal);
                     jig().addFacts(toolCallId, {
                         requests: prepared.plans.length,

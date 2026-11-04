@@ -10,7 +10,7 @@ How a write is previewed, compared with what was approved, sent once, and checke
 | a test environment | `jig-core` asks, with the preview below |
 | production | denied by `jig-core`'s floor, which no rule reaches past, and refused again by the tool when it plans the call |
 
-A write is `insert`, `update`, `replace`, `delete`, `bulk`, `create-index`, `drop-index`, and an `aggregate` whose last stage is `$out`
+A write is `insert`, `update`, `replace`, `delete`, `bulk`, `create_index`, `drop_index`, and an `aggregate` whose last stage is `$out`
 or `$merge`. Nothing in a write is sent until the call has been planned: the collection, every field it names and every operator are
 checked first, and an invalid call is blocked without asking.
 
@@ -22,7 +22,7 @@ checked first, and an invalid call is blocked without asking.
 | `insert` | the first 10 documents and how many more |
 | `bulk` | the operations, and for each one how many documents match |
 | `aggregate` with `$out` or `$merge` | the pipeline, and how many documents reach the output and the target |
-| `create-index`, `drop-index` | the keys and options, or the index and its definition, and the indexes there are |
+| `create_index`, `drop_index` | the keys and options, or the index and its definition, and the indexes there are |
 
 - **`update`, `replace` and `delete`** count the documents just before the preview, and also show what the write changes.
 - **`aggregate` with `$out` or `$merge`:** `$out` replaces the target, so the preview says how many documents it has now.
@@ -74,7 +74,7 @@ The one read, on a new connection with a short time limit:
 | `update`, `replace`, `delete` | how many documents the filter matches now, against how many matched before |
 | `bulk` | the same, for each operation that has a filter (at most 10) |
 | `$out`, `$merge` | how many documents the target has now |
-| `create-index`, `drop-index` | the names of the indexes now |
+| `create_index`, `drop_index` | the names of the indexes now |
 
 If that read fails too, the message says so and tells the model to read the data. Either way the model must not send the write again
 without looking.

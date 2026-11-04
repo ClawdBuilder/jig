@@ -33,7 +33,7 @@ The check runs `explain` at `queryPlanner`: the planner only, nothing is execute
 | `sample`, `schema` | With a filter, the `$match` and `$sample`. With none, not checked: a bounded random sample |
 | `explain` | At `executionStats` (the default) the server runs the query, so it is checked. At `queryPlanner` it is not |
 
-`databases`, `collections`, `stats`, `indexes` and `index-stats` read no documents and are not checked.
+`databases`, `collections`, `stats`, `indexes` and `index_stats` read no documents and are not checked.
 
 ## How the plan is read
 

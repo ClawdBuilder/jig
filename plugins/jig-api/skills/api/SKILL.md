@@ -18,7 +18,7 @@ Use the `api` tool for every API call. The team's requests are saved in collecti
 
 - `api run` with `request`, `environment` and `variables`. Give a value for each variable the request needs (`orderId`, a search text). Give an optional one only when the task calls for it: one you leave out is left out of the request.
 - A variable that is a secret, or that signs the request in, comes from the environment and the user's secret store. Never put a token, a password or a key in `variables`, and never try to set the host or the method: they are refused.
-- `api run-folder` with `folder` and `environment` runs a folder in order and stops at the first failure. Use it for a smoke test after a deploy.
+- `api run_folder` with `folder` and `environment` runs a folder in order and stops at the first failure. Use it for a smoke test after a deploy.
 - `api call` is an ad-hoc request for an endpoint nobody has saved. It works only in the test environments the user allowed, never in production, and it signs in only if the environment sets a sign-in. Prefer a saved request.
 
 ## Specs (OpenAPI)
@@ -53,7 +53,7 @@ The reason names what to change. The common ones:
 
 ## Finding a Postman environment's id
 
-To map a Postman environment in the configuration, use `api postman-environments` (with `collection` when there are several Postman cloud collections, and `workspace` to narrow). It lists names and ids only, with the key the configuration already names. Never fetch an environment with another tool, such as the Postman CLI with `--json`: that brings its secret values into your context.
+To map a Postman environment in the configuration, use `api postman_environments` (with `collection` when there are several Postman cloud collections, and `workspace` to narrow). It lists names and ids only, with the key the configuration already names. Never fetch an environment with another tool, such as the Postman CLI with `--json`: that brings its secret values into your context.
 
 ## When a write gets no answer
 

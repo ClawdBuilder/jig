@@ -255,6 +255,7 @@ describe("what plugins import", () => {
         const modules = readdirSync(kit).sort();
         assert.deepEqual(modules, [
             "abort.ts",
+            "action-names.ts",
             "browser.ts",
             "files.ts",
             "git-settings.ts",
@@ -270,6 +271,7 @@ describe("what plugins import", () => {
         ]);
         const expected: Record<string, string[]> = {
             "abort.ts": ["untilAborted"],
+            "action-names.ts": ["RENAMED_ACTIONS", "canonicalAction", "renamedAction", "renamedInRules"],
             "browser.ts": ["browserCommand"],
             "files.ts": ["createFileDurably", "replaceFileDurably", "syncFolder"],
             "git-settings.ts": ["isDangerousGitSetting"],

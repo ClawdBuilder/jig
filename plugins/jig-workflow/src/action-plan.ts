@@ -1,4 +1,4 @@
-// The actions about the plan: `submit-plan`, which records the user's approval of exactly the text they read, and `scenario`, which
+// The actions about the plan: `submit_plan`, which records the user's approval of exactly the text they read, and `scenario`, which
 // records a result with its evidence against that approved plan. Neither records a claim; both check the plan as it is now.
 import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
@@ -41,12 +41,12 @@ export async function submitPlan(rt: Runtime, params: Params, call: Call): Promi
     const approved = rt.host.approvedPreview(call.toolCallId);
     if (approved === undefined) {
         throw new Error(
-            "the plan was not put to the user in this call (a rule or an earlier answer allowed it without asking), so it is not approved. Call submit-plan again.",
+            "the plan was not put to the user in this call (a rule or an earlier answer allowed it without asking), so it is not approved. Call submit_plan again.",
         );
     }
     if (approved.fingerprint !== plan.fingerprint) {
         throw new Error(
-            "plan.md changed since the preview the user approved: nothing was recorded. Call submit-plan again.",
+            "plan.md changed since the preview the user approved: nothing was recorded. Call submit_plan again.",
         );
     }
     updateState(work.paths.dir, (state) => {
@@ -144,7 +144,7 @@ export async function scenario(rt: Runtime, params: Params): Promise<ActionResul
     const text = readText(work.paths.plan);
     if (state.plan === undefined || state.plan.fingerprint !== fingerprintOf(text)) {
         throw new InputError(
-            "the plan is not approved as it stands: run workflow submit-plan first, so the scenarios are the ones the user read",
+            "the plan is not approved as it stands: run workflow submit_plan first, so the scenarios are the ones the user read",
         );
     }
     const scenarios = parsePlan(text).scenarios;

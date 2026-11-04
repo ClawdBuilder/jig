@@ -24,7 +24,7 @@ const ACTIONS = {
         required: ["repo"],
         optional: ["ticket", "dir", "base"],
     },
-    "submit-plan": { summary: "check plan.md and ask the user to approve it", optional: ["ticket"] },
+    submit_plan: { summary: "check plan.md and ask the user to approve it", optional: ["ticket"] },
     test: { summary: "run the bound repositories' tests at HEAD, in the sandbox", optional: ["ticket", "repo"] },
     scenario: {
         summary: "record pass or fail for a numbered scenario; a pass needs evidence",
@@ -110,7 +110,7 @@ const parameters = Type.Object(
 const DESCRIPTION = [
     "Take a piece of work, such as a ticket, through its workflow: stages, each with a goal and the conditions that let you leave it.",
     "Start with action status to see the stage, what is missing and which calls are held. The plugin records evidence itself:",
-    "test runs the tests at the current commit, submit-plan asks the user to approve plan.md, scenario records what you ran",
+    "test runs the tests at the current commit, submit_plan asks the user to approve plan.md, scenario records what you ran",
     "with evidence, and advance moves on only when every exit condition holds. You cannot mark anything passed yourself.",
     "A held call (git push, edit, ...) is refused with the condition it waits for.",
 ].join(" ");
@@ -154,7 +154,7 @@ function classify(input: Readonly<Record<string, unknown>>): CallClass {
         case "list":
         case "status":
             return { action, environment: "local", effect: "read" };
-        case "submit-plan":
+        case "submit_plan":
             return { action, environment: "local", effect: "write", atLeast: "ask", approval: "review" };
         case "start":
             return input.replace === true
@@ -171,7 +171,7 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
         const action = checkInput(input);
         const params = input as unknown as Params;
         switch (action) {
-            case "submit-plan": {
+            case "submit_plan": {
                 const question = await actions.planPreview(rt, params);
                 return {
                     summary: question.summary,
@@ -223,10 +223,10 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
         name: TOOL_NAME,
         label: "Workflow",
         description: DESCRIPTION,
-        promptSnippet: "Take work through its workflow: status, test, submit-plan, scenario, advance",
+        promptSnippet: "Take work through its workflow: status, test, submit_plan, scenario, advance",
         promptGuidelines: [
             "Call workflow with action status when you start on a ticket and after each stage: it says what is missing and how to fix it.",
-            "Never claim a test passed or a plan was approved; workflow test and workflow submit-plan make the plugin record it.",
+            "Never claim a test passed or a plan was approved; workflow test and workflow submit_plan make the plugin record it.",
         ],
         parameters,
         // Each action reads the state and writes it back, and a move depends on the evidence it just read.
@@ -265,7 +265,7 @@ async function run(rt: Runtime, params: Params, call: actions.Call): Promise<Act
         }
         case "bind":
             return actions.bind(rt, params, call);
-        case "submit-plan":
+        case "submit_plan":
             return actions.submitPlan(rt, params, call);
         case "test":
             return actions.runTestsAction(rt, params, call);

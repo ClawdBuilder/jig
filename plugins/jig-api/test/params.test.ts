@@ -17,8 +17,8 @@ function refuses(work: () => unknown, pattern: RegExp): void {
 }
 
 describe("the actions", () => {
-    test("are list, show, run, run-folder, call and postman-environments, and each says what it needs", () => {
-        assert.deepEqual([...ACTION_NAMES], ["list", "show", "run", "run-folder", "call", "postman-environments"]);
+    test("are list, show, run, run_folder, call and postman_environments, and each says what it needs", () => {
+        assert.deepEqual([...ACTION_NAMES], ["list", "show", "run", "run_folder", "call", "postman_environments"]);
         assert.equal(usage("list"), "Usage: api list {collection?, folder?, text?}");
         assert.equal(usage("show"), "Usage: api show {request, collection?, folder?, environment?}");
         assert.equal(
@@ -26,14 +26,14 @@ describe("the actions", () => {
             "Usage: api run {request, environment, collection?, folder?, variables?, timeoutSec?}",
         );
         assert.equal(
-            usage("run-folder"),
-            "Usage: api run-folder {folder, environment, collection?, variables?, timeoutSec?}",
+            usage("run_folder"),
+            "Usage: api run_folder {folder, environment, collection?, variables?, timeoutSec?}",
         );
         assert.equal(
             usage("call"),
             "Usage: api call {environment, method, url, collection?, body?, headers?, timeoutSec?}",
         );
-        assert.ok(isAction("run-folder"));
+        assert.ok(isAction("run_folder"));
         for (const name of ["constructor", "__proto__", "toString", "Run", "", 5, undefined])
             assert.equal(isAction(name), false, String(name));
         assert.deepEqual(Object.keys(ACTIONS), [...ACTION_NAMES]);
@@ -58,7 +58,7 @@ describe("the actions", () => {
     test("an unknown action is refused with the actions there are", () => {
         refuses(
             () => parseCall({ action: "fly" }),
-            /^api: unknown action "fly"; use one of list, show, run, run-folder, call, postman-environments$/,
+            /^api: unknown action "fly"; use one of list, show, run, run_folder, call, postman_environments$/,
         );
         refuses(() => parseCall({}), /^api: unknown action undefined;/);
         refuses(() => parseCall({ action: "constructor" }), /unknown action/);
@@ -71,8 +71,8 @@ describe("the actions", () => {
         );
         refuses(() => parseCall({ action: "call" }), /^api call needs environment, method, url\. Usage: api call \{/);
         refuses(
-            () => parseCall({ action: "run-folder", environment: "Staging" }),
-            /^api run-folder needs folder\. Usage: api run-folder \{/,
+            () => parseCall({ action: "run_folder", environment: "Staging" }),
+            /^api run_folder needs folder\. Usage: api run_folder \{/,
         );
         refuses(() => parseCall({ action: "show" }), /^api show needs request\./);
     });

@@ -61,7 +61,7 @@ describe("the extension", () => {
                 "timeoutSec",
             ]);
             assert.deepEqual(properties.properties.action?.enum, [...ACTION_NAMES]);
-            assert.deepEqual([...ACTION_NAMES], ["list", "show", "run", "run-folder", "call", "postman-environments"]);
+            assert.deepEqual([...ACTION_NAMES], ["list", "show", "run", "run_folder", "call", "postman_environments"]);
             assert.deepEqual(properties.properties.method?.enum, [...METHODS]);
             assert.deepEqual(properties.required, ["action"]);
             assert.equal(tool?.executionMode, "sequential", "a write is done before the read that checks it");

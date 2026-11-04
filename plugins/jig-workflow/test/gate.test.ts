@@ -92,7 +92,7 @@ describe("holds on write and edit", () => {
         w.writePlan(PLAN.replace("Cache the price list.", "Cache the price list, per tenant."));
         const again = await w.other_("edit", { path: inOrders(w) });
         assert.equal(again.blocked, true);
-        assert.match(again.reason ?? "", /plan.md changed since you approved it: run workflow submit-plan again/);
+        assert.match(again.reason ?? "", /plan.md changed since you approved it: run workflow submit_plan again/);
     });
 
     test("a link into a bound repository is held too", async (t) => {

@@ -330,7 +330,7 @@ function stageOf(walk: Walk, ctx: Ctx, stage: unknown, ns: Ns, main: boolean): D
             );
         default:
             throw new InputError(
-                `the stage ${name} is not supported${name === "$indexStats" || name === "$collStats" ? "; use the index-stats or stats action" : ""}`,
+                `the stage ${name} is not supported${name === "$indexStats" || name === "$collStats" ? "; use the index_stats or stats action" : ""}`,
             );
     }
     return stage as Doc;

@@ -136,7 +136,7 @@ describe("the README is the specification", () => {
 
     test("every action is in the tool table, with its kind, and no other is", () => {
         const table = readme.split("## Tool: `mongo`")[1]?.split("## Access")[0] ?? "";
-        const named = [...table.matchAll(/`([a-z-]+)`/g)]
+        const named = [...table.matchAll(/`([a-z0-9_-]+)`/g)]
             .map((match) => match[1] as string)
             .filter((name) => ACTION_NAMES.includes(name as never));
         assert.deepEqual([...new Set(named)].sort(), [...ACTION_NAMES].sort());

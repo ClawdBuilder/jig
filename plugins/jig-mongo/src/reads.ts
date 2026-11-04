@@ -543,7 +543,7 @@ export function planRead(call: Call, access: Access, options?: PlanOptions): Rea
             return planStats(call, access);
         case "indexes":
             return planIndexes(call, access, false);
-        case "index-stats":
+        case "index_stats":
             return planIndexes(call, access, true);
         case "explain":
             return planExplain(call, access, options);
