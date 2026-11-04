@@ -145,22 +145,13 @@ describe("/jig", () => {
         );
     });
 
-    test("setup refuses without a screen, and points at the doctor", async () => {
-        const harness = await begin({ ui: false, plugins: setupSections });
-        assert.match(await jigCommand(harness, "setup"), /Setup needs Pi's screen[\s\S]*\/jig doctor/);
-        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false);
-    });
-
-    test("setup cancel writes nothing", async () => {
-        const harness = await begin({
-            config: { lens: { port: "high" } },
-            plugins: setupSections,
-            ui: { select: (title) => (title.startsWith("Acme") ? "Cancel setup" : undefined) },
-        });
-        const file = path.join(harness.agentDir, "jig.json");
-        const before = readFileSync(file, "utf8");
-        assert.match(await jigCommand(harness, "setup"), /Nothing was written/);
-        assert.equal(readFileSync(file, "utf8"), before);
+    test("setup says to run the command in a terminal, without a screen or with one", async () => {
+        for (const ui of [false, {}] as const) {
+            const harness = await begin({ ui, plugins: setupSections });
+            const shown = await jigCommand(harness, "setup");
+            assert.match(shown, /Run jig setup in a terminal\./);
+            assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
+        }
     });
 
     test("counts a missing credential in the setup nudge", async () => {
@@ -168,131 +159,7 @@ describe("/jig", () => {
             config: { jira: { token: "pass:work/jig-test-does-not-exist" } },
             plugins: (api) => api.config.registerSection("jira", () => []),
         });
-        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run \/jig setup\./);
-    });
-
-    test("setup does not offer a store the person turned off, and says so", async () => {
-        const harness = await begin({
-            config: { secrets: { disabledBackends: ["env"] } },
-            plugins: credentialSections,
-            ui: {
-                select: (title) => {
-                    if (title.startsWith("Acme")) return "Answer these";
-                    if (title.startsWith("Where do you keep")) return undefined;
-                    return undefined;
-                },
-                input: (title) => (title === "Acme bastion login" ? "jdoe" : undefined),
-            },
-        });
-        const shown = await jigCommand(harness, "setup");
-        assert.match(shown, /You turned off an environment variable/);
-        const storeSelect = harness.ui.selects.find((entry) => entry.title.startsWith("Where do you keep"));
-        assert.ok(storeSelect);
-        assert.ok(!storeSelect.options.includes("An environment variable"));
-    });
-
-    test("setup asks where a credential is kept, never shows it, and offers check again", async () => {
-        delete process.env.JIRA_TOKEN;
-        const harness = await begin({
-            config: {},
-            plugins: credentialSections,
-            ui: {
-                select: (title) => {
-                    if (title.startsWith("Acme")) return "Answer these";
-                    if (title.startsWith("Where do you keep")) return "An environment variable";
-                    if (title === "Not found yet") {
-                        process.env.JIRA_TOKEN = "test-value";
-                        return "Check again";
-                    }
-                    if (title === "Review these changes") return "Save these changes";
-                    return undefined;
-                },
-                input: (title) => {
-                    if (title === "Acme bastion login") return "jdoe";
-                    if (title === "Which environment variable?") return "JIRA_TOKEN";
-                    return undefined;
-                },
-                confirm: () => true,
-            },
-        });
-        try {
-            const shown = await jigCommand(harness, "setup");
-            assert.match(shown, /Missing from an environment variable/);
-            assert.match(shown, /Acme SSO token: read from environment variable JIRA_TOKEN \(new\)/);
-            assert.match(shown, /Turn on an environment variable as a place Jig reads from/);
-            assert.doesNotMatch(shown, /env:JIRA_TOKEN|op:\/\/|pass:/);
-            assert.ok(!shown.includes("{"));
-            const after = JSON.parse(readFileSync(path.join(harness.agentDir, "jig.json"), "utf8"));
-            assert.equal(after.acme.sso.token, "env:JIRA_TOKEN");
-            assert.ok(after.secrets.backends.includes("env"));
-            assert.equal(harness.ui.confirms.length, 1);
-        } finally {
-            delete process.env.JIRA_TOKEN;
-        }
-    });
-
-    test("setup asks again after a rejection, in plain words", async () => {
-        let harnessInputs = 0;
-        const harness = await begin({
-            config: { lens: { port: "high" } },
-            plugins: (api) =>
-                api.config.registerSection("lens", (raw) =>
-                    typeof (raw as { port?: unknown }).port === "number" ? [] : ["lens.port must be a number"],
-                ),
-            ui: {
-                select: (title) => {
-                    if (title.startsWith("Lens")) return "Answer these";
-                    if (title === "Review these changes") return "Save these changes";
-                    return undefined;
-                },
-                input: () => (harnessInputs++ === 0 ? "high" : "8080"),
-                confirm: () => true,
-            },
-        });
-        const shown = await jigCommand(harness, "setup");
-        assert.match(shown, /Lens port must be a number\./);
-        assert.match(shown, /Lens port: 8080 \(changed\)/);
-        assert.equal(harness.ui.inputs.length, 2);
-        assert.equal(JSON.parse(readFileSync(path.join(harness.agentDir, "jig.json"), "utf8")).lens.port, 8080);
-    });
-
-    test("setup shows the plain changes, the exact change on request, then writes and backs up", async () => {
-        const harness = await begin({
-            config: { lens: { port: "high" } },
-            plugins: setupSections,
-            ui: {
-                select: (title) => {
-                    if (title.startsWith("Acme") || title.startsWith("Lens")) return "Answer these";
-                    if (title === "Review these changes") return "Show the exact change";
-                    if (title === "The exact change") return "Only these fields change:";
-                    return undefined;
-                },
-                input: (title) => (title === "Acme bastion login" ? "jdoe" : "8080"),
-                confirm: () => true,
-            },
-        });
-        const shown = await jigCommand(harness, "setup");
-        assert.match(shown, /Acme bastion login: jdoe \(new\)/);
-        assert.match(shown, /Lens port: 8080 \(changed\)/);
-        assert.match(shown, /"user": "jdoe"/);
-        assert.match(shown, /Run \/reload to apply/);
-
-        const summary = harness.ui.notifications
-            .map((entry) => entry.message)
-            .find((message) => message.includes("Acme bastion login:"));
-        assert.ok(summary);
-        assert.ok(!summary.includes("{"));
-        assert.doesNotMatch(summary, /\b(pass|env|cmd|file|keychain):|op:\/\//);
-        assert.equal(harness.ui.confirms.length, 1);
-        assert.equal(harness.ui.confirms[0]?.title, "Save these changes?");
-        assert.match(harness.ui.confirms[0]?.message ?? "", /Acme bastion login: jdoe \(new\)/);
-        assert.ok(!(harness.ui.confirms[0]?.message ?? "").includes("{"));
-
-        const file = path.join(harness.agentDir, "jig.json");
-        const after = JSON.parse(readFileSync(file, "utf8"));
-        assert.equal(after.acme.bastion.user, "jdoe");
-        assert.equal(after.lens.port, 8080);
-        assert.equal(readdirSync(harness.agentDir).filter((name) => name.endsWith(".bak")).length, 1);
+        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run jig setup in a terminal\./);
     });
 
     test("adds one line about setup when a company's defaults are incomplete", async () => {
@@ -306,7 +173,7 @@ describe("/jig", () => {
                 );
             },
         });
-        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run \/jig setup\./);
+        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run jig setup in a terminal\./);
     });
 
     test("shows the status: tools governed, plugins, tools on the unknown default, watches and the configuration", async () => {

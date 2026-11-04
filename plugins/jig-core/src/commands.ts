@@ -22,7 +22,7 @@ import { countQuickIssues } from "./doctor-secrets.ts";
 import { formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
 import { shorten } from "./secret-status.ts";
-import { runSetup } from "./setup.ts";
+
 import { sectionState } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
@@ -47,7 +47,12 @@ export function registerCommands(pi: ExtensionAPI, state: JigState): void {
             if (word === undefined || word === "") return show(ctx, "jig status", statusLines(state));
             if (word === "setup") {
                 if (rest.length > 0) return show(ctx, "jig setup", ["Usage: /jig setup"]);
-                return runSetup(state, ctx);
+                // The questions need a real terminal: Pi's own screen hides them in a dialog, and the CLI can run outside Pi.
+                // One code path asks; this one just says where.
+                return show(ctx, "jig setup", [
+                    "Run jig setup in a terminal.",
+                    "It asks the same questions without Pi, and writes the same file.",
+                ]);
             }
             if (word === "doctor") return show(ctx, "jig doctor", await doctorLines(state, rest));
             if (word === "rules") return show(ctx, "jig rules", ruleLines(state, rest[0], ctx.hasUI));
@@ -162,7 +167,7 @@ export function statusLines(state: JigState): string[] {
     const issues = countQuickIssues(doctorContext(state));
     if (issues > 0) {
         const things = issues === 1 ? "1 thing needs" : `${issues} things need`;
-        lines.push(`Setup: ${things} you. Run /jig setup.`);
+        lines.push(`Setup: ${things} you. Run jig setup in a terminal.`);
     }
     const deferred = deferredNames(state);
     if (deferred.length > 0) lines.push(`Deferred tools (found with tool_search): ${deferred.join(", ")}`);

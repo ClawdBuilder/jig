@@ -1,7 +1,7 @@
 // `/jig setup`: the questions, the plain summary, and the one confirmation that writes. It is a command, never a tool,
 // so the model cannot run it. Every screen is plain words; the only JSON is behind "Show the exact change".
 import { homedir } from "node:os";
-import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+
 import { errorMessage } from "./errors.ts";
 import { run as runProgram } from "./exec.ts";
 import { effectiveBackends } from "./config.ts";
@@ -18,82 +18,75 @@ import type { SetupChange, SetupField, SetupPlan, SetupState } from "./setup-pla
 import type { JigState } from "./state.ts";
 
 /** Runs the whole flow. It writes nothing unless the person confirms the summary. */
-export async function runSetup(state: JigState, ctx: ExtensionCommandContext): Promise<void> {
-    if (!ctx.hasUI) {
-        ctx.ui.notify(
-            "Setup needs Pi's screen. Run /jig setup in Pi's terminal, or /jig doctor for a read-only check.",
-            "warning",
-        );
-        return;
-    }
+/** What a screen has to offer: Pi's UI in a session, a terminal in the `jig` command. */
+export interface SetupUi {
+    select(title: string, options: string[]): Promise<string | undefined>;
+    input(title: string, placeholder?: string): Promise<string | undefined>;
+    confirm(title: string, message: string): Promise<boolean>;
+    notify(text: string, level: "info" | "warning" | "error"): void;
+}
 
-    const built = buildSetupPlan(setupState(state));
+export async function runSetup(state: JigState, ui: SetupUi): Promise<number> {
+    const built = buildSetupPlan(setupStateFrom(state));
     if ("problem" in built) {
-        ctx.ui.notify(built.problem, "warning");
-        return;
+        ui.notify(built.problem, "warning");
+        return 1;
     }
     const plan = built.plan;
     if (plan.sections.length === 0) {
-        ctx.ui.notify("Nothing needs you right now. /jig doctor has the full check.", "info");
-        return;
+        ui.notify("Nothing needs you right now. jig doctor has the full check.", "info");
+        return 0;
     }
-    if (plan.intro.length > 0) ctx.ui.notify(plan.intro.join("\n"), "info");
+    if (plan.intro.length > 0) ui.notify(plan.intro.join("\n"), "info");
     for (const login of plan.logins) {
-        ctx.ui.notify(
+        ui.notify(
             `${login.label}: run \`${login.command}\` in another terminal.${login.why === undefined ? "" : ` ${login.why}`}`,
             "info",
         );
     }
     const notes = plan.sections.flatMap((section) => section.notes);
     if (plan.sections.every((section) => section.fields.length === 0)) {
-        ctx.ui.notify([...notes, "Nothing was written."].join("\n"), "info");
-        return;
+        ui.notify([...notes, "Nothing was written."].join("\n"), "info");
+        return 0;
     }
 
-    ctx.ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
+    ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
     const draft = structuredClone(plan.raw);
     const changes: SetupChange[] = [];
 
     for (const section of plan.sections) {
         if (section.fields.length === 0) continue;
         const things = section.fields.length === 1 ? "1 thing" : `${section.fields.length} things`;
-        const choice = await ctx.ui.select(`${section.label} needs ${things}`, [
+        const choice = await ui.select(`${section.label} needs ${things}`, [
             "Answer these",
             "Skip this section",
             "Cancel setup",
         ]);
-        if (choice === undefined || choice === "Cancel setup") return cancel(ctx);
+        if (choice === undefined || choice === "Cancel setup") return cancel(ui);
         if (choice === "Skip this section") continue;
         for (const field of section.fields) {
-            if ((await ask(state, plan, field, draft, changes, ctx)) === "cancel") return cancel(ctx);
+            if ((await ask(state, plan, field, draft, changes, ui)) === "cancel") return cancel(ui);
         }
     }
 
     if (changes.length === 0) {
-        ctx.ui.notify([...notes, "Nothing was written."].join("\n"), "info");
-        return;
+        ui.notify([...notes, "Nothing was written."].join("\n"), "info");
+        return 0;
     }
 
     const summary = summaryLines(plan, changes);
     const confirmation = [...summary, "", "A backup is kept next to your settings file."].join("\n");
-    ctx.ui.notify(summary.join("\n"), "info");
-    const review = await ctx.ui.select("Review these changes", [
-        "Save these changes",
-        "Show the exact change",
-        "Cancel",
-    ]);
-    if (review === undefined || review === "Cancel") return cancel(ctx);
+    ui.notify(summary.join("\n"), "info");
+    const review = await ui.select("Review these changes", ["Save these changes", "Show the exact change", "Cancel"]);
+    if (review === undefined || review === "Cancel") return cancel(ui);
     if (review === "Show the exact change") {
-        const shown = await ctx.ui.select("The exact change", [
-            "Only these fields change:",
-            ...exactChangeLines(changes),
-        ]);
-        if (shown === undefined) return cancel(ctx);
-        const ok = await ctx.ui.confirm("Save these changes?", confirmation);
-        if (!ok) return cancel(ctx);
+        const shown = await ui.select("The exact change", ["Only these fields change:", ...exactChangeLines(changes)]);
+        if (shown === undefined) return cancel(ui);
+        const ok = await ui.confirm("Save these changes?", confirmation);
+        if (!ok) return cancel(ui);
     } else {
-        const ok = await ctx.ui.confirm("Save these changes?", confirmation);
-        if (!ok) return cancel(ctx);
+        const ok = await ui.confirm("Save these changes?", confirmation);
+        if (!ok) return cancel(ui);
     }
 
     try {
@@ -102,15 +95,17 @@ export async function runSetup(state: JigState, ctx: ExtensionCommandContext): P
         const where = shorten(result.file, homedir());
         const lines = [`Saved ${count} to ${where}${plan.link ? " (through your link)" : ""}.`];
         if (result.backup !== undefined) lines.push(`Backup: ${shorten(result.backup, homedir())}`);
-        lines.push("Run /reload to apply.");
-        ctx.ui.notify(lines.join("\n"), "info");
+        lines.push("Start Pi again, or run /reload in it, to apply.");
+        ui.notify(lines.join("\n"), "info");
+        return 0;
     } catch (error) {
-        ctx.ui.notify(
+        ui.notify(
             error instanceof SetupRefused
                 ? error.message
                 : `Your settings could not be saved. Nothing was written (${errorMessage(error)}).`,
             "error",
         );
+        return 1;
     }
 }
 
@@ -121,31 +116,31 @@ async function ask(
     field: SetupField,
     draft: Record<string, unknown>,
     changes: SetupChange[],
-    ctx: ExtensionCommandContext,
+    ui: SetupUi,
 ): Promise<"ok" | "cancel"> {
-    if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ctx);
+    if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ui);
     if (field.kind === "pick") {
         const choices = field.choices ?? [];
-        const picked = await ctx.ui.select(`${field.label}: ${field.reason}`, [...choices]);
+        const picked = await ui.select(`${field.label}: ${field.reason}`, [...choices]);
         if (picked === undefined || !choices.includes(picked)) return "cancel";
         const result = applyAnswer(plan, draft, field, picked);
         if ("change" in result) {
             changes.push(result.change);
             return "ok";
         }
-        ctx.ui.notify(result.problem, "warning");
+        ui.notify(result.problem, "warning");
         return "ok";
     }
     for (;;) {
-        ctx.ui.notify(`${field.label}: ${field.reason}`, "info");
-        const text = await ctx.ui.input(field.question, field.placeholder);
+        ui.notify(`${field.label}: ${field.reason}`, "info");
+        const text = await ui.input(field.question, field.placeholder);
         if (text === undefined) return "cancel";
         const result = applyAnswer(plan, draft, field, text);
         if ("change" in result) {
             changes.push(result.change);
             return "ok";
         }
-        ctx.ui.notify(result.problem, "warning");
+        ui.notify(result.problem, "warning");
     }
 }
 
@@ -156,15 +151,15 @@ async function askReference(
     field: SetupField,
     draft: Record<string, unknown>,
     changes: SetupChange[],
-    ctx: ExtensionCommandContext,
+    ui: SetupUi,
 ): Promise<"ok" | "cancel"> {
     const choice = field.reference;
     if (choice === undefined || choice.stores.length === 0) {
-        ctx.ui.notify("No secret store is available for this. /jig doctor names the problem.", "warning");
+        ui.notify("No secret store is available for this. /jig doctor names the problem.", "warning");
         return "cancel";
     }
     if (choice.disabled.length > 0) {
-        ctx.ui.notify(
+        ui.notify(
             `You turned off ${choice.disabled.map(storeLabel).join(", ")}, so ${
                 choice.disabled.length === 1 ? "it is" : "they are"
             } not offered.`,
@@ -176,14 +171,14 @@ async function askReference(
         const labels = choice.stores.map(
             (store) => `${storeChoiceLabel(store)}${choice.preferred === store ? " (company default)" : ""}`,
         );
-        const picked = await ctx.ui.select(field.question, labels);
+        const picked = await ui.select(field.question, labels);
         if (picked === undefined || !labels.includes(picked)) return "cancel";
         const index = labels.indexOf(picked);
         const store = choice.stores[index];
         if (store === undefined) continue;
 
         if (store === "file") {
-            const ok = await ctx.ui.confirm(
+            const ok = await ui.confirm(
                 "Use a file?",
                 "A file is plain text on disk. A password store or 1Password is safer.",
             );
@@ -193,7 +188,7 @@ async function askReference(
         // The company's suggestion, when it wrote one for this store: a reference shape, never a value.
         const shape = choice.suggested?.[store];
         if (shape !== undefined) {
-            const use = await ctx.ui.select(`${storeLabel(store)}: use the company's suggestion?`, [
+            const use = await ui.select(`${storeLabel(store)}: use the company's suggestion?`, [
                 `Use ${shape}`,
                 "Build it another way",
             ]);
@@ -205,7 +200,7 @@ async function askReference(
                     field,
                     draft,
                     changes,
-                    ctx,
+                    ui,
                     store,
                     shape,
                     "the company's suggestion",
@@ -215,11 +210,11 @@ async function askReference(
         }
 
         for (;;) {
-            const parts = await askParts(store, choice.commands, ctx);
+            const parts = await askParts(store, choice.commands, ui);
             if (parts === undefined) return "cancel";
             const built = buildReference(store, parts, choice.commands);
             if ("problem" in built) {
-                ctx.ui.notify(built.problem, "warning");
+                ui.notify(built.problem, "warning");
                 continue;
             }
             const settled = await settleReference(
@@ -228,7 +223,7 @@ async function askReference(
                 field,
                 draft,
                 changes,
-                ctx,
+                ui,
                 store,
                 built.reference,
                 `read from ${built.note}`,
@@ -245,7 +240,7 @@ async function settleReference(
     field: SetupField,
     draft: Record<string, unknown>,
     changes: SetupChange[],
-    ctx: ExtensionCommandContext,
+    ui: SetupUi,
     store: SecretBackend,
     reference: string,
     note: string,
@@ -253,7 +248,7 @@ async function settleReference(
     const choice = field.reference;
     const answer = applyAnswer(plan, draft, field, reference);
     if ("problem" in answer) {
-        ctx.ui.notify(answer.problem, "warning");
+        ui.notify(answer.problem, "warning");
         return "retry";
     }
     const change = answer.change;
@@ -262,17 +257,17 @@ async function settleReference(
     for (;;) {
         const probe = await probeSecret(reference, probeOptions(state));
         const status = statusText(store, probe);
-        ctx.ui.notify(status.text, status.level);
+        ui.notify(status.text, status.level);
         if (probe.status === "found" || probe.status === "unknown") {
             changes.push(change);
             return "ok";
         }
         if (probe.status === "invalid") {
-            ctx.ui.notify("That place cannot be used. Choose another.", "warning");
+            ui.notify("That place cannot be used. Choose another.", "warning");
             return "retry";
         }
-        if (probe.fix !== undefined) ctx.ui.notify(probe.fix, "info");
-        const next = await ctx.ui.select("Not found yet", ["Check again", "Continue without it", "Cancel setup"]);
+        if (probe.fix !== undefined) ui.notify(probe.fix, "info");
+        const next = await ui.select("Not found yet", ["Check again", "Continue without it", "Cancel setup"]);
         if (next === "Check again") continue;
         if (next === "Continue without it") {
             change.note = `${change.note} (not found yet)`;
@@ -287,10 +282,10 @@ async function settleReference(
 async function askParts(
     store: SecretBackend,
     commands: Readonly<Record<string, readonly string[]>>,
-    ctx: ExtensionCommandContext,
+    ui: SetupUi,
 ): Promise<ReferenceParts | undefined> {
     const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
-        const value = await ctx.ui.input(title, placeholder);
+        const value = await ui.input(title, placeholder);
         return value === undefined ? undefined : value.trim();
     };
     if (store === "op") {
@@ -321,7 +316,7 @@ async function askParts(
         const file = await ask("Which file?", "~/.config/tool/token");
         return file === undefined ? undefined : { file };
     }
-    const command = await ctx.ui.select("Which command owns that login?", Object.keys(commands));
+    const command = await ui.select("Which command owns that login?", Object.keys(commands));
     return command === undefined ? undefined : { command };
 }
 
@@ -360,12 +355,13 @@ function probeOptions(state: JigState) {
     };
 }
 
-function cancel(ctx: ExtensionCommandContext): void {
-    ctx.ui.notify("Nothing was written.", "info");
+function cancel(ui: SetupUi): number {
+    ui.notify("Nothing was written.", "info");
+    return 130;
 }
 
 /** The checked part of a running jig-core, with the company's defaults gathered for `layered()`. */
-function setupState(state: JigState): SetupState {
+export function setupStateFrom(state: JigState): SetupState {
     const backends = effectiveBackends(state.personal.config.secrets, state.company);
     return {
         personal: state.personal,
