@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { importRecords } from "../src/import.ts";
 import { openIndex } from "../src/store.ts";
 import { createModelNames, modelLabel, shortModelId } from "../src/usage-names.ts";
+import { lanesOf } from "../src/web-queries.ts";
 import { answer, LensWeb } from "../src/web.ts";
 import { NOW, paths, rig, sampleIndex, tempState, turn, writeRecords } from "./support.ts";
 
@@ -276,4 +277,124 @@ test("the page shows the model it is given and puts the id in a tooltip only", (
     const page = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
     assert.match(page, /h\("span", \{ title: line\.modelId \}, line\.model\)/);
     assert.equal(page.match(/modelId/g)?.length, 1, "the id is used for nothing else");
+});
+
+test("lanes split each turn into model time, tool time and the time waiting for the person", () => {
+    const timeline = {
+        session: "s1",
+        agentRole: "main",
+        parentSession: undefined,
+        tickets: [],
+        first: 0,
+        last: 60,
+        cost: 0.5,
+        cut: false,
+        lines: [
+            {
+                kind: "turn",
+                time: 0,
+                model: "m",
+                modelId: "m",
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                cost: 0.2,
+            },
+            {
+                kind: "call",
+                time: 10,
+                tool: "bash",
+                action: "run",
+                environment: "local",
+                effect: "read",
+                decision: "allow",
+                decisionSource: "rule",
+                approval: undefined,
+                answer: undefined,
+                waitedMs: 2000,
+                outcome: "ok",
+                errorKind: undefined,
+                error: undefined,
+                durationMs: 5000,
+                toolCallId: "c1",
+                facts: undefined,
+            },
+            {
+                kind: "call",
+                time: 20,
+                tool: "git",
+                action: "status",
+                environment: "local",
+                effect: "read",
+                decision: "allow",
+                decisionSource: "rule",
+                approval: undefined,
+                answer: undefined,
+                waitedMs: undefined,
+                outcome: "ok",
+                errorKind: undefined,
+                error: undefined,
+                durationMs: 1000,
+                toolCallId: "c2",
+                facts: undefined,
+            },
+            {
+                kind: "turn",
+                time: 30,
+                model: "m",
+                modelId: "m",
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                cost: 0.3,
+            },
+            {
+                kind: "call",
+                time: 40,
+                tool: "bash",
+                action: "run",
+                environment: "local",
+                effect: "read",
+                decision: "allow",
+                decisionSource: "rule",
+                approval: undefined,
+                answer: undefined,
+                waitedMs: undefined,
+                outcome: "ok",
+                errorKind: undefined,
+                error: undefined,
+                durationMs: 2000,
+                toolCallId: "c3",
+                facts: undefined,
+            },
+        ],
+    } as Parameters<typeof lanesOf>[0];
+    const lanes = lanesOf(timeline);
+    assert.deepEqual(
+        lanes.turns.map((lane) => [lane.modelMs, lane.toolMs, lane.waitedMs]),
+        [
+            [22_000, 6_000, 2_000],
+            [28_000, 2_000, 0],
+        ],
+    );
+    assert.equal(lanes.cut, false);
+    assert.equal(lanesOf(timeline, 1).cut, true);
+});
+
+test("the call detail endpoint reads only the named session's file, and says when it has no sessions folder", () => {
+    const source = { index: () => "", now: () => NOW };
+    const missing = answer(source, "/api/call", new URLSearchParams({ id: "s1", call: "c1" }));
+    assert.equal(missing.status, 200);
+    assert.equal((missing.body as { found: boolean }).found, false);
+    const bad = answer(source, "/api/call", new URLSearchParams({ id: "s1" }));
+    assert.equal(bad.status, 400);
+});
+
+test("the page draws the lanes and asks this server for one call's detail", () => {
+    const page = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
+    assert.match(page, /laneChart\(data\.lanes\)/);
+    assert.match(page, /\/api\/call\?id=\$/);
+    assert.match(page, /show this call|Show this call/);
 });

@@ -82,6 +82,26 @@ input[type=search] { font: inherit; padding: 4px 8px; border-radius: 6px; border
     .tl > li { grid-template-columns: 64px minmax(0, 1fr) auto; }
     .tl > li .kind { display: none; }
 }
+
+/* The session's lanes: model time, tool time and the time waiting for the person. */
+.lanes { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.lane { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 8px; }
+.lane .at { font-size: 12px; color: #8a8a8a; }
+.lane-bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: #262626; }
+.lane-model { background: #4a7bd0; }
+.lane-tool { background: #c99a3e; }
+.lane-you { background: #b05a8a; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: #9a9a9a; margin: 4px 0 2px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+li.call.clickable { cursor: pointer; }
+li.call.clickable:hover, li.call:focus { background: rgba(255, 255, 255, 0.06); outline: none; }
+/* One call's arguments and result, from Pi's masked session file. */
+.detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 94vw); background: #161616; border-left: 1px solid #333;
+    padding: 14px 18px; overflow: auto; z-index: 20; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45); }
+.detail h2 { margin: 0 0 6px; font-size: 16px; }
+.detail pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: #0e0e0e; padding: 8px;
+    border-radius: 4px; max-height: 38vh; overflow: auto; }
+.detail .close { float: right; }
 </style>
 </head>
 <body>
@@ -447,7 +467,7 @@ async function sessionPicker() {
     ];
 }
 
-function callLine(line) {
+function callLine(line, sessionId) {
     const decision = line.decision
         ? h("span", { class: `badge ${line.decision}`, title: `decided by ${line.decisionSource || "unknown"}` }, line.decision + (line.decisionSource ? ` · ${line.decisionSource}` : ""))
         : null;
@@ -458,7 +478,19 @@ function callLine(line) {
     const facts = line.facts
         ? h("span", { class: "dim mono" }, ` ${Object.entries(line.facts).map(([k, v]) => `${k}=${v}`).join(" ")}`)
         : null;
-    return h("li", { class: "call" },
+    return h("li", {
+        class: line.toolCallId ? "call clickable" : "call",
+        tabindex: line.toolCallId ? "0" : undefined,
+        title: line.toolCallId ? "Show this call's arguments and result" : undefined,
+        on: line.toolCallId
+            ? {
+                  click: () => openCall(sessionId, line.toolCallId),
+                  keydown: (event) => {
+                      if (event.key === "Enter" || event.key === " ") openCall(sessionId, line.toolCallId);
+                  },
+              }
+            : undefined,
+    },
         h("span", { class: "dim mono" }, clock(line.time)),
         h("span", { class: "kind dim" }, "tool"),
         h("span", { class: "what" },
@@ -482,18 +514,83 @@ function turnLine(line) {
     );
 }
 
-function timelineList(timeline) {
+function timelineList(timeline, sessionId = timeline.session) {
     return h("ul", { class: "tl" }, timeline.lines.map((line) => {
         if (line.kind === "turn") return turnLine(line);
-        if (line.kind === "call") return callLine(line);
+        if (line.kind === "call") return callLine(line, sessionId);
         const child = line.timeline;
         return h("li", { class: "child" },
             h("details", { open: true },
                 h("summary", {}, h("strong", {}, child.agentRole), " ", sessionLink(child.session), h("span", { class: "dim" }, `  ${when(child.first)}, ${ms((child.last - child.first) * 1000)}, ${money(child.cost)}, ${child.lines.length} lines`)),
-                timelineList(child),
+                timelineList(child, child.session),
             ),
         );
     }));
+}
+
+function laneChart(lanes) {
+    if (!lanes || !lanes.turns || lanes.turns.length === 0) return null;
+    const total = lanes.turns.reduce((sum, lane) => sum + (lane.end - lane.start) * 1000, 0);
+    const rows = lanes.turns.map((lane) => {
+        const span = Math.max(1, (lane.end - lane.start) * 1000);
+        const model = (lane.modelMs / span) * 100;
+        const tool = (lane.toolMs / span) * 100;
+        const you = (lane.waitedMs / span) * 100;
+        return h("div", { class: "lane", title: `model ${ms(lane.modelMs)}, tools ${ms(lane.toolMs)}, waiting ${ms(lane.waitedMs)}` },
+            h("span", { class: "at mono" }, clock(lane.start)),
+            h("div", { class: "lane-bar" },
+                model > 0 ? h("div", { class: "lane-model", style: `width:${model}%` }) : null,
+                tool > 0 ? h("div", { class: "lane-tool", style: `width:${tool}%` }) : null,
+                you > 0 ? h("div", { class: "lane-you", style: `width:${you}%` }) : null,
+            ),
+        );
+    });
+    return h("div", {},
+        h("div", { class: "legend" },
+            h("span", {}, h("span", { class: "swatch lane-model" }), "model"),
+            h("span", {}, h("span", { class: "swatch lane-tool" }), "tools"),
+            h("span", {}, h("span", { class: "swatch lane-you" }), "waiting for you"),
+        ),
+        h("div", { class: "lanes" }, rows),
+        h("p", { class: "note" }, `The model's time is the turn minus its calls and your answers. ${lanes.cut ? "Only the first 500 turns are drawn." : ""}`.trim()),
+    );
+}
+
+function closeDetail() {
+    const open = document.querySelector(".detail");
+    if (open) open.remove();
+}
+
+/** One call's arguments and result, from Pi's session file (masked before it was written). */
+async function openCall(sessionId, callId) {
+    closeDetail();
+    const panel = h("aside", { class: "detail", role: "dialog", "aria-label": "Call detail" },
+        h("button", { class: "close", on: { click: closeDetail } }, "Close"),
+        h("p", { class: "dim" }, "Reading Pi's session file…"),
+    );
+    document.body.append(panel);
+    let data;
+    try {
+        data = await get(`/api/call?id=${encodeURIComponent(sessionId)}&call=${encodeURIComponent(callId)}`);
+    } catch {
+        panel.replaceChildren(h("button", { class: "close", on: { click: closeDetail } }, "Close"),
+            h("p", { class: "error" }, "The call could not be read."));
+        return;
+    }
+    const parts = [h("button", { class: "close", on: { click: closeDetail } }, "Close"),
+        h("h2", {}, "Call detail"),
+        h("p", { class: "dim mono" }, callId)];
+    if (!data || data.found !== true) {
+        parts.push(h("p", {}, (data && data.reason) || "This call is not in Pi's session file."));
+        panel.replaceChildren(...parts);
+        return;
+    }
+    parts.push(h("p", { class: "dim" }, `From ${data.file}. The text was masked by Jig before Pi kept it, and is cut at 20,000 characters.`));
+    parts.push(h("h3", {}, "Arguments"));
+    parts.push(h("pre", {}, data.arguments === undefined ? "Pi kept no arguments for this call." : JSON.stringify(data.arguments, null, 2).slice(0, 20000)));
+    parts.push(h("h3", {}, data.isError ? "Result (failed)" : "Result"));
+    parts.push(h("pre", {}, data.result === undefined ? "Pi kept no result text for this call." : data.result));
+    panel.replaceChildren(...parts);
 }
 
 async function session(id) {
@@ -510,6 +607,8 @@ async function session(id) {
             tl.parentSession ? [h("span", { class: "dim" }, "  ·  child of "), sessionLink(tl.parentSession)] : null,
         ),
         totalsCards(data.totals),
+        h("h2", {}, "Where the time went ", h("span", { class: "sub" }, "per turn: model, tools, and your answers")),
+        laneChart(data.lanes),
         h("h2", {}, "Every turn and call, in order ", h("span", { class: "sub" }, "child agents nested where they started")),
         tl.lines.length ? h("div", { class: "panel" }, timelineList(tl)) : empty("This session has no lines."),
         tl.cut ? h("p", { class: "note" }, "The list stops at 5000 lines.") : null,

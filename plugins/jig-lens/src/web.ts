@@ -18,11 +18,13 @@ import { fileURLToPath } from "node:url";
 import { MAX_DAYS } from "./command.ts";
 import { lastDays } from "./period.ts";
 import type { Scope } from "./queries.ts";
+import { readCallDetail } from "./session-file.ts";
 import { readIndex } from "./store.ts";
 import type { ModelNames } from "./usage-history.ts";
 import { modelLabel } from "./usage-names.ts";
 import {
     daysOf,
+    lanesOf,
     loopsOf,
     nameModels,
     refusedOf,
@@ -47,6 +49,8 @@ export interface WebSource {
     now(): Date;
     /** The names other plugins gave the models (as for `/lens usage`). Without it, ids are shortened. */
     names?: ModelNames;
+    /** Pi's sessions folder, for one call's arguments and result. Without it, the page says it does not know it. */
+    sessionsDir?: () => string;
 }
 
 /** An answer to a request: a status and a JSON body. */
@@ -108,7 +112,17 @@ export function answer(source: WebSource, path: string, query: URLSearchParams):
                         ? null
                         : nameModels(timeline, (model) => modelLabel(model, source.names));
                 })(),
+                lanes: (() => {
+                    const timeline = timelineOf(db, id);
+                    return timeline === undefined ? null : lanesOf(timeline);
+                })(),
             }));
+        }
+        case "/api/call": {
+            const id = query.get("id") ?? "";
+            const call = query.get("call") ?? "";
+            if (id === "" || call === "") return json({ error: "Name a session and a call: ?id=...&call=..." }, 400);
+            return json(readCallDetail(source.sessionsDir?.(), id, call));
         }
         case "/api/tools": {
             const { scope, ...period } = range();
