@@ -87,6 +87,12 @@ changes, the other changes in the same commit. Tests read the tool tables of
   `plugin-surface.test.ts`, and a plugin may import only `jig-core`'s `contract.ts`, `client.ts` and `kit/`
   (`boundaries.test.ts`). Adding is fine: add the name to the test. Removing or renaming needs a [Decisions](docs/decisions.md)
   entry first, and a contract break a new `version`. Never loosen a pin to get green. See [Compatibility](docs/compatibility.md).
+- **The audit.** `plugins/jig-core/test/audit.test.ts` checks every action of every tool against its plugin: a row in the
+  plugin's README or docs (a row may list several actions), with the effect and approval `classify` gives it; a line in the
+  test's `TABLE`, which pins the environment, effect and approval of every action, so one cannot change side unnoticed; a test
+  that names it as `action: "<name>"`; and, for a tool that sets `masksOwnResults`, a test that says masking. A new action
+  changes the docs and `TABLE` in the same commit. Add per-action input to `ACTION_INPUTS` when its `classify` needs fields
+  (`TABLE` then says `needs input` until it does).
 - **Pi version.** The Pi that Jig is tested with is named in four places that move together: both `Install Pi` steps of
   `.github/workflows/ci.yml`, the "Tested with" tables in `README.md` and `docs/compatibility.md` (with the date), and the install
   command in the `jig-agents` bullet above. To move it: run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`,

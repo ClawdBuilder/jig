@@ -4,6 +4,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- An audit of every tool: `plugins/jig-core/test/audit.test.ts` checks each action against its plugin's documentation and the
+  effect and approval its `classify` returns, pins the classification of all of them, and reports the actions no test names.
+
 ### Changed
 
 - The Release workflow can be run by hand for a tag that has no GitHub release page, which publishes an older tag's notes

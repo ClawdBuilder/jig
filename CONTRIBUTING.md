@@ -60,6 +60,9 @@ suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
 - **A decision, if a public name goes.** Removing or renaming anything in [Compatibility](docs/compatibility.md) needs a dated
   entry in [Decisions](docs/decisions.md) first, and the pin test changes in the same commit. Adding a name is free; add it to
   the test that pins it.
+- **A new action is documented and audited.** It needs a row in the plugin's README or `docs/` with its effect, and its line in
+  `TABLE` of [the audit](plugins/jig-core/test/audit.test.ts). The audit fails when the two disagree, and the table records the
+  environment, effect and approval `classify` gives it, so a write cannot quietly become a read.
 - **No loosened pin.** A pin test that fails is either a slip to undo or a change that starts with a decision entry. Never
   delete the literal.
 
