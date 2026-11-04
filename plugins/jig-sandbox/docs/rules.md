@@ -118,9 +118,13 @@ the variables that reach an agent or a desktop session. A variable is removed wh
   `postgres://user:hunter2@db/orders`. An address without a password, such as
   `mongodb://db.example/app`, stays.
 
-`env.keep` names a variable to pass through anyway. The values that were removed are also
-replaced in the command's own output, when they appear exactly, so a command that prints
-one does not show it. **That is a backstop, not a guarantee:** output that encodes a value
+`env.keep` names a variable to pass through anyway. `env.remove` adds names or simple
+patterns of your own — `ACME_*`, `*_SECRETX` — for a credential the built-in names miss;
+it only adds to the list above and cannot shrink it, and `keep` still wins for a name it
+lists (it lists names, not patterns). A company's `env.remove` and yours add up rather
+than replacing each other, so a teammate's list extends the company's. The values that were removed are also replaced in the
+command's own output, when they appear exactly, so a command that prints one does not show
+it. **That is a backstop, not a guarantee:** output that encodes a value
 another way — base64, a hash, a fragment of an address built from parts — is not
 recognised. The environment is where a credential is kept out; the output is only where an
 accident is caught.

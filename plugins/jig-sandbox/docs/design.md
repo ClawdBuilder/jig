@@ -266,7 +266,8 @@ Without `jig-core` they wait in a queue of this plugin's own.
   case: `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*PASSWD*`, `*_KEY`, `*APIKEY*`,
   `*CREDENTIAL*`, `AWS_*`, `AZURE_*`, `GOOGLE_APPLICATION_CREDENTIALS`, `GH_*`, `GITHUB_*`,
   `NPM_TOKEN`, `VAULT_*`, `KUBECONFIG`, and the sockets `SSH_AUTH_SOCK`, `GPG_AGENT_INFO`,
-  `DBUS_SESSION_BUS_ADDRESS`, `WSL_INTEROP`. `env.keep` passes a named one through.
+  `DBUS_SESSION_BUS_ADDRESS`, `WSL_INTEROP`. `env.keep` passes a named one through, and `env.remove` adds names or
+simple patterns that only add to the removal.
 - **Scrubbed from output:** the values of the removed variables, and every secret
   `jig-core` resolved this session.
 - **Added by the runtime** in `filtered` mode: the proxy variables, `JAVA_TOOL_OPTIONS`

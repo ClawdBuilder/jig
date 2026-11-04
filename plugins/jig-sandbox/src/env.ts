@@ -51,10 +51,11 @@ export function looksLikeCredentialValue(value: string): boolean {
     return ADDRESS_WITH_PASSWORD.test(value);
 }
 
-/** Whether a variable is removed: its name says credential, or its value is an address with a password. `keep` wins. */
-function isCredential(name: string, value: string, keep: ReadonlySet<string>): boolean {
+/** Whether a variable is removed: its name says credential, its value is an address with a password, or the section
+ *  names it or matches it with a pattern. `keep` wins for a name it lists, and for nothing else. */
+function isCredential(name: string, value: string, keep: ReadonlySet<string>, remove: readonly string[]): boolean {
     if (keep.has(name.toUpperCase())) return false;
-    return looksLikeCredential(name) || looksLikeCredentialValue(value);
+    return looksLikeCredential(name) || looksLikeCredentialValue(value) || matchesRemoved(name, remove);
 }
 
 export interface ScrubbedEnvironment {
@@ -67,23 +68,42 @@ export interface ScrubbedEnvironment {
 }
 
 export interface EnvironmentOptions {
-    /** Variables passed in although their names look like credentials (`env.keep`). */
+    /** Variables passed in although their names look like credentials (`env.keep`). Only a name listed here wins; a
+     *  pattern in `remove` never overrides it. */
     keep: readonly string[];
     /** Added to the command's environment, such as `TMPDIR`. */
     set?: Readonly<Record<string, string>>;
     /** Folders that are hidden: a `PATH` entry inside one is dropped, since nothing in it can be run. */
     hiddenFolders?: readonly string[];
+    /** Further names to remove, from `sandbox.env.remove`: a name, or a pattern with `*` (`ACME_*`). They only add to
+     *  what the built-in rules remove. */
+    remove?: readonly string[];
+}
+
+/** A configured pattern as a regular expression: `*` stands for any run of name characters, the rest is literal. */
+function patternOf(pattern: string): RegExp {
+    const source = pattern
+        .split("*")
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("[A-Za-z0-9_]*");
+    return new RegExp(`^${source}$`, "i");
+}
+
+/** Whether a variable name matches one of the configured names or patterns, compared without regard to case. */
+export function matchesRemoved(name: string, remove: readonly string[]): boolean {
+    return remove.some((pattern) => patternOf(pattern).test(name));
 }
 
 /** A copy of `source` without credentials, with `PATH` cleaned of entries that cannot work. */
 export function scrubEnvironment(source: NodeJS.ProcessEnv, options: EnvironmentOptions): ScrubbedEnvironment {
     const keep = new Set(options.keep.map((name) => name.toUpperCase()));
+    const remove = options.remove ?? [];
     const env: NodeJS.ProcessEnv = {};
     const removed: string[] = [];
     const values: string[] = [];
     for (const [name, value] of Object.entries(source)) {
         if (value === undefined) continue;
-        if (isCredential(name, value, keep)) {
+        if (isCredential(name, value, keep, remove)) {
             removed.push(name);
             if (value.length >= MIN_SCRUBBED_LENGTH) values.push(value);
             continue;

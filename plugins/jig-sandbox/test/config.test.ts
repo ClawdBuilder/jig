@@ -18,7 +18,7 @@ describe("validateSandbox", () => {
                     deny: ["db.example.com"],
                     localhost: [5432],
                 },
-                env: { keep: ["MY_API_KEY"] },
+                env: { keep: ["MY_API_KEY"], remove: ["ACME_*", "*_SECRETX"] },
                 docker: false,
                 background: { maxTasks: 4, maxRuntimeMinutes: 240, keepFinished: 12, wake: "on" },
                 programs: { bwrap: "/usr/bin/bwrap", socat: "/usr/bin/socat", ripgrep: "/usr/bin/rg" },
@@ -68,6 +68,19 @@ describe("validateSandbox", () => {
         assert.deepEqual(validateSandbox({ env: { keep: ["not a name"] } }), [
             "sandbox.env.keep: must be a list of variable names",
         ]);
+        assert.deepEqual(validateSandbox({ env: { remove: ["ACME_TOKEN", "ACME_*", "*_SECRETX"] } }), []);
+        for (const pattern of ["", "*", "**", "A B", "ACME-**", "ACME_*;rm"]) {
+            assert.deepEqual(
+                validateSandbox({ env: { remove: [pattern] } }),
+                [
+                    "sandbox.env.remove: must be a list of variable names or simple patterns such as ACME_* or *_SECRETX " +
+                        "(letters, digits and _, with * between them; not * alone)",
+                ],
+                pattern,
+            );
+        }
+        assert.deepEqual(validateSandbox({ env: { remove: "ACME_*" } }).length, 1);
+        assert.deepEqual(validateSandbox({ env: { remove: ["A"], gone: ["B"] } }), ["sandbox.env.gone: unknown field"]);
         assert.deepEqual(validateSandbox({ background: { maxTasks: 0 } }), [
             "sandbox.background.maxTasks: must be a whole number of at least 1",
         ]);
@@ -94,7 +107,7 @@ describe("settingsFrom", () => {
         const settings = settingsFrom({
             share: ["/srv/work", 4],
             network: { mode: "off", localhost: [5432, "x", 0] },
-            env: { keep: ["MY_API_KEY"] },
+            env: { keep: ["MY_API_KEY"], remove: ["ACME_*", "not a pattern"] },
             programs: { socat: "/opt/socat", ripgrep: "rg" },
             background: { maxTasks: 2, wake: "off" },
         });
@@ -102,6 +115,7 @@ describe("settingsFrom", () => {
         assert.equal(settings.network.mode, "off");
         assert.deepEqual(settings.network.localhost, [5432]);
         assert.deepEqual(settings.env.keep, ["MY_API_KEY"]);
+        assert.deepEqual(settings.env.remove, ["ACME_*"], "a pattern that is not one is left out");
         assert.deepEqual(settings.programs, { socat: "/opt/socat" });
         assert.deepEqual(settings.background, { maxTasks: 2, maxRuntimeMinutes: 240, keepFinished: 12, wake: "off" });
     });

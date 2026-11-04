@@ -17,7 +17,10 @@ export interface SandboxSettings {
         deny: string[];
         localhost: number[];
     };
-    env: { keep: string[] };
+    /** The environment of a command: names passed through although they look like credentials, and names or simple
+     *  patterns removed although the built-in rules would keep them. `remove` only adds; `keep` wins only for a name it
+     *  lists. */
+    env: { keep: string[]; remove: string[] };
     docker: boolean;
     background: {
         /** Tasks running at once. */
@@ -43,7 +46,7 @@ export const DEFAULT_SETTINGS: SandboxSettings = {
     hide: [],
     lock: [],
     network: { mode: "open", allow: [], deny: [], localhost: [] },
-    env: { keep: [] },
+    env: { keep: [], remove: [] },
     docker: false,
     background: { maxTasks: 4, maxRuntimeMinutes: 240, keepFinished: 12, wake: "on" },
     programs: {},
@@ -70,6 +73,20 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 function isStrings(value: unknown): value is string[] {
     return Array.isArray(value) && value.every((item) => typeof item === "string" && item !== "");
+}
+
+/** A variable name a command may pass through. */
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/** A name or a simple pattern for `env.remove`: letters, digits and `_`, with `*` standing for any run of them. */
+const ENV_PATTERN = /^[A-Za-z0-9_*]+$/;
+
+/** Whether a pattern in `env.remove` can be used: a plain name, or segments with `*`, and not `*` alone, which would
+ *  remove every variable and leave a command with nothing. */
+export function isEnvRemovePattern(value: unknown): value is string {
+    if (typeof value !== "string" || value === "" || value.length > 200) return false;
+    if (!ENV_PATTERN.test(value)) return false;
+    if (value.replaceAll("*", "") === "") return false;
+    return !value.includes("**");
 }
 
 /** `~`, `~/x` or an absolute path: the only forms a path in this section may take. */
@@ -135,12 +152,16 @@ export function validateSandbox(raw: unknown): string[] {
     if (env !== undefined) {
         if (!isObject(env)) errors.push("sandbox.env: must be an object");
         else {
-            for (const name of Object.keys(env)) if (name !== "keep") errors.push(`sandbox.env.${name}: unknown field`);
-            if (
-                env.keep !== undefined &&
-                !(isStrings(env.keep) && env.keep.every((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)))
-            ) {
+            for (const name of Object.keys(env))
+                if (name !== "keep" && name !== "remove") errors.push(`sandbox.env.${name}: unknown field`);
+            if (env.keep !== undefined && !(isStrings(env.keep) && env.keep.every((name) => ENV_NAME.test(name)))) {
                 errors.push("sandbox.env.keep: must be a list of variable names");
+            }
+            if (env.remove !== undefined && !(isStrings(env.remove) && env.remove.every(isEnvRemovePattern))) {
+                errors.push(
+                    "sandbox.env.remove: must be a list of variable names or simple patterns such as ACME_* or *_SECRETX " +
+                        "(letters, digits and _, with * between them; not * alone)",
+                );
             }
         }
     }
@@ -227,7 +248,10 @@ export function settingsFrom(raw: unknown): SandboxSettings {
             deny: strings(network.deny),
             localhost: Array.isArray(network.localhost) ? network.localhost.filter(isPort) : [],
         },
-        env: { keep: strings(env.keep) },
+        env: {
+            keep: strings(env.keep).filter((name) => ENV_NAME.test(name)),
+            remove: strings(env.remove).filter((name) => isEnvRemovePattern(name)),
+        },
         docker: section.docker === true,
         background: {
             maxTasks: whole(background.maxTasks, DEFAULT_SETTINGS.background.maxTasks),
