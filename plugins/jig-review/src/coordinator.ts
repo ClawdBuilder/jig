@@ -4,6 +4,7 @@
 // what changed. Approving ends it (see approval.ts for how an approval is checked).
 import path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { jig } from "../../jig-core/src/client.ts";
 import { ApprovalService } from "./approval.ts";
 import type { ApprovalHost } from "./approval.ts";
 import { headsToRecord } from "./approval-heads.ts";
@@ -32,12 +33,17 @@ export type ReviewStart = { url: string } | { error: string };
 
 /** How long a question in Pi waits for the user before it counts as a no. */
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
+/** How long a question waits for the one dialog slot before the caller is told another question is open. */
+const QUEUE_WAIT_MS = 10_000;
 
 export interface ReviewOptions {
     /** `<agent folder>/jig-review`: the passkey store, and a folder per workspace for settings and reviews. */
     root: string;
     /** Runs git. Default: jig-core's. */
     git?: Git;
+    /** How long a question waits for the dialog slot before it gives up, telling the page another question is open.
+     *  Default: ten seconds. */
+    askQueueWaitMs?: number;
 }
 
 /** Coordinates Pi events, review state, the page's server and the agent's follow-up prompts. */
@@ -60,10 +66,12 @@ export class ReviewCoordinator {
     private readonly git: Git;
     private readonly tracker: RunTracker;
     private readonly pi: ExtensionAPI;
+    private readonly askQueueWaitMs: number;
 
     /** `cwd` is Pi's folder: the repository, or a workspace whose repositories are reviewed together. */
     public constructor(pi: ExtensionAPI, cwd: string, options: ReviewOptions) {
         this.pi = pi;
+        this.askQueueWaitMs = options.askQueueWaitMs ?? QUEUE_WAIT_MS;
         this.git = options.git ?? jigGit;
         this.tracker = new RunTracker(cwd, this.git);
         this.settingsStore = new SettingsStore(workspaceDirFor(options.root, cwd));
@@ -146,19 +154,45 @@ export class ReviewCoordinator {
         };
     }
 
-    /** A yes or no from the user, in Pi. */
-    private async ask(title: string, message: string): Promise<"yes" | "no" | "unavailable"> {
+    /**
+     * A yes or no from the user, in Pi, in jig-core's queue so it is never open at the same time as another package's
+     * question. Pi has one dialog slot and the page's approval arrives while a tool call may be waiting on its own
+     * question, so the wait is bounded: past `askQueueWaitMs` the caller is told the slot is taken instead of hanging, and
+     * the turn that was queued opens nothing when it comes up. The timeout for the answer starts once the slot is held,
+     * so the whole request is bounded by the two together.
+     */
+    private async ask(title: string, message: string): Promise<"yes" | "no" | "unavailable" | "busy"> {
         const ctx = this.ctx;
         if (ctx === undefined || !ctx.hasUI || isHeadless(ctx)) return "unavailable";
         this.asking = new AbortController();
+        const signal = this.asking.signal;
+        let cancelled = false;
+        let opened = false;
+        let timer: NodeJS.Timeout | undefined;
         try {
-            return (await ctx.ui.confirm(title, message, { timeout: ASK_TIMEOUT_MS, signal: this.asking.signal }))
-                ? "yes"
-                : "no";
-        } catch {
-            // The session ended or was replaced while the question was open.
-            return "unavailable";
+            const asked = jig().approvals.inTurn(async (): Promise<"yes" | "no" | "unavailable"> => {
+                // The page was already told another question is open, so this turn must not open one now.
+                if (cancelled) return "unavailable";
+                opened = true;
+                if (timer !== undefined) clearTimeout(timer);
+                try {
+                    return (await ctx.ui.confirm(title, message, { timeout: ASK_TIMEOUT_MS, signal })) ? "yes" : "no";
+                } catch {
+                    // The session ended or was replaced while the question was open.
+                    return "unavailable";
+                }
+            });
+            const waited = new Promise<"busy">((resolve) => {
+                timer = setTimeout(() => {
+                    if (opened) return;
+                    cancelled = true;
+                    resolve("busy");
+                }, this.askQueueWaitMs);
+            });
+            timer?.unref();
+            return await Promise.race([asked, waited]);
         } finally {
+            if (timer !== undefined) clearTimeout(timer);
             this.asking = undefined;
         }
     }
@@ -286,9 +320,11 @@ export class ReviewCoordinator {
             return;
         }
         const count = this.tracker.touched.length === 1 ? "1 file" : `${this.tracker.touched.length} files`;
-        const shouldReview = await ctx.ui.confirm(
-            "Review generated code?",
-            `The agent changed ${count}. Start an interactive browser review of those changes?`,
+        const shouldReview = await jig().approvals.inTurn(() =>
+            ctx.ui.confirm(
+                "Review generated code?",
+                `The agent changed ${count}. Start an interactive browser review of those changes?`,
+            ),
         );
         if (shouldReview) await this.startOrOpenReview(ctx, settings.autoOpenBrowser, offer);
     }
@@ -320,9 +356,11 @@ export class ReviewCoordinator {
     private async offerBrowserOpen(ctx: ExtensionContext, url: string): Promise<void> {
         ctx.ui.notify(`Interactive review URL: ${url}`, "info");
         if (!ctx.hasUI) return;
-        const shouldOpen = await ctx.ui.confirm(
-            "Open review in browser?",
-            `Press Enter to open the review page, or cancel and open it manually: ${url}`,
+        const shouldOpen = await jig().approvals.inTurn(() =>
+            ctx.ui.confirm(
+                "Open review in browser?",
+                `Press Enter to open the review page, or cancel and open it manually: ${url}`,
+            ),
         );
         if (shouldOpen) await open(url);
     }
@@ -435,9 +473,11 @@ export class ReviewCoordinator {
             return;
         }
         if (ctx.hasUI) {
-            const shouldReview = await ctx.ui.confirm(
-                "Review updated changes?",
-                "The agent addressed review feedback. Reopen the browser review?",
+            const shouldReview = await jig().approvals.inTurn(() =>
+                ctx.ui.confirm(
+                    "Review updated changes?",
+                    "The agent addressed review feedback. Reopen the browser review?",
+                ),
             );
             if (shouldReview) await this.startOrOpenReview(ctx, settings.autoOpenBrowser, { scope, folder, ticket });
         } else if (settings.autoOpenBrowser) {

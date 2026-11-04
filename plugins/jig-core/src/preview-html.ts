@@ -16,6 +16,7 @@ import { pathToFileURL } from "node:url";
 import { Marked } from "@earendil-works/pi-tui";
 import type { Tokens } from "@earendil-works/pi-tui";
 import type { Preview } from "./contract.ts";
+import { browserCommand } from "./kit/browser.ts";
 import { errorMessage } from "./errors.ts";
 import { resolveProgram } from "./exec.ts";
 import { createPrivateFile, privateDir, removeOldFiles, stateDir } from "./paths.ts";
@@ -144,23 +145,6 @@ export function writePreviewPage(preview: Preview, header: string): string {
 /** Deletes preview pages older than `maxAgeDays`. */
 export function cleanupPreviews(maxAgeDays: number, now: number = Date.now()): number {
     return removeOldFiles(join(stateDir(), "previews"), maxAgeDays, now);
-}
-
-/** The program and arguments that open `url`: `$BROWSER` when set (a program name, optionally followed by plain
- *  arguments, with `%s` standing for the address), else `open` on macOS and `xdg-open` elsewhere. */
-export function browserCommand(
-    url: string,
-    env: NodeJS.ProcessEnv = process.env,
-    platform: NodeJS.Platform = process.platform,
-): { program: string; args: string[] } {
-    const configured = env.BROWSER?.trim();
-    const chosen =
-        configured !== undefined && configured !== ""
-            ? configured.split(/\s+/)
-            : [platform === "darwin" ? "open" : "xdg-open"];
-    const [program, ...rest] = chosen as [string, ...string[]];
-    const args = rest.some((arg) => arg.includes("%s")) ? rest.map((arg) => arg.replaceAll("%s", url)) : [...rest, url];
-    return { program, args };
 }
 
 /** Starts a program and forgets it. Resolves once it has started, rejects when it cannot. */

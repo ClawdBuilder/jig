@@ -57,7 +57,7 @@ after(() => {
 /** Raw HTTP, so the test controls Host and Origin like an attacker could. */
 function request(
     pathAndQuery: string,
-    options: { method?: string; host?: string; cookie?: string; origin?: string; body?: string } = {},
+    options: { method?: string; host?: string; cookie?: string; origin?: string | null; body?: string } = {},
 ): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
     return new Promise((resolve, reject) => {
         const req = http.request(
@@ -192,6 +192,19 @@ test("a foreign Host is refused even with the cookie (DNS rebinding)", async () 
     }
     assert.equal((await request("/api/reviews", { cookie: session, host: `localhost:${port}` })).status, 200);
     assert.equal((await request("/api/reviews", { cookie: session, host: `127.0.0.1:${port}` })).status, 200);
+});
+
+test("a write with no Origin, as a program sends, is allowed: approval never rests on that header", async () => {
+    const session = await cookie();
+    const res = await request("/api/ask", {
+        method: "POST",
+        cookie: session,
+        origin: null,
+        body: JSON.stringify({ comments: [{ body: "fix the null check" }] }),
+    });
+    assert.equal(res.status, 200);
+    assert.deepEqual(submitted, ["fix the null check"]);
+    submitted.length = 0; // the route's own tests below read this list as their own
 });
 
 test("a foreign Host is refused before the link is even looked at", async () => {

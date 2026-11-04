@@ -6,8 +6,8 @@ import { pathToFileURL } from "node:url";
 import { after, before, describe, test } from "node:test";
 import type { Preview, ToolDeclaration } from "../src/contract.ts";
 import { buildPreview, defaultSummary, describeCall, PREVIEW_TIMEOUT_MS } from "../src/preview.ts";
+import { browserCommand } from "../src/kit/browser.ts";
 import {
-    browserCommand,
     cleanupPreviews,
     escapeHtml,
     openInBrowser,

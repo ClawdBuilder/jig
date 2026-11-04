@@ -6,7 +6,8 @@
 //   - the right Host (`127.0.0.1:<port>` or `localhost:<port>`), so a page on another name cannot reach it by DNS rebinding;
 //   - the session cookie, which the link given to the user sets once (the link carries a secret, swapped for an HttpOnly
 //     cookie and then dropped from the address);
-//   - for a write, an Origin that is this server's own, so another site's page cannot post to it.
+//   - for a write that names one, an Origin that is this server's own, so another site's page cannot post to it. A
+//     request with no Origin, as a program makes, is let through: the cookie is SameSite, and approval never relies on this.
 // Comments from the page reach the agent as the user's words, which is why only this page may send them. Approving is
 // stronger still: it needs a passkey signature, or a `y` in Pi, and no secret in this file can make either (see
 // approval.ts). The link goes only to the user, but it can show up in the opener's arguments, so approval never relies on it.
