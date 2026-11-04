@@ -243,13 +243,15 @@ describe("the gateway's address, a setting of the user's", () => {
         for (const proxy of [
             "http://proxy.acme.example:3128",
             "https://127.0.0.1:3128",
-            "http://user:pw@127.0.0.1:3128",
+            "http://user:pw-9f3c-never-shown@127.0.0.1:3128",
             "nonsense",
         ]) {
             world = await startWorld({ personal: { acme: { gateway: { proxy } } } });
             const problems = (await world.problems()).join("\n");
             assert.match(problems, /acme\.gateway\.proxy: must be an http address on this machine/, proxy);
-            assert.equal(problems.includes("pw"), false, "a password in the address is not repeated");
+            // The exact password, not a short word: the problem text holds the temporary folder's random name, and a
+            // two-letter needle can occur in it by chance.
+            assert.equal(problems.includes("pw-9f3c-never-shown"), false, "a password in the address is not repeated");
             await world.close();
         }
         world = undefined;
