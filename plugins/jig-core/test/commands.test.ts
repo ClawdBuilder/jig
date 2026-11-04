@@ -60,16 +60,43 @@ function declareGit(api: JigApi): void {
 }
 
 describe("/jig", () => {
-    test("is registered, with completions for its two words", async () => {
+    test("is registered, with completions for its three words", async () => {
         const harness = await begin();
         const command = harness.host.commands.get("jig");
         assert.ok(command?.description);
         assert.deepEqual(command.getArgumentCompletions?.("r"), [
-            { value: "rules", label: "rules" },
             { value: "records", label: "records" },
+            { value: "rules", label: "rules" },
         ]);
         assert.deepEqual(command.getArgumentCompletions?.("rec"), [{ value: "records", label: "records" }]);
+        assert.deepEqual(command.getArgumentCompletions?.("d"), [{ value: "doctor", label: "doctor" }]);
         assert.equal(command.getArgumentCompletions?.("x"), null);
+    });
+
+    test("runs the doctor and shows its groups", async () => {
+        const harness = await begin();
+        const shown = await jigCommand(harness, "doctor");
+        assert.match(shown, /^Jig doctor · \d+ ok/m);
+        assert.match(shown, /\nThis machine\n/);
+        assert.match(shown, /\nConfiguration\n/);
+        assert.match(shown, /\nSecrets\n/);
+        assert.match(shown, /\nLogins\n/);
+        assert.match(shown, /\nSandbox\n/);
+        assert.match(shown, /\nRecords\n/);
+    });
+
+    test("adds one line about the doctor when a company's defaults are incomplete", async () => {
+        const harness = await begin({
+            plugins: (api) => {
+                api.config.addSectionDefaults("acme", { bastion: {} });
+                api.config.registerSection("acme", (raw) =>
+                    (raw as { bastion?: { user?: unknown } }).bastion?.user === undefined
+                        ? ["acme.bastion.user is required"]
+                        : [],
+                );
+            },
+        });
+        assert.match(await jigCommand(harness), /Doctor: 1 thing needs you\. Run \/jig doctor\./);
     });
 
     test("shows the status: tools governed, plugins, tools on the unknown default, watches and the configuration", async () => {
@@ -280,7 +307,10 @@ describe("/jig", () => {
 
     test("an unknown word shows the usage", async () => {
         const harness = await begin();
-        assert.match(await jigCommand(harness, "frobnicate"), /Usage: \/jig, \/jig rules \[tool\], \/jig records/);
+        assert.match(
+            await jigCommand(harness, "frobnicate"),
+            /Usage: \/jig, \/jig doctor, \/jig rules \[tool\], \/jig records/,
+        );
     });
 });
 

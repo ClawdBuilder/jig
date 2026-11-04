@@ -80,7 +80,19 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `section-defaults.ts` | A company's defaults for a plugin's section, with your own laid over them | `api.ts`, `config.ts` |
 | `state.ts` | What jig-core keeps while Pi runs: tools, configuration, questions, one record per call in flight | `api.ts`, `commands.ts` and 3 more |
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
-| `commands.ts` | The `/jig` commands: status, rules, records | `index.ts` |
+| `commands.ts` | The `/jig` commands: status, doctor, rules, records | `index.ts` |
+| `section-state.ts` | What one registered plugin section is: loaded, waiting for a person, not set, or invalid | `commands.ts`, `doctor-checks.ts` |
+
+### Doctor
+
+| File | What it does | Called by |
+|---|---|---|
+| `doctor.ts` | `/jig doctor`: the check list, the levels, the counts and the text report | `commands.ts` |
+| `doctor-checks.ts` | The machine, configuration and protected-file checks, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
+| `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
+| `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
+| `secret-status.ts` | One reference's status, found by metadata only: never resolves it and never reads a value | `doctor-secrets.ts` |
+| `pi-version.ts` | Pi's version from the package Pi loaded, and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts` |
 
 ### Profiles (which company applies)
 

@@ -83,7 +83,7 @@ const MAX_SECRET_BYTES = 64 * 1024;
 /** A command's output is at most this long, trimmed. A token is far shorter. */
 const MAX_COMMAND_BYTES = 16 * 1024;
 /** A file holds at most this much. Only its first line is used. */
-const MAX_FILE_BYTES = 64 * 1024;
+export const MAX_FILE_BYTES = 64 * 1024;
 const COMMAND_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /** The most names an error lists. */
 const MAX_NAMES_SHOWN = 10;
@@ -92,6 +92,11 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 /** Whether `entry` is a name `pass:<entry>` accepts: letters, digits and `. _ @ + - /`, with no empty, `.` or `..` part. */
 export function isPassEntry(entry: string): boolean {
     return PASS_ENTRY.test(entry) && !entry.split("/").some((part) => part === "" || part === "." || part === "..");
+}
+
+/** Whether `name` is a variable `env:<NAME>` accepts. */
+export function isEnvName(name: string): boolean {
+    return ENV_NAME.test(name);
 }
 
 /** What a declared command may also see of Pi's environment, beyond the short list every program gets: where a
@@ -357,7 +362,7 @@ export function createSecrets(options: SecretsOptions): Secrets {
     }
 
     async function lookup(ref: string, signal: AbortSignal | undefined): Promise<string> {
-        const parsed = parse(ref);
+        const parsed = parseSecretReference(ref);
         if (parsed === undefined) {
             // The reference is not echoed: a pasted secret value must not end up in an error.
             throw new SecretError(
@@ -411,7 +416,10 @@ export function createSecrets(options: SecretsOptions): Secrets {
     };
 }
 
-function parse(ref: string): { backend: SecretBackend; rest: string } | undefined {
+/** The backend and the part after its prefix, or undefined when `ref` is not one of the six references. It does not
+ *  check the shape of `rest` (a pass entry, an env name and so on); `probe` in secret-status.ts does that without
+ *  reading a value. */
+export function parseSecretReference(ref: string): { backend: SecretBackend; rest: string } | undefined {
     if (ref.startsWith("op://")) return { backend: "op", rest: ref };
     const match = /^(pass|env|keychain|cmd|file):([\s\S]+)$/.exec(ref);
     if (match === null) return undefined;
