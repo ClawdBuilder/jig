@@ -136,7 +136,7 @@ test("the session start tells the plugin where Pi works, for the previews that g
         registerTool: () => {},
         on: (event: string, handler: (event: unknown, ctx: { cwd: string }) => void) =>
             void handlers.set(event, handler),
-        events: { emit: () => {} },
+        events: { emit: () => {}, on: () => () => {} },
     } as unknown as ExtensionAPI;
     plugin(pi);
     assert.ok(handlers.has("session_start"));
@@ -148,7 +148,7 @@ test("when jig-core loads after the plugin, the declarations wait for it; and a 
     const pi = {
         registerTool: (tool: ToolDefinition) => void earlier.set(tool.name, tool),
         on: () => () => {},
-        events: { emit: () => {} },
+        events: { emit: () => {}, on: () => () => {} },
     } as unknown as ExtensionAPI;
     h.jig.remove();
     plugin(pi);

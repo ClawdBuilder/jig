@@ -93,6 +93,12 @@ The notes on single actions are in [Actions](docs/actions.md).
 - **Writes are previewed, and never repeated blindly.** A write that asks shows
   what it will do, and refuses if anything changed since. A lost reply is read
   once and never sent again (see [Writes](docs/writes.md)).
+- **`fetch` asks about a host your configuration does not name.** It is a read, but it offers
+  your SSH key to the remote's host, and a remote's address is something the agent can change
+  in `bash`. So a fetch from a host your configuration does not call a forge — `github.com`,
+  `gitlab.com`, `git.cloneHost`, or a host in `git.forges` — asks first, naming the host. A
+  `This session` answer is remembered for that host, so a fork workflow asks once
+  ([Writes](docs/writes.md#a-fetch-from-a-host-your-configuration-does-not-name)).
 - **A push says how the agent will hear about CI.** The last line of its result names the watch that a listener started
   for the push, or says that none is and what starts one, so a promise to report later is never made with nothing to wake it
   ([Events](docs/events.md#what-the-push-result-says)).
