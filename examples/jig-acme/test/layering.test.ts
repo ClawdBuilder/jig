@@ -89,10 +89,13 @@ describe("a list or a string of the user's replaces the company's", () => {
 
     test("a create in a project the list leaves out is refused before anyone is asked", async () => {
         const w = await withPersonal({});
+        // The count is taken here: `/jig` shows its status in a select once there are enough lines, and that is not a
+        // question about this call.
+        const asked = w.ui.selects.length;
         const outcome = await call(w, "jira", { action: "create", project: "OTHER", type: "Bug", summary: "A bug" });
         assert.equal(outcome.blocked, true);
         assert.match(outcome.reason ?? "", /OTHER is not one of your projects \(ACME\)/);
-        assert.equal(w.ui.selects.length, 0, "the user was not asked");
+        assert.equal(w.ui.selects.length, asked, "the user was not asked");
     });
 
     test("the sandbox's denied hosts", async () => {
