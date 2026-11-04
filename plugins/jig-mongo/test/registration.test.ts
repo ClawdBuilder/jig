@@ -71,12 +71,14 @@ describe("what the plugin registers", () => {
         }
     });
 
-    test("a section with a mistake reads as absent, so the tool does nothing until it is fixed", () => {
+    test("a section with a mistake reads as absent, so the tool does nothing until it is fixed", async () => {
         h.jig.setSection("mongo", {
             connections: { staging: { uri: "mongodb://u:p@db.example.com", user: "a", password: "pass:x" } },
         });
-        assert.throws(
-            () => h.declaration.classify({ action: "databases", environment: "staging" }),
+        // Classification is from the input alone now, so the refusal comes where the section is read: the preview.
+        await assert.rejects(
+            h.declaration.preview?.({ action: "databases", environment: "staging" }, new AbortController().signal) ??
+                Promise.resolve(),
             /mongo is not set up/,
         );
         assert.ok(

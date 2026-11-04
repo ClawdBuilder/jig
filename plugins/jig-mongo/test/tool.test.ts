@@ -13,6 +13,10 @@ beforeEach(() => void (h = setupHarness()));
 afterEach(async () => h.close());
 
 const target = { database: "orders", collection: "orders" };
+/** Why a call did not run: a block when jig-core stopped it before asking, or the tool's own refusal. */
+const refusalOf = (result: { blocked?: string; error?: Error }): string =>
+    result.blocked ?? result.error?.message ?? "";
+
 const find = (environment: string, extra: Record<string, unknown> = {}) => ({
     action: "find",
     environment,
@@ -283,10 +287,15 @@ describe("an environment with several connections", () => {
 
     test("needs `cluster`, and a call without it is refused before anyone is asked, naming the choices", async () => {
         const result = await h.call(find("staging"));
-        assert.equal(result.blocked, "staging has several connections: add cluster, one of orders, billing");
+        // A read is allowed by the table and does not ask, so its refusal is the tool's own error, not a block.
+        assert.equal(result.error?.message, "staging has several connections: add cluster, one of orders, billing");
         assert.equal(h.connects.length, 0);
-        assert.throws(
-            () => h.declaration.classify({ action: "count", environment: "staging", ...target }),
+        // The refusal is the preview's now: classification is from the input alone.
+        await assert.rejects(
+            h.declaration.preview?.(
+                { action: "count", environment: "staging", ...target },
+                new AbortController().signal,
+            ) ?? Promise.resolve(),
             /staging has several connections: add cluster/,
         );
     });
@@ -307,16 +316,19 @@ describe("an environment with several connections", () => {
 
     test("a name that is not one of them is refused with the names there are", async () => {
         const result = await h.call(find("staging", { cluster: "invoices" }));
-        assert.equal(result.blocked, 'staging has no connection named "invoices"; cluster is one of orders, billing');
+        assert.equal(
+            refusalOf(result),
+            'staging has no connection named "invoices"; cluster is one of orders, billing',
+        );
         const odd = await h.call(find("staging", { cluster: "../x" }));
-        assert.match(odd.blocked ?? "", /staging has no connection named "\.\.\/x"/);
+        assert.match(refusalOf(odd), /staging has no connection named "\.\.\/x"/);
         const notText = await h.call(find("staging", { cluster: 7 }));
-        assert.match(notText.blocked ?? "", /cluster must be text/);
+        assert.match(refusalOf(notText), /cluster must be text/);
     });
 
     test("an environment with one connection refuses it, and says to leave it out", async () => {
         const result = await h.call(find("production", { cluster: "orders" }));
-        assert.equal(result.blocked, "production has one connection, so cluster is not used there: leave it out");
+        assert.equal(refusalOf(result), "production has one connection, so cluster is not used there: leave it out");
         assert.equal(
             ok(await h.call(find("production", { projection: { status: 1 } }))).startsWith("mongo find production"),
             true,
@@ -325,7 +337,7 @@ describe("an environment with several connections", () => {
 
     test("an unknown environment is named before its clusters are", async () => {
         const result = await h.call(find("nowhere", { cluster: "orders" }));
-        assert.match(result.blocked ?? "", /unknown environment "nowhere"; configured: staging, production/);
+        assert.match(refusalOf(result), /unknown environment "nowhere"; configured: staging, production/);
     });
 
     test("is classified by its environment: the connection's name changes neither the kind nor the effect", async () => {
@@ -352,7 +364,7 @@ describe("an environment with several connections", () => {
             database: "cards",
             collection: "visa",
         });
-        assert.match(billing.blocked ?? "", /cards\.visa is denied by the access list/);
+        assert.match(refusalOf(billing), /cards\.visa is denied by the access list/);
         const orders = await h.call({
             action: "count",
             environment: "staging",

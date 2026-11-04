@@ -12,6 +12,7 @@ import type { Connection, MongoSettings } from "./config.ts";
 import { connectDriver } from "./driver.ts";
 import { ChangedError, deliveryOf, describeFailure, dropsConnection } from "./errors.ts";
 import { ACTIONS, parameters, parseCall, placeOf } from "./params.ts";
+import type { ActionName } from "./params.ts";
 import type { Call } from "./params.ts";
 import { planCall } from "./plan.ts";
 import type { Planned } from "./plan.ts";
@@ -44,7 +45,7 @@ const DESCRIPTION =
 
 export interface MongoTool {
     definition: ToolDefinition<typeof parameters>;
-    classify(input: Readonly<Record<string, unknown>>): CallClass;
+    classify(input: Readonly<Record<string, unknown>>): CallClass | undefined;
     preview(input: Readonly<Record<string, unknown>>, signal: AbortSignal): Promise<Preview>;
     /** Closes the connections and the forwards. Pi calls it when the session ends. */
     shutdown(): Promise<void>;
@@ -271,9 +272,20 @@ export function createTool(options: MongoOptions = {}): MongoTool {
     }
 
     const tool: MongoTool = {
+        // Decided from the input alone: jig-core works out what kind of environment the name is, and every check that
+        // needs the section or the repository stays in `preview` and at run time. A classification that read the
+        // configuration would put a global read in the decision path, and the audit could only pin it with a configured
+        // world. An action this tool does not have is left unknown, so the call is checked before anyone is asked.
         classify(input) {
-            const c = check(input);
-            return { action: c.call.action, environment: c.call.environment, effect: c.planned.effect };
+            const action = typeof input.action === "string" ? input.action : "";
+            // hasOwn, not `in`: "toString" and "constructor" are on every object's prototype, and `in` would treat them
+            // as actions of this tool.
+            if (!Object.hasOwn(ACTIONS, action)) return undefined;
+            const environment = typeof input.environment === "string" ? input.environment : "";
+            const pipeline = Array.isArray(input.pipeline) ? (input.pipeline as Call["pipeline"]) : undefined;
+            const effect =
+                ACTIONS[action as ActionName].effect === "write" || endsWithOutput(pipeline) ? "write" : "read";
+            return { action, environment, effect };
         },
 
         async preview(input, signal) {

@@ -62,8 +62,8 @@ Parameters and results: [Results](docs/results.md).
   with ([Index check](docs/index-check.md)).
 - **Server-side JavaScript is refused** (`$where`, `$function`, `$accumulator`), unless you allow it for a test environment.
 - **A lost reply is never resent.** One read checks what happened.
-- **Production is read-only and masked,** whatever the configuration says: writes and index changes are refused when the call is
-  classified, and `jig-core` masks every production result.
+- **Production is read-only and masked,** whatever the configuration says: `jig-core`'s floor denies a production write, and the
+  tool refuses it again when it plans the call. `jig-core` masks every production result.
 
 ## Configure
 
