@@ -208,7 +208,12 @@ export class Sandbox {
             // A broker that goes away on its own is replaced by the next command; one stopped on purpose is not.
             if (this.broker === broker) this.broker = undefined;
         });
-        this.removedNames = scrubEnvironment(deps.env, { keep: settings.env.keep }).removed;
+        // The names the runtime is told to remove again: the built-in ones and the section's, so a value it keeps out of
+        // one command is also kept out of the runtime's own copy.
+        this.removedNames = scrubEnvironment(deps.env, {
+            keep: settings.env.keep,
+            remove: settings.env.remove,
+        }).removed;
         try {
             broker.onEvent((event) => this.onBrokerEvent(broker, event));
             await broker.request(
@@ -372,6 +377,7 @@ export class Sandbox {
         const hidden = rules.rules.filter((rule) => rule.kind === "hidden").map((rule) => rule.path);
         const scrubbed = scrubEnvironment(baseEnv ?? this.deps.env, {
             keep: settings.env.keep,
+            remove: settings.env.remove,
             hiddenFolders: hidden,
             set: { TMPDIR: path.join(this.sessionDir as string, "tmp") },
         });

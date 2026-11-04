@@ -1,7 +1,7 @@
 // The environment a sandboxed command starts with: credentials out, the rest as Pi has it.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { looksLikeCredential, looksLikeCredentialValue, scrubEnvironment } from "../src/env.ts";
+import { looksLikeCredential, looksLikeCredentialValue, matchesRemoved, scrubEnvironment } from "../src/env.ts";
 
 describe("which names are removed", () => {
     test("names that look like credentials, whatever their case", () => {
@@ -115,6 +115,37 @@ describe("scrubEnvironment", () => {
         );
         assert.deepEqual(result.removed, ["DATABASE_URL"]);
         assert.deepEqual(result.values, ["postgres://user:hunter2@db.example/orders"]);
+    });
+
+    test("`env.remove` takes a name or a pattern the built-in rules would keep, and never shrinks them", () => {
+        const result = scrubEnvironment(
+            {
+                ACME_TICKET: "x",
+                ACME_SESSION_KEY: "secret-value",
+                GITHUB_TOKEN: "ghs_0123456789abcdef",
+                PLAIN: "hello",
+            },
+            { keep: [], remove: ["ACME_TICKET", "ACME_*", "GITHUB_*"] },
+        );
+        assert.deepEqual(result.env, { PLAIN: "hello" });
+        assert.deepEqual(result.removed, ["ACME_SESSION_KEY", "ACME_TICKET", "GITHUB_TOKEN"]);
+        assert.deepEqual(result.values, ["ghs_0123456789abcdef", "secret-value"]);
+        assert.equal(matchesRemoved("acme_ticket", ["ACME_*"]), true, "compared without regard to case");
+    });
+
+    test("a pattern can name a suffix, and `env.keep` wins only for a name it lists", () => {
+        const result = scrubEnvironment(
+            { SERVICE_SECRETX: "x", OTHER_SECRETX: "y", TOKEN_SECRETX: "z" },
+            { keep: ["OTHER_SECRETX"], remove: ["*_SECRETX"] },
+        );
+        assert.deepEqual(Object.keys(result.env), ["OTHER_SECRETX"]);
+        assert.deepEqual(result.removed, ["SERVICE_SECRETX", "TOKEN_SECRETX"]);
+        const keptByPattern = scrubEnvironment({ ACME_ONE: "x" }, { keep: ["ACME_*"], remove: ["ACME_*"] });
+        assert.equal(
+            keptByPattern.env.ACME_ONE,
+            undefined,
+            "keep lists names, not patterns, so it does not win for a name it does not list",
+        );
     });
 
     test("`env.keep` passes a named variable through, without regard to case", () => {
