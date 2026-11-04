@@ -142,6 +142,9 @@ company plugin's own tools can be deferred the same way.
   sandbox and its programs, and the records folder. A level is `ok`, `warn`, `fail` or
   `skip`, and the summary counts them. It never resolves a reference, starts a login
   or unlocks a store; the fix line is a command for you to run.
+  - **`--json`** writes the report to `doctor.json` in the state folder, with `"schema": 1`.
+  - **`--network`** adds the hosts of `startChecks` and of the sections, and the latest release.
+  - **`--quiet`** keeps the warnings and failures, with the summary.
 - **`/jig rules [tool]`** shows the effective decision per tool and action,
   with where each came from: declaration, rule, hint or default.
   - A tool whose schema lists its actions gets a line for each.

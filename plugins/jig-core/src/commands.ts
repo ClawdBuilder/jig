@@ -3,6 +3,7 @@
 //   /jig doctor        what is wrong with this setup, and what to do about it
 //   /jig rules [tool]  the effective decision per tool and action, and where each came from
 //   /jig records       where today's records are, and a one-line summary
+import { homedir } from "node:os";
 import type { ExtensionAPI, ExtensionCommandContext, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { classify } from "./classify.ts";
 import type { Classification, ClassSource } from "./classify.ts";
@@ -16,8 +17,11 @@ import { FILE_TOOLS } from "./protected-paths.ts";
 import type { ProtectedKind, ProtectedSource } from "./protected-paths.ts";
 import { formatDuration, summarize } from "./records.ts";
 import { doctorContext } from "./doctor-checks.ts";
+import { doctorReportFile, writeDoctorReport } from "./doctor-json.ts";
 import { countQuickIssues } from "./doctor-secrets.ts";
 import { formatDoctor, runDoctor } from "./doctor.ts";
+import { stateDir } from "./paths.ts";
+import { shorten } from "./secret-status.ts";
 import { sectionState } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
@@ -35,9 +39,12 @@ export function registerCommands(pi: ExtensionAPI, state: JigState): void {
             return matches.length === 0 ? null : matches.map((word) => ({ value: word, label: word }));
         },
         handler: async (args, ctx) => {
-            const [word, ...rest] = args.trim().split(/\s+/);
+            const [word, ...rest] = args
+                .trim()
+                .split(/\s+/)
+                .filter((part) => part !== "");
             if (word === undefined || word === "") return show(ctx, "jig status", statusLines(state));
-            if (word === "doctor") return show(ctx, "jig doctor", formatDoctor(await runDoctor(doctorContext(state))));
+            if (word === "doctor") return show(ctx, "jig doctor", await doctorLines(state, rest));
             if (word === "rules") return show(ctx, "jig rules", ruleLines(state, rest[0], ctx.hasUI));
             if (word === "records") return show(ctx, "jig records", recordsLines(state));
             return show(ctx, "jig", ["Usage: /jig, /jig doctor, /jig rules [tool], /jig records"]);
@@ -48,6 +55,26 @@ export function registerCommands(pi: ExtensionAPI, state: JigState): void {
 async function show(ctx: ExtensionCommandContext, title: string, lines: string[]): Promise<void> {
     if (lines.length <= NOTICE_LINES) ctx.ui.notify(lines.join("\n"), "info");
     else await ctx.ui.select(title, lines);
+}
+
+const DOCTOR_FLAGS = new Set(["--json", "--network", "--quiet"]);
+
+/** Runs the doctor, and with `--json` writes the report to the state folder and says where. */
+async function doctorLines(state: JigState, args: readonly string[]): Promise<string[]> {
+    const unknown = args.filter((word) => !DOCTOR_FLAGS.has(word));
+    if (unknown.length > 0) return ["Usage: /jig doctor [--json] [--network] [--quiet]"];
+    const flags = new Set(args);
+    const report = await runDoctor(doctorContext(state), { network: flags.has("--network") });
+    const lines = formatDoctor(report, { quiet: flags.has("--quiet") });
+    if (!flags.has("--json")) return lines;
+    const file = doctorReportFile(stateDir(state.env));
+    try {
+        writeDoctorReport(report, file, state.now());
+        lines.push("", `Report: ${shorten(file, homedir())}`);
+    } catch (error) {
+        lines.push("", `The report could not be saved: ${errorMessage(error)}`);
+    }
+    return lines;
 }
 
 // ---- helpers ----------------------------------------------------------------------------------------------------------

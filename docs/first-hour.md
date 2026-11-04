@@ -44,7 +44,7 @@ plugin section reads `not set or invalid`. That is fine: the defaults are safe, 
 show up as you change things.
 
 Three more commands help you look around:
-- `/jig doctor` checks the setup and says, in plain words, what is missing and what to run;
+- [/jig doctor](setup-and-doctor.md) checks the setup and says, in plain words, what is missing and what to run;
 - `/jig rules` shows the decision for every tool and action, and where it came from;
 - `/jig records` shows where today's records are.
 

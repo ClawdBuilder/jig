@@ -206,7 +206,8 @@ worktrees of every repository, and the window follows the Jig palette. [How it w
 ## Read in this order
 
 **New here?** [Your first hour with Jig](docs/first-hour.md) takes you from install to your first approval,
-the sandbox check and `/lens`, in plain words. Then:
+the sandbox check and `/lens`, in plain words. When something is missing,
+[Setup and doctor](docs/setup-and-doctor.md) explains what `/jig doctor` found and what to do. Then:
 
 1. [Architecture](docs/architecture.md): how the tool manager sits over every
    tool, what it can and cannot control, and where each plugin fits.

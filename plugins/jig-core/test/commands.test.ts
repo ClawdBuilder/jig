@@ -1,5 +1,7 @@
 // The /jig commands: status, rules per tool and action, and records.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import type { CallClass, JigApi } from "../src/contract.ts";
 import { fakeClock } from "./support/clock.ts";
@@ -83,6 +85,37 @@ describe("/jig", () => {
         assert.match(shown, /\nLogins\n/);
         assert.match(shown, /\nSandbox\n/);
         assert.match(shown, /\nRecords\n/);
+    });
+
+    test("doctor --json writes the report in the state folder and says where", async () => {
+        const harness = await begin();
+        const shown = await jigCommand(harness, "doctor --json");
+        assert.match(shown, /Report: .*doctor\.json/);
+        const file = path.join(harness.stateDir, "doctor.json");
+        const report = JSON.parse(readFileSync(file, "utf8"));
+        assert.equal(report.schema, 1);
+        assert.equal(report.network, false);
+        assert.equal(
+            report.summary.ok + report.summary.warn + report.summary.fail + report.summary.skip,
+            report.groups.reduce((total: number, group: { checks: unknown[] }) => total + group.checks.length, 0),
+        );
+    });
+
+    test("doctor --quiet shows only warnings and failures, with the summary", async () => {
+        const harness = await begin();
+        const shown = await jigCommand(harness, "doctor --quiet");
+        assert.match(shown, /^Jig doctor · \d+ ok/m);
+        assert.match(shown, /^  warn /m);
+        assert.doesNotMatch(shown, /^  ok /m);
+        assert.doesNotMatch(shown, /^  skip /m);
+    });
+
+    test("doctor refuses a flag it does not know", async () => {
+        const harness = await begin();
+        assert.match(
+            await jigCommand(harness, "doctor --frobnicate"),
+            /Usage: \/jig doctor \[--json\] \[--network\] \[--quiet\]/,
+        );
     });
 
     test("adds one line about the doctor when a company's defaults are incomplete", async () => {
