@@ -62,6 +62,25 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 
+## 2026-11-04: setup and doctor run as a standalone command
+
+Setup and doctor are needed on the first day, often before Pi starts and always when Pi cannot: a broken `jig.json`, a
+plugin that fails to load, no model yet. Running them only inside Pi made `/jig setup` say "nothing needs you" for the
+person it is for (company defaults need a `profiles` entry a newcomer cannot know), hid the questions behind Pi's
+dialogs, and tied the report to a session.
+
+`jig doctor` and `jig setup` therefore run in a terminal with no Pi session. They load the same packages Pi would load
+(agent folder, `settings.json` packages, the plugins' factories into a small headless host), then use the same doctor
+checks, setup plan, write gate and probes; Pi's `/jig doctor` is a shortcut through that code, and `/jig setup` prints
+one line telling you to run the command. The headless host registers sections and defaults and never starts a tool, a
+session, a watch, a tunnel or a sign-in. A plugin that fails at load is a failure line in the report, never a crash.
+Setup starts with the company question and writes the `profiles`/`profile` entry itself. Without a terminal it refuses
+and writes nothing. Exit codes: doctor 0/1, setup 0/1/130.
+
+The command comes from npm's `bin`: `npm install -g` links it beside `node` on Linux, WSL and macOS. `pi install` does
+not link programs, so the docs say that plainly instead of editing anyone's shell files. Inside Pi, an unknown or
+unreadable Pi version is now a skip rather than a warning, and a secret store that no reference uses is not checked.
+
 ## 2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words
 
 `/jig doctor` and `/jig setup` are built. Both exist so a teammate who does not edit JSON can set Jig up,

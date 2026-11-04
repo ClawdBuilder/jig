@@ -6,6 +6,17 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `jig setup` and `jig doctor`: the same setup and doctor outside Pi, from any terminal. No session, model or provider
+  login; it loads the packages Pi would load and reads the same `jig.json`, and a broken file or a plugin that fails to
+  load is a failure line, not a crash. Setup starts with the company question, asks the company's onboarding items in
+  its order and words, and writes the `profiles`/`profile` entry a newcomer cannot know. Exit codes: doctor 0 or 1;
+  setup 0 done, 1 failed, 130 cancelled; without a terminal setup refuses in one line. `/jig setup` inside Pi now says
+  to run the command; `/jig doctor` stays as a shortcut through the same checks.
+- A company plugin can describe its people's setup once, with `onboarding.register`: items of plain text, a pick, a
+  credential's place, a login command or an explanation, in the company's order. Setup asks them with the company's
+  labels and hints and the company's preferred store first; doctor turns the missing ones into "you need" lines.
+  Optional: a plugin without a list falls back to its section validators.
+
 - `/jig setup`: fills in the missing or invalid fields of plugin sections one question at a time, in plain
   words, and writes only the fields you confirm. A credential is asked for as **where** it is kept: setup
   probes each store for metadata only, offers Check again, and turns on the chosen store. It keeps a backup beside `jig.json`, asks you to run
@@ -77,6 +88,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   reminder say today's local date.
 
 ### Fixed
+
+- The doctor no longer warns "Pi — could not be read" when Pi's package is found beside the running program rather than
+  the extension, and an unknown version is a skip, not a warning with a command to run. A secret store that no reference
+  uses and no company prefers is not checked, so a newcomer with no `pass` store no longer sees a warning about it.
 
 - The Herdr Work panel's Outputs no longer empty after Pi restarts or a session resumes: `jig-session` rebuilds them from the session's `edit` and `write` calls and lists the active ticket's notes, plans and evidence files (not `ticket.json`, `workflow.json` or `history/`).
 
