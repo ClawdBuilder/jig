@@ -334,12 +334,15 @@ describe("/jig doctor secrets", () => {
         assert.match(line?.detail ?? "", /does not read it/);
     });
 
-    test("the nudge counts missing references and incomplete sections, without starting a program", () => {
-        const missing = context({
-            sections: new Map([["jira", { token: "pass:work/jira-token" }]]),
+    test("the nudge counts sections setup can ask about, not a missing credential", () => {
+        const incomplete = context({
             overrides: { personal: loaded({ incomplete: new Map([["acme", ["acme.user is required"]]]) }) },
         });
-        assert.ok(countQuickIssues(missing) >= 2);
+        assert.equal(countQuickIssues(incomplete), 1);
+        const missingReference = context({
+            sections: new Map([["jira", { token: "pass:work/jira-token" }]]),
+        });
+        assert.equal(countQuickIssues(missingReference), 0);
         assert.equal(countQuickIssues(context()), 0);
     });
 });

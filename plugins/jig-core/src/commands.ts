@@ -22,6 +22,7 @@ import { countQuickIssues } from "./doctor-secrets.ts";
 import { formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
 import { shorten } from "./secret-status.ts";
+import { runSetup } from "./setup.ts";
 import { sectionState } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
@@ -33,9 +34,9 @@ const MAX_RULE_LINES = 300;
 
 export function registerCommands(pi: ExtensionAPI, state: JigState): void {
     pi.registerCommand("jig", {
-        description: "Jig tool manager: status, doctor, rules per tool, records",
+        description: "Jig tool manager: status, setup, doctor, rules per tool, records",
         getArgumentCompletions: (prefix) => {
-            const matches = ["doctor", "records", "rules"].filter((word) => word.startsWith(prefix));
+            const matches = ["doctor", "records", "rules", "setup"].filter((word) => word.startsWith(prefix));
             return matches.length === 0 ? null : matches.map((word) => ({ value: word, label: word }));
         },
         handler: async (args, ctx) => {
@@ -44,10 +45,14 @@ export function registerCommands(pi: ExtensionAPI, state: JigState): void {
                 .split(/\s+/)
                 .filter((part) => part !== "");
             if (word === undefined || word === "") return show(ctx, "jig status", statusLines(state));
+            if (word === "setup") {
+                if (rest.length > 0) return show(ctx, "jig setup", ["Usage: /jig setup"]);
+                return runSetup(state, ctx);
+            }
             if (word === "doctor") return show(ctx, "jig doctor", await doctorLines(state, rest));
             if (word === "rules") return show(ctx, "jig rules", ruleLines(state, rest[0], ctx.hasUI));
             if (word === "records") return show(ctx, "jig records", recordsLines(state));
-            return show(ctx, "jig", ["Usage: /jig, /jig doctor, /jig rules [tool], /jig records"]);
+            return show(ctx, "jig", ["Usage: /jig, /jig setup, /jig doctor, /jig rules [tool], /jig records"]);
         },
     });
 }
@@ -157,7 +162,7 @@ export function statusLines(state: JigState): string[] {
     const issues = countQuickIssues(doctorContext(state));
     if (issues > 0) {
         const things = issues === 1 ? "1 thing needs" : `${issues} things need`;
-        lines.push(`Doctor: ${things} you. Run /jig doctor.`);
+        lines.push(`Setup: ${things} you. Run /jig setup.`);
     }
     const deferred = deferredNames(state);
     if (deferred.length > 0) lines.push(`Deferred tools (found with tool_search): ${deferred.join(", ")}`);

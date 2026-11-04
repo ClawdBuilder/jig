@@ -9,6 +9,7 @@ import type { SecretBackend } from "./config.ts";
 import type { DoctorContext, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { probeSecret, shorten, storeName } from "./secret-status.ts";
 import type { SecretProbe, SecretProbeOptions } from "./secret-status.ts";
+import { plainLabel } from "./plain-label.ts";
 import { parseSecretReference } from "./secrets.ts";
 
 /** The most references one report lists. A configuration with more is cut with a line that says so. */
@@ -88,31 +89,6 @@ export function sectionTexts(context: DoctorContext): string[] {
     };
     for (const value of context.sections.values()) walk(value, 0);
     return out;
-}
-
-/** A short name a person reads: "Jira token", not "jira.auth.token". */
-export function plainLabel(section: string, at: string): string {
-    const parts = at
-        .split(/[.[\]]+/)
-        .filter((part) => part !== "" && !/^\d+$/.test(part))
-        .map(humanize);
-    const words = [humanize(section), ...parts].filter((word, index, all) => word !== "" && word !== all[index - 1]);
-    const label = words.join(" ");
-    return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function humanize(word: string): string {
-    const spaced = word
-        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-        .replace(/[_-]+/g, " ")
-        .trim()
-        .toLowerCase();
-    if (spaced === "url") return "URL";
-    if (spaced === "id") return "ID";
-    if (spaced === "api") return "API";
-    if (spaced === "sso") return "SSO";
-    if (spaced === "mcp") return "MCP";
-    return spaced;
 }
 
 /** The secret checks: stores, the pass folder, every reference, and the commands they name. */
@@ -262,24 +238,11 @@ export function checkSecrets(context: DoctorContext, options: DoctorOptions): Do
     return lines;
 }
 
-/** How many things a person has to act on, cheaply: no program is started, and no store is opened. */
+/** How many plugin sections `/jig setup` can ask about: incomplete, or invalid. A missing credential is not one. */
 export function countQuickIssues(context: DoctorContext): number {
-    const { on } = effectiveBackends(context.personal.config.secrets, context.company);
-    let count = context.personal.problems.length + context.personal.incomplete.size;
-    if (context.recordsProblem !== undefined) count++;
-    const { refs } = collectReferences(context);
-    const options: DoctorOptions = {};
-    for (const found of refs) {
-        if (!on.includes(found.backend)) {
-            count++;
-            continue;
-        }
-        // cmd, op and keychain are not probed without a program, so they never add to the nudge.
-        if (found.backend !== "pass" && found.backend !== "env" && found.backend !== "file") continue;
-        if (found.backend === "pass" && passStoreDir(context) === "") continue;
-        const probe = probeSecret(found.ref, probeOptions(context, options));
-        if (probe.status === "missing" || probe.status === "invalid" || probe.status === "locked") count++;
-    }
+    const sections = new Set(context.sectionChecks.keys());
+    let count = context.personal.incomplete.size;
+    for (const problem of context.personal.problems) if (sections.has(problem.key)) count++;
     return count;
 }
 
