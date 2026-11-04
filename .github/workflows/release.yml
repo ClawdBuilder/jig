@@ -1,0 +1,55 @@
+# A release is a tag. This job checks that the tag names the version in package.json, and writes the GitHub release from the
+# changelog section of that version, so the notes a reader sees are the entries that shipped. Pushing the tag is the only step
+# a person takes (docs/releases.md).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      # The tag, the manifest and the changelog are three names for one release: a tag that disagrees with either is a release
+      # that ships something other than what its notes say, so it fails here instead of publishing.
+      - name: The tag, package.json and the changelog agree
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          package="$(node -p "require('./package.json').version")"
+          if [ "${version}" != "${package}" ]; then
+            echo "::error::tag ${TAG} does not name package.json's version ${package}"
+            exit 1
+          fi
+          node scripts/release-notes.mjs "${version}" > /dev/null
+
+      # Running this again is safe: a tag whose release exists is edited, not refused.
+      - name: Write the release
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="$(mktemp)"
+          node scripts/release-notes.mjs "${TAG#v}" > "${notes}"
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            gh release edit "${TAG}" --title "${TAG}" --notes-file "${notes}"
+          else
+            gh release create "${TAG}" --title "${TAG}" --notes-file "${notes}"
+          fi

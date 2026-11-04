@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/Dev-Mriganka/jig/security/advisories/new
+    about: Never in an issue, and never with a real credential.
+  - name: Your first hour with Jig
+    url: https://github.com/Dev-Mriganka/jig/blob/main/docs/first-hour.md
+    about: Install it, make your first approval, and check the sandbox.
+  - name: Read the docs
+    url: https://github.com/Dev-Mriganka/jig/tree/main/docs
+    about: Architecture, permissions, secrets, plugins, releases and the glossary.

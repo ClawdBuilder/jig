@@ -1,0 +1,73 @@
+name: Bug report
+description: Something does not do what its README says.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A bug is easiest to fix when it comes with the exact call, what Jig decided, and what happened instead.
+        Do not paste a token, a password or customer data: the output of `/jig` says enough without them.
+        A security problem is different: report it privately, as SECURITY.md says, not in this form.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: The tool call or command, what Jig decided, and what came back.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: The sentence of a README or a page under `docs/` that says so, when there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Configure `...`
+        2. Call `...`
+        3. See `...`
+    validations:
+      required: true
+  - type: input
+    id: jig-version
+    attributes:
+      label: Jig version
+      description: The tag or commit you installed.
+      placeholder: v0.3.0
+    validations:
+      required: true
+  - type: input
+    id: pi-version
+    attributes:
+      label: Pi version
+      description: The output of `pi --version`.
+      placeholder: 1.5.0
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Node version and platform
+      description: The output of `node --version`, and Linux, WSL2 or macOS.
+      placeholder: v24.15.0 on WSL2
+    validations:
+      required: true
+  - type: textarea
+    id: jig-output
+    attributes:
+      label: What `/jig` says
+      description: Its lines about this session, with anything private taken out.
+      render: text
+  - type: checkboxes
+    id: clean
+    attributes:
+      label: Before you post
+      options:
+        - label: I removed tokens, passwords and customer data from everything above.
+          required: true

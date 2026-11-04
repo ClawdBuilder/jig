@@ -1,0 +1,42 @@
+name: Feature request
+description: A tool, a rule or a plugin that would make a real task possible.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Jig stays generic: a company's names, hosts and systems belong in a private company plugin, never here.
+        A request that adds a new system anyone could use as an adapter is welcome; one that names an employer is not.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The task it would make possible
+      description: What you do today, where it stops, and what you do instead.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: A tool and its actions, a rule, a setting, or a change to a plugin that exists.
+    validations:
+      required: true
+  - type: input
+    id: plugin
+    attributes:
+      label: Which plugin it belongs to
+      description: A plugin that exists, a new generic one, or a company plugin of your own.
+      placeholder: jig-ops, or a new one
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: An existing tool, a saved request, or a company plugin seam that nearly does it.
+  - type: checkboxes
+    id: generic
+    attributes:
+      label: Before you post
+      options:
+        - label: This request names no real company, host or person.
+          required: true

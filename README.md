@@ -64,6 +64,10 @@ says what that covers and which names Jig keeps stable for company plugins.
 pi install git:github.com/Dev-Mriganka/jig
 ```
 
+That follows `main`. To pin a release instead, add its tag: `pi install git:github.com/Dev-Mriganka/jig@v0.3.0`.
+Pi keeps a tag or a commit pinned and never moves it. [Releases](docs/releases.md) says what a version means
+and how one is cut.
+
 Then start Pi and run `/jig`: it shows the rules in force and anything that
 needs fixing. Each plugin's README says what it needs in `~/.pi/agent/jig.json`
 and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
@@ -225,6 +229,12 @@ the sandbox check and `/lens`, in plain words. Then:
     traced through them: [`jig-core`](plugins/jig-core/docs/code-map.md), [`jig-api`](plugins/jig-api/docs/code-map.md),
     [`jig-ops`](plugins/jig-ops/docs/code-map.md), [`jig-sandbox`](plugins/jig-sandbox/docs/code-map.md),
     [`jig-agents`](plugins/jig-agents/docs/code-map.md) and [`jig-workflow`](plugins/jig-workflow/docs/code-map.md).
+
+## Contributing
+
+- **[Contributing](CONTRIBUTING.md)** is how to set up, the checks a change must pass, and where the code goes.
+- **[Releases](docs/releases.md)** is how a version is cut, what its number means, and how a consumer pins one.
+- **[Security](SECURITY.md)** is how to report a problem privately, what is in scope, and what happens next.
 
 ## Relationship to the existing harness
 

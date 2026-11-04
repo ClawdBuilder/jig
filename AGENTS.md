@@ -92,9 +92,14 @@ changes, the other changes in the same commit. Tests read the tool tables of
   command in the `jig-agents` bullet above. To move it: run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`,
   "Run workflow") and wait for it to be green on the new release, change those places in one commit, and run `npm run check`,
   `npm test` and `npm run check:install` on that Pi. `plugins/jig-core/test/ci-config.test.ts` fails when they disagree.
-- **Changelog.** A change a user would notice adds a line under `## [Unreleased]` in `CHANGELOG.md`. A release moves those lines
-  under a new version heading and raises `version` in `package.json` in the same commit: Pi shows a package's changelog after an
-  update only when that field rises.
+- **Changelog and releases.** A change a user would notice adds a line under `## [Unreleased]` in `CHANGELOG.md`. A release runs
+  `node scripts/release.mjs <version>`, which moves those lines under a dated version heading and raises `version` in
+  `package.json` in the same commit: Pi shows a package's changelog after an update only when that field rises. Then commit, tag
+  `v<version>`, and push the branch and the tag: the tag starts the Release workflow, which writes the GitHub release's notes from
+  that changelog section. [Releases](docs/releases.md) has the rest, and `test/release.test.ts` covers the scripts.
+- **A person's rules are in the repository too.** `CONTRIBUTING.md` is the short version of this file for a person, `SECURITY.md`
+  says how a vulnerability is reported, and `.github/CODEOWNERS` names the reviewer of every change. Keep them in step with this
+  file; a new check or a new folder belongs in both.
 - **No secret-shaped literals, even fake ones.** A test value that looks like a
   real credential (a GitHub token, a Postman key, an AWS key, a private-key
   block) is built at run time from parts, such as `["PMAK", "1a2b"].join("-")`.
