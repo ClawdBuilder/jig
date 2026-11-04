@@ -5,6 +5,8 @@ import type { TestContext } from "node:test";
 import { MongoClient } from "mongodb";
 import type { MongoClientOptions } from "mongodb";
 import { must } from "../../../../test/support/it.ts";
+import type { Backend } from "../../src/backend.ts";
+import { connectDriver } from "../../src/driver.ts";
 import { setupHarness } from "./harness.ts";
 import type { Harness } from "./harness.ts";
 
@@ -55,4 +57,37 @@ export async function rawClient(uri: string, options: MongoClientOptions = {}): 
     });
     await client.connect();
     return client;
+}
+
+/**
+ * A real harness that counts what reaches the server: every backend method is one command round trip, and every connect is
+ * one connection. A call refused before it runs must leave both at zero — that is how a test proves the tool refused it
+ * rather than the database answering and the tool hiding the answer.
+ */
+export function countedRealHarness(
+    t: TestContext,
+    section: Record<string, unknown>,
+): { h: Harness; sent: () => number; connected: () => number } {
+    const h = setupHarness({}, true);
+    let sent = 0;
+    let connected = 0;
+    const counting: (target: Parameters<typeof connectDriver>[0]) => Promise<Backend> = async (target) => {
+        connected += 1;
+        const backend = await connectDriver(target);
+        return new Proxy(backend, {
+            get(target: Backend, property: string | symbol, receiver: unknown) {
+                const value = Reflect.get(target, property, receiver) as unknown;
+                if (typeof value !== "function" || property === "close") return value;
+                return (...args: unknown[]) => {
+                    sent += 1;
+                    return (value as (...inner: unknown[]) => unknown).apply(target, args);
+                };
+            },
+        });
+    };
+    h.configure(section);
+    h.jig.secrets.set(PASSWORD_REFERENCE, accounts().password);
+    h.load({ connect: counting });
+    t.after(() => h.close());
+    return { h, sent: () => sent, connected: () => connected };
 }

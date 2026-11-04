@@ -10,7 +10,7 @@ import type { MongoClient } from "mongodb";
 import { createMasker } from "../../../jig-core/src/mask/index.ts";
 import { describeIt, must } from "../../../../test/support/it.ts";
 import { ok } from "../support/harness.ts";
-import { accounts, connection, rawClient, realHarness } from "../support/real.ts";
+import { accounts, connection, countedRealHarness, rawClient, realHarness } from "../support/real.ts";
 import type { Harness } from "../support/harness.ts";
 
 describeIt(
@@ -68,6 +68,33 @@ describeIt(
             return h;
         };
         const on = (collection: string, environment = "staging") => ({ environment, database: db, collection });
+
+        /** The same world, with a count of what reached the server and of the connections opened. */
+        const counted = (t: import("node:test").TestContext) => {
+            const world = countedRealHarness(t, section());
+            world.h.jig.kinds.set("reader", "test");
+            world.h.jig.kinds.set("production-scan", "production");
+            return world;
+        };
+
+        /**
+         * A read the tool refuses. The decision table allows a read, so the refusal is the tool's when it runs: the model
+         * gets its message and no row, and nothing was sent to the server or connected for it.
+         */
+        const refusedRead = async (
+            world: { h: Harness; sent: () => number; connected: () => number },
+            input: Record<string, unknown>,
+            message: string,
+        ): Promise<void> => {
+            const sent = world.sent();
+            const connected = world.connected();
+            const result = await world.h.call(input);
+            assert.equal(result.blocked, undefined, `${input.action}: a read is not blocked before it runs`);
+            assert.equal(result.error?.message, message, `${input.action}: the tool's own refusal`);
+            assert.equal(result.text, "", `${input.action}: no row reached the model`);
+            assert.equal(world.sent(), sent, `${input.action}: nothing reached the server`);
+            assert.equal(world.connected(), connected, `${input.action}: no connection was opened`);
+        };
 
         before(async () => {
             raw = await rawClient(uri());
@@ -131,7 +158,8 @@ describeIt(
         });
 
         test("databases and collections show what exists, minus what is always denied and what the list denies", async (t) => {
-            const h = harness(t);
+            const world = counted(t);
+            const h = world.h;
             const databases = ok(await h.call({ action: "databases", environment: "staging" }));
             assert.match(databases, new RegExp(`^mongo databases staging: \\d+ databases?\\n(?:.*\\n)*?${db}`));
             for (const hidden of ["admin", "local", "config"])
@@ -141,8 +169,11 @@ describeIt(
                 collections,
                 `mongo collections staging ${db}: 4 collections\ncustomers\nmetrics (timeseries)\nopen_orders (view)\norders`,
             );
-            const admin = await h.call({ action: "collections", environment: "staging", database: "admin" });
-            assert.equal(admin.blocked, "admin: the databases admin, local and config are always denied");
+            await refusedRead(
+                world,
+                { action: "collections", environment: "staging", database: "admin" },
+                "admin: the databases admin, local and config are always denied",
+            );
         });
 
         test("find returns typed values as Extended JSON, strips denied fields, and a result at its limit says so", async (t) => {
@@ -409,30 +440,40 @@ describeIt(
         });
 
         test("the access list of a test environment: a denied collection, a denied field in a filter, and a credential-like field are refused", async (t) => {
-            const h = harness(t);
-            const denied = await h.call({ action: "find", ...on("secrets") });
-            assert.equal(denied.blocked, `${db}.secrets is denied by the access list`);
-            const field = await h.call({ action: "find", ...on("orders"), filter: { internalNote: "keep out" } });
-            assert.equal(field.blocked, '"internalNote" is denied by the access list');
-            const rename = await h.call({
-                action: "aggregate",
-                ...on("orders"),
-                pipeline: [{ $project: { x: "$secretToken" } }],
-            });
-            assert.match(rename.blocked ?? "", /^"secretToken" looks like a credential/);
-            const lookup = await h.call({
-                action: "aggregate",
-                ...on("orders"),
-                pipeline: [{ $lookup: { from: "secrets", localField: "customer", foreignField: "_id", as: "x" } }],
-            });
-            assert.equal(lookup.blocked, `${db}.secrets is denied by the access list`);
+            const world = counted(t);
+            const h = world.h;
+            await refusedRead(
+                world,
+                { action: "find", ...on("secrets") },
+                `${db}.secrets is denied by the access list`,
+            );
+            await refusedRead(
+                world,
+                { action: "find", ...on("orders"), filter: { internalNote: "keep out" } },
+                '"internalNote" is denied by the access list',
+            );
+            await refusedRead(
+                world,
+                { action: "aggregate", ...on("orders"), pipeline: [{ $project: { x: "$secretToken" } }] },
+                '"secretToken" looks like a credential (password, secret, token, apiKey), so it is always denied',
+            );
+            await refusedRead(
+                world,
+                {
+                    action: "aggregate",
+                    ...on("orders"),
+                    pipeline: [{ $lookup: { from: "secrets", localField: "customer", foreignField: "_id", as: "x" } }],
+                },
+                `${db}.secrets is denied by the access list`,
+            );
             const written = await h.call({ action: "insert", ...on("secrets"), documents: [{ a: 1 }] });
             assert.equal(written.blocked, `${db}.secrets is denied by the access list`);
             assert.equal(await raw.db(db).collection("secrets").countDocuments({}), 1);
         });
 
         test("production reads only what the allow list names, refuses everything else, and cannot be written to", async (t) => {
-            const h = harness(t);
+            const world = counted(t);
+            const h = world.h;
             // `status` leads an index, so production allows the read.
             const found = ok(
                 await h.call({
@@ -455,13 +496,16 @@ describeIt(
                 );
             }
             assert.doesNotMatch(found, /internalNote|secretToken|items|qty/);
-            const notListed = await h.call({ action: "find", ...on("secrets", "production") });
-            assert.equal(
-                notListed.blocked,
+            await refusedRead(
+                world,
+                { action: "find", ...on("secrets", "production") },
                 `${db}.secrets is not in the allow list; allowed: ${db}.orders, ${db}.customers`,
             );
-            const field = await h.call({ action: "find", ...on("orders", "production"), filter: { qty: 1 } });
-            assert.match(field.blocked ?? "", /^"qty" is not allowed in /);
+            await refusedRead(
+                world,
+                { action: "find", ...on("orders", "production"), filter: { qty: 1 } },
+                `"qty" is not allowed in ${db}.orders; allowed: _id, status, total, customer, contactEmail, createdAt`,
+            );
             for (const input of [
                 { action: "insert", ...on("orders", "production"), documents: [{ a: 1 }] },
                 {
@@ -563,7 +607,8 @@ describeIt(
         });
 
         test("a $lookup in production is cut to the fields the allow list names, on the server", async (t) => {
-            const h = harness(t);
+            const world = counted(t);
+            const h = world.h;
             const joined = ok(
                 await h.call({
                     action: "aggregate",
@@ -588,23 +633,38 @@ describeIt(
                 );
                 assert.equal(row.internalNote, undefined);
             }
-            // The names that would reach the denied part by another road are refused before they run.
-            for (const stage of [
-                { $project: { x: { $getField: "internalNote" } } },
-                { $unionWith: "secrets" },
-                {
-                    $lookup: {
-                        from: "customers",
-                        localField: "customer",
-                        foreignField: "_id",
-                        pipeline: [{ $project: { email: 1 } }],
-                        as: "x",
+            // The names that would reach the denied part by another road are refused when the call runs.
+            const refusedStages: Array<[Record<string, unknown>, string]> = [
+                [
+                    { $project: { x: { $getField: "internalNote" } } },
+                    `"internalNote" is not allowed in ${db}.orders; allowed: _id, status, total, customer, contactEmail, createdAt`,
+                ],
+                [
+                    { $unionWith: "secrets" },
+                    `${db}.secrets is not in the allow list; allowed: ${db}.orders, ${db}.customers`,
+                ],
+                [
+                    {
+                        $lookup: {
+                            from: "customers",
+                            localField: "customer",
+                            foreignField: "_id",
+                            pipeline: [{ $project: { email: 1 } }],
+                            as: "x",
+                        },
                     },
-                },
-            ]) {
-                const refused = await h.call({ action: "aggregate", ...on("orders", "production"), pipeline: [stage] });
-                assert.ok(refused.blocked !== undefined, JSON.stringify(stage));
+                    `"email" is not allowed in ${db}.customers; allowed: _id, name`,
+                ],
+            ];
+            for (const [stage, message] of refusedStages) {
+                await refusedRead(
+                    world,
+                    { action: "aggregate", ...on("orders", "production"), pipeline: [stage] },
+                    message,
+                );
             }
+            // The denied values never appear in what the model is given, under any of these names.
+            assert.doesNotMatch(joined, /keep out|n2|zz-not-for-the-model/);
         });
 
         test("what production returns is masked by jig-core's own masker, and identifiers stay", async (t) => {
