@@ -231,7 +231,8 @@ In `~/.pi/agent/jig.json`, under `agents`. Every field is optional.
 An unknown field is an error, as in `jig-core`, and so is `writes` or `tools` under a role: they are the file's.
 
 - **Thinking, strongest first:** `roles.<role>.thinking`, the `:level` on the model (`provider/id:low`), then the file's.
-- **A company plugin** sets `roles.scout.model` and the like through `jig-core`'s section defaults. Its `ask` and yours add up.
+- **A company plugin** sets `roles.scout.model` and the like through `jig-core`'s section defaults. Its `ask`, its role
+  `folders` and its `env` names add to yours, so your own lists extend the company's rather than replacing them.
 
 [Design](docs/design.md#configuration) has the ranges.
 
