@@ -73,6 +73,13 @@ export interface DoctorContext {
     jigListedButMissing?: { source: string; problem: string };
     /** Project packages Pi would not load because the folder is not trusted: skipped, never imported. */
     projectSkipped?: { sources: string[]; detail: string; fix?: string; setupLine: string; jigIncluded: boolean };
+    /** Jig plugins Pi's settings filter out: core and sandbox are failures, the rest are calm skips. */
+    filtered?: {
+        core?: string;
+        sandbox?: string;
+        features: Array<{ feature: string; section?: string; source: string }>;
+        offSections: string[];
+    };
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;

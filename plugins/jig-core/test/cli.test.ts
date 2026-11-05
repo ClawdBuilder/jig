@@ -82,6 +82,58 @@ function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = w
 const settingsWith = (...packages: string[]): void =>
     writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [ROOT, ...packages] }));
 
+/** The command names stock Pi loads, from a real Pi process; the same filters the doctor reads decide them. */
+function piCommands(): Promise<string[]> {
+    const cli = path.join(ROOT, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
+    return new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [cli, "--mode", "rpc"], { cwd: work, env: env() });
+        let buffer = "";
+        const finish = (names: string[]): void => {
+            child.kill();
+            resolve(names);
+        };
+        child.stdout.on("data", (chunk: Buffer) => {
+            buffer += chunk.toString();
+            let index: number;
+            while ((index = buffer.indexOf("\n")) >= 0) {
+                const line = buffer.slice(0, index).trim();
+                buffer = buffer.slice(index + 1);
+                if (line === "") continue;
+                try {
+                    const record = JSON.parse(line) as {
+                        type?: string;
+                        command?: string;
+                        data?: { commands?: Array<{ name?: string }> };
+                    };
+                    if (record.type === "response" && record.command === "get_commands") {
+                        finish(
+                            (record.data?.commands ?? []).flatMap((one) => (one.name === undefined ? [] : [one.name])),
+                        );
+                        return;
+                    }
+                } catch {
+                    // Pi's other output is not a command answer.
+                }
+            }
+        });
+        child.on("error", reject);
+        const timeout = setTimeout(() => {
+            child.kill();
+            reject(new Error("Pi did not answer get_commands"));
+        }, 30_000);
+        child.on("close", () => clearTimeout(timeout));
+        child.stdin.write(`${JSON.stringify({ id: "1", type: "get_commands" })}\n`);
+    });
+}
+
+/** Settings with the Jig package this test runs from, filtered by an object entry. */
+function settingsFiltered(extensions: string[], skills?: string[]): void {
+    writeFileSync(
+        path.join(agent, "settings.json"),
+        JSON.stringify({ packages: [{ source: ROOT, extensions, ...(skills === undefined ? {} : { skills }) }] }),
+    );
+}
+
 describe("jig doctor", () => {
     test("runs without a Pi session and exits 0 when nothing failed", async () => {
         settingsWith();
@@ -89,6 +141,58 @@ describe("jig doctor", () => {
         assert.equal(result.code, 0, result.stdout + result.stderr);
         assert.match(result.stdout, /Jig doctor/);
         assert.match(result.stdout, /All checks passed|Nothing is blocked/);
+    });
+
+    test("a filter that leaves out Jig's core is a failure, not an all-clear", async () => {
+        settingsFiltered(["!plugins/jig-core/index.ts"]);
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /fail Jig's core is filtered out/);
+        assert.match(result.stdout, /rules, approvals and protected paths would not run/);
+        assert.match(result.stdout, /plugins\/jig-core\/index\.ts/);
+    });
+
+    test("a filter that leaves out the sandbox is a failure, not an all-clear", async () => {
+        settingsFiltered(["!plugins/jig-sandbox/index.ts"]);
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /fail Jig's sandbox is filtered out/);
+        assert.match(result.stdout, /bash would run without it/);
+    });
+
+    test("extensions: [] leaves out core too, and says so", async () => {
+        settingsFiltered([]);
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /Jig's core is filtered out/);
+        assert.match(result.stdout, /Jig's sandbox is filtered out/);
+    });
+
+    test("a choosable plugin that is off is a calm skip, and its section is not a problem", async () => {
+        settingsFiltered(["!plugins/jig-jira/index.ts"]);
+        writeFileSync(
+            path.join(agent, "jig.json"),
+            JSON.stringify({ jira: { site: "https://example.atlassian.net" } }),
+        );
+        const result = await run(["doctor"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /skip Feature jira — off in Pi's settings; its section in jig\.json is kept/);
+        assert.doesNotMatch(result.stdout, /is not a known field/);
+        assert.doesNotMatch(result.stdout, /warn .*jira/i);
+    });
+
+    test("stock Pi and the doctor agree on which plugin a filter turns off", async () => {
+        settingsFiltered(["!plugins/jig-jira/index.ts"], ["!plugins/jig-jira/skills/*"]);
+        const commands = await piCommands();
+        assert.equal(commands.includes("skill:jira"), false, `Pi loaded: ${commands.join(", ")}`);
+        writeFileSync(
+            path.join(agent, "jig.json"),
+            JSON.stringify({ jira: { site: "https://example.atlassian.net" } }),
+        );
+        const result = await run(["doctor"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /skip Feature jira/);
+        assert.doesNotMatch(result.stdout, /is not a known field/);
     });
 
     test("an invalid jig.json is a FAIL line in a report, not a crash", async () => {
@@ -139,7 +243,8 @@ describe("jig doctor", () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
         const result = await run(["doctor"]);
         assert.match(result.stdout, /Two copies of Jig/);
-        assert.match(result.stdout, /this command is 0\.3\.0/);
+        const own = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version?: string };
+        assert.match(result.stdout, new RegExp(`this command is ${own.version?.replaceAll(".", "\\.")}`));
         assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
     });
 

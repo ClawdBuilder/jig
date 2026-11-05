@@ -77,6 +77,7 @@ async function doctor(args: readonly string[]): Promise<number> {
                     ? {}
                     : { jigListedButMissing: loaded.jigListedButMissing }),
                 ...(loaded.projectSkipped === undefined ? {} : { projectSkipped: loaded.projectSkipped }),
+                ...(loaded.filtered === undefined ? {} : { filtered: loaded.filtered }),
             },
             {
                 network: flags.has("--network"),

@@ -212,6 +212,36 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
         return [...lines, ...protectedLines(context, options)];
     }
 
+    if (context.filtered?.core !== undefined) {
+        lines.push({
+            id: "config.filtered.core",
+            group: "config",
+            level: "fail",
+            title: "Jig's core is filtered out",
+            detail: "Pi's settings load Jig but leave out its core, so the rules, approvals and protected paths would not run.",
+            fix: "In Pi's settings.json, remove the Jig filter entry that leaves out plugins/jig-core/index.ts (or make it include that file).",
+        });
+    }
+    if (context.filtered?.sandbox !== undefined) {
+        lines.push({
+            id: "config.filtered.sandbox",
+            group: "config",
+            level: "fail",
+            title: "Jig's sandbox is filtered out",
+            detail: "Pi's settings load Jig but leave out the sandbox, so bash would run without it.",
+            fix: "In Pi's settings.json, remove the Jig filter entry that leaves out plugins/jig-sandbox/index.ts (or make it include that file).",
+        });
+    }
+    for (const feature of context.filtered?.features ?? []) {
+        lines.push({
+            id: `config.filtered.${feature.feature}`,
+            group: "config",
+            level: "skip",
+            title: `Feature ${feature.feature}`,
+            detail: "off in Pi's settings; its section in jig.json is kept and comes back with it.",
+        });
+    }
+
     if (context.projectSkipped !== undefined) {
         lines.push({
             id: "config.project-trust",

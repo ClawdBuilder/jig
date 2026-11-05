@@ -4,6 +4,8 @@
 // in <cwd>/.pi/settings.json; user scope lives in the agent folder and is listed in its settings.json.
 import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
+import { filterOf } from "./package-filter.ts";
+import type { PackageFilter } from "./package-filter.ts";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -15,6 +17,8 @@ export interface ListedPackage {
     scope: PackageScope;
     folder?: string;
     problem?: string;
+    /** The object entry's filter; a string entry has none, and Pi loads everything it names. */
+    filter?: PackageFilter;
 }
 
 export interface ReadPackages {
@@ -165,6 +169,7 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                       ? (entry as { source?: unknown }).source
                       : undefined;
             if (typeof source !== "string" || source.trim() === "") continue;
+            const filter = filterOf(entry);
             const found = packageFolder(source, base);
             if (found.folder !== undefined) {
                 if (seen.has(found.folder)) continue;
@@ -175,6 +180,7 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                 listed.push({
                     source: source.trim(),
                     scope,
+                    ...(filter === undefined ? {} : { filter }),
                     problem: found.problem ?? "its folder cannot be worked out",
                 });
                 continue;
@@ -186,7 +192,12 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                     ? undefined
                     : path.join(path.dirname(process.execPath), "..", "lib", "node_modules", npm.name);
             if (!existsSync(folder) && legacy !== undefined && existsSync(legacy)) {
-                listed.push({ source: source.trim(), scope, folder: legacy });
+                listed.push({
+                    source: source.trim(),
+                    scope,
+                    folder: legacy,
+                    ...(filter === undefined ? {} : { filter }),
+                });
                 continue;
             }
             if (!existsSync(folder)) {
@@ -194,11 +205,12 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                     source: source.trim(),
                     scope,
                     folder,
+                    ...(filter === undefined ? {} : { filter }),
                     problem: `Pi lists it, but its files are not there: ${folder}`,
                 });
                 continue;
             }
-            listed.push({ source: source.trim(), scope, folder });
+            listed.push({ source: source.trim(), scope, folder, ...(filter === undefined ? {} : { filter }) });
         }
     }
     return { listed, settingsProblems };

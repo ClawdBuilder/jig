@@ -12,6 +12,7 @@ import { createState, loadPersonalConfig } from "../state.ts";
 import { manifestOf, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
 import type { ListedPackage } from "./packages.ts";
 import { projectTrust, untrustedDetail, untrustedSetupLine } from "./trust.ts";
+import { enabledFiles } from "./package-filter.ts";
 import type { JigState } from "../state.ts";
 
 /** One package that could not be loaded, with the plain reason: the doctor shows it as a FAIL line. */
@@ -63,8 +64,8 @@ function headlessPi(state: { handlers: Map<string, Array<(event: unknown, ctx: u
     }) as unknown as import("@earendil-works/pi-coding-agent").ExtensionAPI;
 }
 
-/** A package's extension files, from its `pi.extensions`, or its main file when the manifest says nothing. */
-function extensionsOf(folder: string): string[] {
+/** The extension entries a package's manifest names, relative to its folder; its main file when it names none. */
+function manifestExtensions(folder: string): string[] {
     try {
         const manifest = JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")) as {
             pi?: { extensions?: unknown };
@@ -72,16 +73,39 @@ function extensionsOf(folder: string): string[] {
         };
         const listed = manifest.pi?.extensions;
         if (Array.isArray(listed) && listed.length > 0 && listed.every((item) => typeof item === "string")) {
-            return listed.map((item) => path.resolve(folder, item));
+            return listed as string[];
         }
         if (typeof manifest.main === "string" && existsSync(path.resolve(folder, manifest.main))) {
-            return [path.resolve(folder, manifest.main)];
+            return [manifest.main];
         }
     } catch {
         // Not a package, or no manifest: the caller reports it.
     }
     return [];
 }
+
+/** A package's extension files, from its `pi.extensions`, or its main file when the manifest says nothing. */
+function extensionsOf(folder: string): string[] {
+    return manifestExtensions(folder).map((item) => path.resolve(folder, item));
+}
+
+/** The plugin a Jig extension file belongs to, as in `plugins/jig-jira/index.ts`. */
+function pluginOf(file: string): string | undefined {
+    return /^plugins\/([^/]+)\/index\.ts$/.exec(file.replace(/^\.\//, ""))?.[1];
+}
+
+/** The built-in choosable plugins, their feature name and the section whose settings they validate. */
+const FEATURES: Readonly<Record<string, { feature: string; section?: string }>> = {
+    "jig-jira": { feature: "jira", section: "jira" },
+    "jig-logs": { feature: "logs", section: "logs" },
+    "jig-mongo": { feature: "mongo", section: "mongo" },
+    "jig-api": { feature: "api", section: "api" },
+    "jig-ops": { feature: "ops", section: "ops" },
+    "jig-review": { feature: "review" },
+    "jig-agents": { feature: "agents", section: "agents" },
+    "jig-workflow": { feature: "workflow", section: "workflow" },
+    "jig-lens": { feature: "lens", section: "lens" },
+};
 
 /** The CLI's own package.json: its name, version and repository, for what a person should install. */
 export function ownPackage(): { name?: string; version?: string; repository?: string } {
@@ -125,6 +149,13 @@ export interface Headless {
         fix?: string;
         setupLine: string;
         jigIncluded: boolean;
+    };
+    /** Jig plugins Pi's settings filter out, and the sections that go with them. */
+    filtered?: {
+        core?: string;
+        sandbox?: string;
+        features: Array<{ feature: string; section?: string; source: string }>;
+        offSections: string[];
     };
     /** How long each package's extensions took to load, slowest first: what the blank screen was. */
     timings: Array<{ name: string; ms: number }>;
@@ -180,18 +211,31 @@ export async function loadHeadless(
     const jigSkippedUntrusted = skippedProject.some((entry) => looksLikeJig(entry));
     let jigInPi = false;
     let jigInPiVersion: string | undefined;
+    const jigPlugins = new Set<string>();
+    const enabledPlugins = new Set<string>();
     for (const entry of loadable) {
         if (entry.problem !== undefined || entry.folder === undefined) continue;
         const startedAt = performance.now();
-        const files = extensionsOf(entry.folder);
-        if (files.length === 0) {
+        const rawFiles = manifestExtensions(entry.folder);
+        const allFiles = rawFiles.map((item) => path.resolve(entry.folder ?? "", item));
+        if (allFiles.length === 0) {
             failures.push({ package: entry.source, reason: "no Pi extensions: its package.json names none" });
             continue;
         }
+        const enabled = enabledFiles(allFiles, entry.filter, "extensions", entry.folder);
+        const files = allFiles.filter((file) => enabled.has(file));
         const manifest = manifestOf(entry.folder);
         if (own.name !== undefined && manifest?.name === own.name) {
             jigInPi = true;
             if (manifest.version !== undefined) jigInPiVersion = manifest.version;
+            for (const item of rawFiles) {
+                const plugin = pluginOf(item);
+                if (plugin !== undefined) jigPlugins.add(plugin);
+            }
+            for (const file of files) {
+                const plugin = pluginOf(path.relative(entry.folder, file).split(path.sep).join("/"));
+                if (plugin !== undefined) enabledPlugins.add(plugin);
+            }
         }
         for (const file of files) {
             const fileStarted = performance.now();
@@ -218,6 +262,35 @@ export async function loadHeadless(
         void startedAt;
     }
     timings.sort((left, right) => right.ms - left.ms);
+    const filteredFeatures: Array<{ feature: string; section?: string; source: string }> = [];
+    for (const [plugin, feature] of Object.entries(FEATURES)) {
+        if (
+            jigPlugins.has(plugin) &&
+            !enabledPlugins.has(plugin) &&
+            !filteredFeatures.some((one) => one.feature === feature.feature)
+        ) {
+            filteredFeatures.push({
+                feature: feature.feature,
+                ...(feature.section === undefined ? {} : { section: feature.section }),
+                source: "Pi's settings",
+            });
+        }
+    }
+    const offSections = filteredFeatures.flatMap((one) => (one.section === undefined ? [] : [one.section]));
+    const filtered =
+        filteredFeatures.length === 0 &&
+        !(jigPlugins.has("jig-core") && !enabledPlugins.has("jig-core")) &&
+        !(jigPlugins.has("jig-sandbox") && !enabledPlugins.has("jig-sandbox"))
+            ? undefined
+            : {
+                  ...(jigPlugins.has("jig-core") && !enabledPlugins.has("jig-core") ? { core: "Pi's settings" } : {}),
+                  ...(jigPlugins.has("jig-sandbox") && !enabledPlugins.has("jig-sandbox")
+                      ? { sandbox: "Pi's settings" }
+                      : {}),
+                  features: filteredFeatures,
+                  offSections,
+              };
+    state.offSections = new Set(offSections);
     // The person's file last: the sections and defaults above are what it is checked against.
     loadPersonalConfig(state);
     return {
@@ -235,6 +308,7 @@ export async function loadHeadless(
                   },
               }),
         packageProblems,
+        ...(filtered === undefined ? {} : { filtered }),
         ...(skippedProject.length === 0
             ? {}
             : {
