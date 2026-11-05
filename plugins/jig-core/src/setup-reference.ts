@@ -132,3 +132,15 @@ export function buildReference(
     }
     return { reference: `cmd:${parts.command}`, note: `the command "${parts.command}"` };
 }
+
+/** A reference in words, for a line a person reads: never the `scheme:name` syntax. */
+export function describeReference(reference: string): string {
+    const parsed = parseSecretReference(reference);
+    if (parsed === undefined) return "that place";
+    if (parsed.backend === "pass") return `the entry ${parsed.rest}`;
+    if (parsed.backend === "env") return `the variable ${parsed.rest}`;
+    if (parsed.backend === "cmd") return `the command ${parsed.rest}`;
+    if (parsed.backend === "file") return `the file ${parsed.rest}`;
+    if (parsed.backend === "keychain") return `the Keychain item ${parsed.rest}`;
+    return `the 1Password item ${parsed.rest.replace(/^\/\//, "")}`;
+}

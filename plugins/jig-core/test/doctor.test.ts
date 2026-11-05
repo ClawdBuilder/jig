@@ -92,6 +92,34 @@ function text(report: Awaited<ReturnType<typeof runDoctor>>): string {
 }
 
 describe("/jig doctor checks", () => {
+    test("a company's onboarding list becomes a 'you need' line for each field still missing", async () => {
+        const report = await runDoctor(
+            context({
+                checks: [["acme", () => ["acme: must hold a login"]]],
+                overrides: {
+                    onboarding: {
+                        preferredStore: "pass",
+                        items: [
+                            {
+                                kind: "text",
+                                section: "acme",
+                                path: "bastion.user",
+                                label: "Your Acme login",
+                                why: "The gateway asks for it.",
+                            },
+                        ],
+                    },
+                },
+            }),
+            options(),
+        );
+        const line = report.lines.find((entry) => entry.title === "You need: Your Acme login");
+        assert.ok(line, text(report));
+        assert.equal(line.group, "config");
+        assert.equal(line.detail, "The gateway asks for it.");
+        assert.equal(line.fix, "Run jig setup and it asks for this.");
+    });
+
     test("a working setup passes, with a summary and the groups a person expects", async () => {
         const report = await runDoctor(context(), options());
         const shown = text(report);
@@ -152,9 +180,11 @@ describe("/jig doctor checks", () => {
         );
     });
 
-    test("an unreadable Pi version is a warning, not a crash", async () => {
+    test("an unreadable Pi version is a skip, not a warning to fix, and not a crash", async () => {
         const report = await runDoctor(context(), options({ piVersion: () => undefined }));
-        assert.equal(report.lines.find((line) => line.id === "machine.pi")?.level, "warn");
+        const line = report.lines.find((entry) => entry.id === "machine.pi");
+        assert.equal(line?.level, "skip");
+        assert.equal(line?.fix, undefined, "nothing to run: Pi's version is not the problem");
     });
 
     test("a missing settings file is fine; it says the defaults apply", async () => {
@@ -204,9 +234,9 @@ describe("/jig doctor checks", () => {
         assert.equal(line?.title, "Pi's folder is not protected");
     });
 
-    test("a missing records folder is a warning, and a failed write is a failure", async () => {
+    test("a missing records folder is normal, and a failed write is a failure", async () => {
         const missing = await runDoctor(context({ overrides: { stateDir: path.join(home, "not-there") } }), options());
-        assert.equal(missing.lines.find((line) => line.id === "records.writable")?.level, "warn");
+        assert.equal(missing.lines.find((line) => line.id === "records.writable")?.level, "ok");
 
         const failed = await runDoctor(context({ overrides: { recordsProblem: "disk full" } }), options());
         const line = failed.lines.find((entry) => entry.id === "records.writable");
@@ -298,6 +328,14 @@ describe("/jig doctor secrets", () => {
             assert.equal(line?.level, "warn");
             assert.match(line?.detail ?? "", /other users can read this file/);
         }
+    });
+
+    test("a store no reference uses is not checked: no warning about a pass folder that is not there", async () => {
+        const report = await runDoctor(context({ overrides: { personal: withBackends("pass") } }), options());
+        const line = report.lines.find((entry) => entry.id === "secrets.pass");
+        assert.equal(line?.level, "skip");
+        assert.match(line?.detail ?? "", /not used by any reference/);
+        assert.equal(line?.fix, undefined);
     });
 
     test("a malformed reference fails, and its text never appears", async () => {

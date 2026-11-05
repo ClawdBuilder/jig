@@ -36,11 +36,18 @@ import { registerWatchTool } from "./watch/tool.ts";
 export type { JigCoreOptions };
 
 /** The extension, with parts a test can replace (the masker, the browser). Pi loads the default export below. */
+/** The state of the jig-core runtime loaded in this process, for tests that drive the whole extension. */
+let running: JigState | undefined;
+export function runningJigState(): JigState | undefined {
+    return running;
+}
+
 export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const state = createState(pi, options);
         state.configPath = () => configFile(getAgentDir());
         state.agentDir = () => getAgentDir();
+        running = state;
         const api = buildApi(state);
         const badCondition = conditionProblem(process.env);
         if (badCondition !== undefined) state.startupProblems.push(badCondition);
@@ -56,6 +63,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
         pi.on("session_shutdown", async () => {
             // Safe to run twice: cancellation, reload and exit can all arrive here.
             withdrawJig(api);
+            if (running === state) running = undefined;
             state.sessionAllows.clear();
             state.calls.clear();
             state.watches.end();

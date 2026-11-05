@@ -13,6 +13,7 @@ import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
 import { git, run } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import type { ExecGuard } from "./exec.ts";
+import { checkOnboarding } from "./onboarding.ts";
 import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
 import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
@@ -325,6 +326,12 @@ export function buildApi(state: JigState): JigApi {
             },
         },
 
+        onboarding: {
+            register: (entry) => {
+                state.onboarding = checkOnboarding(entry);
+            },
+        },
+
         exec: {
             run: (file, args, options) => run(file, args, options, guard),
             git: (repo, args, options) => git(repo, args, options, guard),
@@ -383,6 +390,11 @@ function scoped(api: JigApi, state: JigState, entry: CompanyEntry): JigApi {
                 if (typeof lines !== "function")
                     throw new TypeError(`status.register(${plugin}): lines must be a function`);
                 entry.statusLines.set(plugin, lines);
+            },
+        },
+        onboarding: {
+            register: (list) => {
+                entry.onboarding = checkOnboarding(list);
             },
         },
     };

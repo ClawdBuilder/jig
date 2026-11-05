@@ -50,10 +50,10 @@ Three more commands help you look around:
 
 ## 3. Set up one plugin: `jig-git`
 
-Jig reads one file, `~/.pi/agent/jig.json`. When a company plugin leaves something for you, `/jig setup` asks
-for it one question at a time, shows each change in plain words, and writes only those fields after you confirm.
-It keeps a backup beside the file and asks you to run `/reload`. The command writes the file; the agent never can,
-because Pi's file tools refuse that folder.
+Jig reads one file, `~/.pi/agent/jig.json`. In a terminal, `jig setup` asks one question at a time, starting with
+which company setup you use, shows each change in plain words, and writes only those fields after you confirm. It
+keeps a backup beside the file and says to start Pi again, or run `/reload` in it. The command writes the file; the
+agent never can, because Pi's file tools refuse that folder. (/jig setup inside Pi just says to run this command.)
 
 In this scratch repository no company plugin is loaded, so there is nothing for setup to fill in. Create the
 `git` section yourself, as an example of the file's shape. It names the branch new work starts from and the

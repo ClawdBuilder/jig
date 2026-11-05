@@ -6,9 +6,9 @@ import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
-import { meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
+import { installLocation, meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
-import { effectiveDefaults } from "./profile-state.ts";
+import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionState } from "./section-state.ts";
 import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
@@ -46,6 +46,7 @@ export function doctorContext(state: JigState): DoctorContext {
         workingDir: state.workingDir,
         secrets: { passStoreDir: () => state.secrets.passStoreDir() },
         now: state.now,
+        onboarding: activeOnboarding(state),
     };
 }
 
@@ -73,28 +74,62 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
         {
             id: "machine.pi",
             group: "machine",
-            level: pi === undefined ? "warn" : "ok",
+            // The command itself stops when Pi is absent; here, an unreadable version says nothing about the session, so
+            // it is a skip, not a problem to fix, inside Pi and outside it.
+            level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
             title: "Pi",
             detail:
                 pi === undefined
-                    ? "could not be read"
+                    ? "version unknown"
                     : meetsMinimum(pi, "1.4.0")
                       ? pi
                       : `${pi} (Jig needs 1.4 or later)`,
-            ...(pi === undefined
-                ? { fix: "Run pi --version in a terminal." }
-                : meetsMinimum(pi, "1.4.0")
-                  ? {}
-                  : { fix: "Update Pi: pi update." }),
+            ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
         },
-        {
-            id: "machine.jig",
-            group: "machine",
-            level: jig === undefined ? "warn" : "ok",
-            title: "Jig",
-            detail: jig ?? "could not be read",
-            ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
-        },
+        context.standalone === true && context.jigInPi === false && context.projectSkipped?.jigIncluded === true
+            ? {
+                  id: "machine.jig",
+                  group: "machine",
+                  level: "skip",
+                  title: "Jig",
+                  detail: `listed in this folder's Pi packages, which were ${context.projectSkipped.detail}`,
+                  fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
+              }
+            : context.standalone === true && context.jigInPi === false
+              ? {
+                    id: "machine.jig",
+                    group: "machine",
+                    level: "fail",
+                    title: "Jig",
+                    detail:
+                        context.jigListedButMissing === undefined
+                            ? "not installed in Pi yet, so Pi does not load Jig's plugins."
+                            : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
+                    fix: `Install it: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                }
+              : {
+                    id: "machine.jig",
+                    group: "machine",
+                    level: jig === undefined ? "warn" : "ok",
+                    title: "Jig",
+                    detail: jig ?? "could not be read",
+                    ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
+                },
+        ...(context.standalone === true &&
+        jig !== undefined &&
+        context.jigInPiVersion !== undefined &&
+        context.jigInPiVersion !== jig
+            ? [
+                  {
+                      id: "machine.jig.copies",
+                      group: "machine" as const,
+                      level: "warn" as const,
+                      title: "Two copies of Jig",
+                      detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
+                      fix: `Install one version: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                  },
+              ]
+            : []),
         { id: "machine.system", group: "machine", level: "ok", title: "System", detail: system },
     ];
 
@@ -176,6 +211,17 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
         return [...lines, ...protectedLines(context, options)];
     }
 
+    if (context.projectSkipped !== undefined) {
+        lines.push({
+            id: "config.project-trust",
+            group: "config",
+            level: "skip",
+            title: "This folder's Pi packages",
+            detail: context.projectSkipped.detail,
+            fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
+        });
+    }
+
     const notSet: string[] = [];
     for (const name of sections) {
         const state = sectionState(context.personal, name);
@@ -207,6 +253,8 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             notSet.push(name);
         }
     }
+    lines.push(...onboardingLines(context, shown));
+
     if (notSet.length > 0) {
         lines.push({
             id: "config.sections.not-set",
@@ -289,4 +337,29 @@ function firstMessages(messages: readonly string[]): string {
     const [first, ...rest] = messages;
     const more = rest.length === 0 ? "" : ` (and ${rest.length} more)`;
     return `${first}${more}`;
+}
+
+/** What the active company's onboarding list says its people must supply, for the sections that are not loaded yet. */
+function onboardingLines(context: DoctorContext, settingsShown: string): DoctorLine[] {
+    const entry = context.onboarding;
+    if (entry === undefined) return [];
+    const lines: DoctorLine[] = [];
+    for (const [index, item] of entry.items.entries()) {
+        if (item.kind === "info" || item.kind === "login") continue;
+        const state = sectionState(context.personal, item.section);
+        if (state === "loaded") continue;
+        const store = item.kind === "reference" ? (item.preferredStore ?? entry.preferredStore) : undefined;
+        const hint = item.kind === "reference" ? item.addHints?.[store ?? "env"] : undefined;
+        lines.push({
+            id: `config.need.${index}`,
+            group: "config",
+            level: "warn",
+            title: `You need: ${item.label}`,
+            detail:
+                item.why ??
+                `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
+            fix: hint ?? "Run jig setup and it asks for this.",
+        });
+    }
+    return lines;
 }

@@ -1,6 +1,7 @@
 // The versions `/jig doctor` reports: Pi's, Jig's own, and the Node.js version the package says it needs. Pi has no API
 // for its version, so it is read from the package.json of the package Pi loaded, found from the module's own URL.
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,19 +9,37 @@ const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 /** Where the loop stops: a package folder is a few levels above its `dist/index.js`. */
 const MAX_LEVELS = 8;
 
-/** Pi's version, or undefined when the package cannot be found (a bundled build, say). */
+/** The package.json of the module this one resolves, walking up to `PI_PACKAGE`'s folder. */
+function versionFrom(resolved: string): string | undefined {
+    let dir = path.dirname(resolved);
+    for (let level = 0; level < MAX_LEVELS; level++) {
+        const found = readPackage(path.join(dir, "package.json"));
+        if (found?.name === PI_PACKAGE && typeof found.version === "string") return found.version;
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+    }
+    return undefined;
+}
+
+/** Pi's version. Resolved from the extension's own module first; then from the program Pi runs, which works when Jig is
+ *  installed as a package beside nothing (a global Pi, a bundled build): the launcher sits inside Pi's own package. */
 export function piVersion(): string | undefined {
     try {
-        let dir = path.dirname(fileURLToPath(import.meta.resolve(PI_PACKAGE)));
-        for (let level = 0; level < MAX_LEVELS; level++) {
-            const found = readPackage(path.join(dir, "package.json"));
-            if (found?.name === PI_PACKAGE && typeof found.version === "string") return found.version;
-            const parent = path.dirname(dir);
-            if (parent === dir) break;
-            dir = parent;
+        const found = versionFrom(fileURLToPath(import.meta.resolve(PI_PACKAGE)));
+        if (found !== undefined) return found;
+    } catch {
+        // Fall through to the program's own folder.
+    }
+    try {
+        const launcher = process.argv[1];
+        if (launcher !== undefined && launcher !== "") {
+            const require = createRequire(path.join(path.dirname(path.resolve(launcher)), "probe.js"));
+            const found = versionFrom(require.resolve(PI_PACKAGE));
+            if (found !== undefined) return found;
         }
     } catch {
-        // No package.json, no resolution, or a runtime without import.meta.resolve: the doctor says "unknown".
+        // No launcher, or it is not inside Pi: the version stays unknown.
     }
     return undefined;
 }

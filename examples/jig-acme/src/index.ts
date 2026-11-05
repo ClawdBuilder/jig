@@ -29,6 +29,7 @@ import { MASK_FIELDS } from "./masking.ts";
 import { registerProtection } from "./protection.ts";
 import { registerSecretCommands } from "./secrets.ts";
 import { registerSignIn } from "./signin.ts";
+import { registerOnboarding } from "./onboarding.ts";
 import { registerStatus } from "./status.ts";
 import { registerTransport } from "./transport.ts";
 
@@ -69,6 +70,7 @@ export function jigAcme(options: JigAcmeOptions = {}): ExtensionFactory {
             api.config.addMaskFields(MASK_FIELDS);
             registerProtection(api);
             registerStatus(api);
+            registerOnboarding(api);
         });
     };
 }

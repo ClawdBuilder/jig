@@ -72,6 +72,13 @@ Then start Pi and run `/jig`: it shows the rules in force and anything that
 needs fixing. Each plugin's README says what it needs in `~/.pi/agent/jig.json`
 and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
 
+For the setup questions themselves, run `jig setup` in a terminal, outside Pi: no Pi session, model or provider login
+is needed. `jig doctor` there prints the same report as `/jig doctor` and exits non-zero when something failed.
+`pi install` copies a package but does not link programs, so get the command with
+`npm install -g --allow-git=root github:Dev-Mriganka/jig` (npm 12 turns git and remote installs off, so `--allow-git=root`
+is needed; from a checkout, `npm install -g --install-links .`). Add `#v0.4.0` to pin a release.
+[Setup and doctor](docs/setup-and-doctor.md) has the exit codes and the PATH notes.
+
 To load only some plugins, filter the package in Pi's settings. Name each plugin by
 its entry file, `plugins/<name>/index.ts` (a filter that names `src/index.ts`
 matches nothing). Keep `jig-core` first in the list, because every other plugin
@@ -207,7 +214,7 @@ worktrees of every repository, and the window follows the Jig palette. [How it w
 
 **New here?** [Your first hour with Jig](docs/first-hour.md) takes you from install to your first approval,
 the sandbox check and `/lens`, in plain words. When something is missing,
-[Setup and doctor](docs/setup-and-doctor.md) explains what `/jig doctor` found and what to do. Then:
+[Setup and doctor](docs/setup-and-doctor.md) explains what `jig doctor` found and what to do. Then:
 
 1. [Architecture](docs/architecture.md): how the tool manager sits over every
    tool, what it can and cannot control, and where each plugin fits.

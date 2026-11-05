@@ -59,12 +59,12 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
             nowTarget = realpathSync(plan.file);
         } catch {
             throw new SetupRefused(
-                "Your settings file is a link whose target cannot be read, so nothing was written. Run /jig setup again.",
+                "Your settings file is a link whose target cannot be read, so nothing was written. Run jig setup again.",
             );
         }
         if (nowTarget !== plan.target) {
             throw new SetupRefused(
-                "Your settings file is a link that now points somewhere else, so nothing was written. Run /jig setup again.",
+                "Your settings file is a link that now points somewhere else, so nothing was written. Run jig setup again.",
             );
         }
     }
@@ -79,17 +79,22 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
     }
     if (plan.exists && current !== plan.before) {
         throw new SetupRefused(
-            "Your settings file changed while setup was open, so nothing was written. Run /jig setup again.",
+            "Your settings file changed while setup was open, so nothing was written. Run jig setup again.",
         );
     }
     if (!plan.exists && current !== undefined) {
         throw new SetupRefused(
-            "Your settings file was created while setup was open, so nothing was written. Run /jig setup again.",
+            "Your settings file was created while setup was open, so nothing was written. Run jig setup again.",
         );
     }
 
     const after = structuredClone(plan.raw);
     for (const change of changes) {
+        if (change.path === "") {
+            // A top-level value, such as the `profile` that says which company setup applies.
+            after[change.section] = change.value;
+            continue;
+        }
         if (!isObject(after[change.section])) after[change.section] = {};
         setValuePath(after[change.section] as Record<string, unknown>, change.path, change.value);
     }

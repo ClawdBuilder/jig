@@ -62,6 +62,41 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 
+## 2026-11-05: project packages load only when Pi would trust the folder
+
+`jig doctor` and `jig setup` read project packages from `<cwd>/.pi/settings.json` so a company installed for one project is
+offered. But that meant importing code from any folder someone ran the command in, which is the same risk Pi's project
+trust exists to stop: clone a hostile repository, run `jig doctor`, and its extension runs.
+
+The command now applies Pi 1.5's rules itself, without importing Pi: the closest `true`/`false` in the agent folder's
+`trust.json` from the canonical cwd upward decides (`null` does not); without one, only the agent folder's
+`defaultProjectTrust` matters, and `"always"` is the only value that loads outside Pi's screen. A missing, unreadable or
+malformed trust file fails closed. Project packages are still read as facts (settings, manifests), but `import()` and
+factories wait for trust. The doctor shows a `skip` line naming what was skipped, and setup says the same rather than acting
+as if there is no company; Jig listed only in an untrusted project is a skip, not "not installed". User-scope packages are
+unchanged. The `project_trust` extension event is not imitated: there is no screen here, and under-loading is safe.
+
+## 2026-11-04: setup and doctor run as a standalone command
+
+Setup and doctor are needed on the first day, often before Pi starts and always when Pi cannot: a broken `jig.json`, a
+plugin that fails to load, no model yet. Running them only inside Pi made `/jig setup` say "nothing needs you" for the
+person it is for (company defaults need a `profiles` entry a newcomer cannot know), hid the questions behind Pi's
+dialogs, and tied the report to a session.
+
+`jig doctor` and `jig setup` therefore run in a terminal with no Pi session. They load the same packages Pi would load
+(agent folder, `settings.json` packages, the plugins' factories into a small headless host), then use the same doctor
+checks, setup plan, write gate and probes; Pi's `/jig doctor` is a shortcut through that code, and `/jig setup` prints
+one line telling you to run the command. The headless host registers sections and defaults and never starts a tool, a
+session, a watch, a tunnel or a sign-in. A plugin that fails at load is a failure line in the report, never a crash.
+Setup starts with the company question and writes the `profiles`/`profile` entry itself. Without a terminal it refuses
+and writes nothing. Exit codes: doctor 0/1, setup 0/1/130.
+
+The command comes from npm's `bin`: `npm install -g --allow-git=root github:Dev-Mriganka/jig` links it beside `node` on
+Linux, WSL and macOS. `--allow-git=root` is needed because npm 12 turns git and remote installs off by default; a release
+is pinned with `#v0.4.0`. `pi install` does not link programs, so the docs say that plainly instead of editing anyone's
+shell files. Inside Pi, an unknown or
+unreadable Pi version is now a skip rather than a warning, and a secret store that no reference uses is not checked.
+
 ## 2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words
 
 `/jig doctor` and `/jig setup` are built. Both exist so a teammate who does not edit JSON can set Jig up,
