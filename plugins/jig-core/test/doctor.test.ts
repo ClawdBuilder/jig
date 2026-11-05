@@ -234,9 +234,9 @@ describe("/jig doctor checks", () => {
         assert.equal(line?.title, "Pi's folder is not protected");
     });
 
-    test("a missing records folder is a warning, and a failed write is a failure", async () => {
+    test("a missing records folder is normal, and a failed write is a failure", async () => {
         const missing = await runDoctor(context({ overrides: { stateDir: path.join(home, "not-there") } }), options());
-        assert.equal(missing.lines.find((line) => line.id === "records.writable")?.level, "warn");
+        assert.equal(missing.lines.find((line) => line.id === "records.writable")?.level, "ok");
 
         const failed = await runDoctor(context({ overrides: { recordsProblem: "disk full" } }), options());
         const line = failed.lines.find((entry) => entry.id === "records.writable");

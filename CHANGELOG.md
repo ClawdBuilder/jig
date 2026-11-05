@@ -17,6 +17,13 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   labels and hints and the company's preferred store first; doctor turns the missing ones into "you need" lines.
   Optional: a plugin without a list falls back to its section validators.
 
+- `jig doctor` and `jig setup` refuse to give an all-clear for a Jig Pi will not load: if Jig is not in Pi's
+  `settings.json` packages, or Pi is not found, the machine group fails with the install command, and setup stops before
+  asking anything. Two copies with different versions are a warning. Both commands say "Checking your setup…" before the
+  packages load, and a records folder that does not exist yet is normal, not a warning.
+- Setup says a suggested credential in words ("Use the entry acme/sso-token"), says "Not in pass yet. Add it with:" once,
+  prints "Show the exact change" as plain text, and names the company once in its confirmation.
+
 - `/jig setup`: fills in the missing or invalid fields of plugin sections one question at a time, in plain
   words, and writes only the fields you confirm. A credential is asked for as **where** it is kept: setup
   probes each store for metadata only, offers Check again, and turns on the chosen store. It keeps a backup beside `jig.json`, asks you to run

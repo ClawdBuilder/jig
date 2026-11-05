@@ -54,10 +54,6 @@ async function doctor(args: readonly string[]): Promise<number> {
         process.stderr.write(`jig doctor could not start: ${errorMessage(error)}\n`);
         return 1;
     }
-    if (process.env.JIG_TIMINGS === "1") {
-        for (const timing of loaded.timings.slice(0, 5))
-            process.stderr.write(`${timing.ms.toFixed(0)}ms ${timing.name}\n`);
-    }
     const loadedFailures = failureLines(loaded.failures);
     let report: DoctorReport;
     try {
