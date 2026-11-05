@@ -5,7 +5,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
+import { readFileSync } from "node:fs";
 import { gitFolder, parseGitSource, parseNpmSource, readPackages } from "../src/cli/packages.ts";
+import { installLocation } from "../src/pi-version.ts";
 
 let root: string;
 let agent: string;
@@ -136,5 +138,34 @@ describe("the packages Pi lists", () => {
         assert.deepEqual(listed, []);
         assert.equal(settingsProblems.length, 1);
         assert.match(settingsProblems[0]?.problem ?? "", /JSON/);
+    });
+});
+
+describe("the package manifest", () => {
+    const root = path.resolve(import.meta.dirname, "../../..");
+    const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as {
+        peerDependencies: Record<string, string>;
+        peerDependenciesMeta: Record<string, { optional?: boolean }>;
+        devDependencies: Record<string, string>;
+        repository?: unknown;
+    };
+
+    test("Pi's four packages are optional peers, and exact dev dependencies", () => {
+        for (const name of [
+            "@earendil-works/pi-ai",
+            "@earendil-works/pi-coding-agent",
+            "@earendil-works/pi-tui",
+            "typebox",
+        ]) {
+            assert.ok(pkg.peerDependencies[name], `${name} is a peer`);
+            assert.equal(pkg.peerDependenciesMeta[name]?.optional, true, `${name} is optional`);
+            assert.match(pkg.devDependencies[name] ?? "", /^\d+\.\d+\.\d+$/, `${name} is pinned for development`);
+        }
+    });
+
+    test("the repository names the exact install line the doctor prints", () => {
+        const repository =
+            typeof pkg.repository === "string" ? pkg.repository : (pkg.repository as { url?: string } | undefined)?.url;
+        assert.equal(installLocation(repository), "github.com/Dev-Mriganka/jig");
     });
 });

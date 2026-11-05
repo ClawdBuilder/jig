@@ -128,6 +128,21 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Install it: pi install git:github\.com\/Dev-Mriganka\/jig/);
     });
 
+    test("two copies of Jig with different versions are a warning", async () => {
+        const folder = path.join(agent, "git", "github.com", "example", "jig");
+        mkdirSync(folder, { recursive: true });
+        writeFileSync(
+            path.join(folder, "package.json"),
+            JSON.stringify({ name: "jig", version: "9.9.9", type: "module", pi: { extensions: ["./index.mjs"] } }),
+        );
+        writeFileSync(path.join(folder, "index.mjs"), "export default function () {}\n");
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
+        const result = await run(["doctor"]);
+        assert.match(result.stdout, /Two copies of Jig/);
+        assert.match(result.stdout, /this command is 0\.3\.0/);
+        assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
+    });
+
     test("--json prints the report and keeps the exit code", async () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--json"]);
@@ -313,7 +328,10 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
             trust?: Record<string, unknown>;
             agentAlways?: boolean;
             projectAlways?: boolean;
+            agentSettingsRaw?: string;
+            agentDefault?: string;
             run: boolean;
+            says?: RegExp;
         }> = [
             { name: "no trust.json", run: false },
             { name: "false", trust: { WORK: false }, run: false },
@@ -323,6 +341,18 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
             { name: "default always in the agent settings", agentAlways: true, run: true },
             { name: "default always in the project settings only", projectAlways: true, run: false },
             { name: "malformed trust.json", trust: { WORK: "yes" }, run: false },
+            {
+                name: "damaged settings.json",
+                agentSettingsRaw: "{ not json",
+                run: false,
+                says: /settings file needs repairing/,
+            },
+            {
+                name: "unknown defaultProjectTrust",
+                agentDefault: "sometimes",
+                run: false,
+                says: /defaultProjectTrust is "sometimes"; Jig reads only always, never or ask/,
+            },
         ];
         for (const scenario of cases) {
             const cwd = path.join(work, scenario.name.replace(/[^a-z]+/gi, "-"));
@@ -341,6 +371,15 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
                 writeFileSync(path.join(agent, "trust.json"), JSON.stringify(entries));
             }
             settingsWith();
+            if (scenario.agentSettingsRaw !== undefined) {
+                writeFileSync(path.join(agent, "settings.json"), scenario.agentSettingsRaw);
+            }
+            if (scenario.agentDefault !== undefined) {
+                writeFileSync(
+                    path.join(agent, "settings.json"),
+                    JSON.stringify({ packages: [ROOT], defaultProjectTrust: scenario.agentDefault }),
+                );
+            }
             if (scenario.agentAlways === true) {
                 writeFileSync(
                     path.join(agent, "settings.json"),
@@ -356,6 +395,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
             const result = await run(["doctor"], { cwd });
             assert.equal(existsSync(marker), scenario.run, `${scenario.name}: ${result.stdout}`);
             assert.match(result.stdout, scenario.run ? /Jig doctor/ : /This folder's Pi packages/, scenario.name);
+            if (scenario.says !== undefined) assert.match(result.stdout, scenario.says, scenario.name);
         }
     });
 

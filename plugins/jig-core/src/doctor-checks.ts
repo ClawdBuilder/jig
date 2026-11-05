@@ -71,29 +71,21 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
             detail: `${node} (Jig needs ${required} or later)`,
             ...(meetsMinimum(node, required) ? {} : { fix: `Install Node.js ${required} or later.` }),
         },
-        context.standalone === true && pi === undefined
-            ? {
-                  id: "machine.pi",
-                  group: "machine",
-                  level: "fail",
-                  title: "Pi",
-                  detail: "not found: Jig runs inside Pi, and the setup questions read its packages.",
-                  fix: "Install Pi: npm install -g @earendil-works/pi-coding-agent",
-              }
-            : {
-                  id: "machine.pi",
-                  group: "machine",
-                  // Not being able to read Pi's version says nothing about the session: it is a skip, not a problem to fix.
-                  level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
-                  title: "Pi",
-                  detail:
-                      pi === undefined
-                          ? "version unknown"
-                          : meetsMinimum(pi, "1.4.0")
-                            ? pi
-                            : `${pi} (Jig needs 1.4 or later)`,
-                  ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
-              },
+        {
+            id: "machine.pi",
+            group: "machine",
+            // The command itself stops when Pi is absent; here, an unreadable version says nothing about the session, so
+            // it is a skip, not a problem to fix, inside Pi and outside it.
+            level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
+            title: "Pi",
+            detail:
+                pi === undefined
+                    ? "version unknown"
+                    : meetsMinimum(pi, "1.4.0")
+                      ? pi
+                      : `${pi} (Jig needs 1.4 or later)`,
+            ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
+        },
         context.standalone === true && context.jigInPi === false && context.projectSkipped?.jigIncluded === true
             ? {
                   id: "machine.jig",

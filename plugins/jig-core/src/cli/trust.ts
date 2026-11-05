@@ -14,7 +14,7 @@ export interface TrustReading {
     /** The doctor's fix line. */
     fix?: string;
     /** Which kind of decision, for the setup wording. */
-    kind?: "default" | "marked" | "damaged-trust" | "damaged-settings";
+    kind?: "default" | "marked" | "damaged-trust" | "damaged-settings" | "unknown-setting";
     /** "saved" when trust.json decided, "default" when defaultProjectTrust did. */
     source?: "saved" | "default";
 }
@@ -62,7 +62,13 @@ function readTrustFile(file: string): TrustFile {
 }
 
 /** The agent folder's defaultProjectTrust: only the agent settings, never the project's, and "always" is the only yes. */
-function defaultTrust(agentDir: string): { trusted: boolean; value?: string; problem?: string } {
+function defaultTrust(agentDir: string): {
+    trusted: boolean;
+    value?: string;
+    kind?: TrustReading["kind"];
+    reason?: string;
+    fix?: string;
+} {
     const file = path.join(agentDir, "settings.json");
     if (!existsSync(file)) return { trusted: false };
     try {
@@ -76,10 +82,17 @@ function defaultTrust(agentDir: string): { trusted: boolean; value?: string; pro
         if (value === "never" || value === "ask") return { trusted: false, value };
         return {
             trusted: false,
-            problem: `Pi's settings file is damaged: ${file}`,
+            kind: "unknown-setting",
+            reason: `Pi's defaultProjectTrust is ${JSON.stringify(value)}; Jig reads only always, never or ask.`,
+            fix: `Open ${file} and set defaultProjectTrust to always, never or ask, then run jig doctor again.`,
         };
     } catch {
-        return { trusted: false, problem: `Pi's settings file is damaged: ${file}` };
+        return {
+            trusted: false,
+            kind: "damaged-settings",
+            reason: `Pi's settings file needs repairing: ${file}`,
+            fix: "Open that file and fix it. Pi will not start cleanly until it is valid.",
+        };
     }
 }
 
@@ -114,13 +127,7 @@ export function projectTrust(agentDir: string, cwd: string): TrustReading {
         dir = parent;
     }
     const fallback = defaultTrust(agentDir);
-    if (fallback.problem !== undefined)
-        return {
-            trusted: false,
-            kind: "damaged-settings",
-            reason: fallback.problem,
-            fix: "Open that file and repair it, or delete it and run jig doctor again.",
-        };
+    if (fallback.kind !== undefined) return fallback;
     if (fallback.trusted) return { trusted: true, source: "default" };
     return {
         trusted: false,
@@ -143,8 +150,12 @@ export function untrustedSetupLine(sources: readonly string[], reading: TrustRea
     const wayOut =
         reading.kind === "marked"
             ? "Run /trust in Pi to change it, or run jig setup from another folder."
-            : reading.kind === "damaged-trust" || reading.kind === "damaged-settings"
-              ? "Repair or delete that file, then run jig setup again."
-              : "Open Pi here and choose Trust, or run jig setup from another folder.";
+            : reading.kind === "damaged-trust"
+              ? "Open that file and repair it, or delete it and choose Trust in Pi again."
+              : reading.kind === "damaged-settings"
+                ? "Open that file and fix it; Pi will not start cleanly until it is valid."
+                : reading.kind === "unknown-setting"
+                  ? "Open that file and set defaultProjectTrust to always, never or ask."
+                  : "Open Pi here and choose Trust, or run jig setup from another folder.";
     return `This folder's Pi packages were not loaded (${named}): ${reading.reason ?? "the folder is not trusted in Pi"}. ${wayOut}`;
 }

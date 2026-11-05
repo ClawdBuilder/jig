@@ -73,12 +73,33 @@ describe("Pi's trust for one folder", () => {
         assert.equal(projectTrust(agent, work).trusted, false);
     });
 
-    test("ask and never do not load, and neither does an unknown value", () => {
-        for (const value of ["ask", "never", "sometimes"]) {
+    test("ask and never do not load", () => {
+        for (const value of ["ask", "never"]) {
             agentSettings(value);
-            const read = projectTrust(agent, work);
-            assert.equal(read.trusted, false, value);
+            assert.equal(projectTrust(agent, work).trusted, false, value);
         }
+    });
+
+    test("a damaged settings.json fails closed, and is repaired, not deleted", () => {
+        writeFileSync(path.join(agent, "settings.json"), "{ not json");
+        const read = projectTrust(agent, work);
+        assert.equal(read.trusted, false);
+        assert.match(read.reason ?? "", /settings file needs repairing/);
+        assert.match(read.fix ?? "", /Pi will not start cleanly until it is valid/);
+        assert.doesNotMatch(read.fix ?? "", /delete/);
+        assert.doesNotMatch(read.reason ?? "", /Unexpected token|JSON/);
+    });
+
+    test("a defaultProjectTrust value Jig does not know names the setting, and keeps the file", () => {
+        agentSettings("sometimes");
+        const read = projectTrust(agent, work);
+        assert.equal(read.trusted, false);
+        assert.match(read.reason ?? "", /defaultProjectTrust is "sometimes"; Jig reads only always, never or ask/);
+        assert.doesNotMatch(read.fix ?? "", /delete/);
+        assert.match(
+            untrustedSetupLine(["git:github.com/acme/tool"], read),
+            /set defaultProjectTrust to always, never or ask/,
+        );
     });
 
     test("a malformed trust.json fails closed with a plain line and no parser text", () => {
@@ -93,7 +114,7 @@ describe("Pi's trust for one folder", () => {
         assert.doesNotMatch(detail, /Open Pi here|then run jig/);
         assert.match(
             untrustedSetupLine(["git:github.com/acme/tool"], read),
-            /Repair or delete that file, then run jig setup again/,
+            /Open that file and repair it, or delete it and choose Trust in Pi again/,
         );
     });
 
