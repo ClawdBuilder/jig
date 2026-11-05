@@ -113,3 +113,46 @@ test("every tree-moving action in the gate resolves a target through this resolv
         assert.ok((target?.targets.length ?? 0) > 0, `${action} has a target commit`);
     }
 });
+
+test("the gate asks only when a guarded file is in the change, and never for clone", async () => {
+    const { runsLaterGate } = await import("../src/runs-later-gate.ts");
+    const { setWorkingDirectory } = await import("../src/repo.ts");
+    const r = makeRepo(h.sb, `ask${++counter}`);
+    setWorkingDirectory(r.dir);
+    const call = (action: string, input: Record<string, unknown>) =>
+        ({
+            toolCallId: "t",
+            tool: "git",
+            action,
+            environment: "local",
+            environmentKind: "local",
+            effect: "write",
+            decision: "allow",
+            input,
+            cwd: r.dir,
+            paths: [],
+        }) as const;
+    // A normal switch to a branch whose change has no guarded file does not ask.
+    assert.equal(
+        await runsLaterGate.check(
+            call("branch", { operation: "switch", branch: "main" }),
+            new AbortController().signal,
+        ),
+        undefined,
+    );
+    // Clone creates a folder; it is not a question.
+    assert.equal(await runsLaterGate.check(call("clone", { repo: "a/b" }), new AbortController().signal), undefined);
+    // A crafted branch with .pi does ask.
+    git(r.dir, "switch", "-q", "-c", "evil", "main");
+    mkdirSync(path.join(r.dir, ".pi"), { recursive: true });
+    writeFileSync(path.join(r.dir, ".pi/settings.json"), "{}");
+    git(r.dir, "add", "-A");
+    git(r.dir, "commit", "-qm", "evil");
+    git(r.dir, "switch", "-q", "main");
+    const verdict = await runsLaterGate.check(
+        call("branch", { operation: "switch", branch: "evil" }),
+        new AbortController().signal,
+    );
+    assert.equal(verdict?.decision, "ask");
+    assert.match(verdict?.reason ?? "", /\.pi\/settings\.json/);
+});
