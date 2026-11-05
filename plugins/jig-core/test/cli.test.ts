@@ -245,6 +245,28 @@ describe("jig setup", () => {
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
+    test("Show the exact change prints plain JSON and never asks which line to pick", async () => {
+        settingsWith(FIXTURE);
+        const result = await runSetup([
+            { when: "Which company setup do you use?", answer: "1" },
+            { when: "Use Fixture Co's setup in:", answer: "1" },
+            { when: "Save this company choice?", answer: "y" },
+            { when: "needs 1 thing", answer: "1" },
+            { when: "Your Fixture login", answer: "jdev" },
+            { when: "Review these changes", answer: "2" },
+            { when: "Save these changes?", answer: "y" },
+        ]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const shown = result.stdout.replace(/\r/g, "");
+        assert.match(shown, /Only these fields change:/);
+        assert.match(shown, /^\{$/m, "the change is printed as JSON text");
+        assert.doesNotMatch(shown, /^\s*\d+\) \{$/m, "no JSON line is a numbered option");
+        assert.doesNotMatch(shown, /\d+\) Only these fields change:/);
+        // It went straight to the one save question, and the answer was written.
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.fixture.login, "jdev");
+    });
+
     test("starts with the company, writes the profile, then asks the onboarding field", async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
@@ -333,7 +355,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
             }
             const result = await run(["doctor"], { cwd });
             assert.equal(existsSync(marker), scenario.run, `${scenario.name}: ${result.stdout}`);
-            assert.match(result.stdout, scenario.run ? /Jig doctor/ : /Pi packages were not loaded/, scenario.name);
+            assert.match(result.stdout, scenario.run ? /Jig doctor/ : /This folder's Pi packages/, scenario.name);
         }
     });
 
@@ -364,13 +386,14 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
         const doctor = await run(["doctor"], { cwd });
         assert.match(doctor.stdout, /skip Jig/);
-        assert.match(doctor.stdout, /not trusted in Pi/);
+        assert.match(doctor.stdout, /not trusted this folder in Pi/);
         assert.doesNotMatch(doctor.stdout, /fail Jig/);
         assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
         assert.equal(existsSync(path.join(cwd, "marker.txt")), false, "the project extension was not imported");
         const setup = await runSetup([{ when: "not trusted in Pi", answer: "" }], cwd);
         assert.equal(setup.code, 1);
-        assert.match(setup.stdout, /this folder is not trusted in Pi/);
+        assert.match(setup.stdout, /Open Pi here and choose Trust, or run jig setup from another folder/);
+        assert.doesNotMatch(setup.stdout, /jig doctor again/);
         assert.doesNotMatch(setup.stdout, /Which company setup do you use/);
     });
 
@@ -395,6 +418,8 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
         const setup = await runSetup([{ when: "Pi packages were not loaded", answer: "" }], cwd);
         assert.equal(setup.code, 1);
         assert.match(setup.stdout, /git:github\.com\/acme\/git-co/);
+        assert.match(setup.stdout, /run jig setup from another folder/);
+        assert.equal((setup.stdout.match(/were not loaded/g) ?? []).length, 1, "the line is printed once");
         assert.doesNotMatch(setup.stdout, /No company plugin is installed/);
     });
 });

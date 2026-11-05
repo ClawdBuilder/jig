@@ -11,7 +11,7 @@ import { errorMessage } from "../errors.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
 import { manifestOf, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
 import type { ListedPackage } from "./packages.ts";
-import { projectTrust, untrustedSkipLine } from "./trust.ts";
+import { projectTrust, untrustedDetail, untrustedSetupLine } from "./trust.ts";
 import type { JigState } from "../state.ts";
 
 /** One package that could not be loaded, with the plain reason: the doctor shows it as a FAIL line. */
@@ -119,7 +119,13 @@ export interface Headless {
     /** Packages Pi lists whose files are not there, or whose source cannot be read. */
     packageProblems: Array<{ source: string; problem: string }>;
     /** Project-scope packages that were not loaded because Pi would not load them either, and why. */
-    projectSkipped?: { sources: string[]; line: string; jigIncluded: boolean };
+    projectSkipped?: {
+        sources: string[];
+        detail: string;
+        fix?: string;
+        setupLine: string;
+        jigIncluded: boolean;
+    };
     /** How long each package's extensions took to load, slowest first: what the blank screen was. */
     timings: Array<{ name: string; ms: number }>;
 }
@@ -234,7 +240,12 @@ export async function loadHeadless(
             : {
                   projectSkipped: {
                       sources: skippedProject.map((entry) => entry.source),
-                      line: untrustedSkipLine(
+                      detail: untrustedDetail(
+                          skippedProject.map((entry) => entry.source),
+                          trust,
+                      ),
+                      ...(trust.fix === undefined ? {} : { fix: trust.fix }),
+                      setupLine: untrustedSetupLine(
                           skippedProject.map((entry) => entry.source),
                           trust,
                       ),

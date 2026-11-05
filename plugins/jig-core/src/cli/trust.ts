@@ -9,10 +9,12 @@ import path from "node:path";
 export interface TrustReading {
     /** Whether Pi would load the folder's project packages. */
     trusted: boolean;
-    /** Why, in plain words, for a skip line: set when they are not loaded and this is about trust without a problem. */
+    /** Why, in plain words: shown after "not loaded" when they are not. */
     reason?: string;
-    /** A trust file or settings file that could not be read: the packages are not loaded. */
-    problem?: string;
+    /** The doctor's fix line. */
+    fix?: string;
+    /** Which kind of decision, for the setup wording. */
+    kind?: "default" | "marked" | "damaged-trust" | "damaged-settings";
     /** "saved" when trust.json decided, "default" when defaultProjectTrust did. */
     source?: "saved" | "default";
 }
@@ -43,22 +45,16 @@ function readTrustFile(file: string): TrustFile {
     try {
         const text = readFileSync(file, "utf8").replace(/^\uFEFF/, "");
         raw = JSON.parse(text) as unknown;
-    } catch (error) {
-        return {
-            entries: [],
-            problem: `Pi's trust file could not be read: ${file} (${error instanceof Error ? error.message : String(error)})`,
-        };
+    } catch {
+        return { entries: [], problem: `Pi's trust file is damaged: ${file}` };
     }
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-        return { entries: [], problem: `Pi's trust file is not an object: ${file}` };
+        return { entries: [], problem: `Pi's trust file is damaged: ${file}` };
     }
     const entries: Array<{ key: string; decision: boolean | null }> = [];
     for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
         if (value !== true && value !== false && value !== null) {
-            return {
-                entries: [],
-                problem: `Pi's trust file has a value that is not true, false or null for ${JSON.stringify(key)}: ${file}`,
-            };
+            return { entries: [], problem: `Pi's trust file is damaged: ${file}` };
         }
         entries.push({ key, decision: value });
     }
@@ -80,13 +76,10 @@ function defaultTrust(agentDir: string): { trusted: boolean; value?: string; pro
         if (value === "never" || value === "ask") return { trusted: false, value };
         return {
             trusted: false,
-            problem: `Pi's settings have defaultProjectTrust ${JSON.stringify(value)}; Jig reads only always, never or ask.`,
+            problem: `Pi's settings file is damaged: ${file}`,
         };
-    } catch (error) {
-        return {
-            trusted: false,
-            problem: `Pi's settings could not be read: ${file} (${error instanceof Error ? error.message : String(error)})`,
-        };
+    } catch {
+        return { trusted: false, problem: `Pi's settings file is damaged: ${file}` };
     }
 }
 
@@ -96,7 +89,9 @@ export function projectTrust(agentDir: string, cwd: string): TrustReading {
     if (trust.problem !== undefined) {
         return {
             trusted: false,
-            problem: `${trust.problem} This folder's Pi packages were not loaded.`,
+            kind: "damaged-trust",
+            reason: trust.problem,
+            fix: "Open that file and repair it, or delete it and choose Trust in Pi again.",
         };
     }
     let dir = canonicalFolder(cwd);
@@ -109,7 +104,9 @@ export function projectTrust(agentDir: string, cwd: string): TrustReading {
                 : {
                       trusted: false,
                       source: "saved",
-                      reason: `This folder was marked "not trusted" in Pi (${dir}).`,
+                      kind: "marked",
+                      reason: "it was marked not trusted in Pi",
+                      fix: "Run /trust in Pi to change it, then run jig doctor again.",
                   };
         }
         const parent = path.dirname(dir);
@@ -118,20 +115,36 @@ export function projectTrust(agentDir: string, cwd: string): TrustReading {
     }
     const fallback = defaultTrust(agentDir);
     if (fallback.problem !== undefined)
-        return { trusted: false, problem: `${fallback.problem} This folder's Pi packages were not loaded.` };
+        return {
+            trusted: false,
+            kind: "damaged-settings",
+            reason: fallback.problem,
+            fix: "Open that file and repair it, or delete it and run jig doctor again.",
+        };
     if (fallback.trusted) return { trusted: true, source: "default" };
     return {
         trusted: false,
         source: "default",
+        kind: "default",
         reason: "you have not trusted this folder in Pi",
+        fix: "Open Pi here and choose Trust, then run jig doctor again.",
     };
 }
 
-/** The skip line's words: what was skipped, and what to do about it. `sources` are the settings entries. */
-export function untrustedSkipLine(sources: readonly string[], reading: TrustReading): string {
+/** The doctor's detail for skipped project packages: what, and why, without repeating the fix. */
+export function untrustedDetail(sources: readonly string[], reading: TrustReading): string {
     const named = sources.length === 0 ? "this folder's Pi packages" : sources.join(", ");
-    const because =
-        reading.problem ??
-        (reading.source === "saved" ? `it was marked "not trusted" in Pi` : `you have not trusted this folder in Pi`);
-    return `This folder's Pi packages were not loaded (${named}), because ${because}. Open Pi here and choose Trust, then run jig doctor again.`;
+    return `not loaded (${named}): ${reading.reason ?? "the folder is not trusted in Pi"}`;
+}
+
+/** The whole sentence setup shows, naming setup and the way out of each kind of decision. */
+export function untrustedSetupLine(sources: readonly string[], reading: TrustReading): string {
+    const named = sources.length === 0 ? "this folder's Pi packages" : sources.join(", ");
+    const wayOut =
+        reading.kind === "marked"
+            ? "Run /trust in Pi to change it, or run jig setup from another folder."
+            : reading.kind === "damaged-trust" || reading.kind === "damaged-settings"
+              ? "Repair or delete that file, then run jig setup again."
+              : "Open Pi here and choose Trust, or run jig setup from another folder.";
+    return `This folder's Pi packages were not loaded (${named}): ${reading.reason ?? "the folder is not trusted in Pi"}. ${wayOut}`;
 }

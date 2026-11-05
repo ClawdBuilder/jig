@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { projectTrust, untrustedSkipLine } from "../src/cli/trust.ts";
+import { projectTrust, untrustedDetail, untrustedSetupLine } from "../src/cli/trust.ts";
 
 let root: string;
 let agent: string;
@@ -81,24 +81,44 @@ describe("Pi's trust for one folder", () => {
         }
     });
 
-    test("a malformed trust.json fails closed with a plain line", () => {
+    test("a malformed trust.json fails closed with a plain line and no parser text", () => {
         writeFileSync(path.join(agent, "trust.json"), "{ not json");
         const read = projectTrust(agent, work);
         assert.equal(read.trusted, false);
-        assert.match(read.problem ?? "", /trust file could not be read/);
-        assert.match(untrustedSkipLine(["git:github.com/acme/tool"], read), /were not loaded/);
+        assert.match(read.reason ?? "", /trust file is damaged/);
+        assert.doesNotMatch(read.reason ?? "", /Unexpected token|JSON|not json/);
+        assert.match(read.fix ?? "", /repair it/);
+        const detail = untrustedDetail(["git:github.com/acme/tool"], read);
+        assert.match(detail, /not loaded \(git:github\.com\/acme\/tool\): Pi's trust file is damaged/);
+        assert.doesNotMatch(detail, /Open Pi here|then run jig/);
+        assert.match(
+            untrustedSetupLine(["git:github.com/acme/tool"], read),
+            /Repair or delete that file, then run jig setup again/,
+        );
     });
 
-    test("a value Pi would reject fails closed", () => {
+    test("a value Pi would reject fails closed, quietly", () => {
         trust({ [work]: "yes" });
         const read = projectTrust(agent, work);
         assert.equal(read.trusted, false);
-        assert.match(read.problem ?? "", /not true, false or null/);
+        assert.match(read.reason ?? "", /trust file is damaged/);
     });
 
-    test("the skip line names what was skipped and what to do", () => {
-        const line = untrustedSkipLine(["git:github.com/acme/tool"], projectTrust(agent, parent));
-        assert.match(line, /git:github\.com\/acme\/tool/);
-        assert.match(line, /choose Trust/);
+    test("a folder marked not trusted says so, and /trust is the way out", () => {
+        trust({ [work]: false });
+        const read = projectTrust(agent, work);
+        assert.match(read.reason ?? "", /marked not trusted in Pi/);
+        assert.match(read.fix ?? "", /\/trust/);
+        assert.match(
+            untrustedSetupLine(["git:github.com/acme/tool"], read),
+            /Run \/trust in Pi to change it, or run jig setup from another folder/,
+        );
+    });
+
+    test("the detail names what was skipped, and the setup line names setup and the way out", () => {
+        const read = projectTrust(agent, parent);
+        assert.match(untrustedDetail(["git:github.com/acme/tool"], read), /not loaded \(git:github\.com\/acme\/tool\)/);
+        const setup = untrustedSetupLine(["git:github.com/acme/tool"], read);
+        assert.match(setup, /Open Pi here and choose Trust, or run jig setup from another folder/);
     });
 });

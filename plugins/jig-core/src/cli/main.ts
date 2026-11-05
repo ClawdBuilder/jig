@@ -212,29 +212,30 @@ async function setup(): Promise<number> {
         ui.close();
         return 1;
     }
-    if (loaded.projectSkipped !== undefined) ui.notify(loaded.projectSkipped.line, "warning");
+    const skipped = loaded.projectSkipped;
     if (!loaded.jigInPi) {
-        const pkg = ownPackage();
-        const where = installLocation(pkg.repository) ?? "github.com/Dev-Mriganka/jig";
-        const why =
-            loaded.projectSkipped?.jigIncluded === true
-                ? "Jig is listed only in this folder's Pi packages, and they were not loaded: this folder is not trusted in Pi."
-                : loaded.jigListedButMissing === undefined
-                  ? "Jig is not installed in Pi yet, so there is nothing to set up for."
-                  : `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}`;
-        const next =
-            loaded.projectSkipped?.jigIncluded === true
-                ? "Open Pi here and choose Trust."
-                : `Install it with: pi install git:${where}`;
-        ui.notify(`${why}\n${next}\nThen run jig setup again.`, "error");
+        const message =
+            skipped?.jigIncluded === true
+                ? skipped.setupLine
+                : (() => {
+                      const pkg = ownPackage();
+                      const where = installLocation(pkg.repository) ?? "github.com/Dev-Mriganka/jig";
+                      return skipped === undefined && loaded.jigListedButMissing !== undefined
+                          ? `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}\nInstall it with: pi install git:${where}\nThen run jig setup again.`
+                          : `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install git:${where}\nThen run jig setup again.`;
+                  })();
+        ui.notify(message, "error");
         ui.close();
         return 1;
     }
-    if (loaded.projectSkipped !== undefined && loaded.state.companies.size === 0) {
-        // A company only in this folder's untrusted packages is not "no company": say what was skipped and stop.
-        ui.notify(`${loaded.projectSkipped.line}\nThen run jig setup again.`, "error");
-        ui.close();
-        return 1;
+    if (skipped !== undefined) {
+        // A company can live only in this folder's project packages: say what was skipped and how to allow it, then stop.
+        if (loaded.state.companies.size === 0) {
+            ui.notify(skipped.setupLine, "error");
+            ui.close();
+            return 1;
+        }
+        ui.notify(skipped.setupLine, "warning");
     }
     try {
         const step = await companyStep(loaded.state, ui);

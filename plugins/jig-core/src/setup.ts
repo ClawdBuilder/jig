@@ -80,8 +80,7 @@ export async function runSetup(state: JigState, ui: SetupUi): Promise<number> {
     const review = await ui.select("Review these changes", ["Save these changes", "Show the exact change", "Cancel"]);
     if (review === undefined || review === "Cancel") return cancel(ui);
     if (review === "Show the exact change") {
-        const shown = await ui.select("The exact change", ["Only these fields change:", ...exactChangeLines(changes)]);
-        if (shown === undefined) return cancel(ui);
+        ui.notify(["Only these fields change:", ...exactChangeLines(changes)].join("\n"), "info");
         const ok = await ui.confirm("Save these changes?", confirmation);
         if (!ok) return cancel(ui);
     } else {

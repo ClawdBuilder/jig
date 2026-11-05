@@ -100,8 +100,8 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                   group: "machine",
                   level: "skip",
                   title: "Jig",
-                  detail: "listed in this folder's Pi packages, which were not loaded: the folder is not trusted in Pi.",
-                  fix: "Open Pi here and choose Trust, then run jig doctor again.",
+                  detail: `listed in this folder's Pi packages, which were ${context.projectSkipped.detail}`,
+                  fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
               }
             : context.standalone === true && context.jigInPi === false
               ? {
@@ -224,9 +224,9 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             id: "config.project-trust",
             group: "config",
             level: "skip",
-            title: "This folder's Pi packages were not loaded",
-            detail: context.projectSkipped.line,
-            fix: "Open Pi here and choose Trust, then run jig doctor again.",
+            title: "This folder's Pi packages",
+            detail: context.projectSkipped.detail,
+            fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
         });
     }
 
