@@ -15,7 +15,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   override, and a team repository that keeps `.pi/skills` in git is now read-only to the agent, as it already was for
   `bash`. The same now covers the home shell, session, git, agent and build start-up files, the project editor and agent
   files, `.envrc`, `~/.local/bin`, and each repository's `.git/config` and `.git/hooks`; toolchain managers ask instead.
-  A git operation that would change a guarded file (switch, merge, sync, rebase, cherry-pick, stash pop, restore,
+  The bash side now reads the same table, and gains `~/.local/bin` and `.envrc`. A git operation that would change a guarded file (switch, merge, sync, rebase, cherry-pick, stash pop, restore,
   worktree add, clone) asks the person first, naming the paths and commits; a normal switch does not ask. A file-tool
   write outside the working folder, or outside a folder the person allowed with `/sandbox allow`, asks the same way;
   inside it nothing changes, and with no terminal the ask is refused.

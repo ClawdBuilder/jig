@@ -97,6 +97,7 @@ describe("the sandbox's locks and the file tools' guards are one table", () => {
         const { LOCKED_IN_HOME, LOCKED_ON_MAC, LOCKED_IN_PROJECT, ASK_FIRST } = await import(
             "../../jig-sandbox/src/lists.ts"
         );
+        const { RUNS_LATER } = await import("../src/kit/runs-later.ts");
         const expand = (listed: string): string => path.join(home, listed.replace(/^~\//, ""));
         const entries = defaultProtectedPaths({ agentDir, home, cwd: work });
         const has = (target: string): boolean =>

@@ -471,7 +471,14 @@ describe("filtered keeps everything else working", { skip }, () => {
         const git = await s.bash(
             "git init -q && git config user.name Test && git config user.email t@example.com && echo hello > f && git add f && git commit -qm first && git log --oneline | wc -l",
         );
-        assert.equal(git.text.trim(), "1");
+        assert.equal(
+            git.text
+                .split("\n")
+                .filter((line) => !line.startsWith("[sandbox] removed"))
+                .join("\n")
+                .trim(),
+            "1",
+        );
         const socket = await s.bash('python3 -c "import socket; socket.socket(socket.AF_UNIX)" 2>&1 | tail -1');
         assert.match(socket.text, /not permitted|Errno 1/i, "the forwarders do not open the Unix-socket door");
     });

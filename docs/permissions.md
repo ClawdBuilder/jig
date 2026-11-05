@@ -135,8 +135,10 @@ paths.
       home folder: `.pi/settings.json`, `.pi/mcp.json`, `.pi/extensions`, `.pi/skills`, `.pi/prompts`, `.pi/themes`,
       `.pi/SYSTEM.md`, `.pi/APPEND_SYSTEM.md`, `.pi/git` and `.pi/npm` (which hold packages Pi runs), and `.agents`.
       They are guarded by path shape, whether or not they exist yet, so a file made before the next start cannot slip in.
-      `bash` locks the same list from the same table. This is also why a team repository that keeps `.pi/skills` in git is
-      readable to the agent but no longer editable by it.
+      `bash` and the file tools read the same table, so neither can guard a path the other does not. `.git/config` is the
+      one stated exception: the file tools guard it, while bash leaves it writable because git needs it; the sandbox's
+      after-command clean-up and the git tool's guard cover that side. This is also why a team repository that keeps
+      `.pi/skills` in git is readable to the agent but no longer editable by it.
     - **Not added:** a `git:` or `npm:` package in the user's settings, which lives in the agent folder, and an entry
       that would protect the home folder or a folder above it.
     - **A package that holds the working folder** makes the whole folder unwritable, for the file tools and for `bash`.

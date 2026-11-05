@@ -80,7 +80,8 @@ export const RUNS_LATER: readonly RunsLaterPath[] = [
     ...repo("agents", ".claude/settings.json", ".claude/settings.local.json"),
     ...repo("build", ".mvn/extensions.xml", ".mvn/jvm.config"),
     ...repo("ide", ".vscode/tasks.json", ".vscode/settings.json", ".idea/workspace.xml", ".idea/runConfigurations"),
-    ...repo("git", ".git/config", ".git/hooks"),
+    ...repo("git", ".git/config"),
+    ...repo("hooks", ".git/hooks"),
     ...project("shell", ".envrc"),
 ];
 

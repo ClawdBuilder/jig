@@ -79,7 +79,8 @@ The file tools refuse `write` and `edit` with a plain message saying Pi loads th
 person; reading stays allowed. This is a default guarded path, so configuration can add more and cannot remove it. There is
 no new in-Pi override: a person runs `pi install -l` or edits the file themselves outside the tools, and `bash` outside the
 sandbox still asks. A team repository that keeps `.pi/skills` in git becomes read-only to the agent, as it already was for
-`bash`. The same table now covers every path the sandbox locks for the same reason (shell, session, git, agents, build
+`bash`. The same table now drives both sides, with `.git/config` stated as file-tools-only because git needs to write it
+and the sandbox's clean-up and the git guard cover that side; it also gains `~/.local/bin` and `.envrc`. It covers every path the sandbox locks for the same reason (shell, session, git, agents, build
 start-up files, PATH folders, editor and agent files, `.envrc`, `.git/config` and `.git/hooks`, and repositories one and
 two levels below); toolchain managers are an ask, not a refusal. The git tool can write the working tree with no sandbox,
 so a gate asks before a switch, merge, sync, rebase, cherry-pick, stash pop, restore, worktree add or clone would change a
