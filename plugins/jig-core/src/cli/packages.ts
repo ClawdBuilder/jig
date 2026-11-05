@@ -159,7 +159,6 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
             settings: path.join(workingDir, ".pi", "settings.json"),
         },
     ];
-    const seen = new Set<string>();
     for (const { scope, base, settings } of scopes) {
         for (const entry of readSettings(settings, settingsProblems)) {
             const source =
@@ -171,10 +170,6 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
             if (typeof source !== "string" || source.trim() === "") continue;
             const filter = filterOf(entry);
             const found = packageFolder(source, base);
-            if (found.folder !== undefined) {
-                if (seen.has(found.folder)) continue;
-                seen.add(found.folder);
-            }
             const folder = found.folder;
             if (folder === undefined) {
                 listed.push({
@@ -214,6 +209,23 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
         }
     }
     return { listed, settingsProblems };
+}
+
+/** Pi's path comparison key: resolved, and case-folded on Windows. */
+function comparisonKey(value: string): string {
+    const resolved = path.resolve(value);
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+/** Pi's package identity: npm by name, git by host/path (the ref is not part), local by absolute path. */
+export function packageIdentity(entry: ListedPackage): string | undefined {
+    const npm = parseNpmSource(entry.source);
+    if (npm !== undefined) return `npm:${npm.name}`;
+    const git = parseGitSource(entry.source);
+    if (git !== undefined) return `git:${git.host}/${git.path}`;
+    if (entry.folder !== undefined) return `local:${comparisonKey(entry.folder)}`;
+    if (path.isAbsolute(entry.source)) return `local:${comparisonKey(entry.source)}`;
+    return undefined;
 }
 
 /** The package name in a folder's package.json, or undefined when the folder has no readable one. */

@@ -219,7 +219,7 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             level: "fail",
             title: "Jig's core is filtered out",
             detail: "Pi's settings load Jig but leave out its core, so the rules, approvals and protected paths would not run.",
-            fix: "In Pi's settings.json, remove the Jig filter entry that leaves out plugins/jig-core/index.ts (or make it include that file).",
+            fix: `In ${context.filtered.core.settings}, remove the filter that leaves out plugins/jig-core/index.ts (or make it include that file).`,
         });
     }
     if (context.filtered?.sandbox !== undefined) {
@@ -229,7 +229,17 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             level: "fail",
             title: "Jig's sandbox is filtered out",
             detail: "Pi's settings load Jig but leave out the sandbox, so bash would run without it.",
-            fix: "In Pi's settings.json, remove the Jig filter entry that leaves out plugins/jig-sandbox/index.ts (or make it include that file).",
+            fix: `In ${context.filtered.sandbox.settings}, remove the filter that leaves out plugins/jig-sandbox/index.ts (or make it include that file).`,
+        });
+    }
+    for (const feature of context.filtered?.alwaysOn ?? []) {
+        lines.push({
+            id: `config.filtered.always.${feature.feature}`,
+            group: "config",
+            level: "warn",
+            title: `Jig's ${feature.feature} tools are off in Pi's settings`,
+            detail: "The tools are not loaded, and their section in jig.json is kept.",
+            fix: `In ${feature.settings}, remove the filter that leaves out plugins/${feature.plugin}/index.ts.`,
         });
     }
     for (const feature of context.filtered?.features ?? []) {

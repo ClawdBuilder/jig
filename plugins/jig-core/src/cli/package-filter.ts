@@ -115,6 +115,28 @@ function applyPatterns(files: readonly string[], patterns: readonly string[], ro
     return new Set(enabled);
 }
 
+/** Pi's `autoload:false` entry: each pattern turns the files it names on or off, over whatever is already enabled. */
+export function applyDelta(
+    files: readonly string[],
+    patterns: readonly string[],
+    root: string,
+    enabled: ReadonlySet<string>,
+): Set<string> {
+    const result = new Set(enabled);
+    for (const pattern of patterns) {
+        const off = pattern.startsWith("!") || pattern.startsWith("-");
+        const exact = pattern.startsWith("+") || pattern.startsWith("-");
+        const body = exact ? asExact(pattern.replace(/^[!+-]/, "")) : asGlob(pattern.replace(/^[!+-]/, ""));
+        for (const file of files) {
+            const hit = exact ? matchesExact(body, file, root) : matches(body, file, root);
+            if (!hit) continue;
+            if (off) result.delete(file);
+            else result.add(file);
+        }
+    }
+    return result;
+}
+
 /** The files of one type Pi would load, from all files the manifest names. */
 export function enabledFiles(
     files: readonly string[],
@@ -126,21 +148,6 @@ export function enabledFiles(
     const patterns = filter[type];
     if (patterns === undefined) return filter.autoload === false ? new Set() : new Set(files);
     if (patterns.length === 0) return new Set();
-    if (filter.autoload === false) {
-        // Delta mode: start with nothing, and each pattern turns the files it names on or off.
-        const enabled = new Set<string>();
-        for (const pattern of patterns) {
-            const off = pattern.startsWith("!") || pattern.startsWith("-");
-            const exact = pattern.startsWith("+") || pattern.startsWith("-");
-            const body = exact ? asExact(pattern.replace(/^[!+-]/, "")) : asGlob(pattern.replace(/^[!+-]/, ""));
-            for (const file of files) {
-                const hit = exact ? matchesExact(body, file, root) : matches(body, file, root);
-                if (!hit) continue;
-                if (off) enabled.delete(file);
-                else enabled.add(file);
-            }
-        }
-        return enabled;
-    }
+    if (filter.autoload === false) return applyDelta(files, patterns, root, new Set());
     return applyPatterns(files, patterns, root);
 }

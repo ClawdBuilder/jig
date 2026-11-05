@@ -117,12 +117,17 @@ describe("the packages Pi lists", () => {
         assert.match(listed[0]?.problem ?? "", /git\/github\.com\/Dev-Mriganka\/jig/);
     });
 
-    test("the same folder listed in both scopes is loaded once", () => {
+    test("the same folder in both scopes is kept, so Pi's project entry can replace the user one", () => {
         const folder = path.join(agent, "one");
         mkPackage(folder, "one");
         settings(path.join(agent, "settings.json"), [folder]);
         settings(path.join(work, ".pi/settings.json"), [folder]);
-        assert.equal(readPackages(agent, work).listed.length, 1);
+        const listed = readPackages(agent, work).listed;
+        assert.equal(listed.length, 2);
+        assert.deepEqual(
+            listed.map((entry) => entry.scope),
+            ["user", "project"],
+        );
     });
 
     test("an entry whose source cannot be read is named, and does not load", () => {

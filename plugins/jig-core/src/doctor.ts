@@ -75,9 +75,10 @@ export interface DoctorContext {
     projectSkipped?: { sources: string[]; detail: string; fix?: string; setupLine: string; jigIncluded: boolean };
     /** Jig plugins Pi's settings filter out: core and sandbox are failures, the rest are calm skips. */
     filtered?: {
-        core?: string;
-        sandbox?: string;
-        features: Array<{ feature: string; section?: string; source: string }>;
+        core?: { settings: string };
+        sandbox?: { settings: string };
+        features: Array<{ feature: string; section?: string; settings: string }>;
+        alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
         offSections: string[];
     };
     protectedPaths: () => readonly ProtectedPathInfo[];

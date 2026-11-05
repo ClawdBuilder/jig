@@ -9,10 +9,10 @@ import { buildApi } from "../api.ts";
 import { publishJig } from "../client.ts";
 import { errorMessage } from "../errors.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
-import { manifestOf, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
+import { manifestOf, packageIdentity, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
 import type { ListedPackage } from "./packages.ts";
 import { projectTrust, untrustedDetail, untrustedSetupLine } from "./trust.ts";
-import { enabledFiles } from "./package-filter.ts";
+import { applyDelta, enabledFiles } from "./package-filter.ts";
 import type { JigState } from "../state.ts";
 
 /** One package that could not be loaded, with the plain reason: the doctor shows it as a FAIL line. */
@@ -89,8 +89,14 @@ function pluginOf(file: string): string | undefined {
     return /^plugins\/([^/]+)\/index\.ts$/.exec(file.replace(/^\.\//, ""))?.[1];
 }
 
-/** The built-in choosable plugins, their feature name and the section whose settings they validate. */
-const FEATURES: Readonly<Record<string, { feature: string; section?: string }>> = {
+/** Every built-in plugin, its feature name, the section it validates and whether it is always on. */
+export const FEATURES: Readonly<Record<string, { feature: string; section?: string; alwaysOn?: boolean }>> = {
+    "jig-core": { feature: "core", alwaysOn: true },
+    "jig-sandbox": { feature: "sandbox", section: "sandbox", alwaysOn: true },
+    "jig-git": { feature: "git", section: "git", alwaysOn: true },
+    "jig-memory": { feature: "memory", section: "memory", alwaysOn: true },
+    "jig-session": { feature: "session", alwaysOn: true },
+    "jig-theme": { feature: "theme", section: "theme", alwaysOn: true },
     "jig-jira": { feature: "jira", section: "jira" },
     "jig-logs": { feature: "logs", section: "logs" },
     "jig-mongo": { feature: "mongo", section: "mongo" },
@@ -101,6 +107,39 @@ const FEATURES: Readonly<Record<string, { feature: string; section?: string }>> 
     "jig-workflow": { feature: "workflow", section: "workflow" },
     "jig-lens": { feature: "lens", section: "lens" },
 };
+
+/** Pi's dedupe: project scope wins over user for the same package; a project `autoload:false` entry is a delta. */
+function effectivePackages(listed: readonly ListedPackage[]): ListedPackage[] {
+    const ordered = [
+        ...listed.filter((entry) => entry.scope === "project"),
+        ...listed.filter((entry) => entry.scope === "user"),
+    ];
+    const result: ListedPackage[] = [];
+    const indexByIdentity = new Map<string, number>();
+    for (const entry of ordered) {
+        const identity = packageIdentity(entry) ?? `source:${entry.source}`;
+        const at = indexByIdentity.get(identity);
+        if (at === undefined) {
+            indexByIdentity.set(identity, result.length);
+            result.push(entry);
+            continue;
+        }
+        const existing = result[at];
+        if (existing?.scope === "project" && entry.scope === "user") {
+            if (existing.filter?.autoload === false) result.push(entry);
+        } else if (entry.scope === "project") {
+            result[at] = entry;
+        }
+    }
+    return result;
+}
+
+/** The settings file an entry came from, for a fix line that names it. */
+function settingsFileOf(entry: ListedPackage, agentDir: string, workingDir: string): string {
+    return entry.scope === "project"
+        ? path.join(workingDir, ".pi", "settings.json")
+        : path.join(agentDir, "settings.json");
+}
 
 /** The CLI's own package.json: its name, version and repository, for what a person should install. */
 export function ownPackage(): { name?: string; version?: string; repository?: string } {
@@ -147,9 +186,10 @@ export interface Headless {
     };
     /** Jig plugins Pi's settings filter out, and the sections that go with them. */
     filtered?: {
-        core?: string;
-        sandbox?: string;
-        features: Array<{ feature: string; section?: string; source: string }>;
+        core?: { settings: string };
+        sandbox?: { settings: string };
+        features: Array<{ feature: string; section?: string; settings: string }>;
+        alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
         offSections: string[];
     };
     /** How long each package's extensions took to load, slowest first: what the blank screen was. */
@@ -208,81 +248,119 @@ export async function loadHeadless(
     let jigInPiVersion: string | undefined;
     const jigPlugins = new Set<string>();
     const enabledPlugins = new Set<string>();
-    for (const entry of loadable) {
-        if (entry.problem !== undefined || entry.folder === undefined) continue;
-        const startedAt = performance.now();
-        const rawFiles = manifestExtensions(entry.folder);
-        const allFiles = rawFiles.map((item) => path.resolve(entry.folder ?? "", item));
-        if (allFiles.length === 0) {
-            failures.push({ package: entry.source, reason: "no Pi extensions: its package.json names none" });
-            continue;
-        }
-        const enabled = enabledFiles(allFiles, entry.filter, "extensions", entry.folder);
-        const files = allFiles.filter((file) => enabled.has(file));
-        const manifest = manifestOf(entry.folder);
-        if (own.name !== undefined && manifest?.name === own.name) {
+    const offCandidates = new Map<string, ListedPackage>();
+    const effective = effectivePackages(
+        loadable.filter((entry) => entry.problem === undefined && entry.folder !== undefined),
+    );
+    const groups = new Map<
+        string,
+        { entries: ListedPackage[]; folder: string; files: string[]; enabled: Set<string> }
+    >();
+    for (const entry of effective) {
+        if (entry.folder === undefined) continue;
+        const identity = packageIdentity(entry) ?? `source:${entry.source}`;
+        const group = groups.get(identity) ?? {
+            entries: [],
+            folder: entry.folder,
+            files: manifestExtensions(entry.folder).map((item) => path.resolve(entry.folder ?? "", item)),
+            enabled: new Set<string>(),
+        };
+        group.entries.push(entry);
+        groups.set(identity, group);
+    }
+    const loadFile = new Map<string, { entry: ListedPackage; folder: string }>();
+    for (const group of groups.values()) {
+        const base = group.entries.find((entry) => entry.filter?.autoload !== false);
+        const delta = group.entries.find((entry) => entry.filter?.autoload === false);
+        const chosen = base ?? delta;
+        if (chosen === undefined) continue;
+        const manifest = manifestOf(chosen.folder ?? group.folder);
+        const isJig = own.name !== undefined && manifest?.name === own.name;
+        if (isJig) {
             jigInPi = true;
-            if (manifest.version !== undefined) jigInPiVersion = manifest.version;
-            for (const item of rawFiles) {
-                const plugin = pluginOf(item);
+            if (manifest?.version !== undefined) jigInPiVersion = manifest.version;
+            for (const file of group.files) {
+                const plugin = pluginOf(path.relative(group.folder, file).split(path.sep).join("/"));
                 if (plugin !== undefined) jigPlugins.add(plugin);
             }
-            for (const file of files) {
-                const plugin = pluginOf(path.relative(entry.folder, file).split(path.sep).join("/"));
-                if (plugin !== undefined) enabledPlugins.add(plugin);
-            }
         }
-        for (const file of files) {
-            const fileStarted = performance.now();
-            if (!existsSync(file) || !statSync(file).isFile()) {
-                failures.push({ package: entry.source, file, reason: "the file a package.json names is not there" });
+        let enabled =
+            base === undefined ? new Set<string>() : enabledFiles(group.files, base.filter, "extensions", group.folder);
+        if (delta !== undefined)
+            enabled = applyDelta(group.files, delta.filter?.extensions ?? [], group.folder, enabled);
+        group.enabled = enabled;
+        for (const file of group.files) {
+            const plugin = pluginOf(path.relative(group.folder, file).split(path.sep).join("/"));
+            if (enabled.has(file)) {
+                if (isJig && plugin !== undefined) enabledPlugins.add(plugin);
+                loadFile.set(file, { entry: chosen, folder: group.folder });
                 continue;
             }
-            // jig-core's own extension is the one module this command does not need: its state is made above.
-            if (/\/plugins\/jig-core\/index\.ts$/.test(file)) continue;
-            try {
-                const module = (await import(pathToFileURL(file).href)) as { default?: unknown };
-                const factory = module.default;
-                if (typeof factory !== "function") {
-                    failures.push({ package: entry.source, file, reason: "the extension exports no default function" });
-                    continue;
-                }
-                (factory as (pi: unknown) => void)(pi);
-                loaded.push(entry.source);
-            } catch (error) {
-                failures.push({ package: entry.source, file, reason: errorMessage(error).slice(0, 300) });
-            }
-            timings.push({ name: path.relative(entry.folder, file), ms: performance.now() - fileStarted });
+            if (!isJig || plugin === undefined) continue;
+            // A project entry is the one Pi applies when it replaces the user's, or when it is a delta; name it.
+            const off = delta?.scope === "project" ? delta : base?.scope === "project" ? base : (base ?? delta);
+            if (off !== undefined && (!offCandidates.has(plugin) || off.scope === "project"))
+                offCandidates.set(plugin, off);
         }
-        void startedAt;
+    }
+    for (const [file, { entry, folder }] of loadFile) {
+        const fileStarted = performance.now();
+        if (!existsSync(file) || !statSync(file).isFile()) {
+            failures.push({ package: entry.source, file, reason: "the file a package.json names is not there" });
+            continue;
+        }
+        // jig-core's own extension is the one module this command does not need: its state is made above.
+        if (/\/plugins\/jig-core\/index\.ts$/.test(file)) continue;
+        try {
+            const module = (await import(pathToFileURL(file).href)) as { default?: unknown };
+            const factory = module.default;
+            if (typeof factory !== "function") {
+                failures.push({ package: entry.source, file, reason: "the extension exports no default function" });
+                continue;
+            }
+            (factory as (pi: unknown) => void)(pi);
+            loaded.push(entry.source);
+        } catch (error) {
+            failures.push({ package: entry.source, file, reason: errorMessage(error).slice(0, 300) });
+        }
+        timings.push({ name: path.relative(folder, file), ms: performance.now() - fileStarted });
     }
     timings.sort((left, right) => right.ms - left.ms);
-    const filteredFeatures: Array<{ feature: string; section?: string; source: string }> = [];
-    for (const [plugin, feature] of Object.entries(FEATURES)) {
-        if (
-            jigPlugins.has(plugin) &&
-            !enabledPlugins.has(plugin) &&
-            !filteredFeatures.some((one) => one.feature === feature.feature)
-        ) {
-            filteredFeatures.push({
+    const offPlugins = [...jigPlugins].filter((plugin) => !enabledPlugins.has(plugin));
+    const settingsFor = (plugin: string): string => {
+        const entry = offCandidates.get(plugin);
+        return entry === undefined ? path.join(agentDir, "settings.json") : settingsFileOf(entry, agentDir, workingDir);
+    };
+    const alwaysOn = offPlugins.flatMap((plugin) => {
+        const feature = FEATURES[plugin];
+        if (feature === undefined || feature.alwaysOn !== true || plugin === "jig-core" || plugin === "jig-sandbox")
+            return [];
+        return [{ feature: feature.feature, plugin, settings: settingsFor(plugin) }];
+    });
+    const filteredFeatures = offPlugins.flatMap((plugin) => {
+        const feature = FEATURES[plugin];
+        if (feature === undefined || feature.alwaysOn === true || plugin === "jig-core" || plugin === "jig-sandbox")
+            return [];
+        return [
+            {
                 feature: feature.feature,
                 ...(feature.section === undefined ? {} : { section: feature.section }),
-                source: "Pi's settings",
-            });
-        }
-    }
-    const offSections = filteredFeatures.flatMap((one) => (one.section === undefined ? [] : [one.section]));
+                settings: settingsFor(plugin),
+            },
+        ];
+    });
+    const offSections = offPlugins.flatMap((plugin) => {
+        const section = FEATURES[plugin]?.section;
+        return section === undefined ? [] : [section];
+    });
     const filtered =
-        filteredFeatures.length === 0 &&
-        !(jigPlugins.has("jig-core") && !enabledPlugins.has("jig-core")) &&
-        !(jigPlugins.has("jig-sandbox") && !enabledPlugins.has("jig-sandbox"))
+        offPlugins.length === 0
             ? undefined
             : {
-                  ...(jigPlugins.has("jig-core") && !enabledPlugins.has("jig-core") ? { core: "Pi's settings" } : {}),
-                  ...(jigPlugins.has("jig-sandbox") && !enabledPlugins.has("jig-sandbox")
-                      ? { sandbox: "Pi's settings" }
-                      : {}),
+                  ...(offPlugins.includes("jig-core") ? { core: { settings: settingsFor("jig-core") } } : {}),
+                  ...(offPlugins.includes("jig-sandbox") ? { sandbox: { settings: settingsFor("jig-sandbox") } } : {}),
                   features: filteredFeatures,
+                  alwaysOn,
                   offSections,
               };
     state.offSections = new Set(offSections);
