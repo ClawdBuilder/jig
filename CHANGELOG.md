@@ -6,56 +6,89 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
-- `jig setup` and `jig doctor`: the same setup and doctor outside Pi, from any terminal. No session, model or provider
-  login; it loads the packages Pi would load and reads the same `jig.json`, and a broken file or a plugin that fails to
-  load is a failure line, not a crash. Setup starts with the company question, asks the company's onboarding items in
-  its order and words, and writes the `profiles`/`profile` entry a newcomer cannot know. Exit codes: doctor 0 or 1;
-  setup 0 done, 1 failed, 130 cancelled; without a terminal setup refuses in one line. `/jig setup` inside Pi now says
-  to run the command; `/jig doctor` stays as a shortcut through the same checks.
+- `jig doctor` and `jig setup` run in a terminal, with no Pi session, model or provider login. Install the command with
+  `npm install -g --allow-git=root github:Dev-Mriganka/jig` (npm 12 turns git installs off by default; `#v0.4.0` pins a
+  release). `jig doctor` prints the same report as `/jig doctor`, with `ok`, `warn`, `fail` and `skip` levels, and exits 0
+  with no failures, 1 with one; `--json` prints the report on stdout, `--network` tests the configured hosts and the latest
+  release, and `--quiet` keeps warnings and failures. `jig setup` starts with which company setup you use and where, asks
+  the missing fields, asks a credential as **where** it is kept and never as a value, shows a plain summary, and writes
+  once with a backup; a linked `jig.json` is followed, and an invalid one or a plugin that fails to load is a failure line,
+  not a crash. Exit codes: setup 0 done, 1 failed, 130 cancelled; without a terminal it refuses in one line. `/jig setup`
+  inside Pi now says to run the command; `/jig doctor` stays a shortcut through the same checks.
 - A company plugin can describe its people's setup once, with `onboarding.register`: items of plain text, a pick, a
   credential's place, a login command or an explanation, in the company's order. Setup asks them with the company's
   labels and hints and the company's preferred store first; doctor turns the missing ones into "you need" lines.
   Optional: a plugin without a list falls back to its section validators.
-
-- `jig doctor` and `jig setup` refuse to give an all-clear for a Jig Pi will not load: if Jig is not in Pi's
-  `settings.json` packages, or Pi is not found, the machine group fails with the install command, and setup stops before
-  asking anything. Two copies with different versions are a warning. Both commands say "Checking your setup…" before the
-  packages load, and a records folder that does not exist yet is normal, not a warning.
+- The command refuses to give an all-clear for a Jig Pi will not load: if Jig is not in Pi's `settings.json` packages the
+  machine group fails with the install command, and setup stops before asking anything; if Pi itself is absent, the
+  command stops before the doctor with "jig needs Pi installed". Two copies with different versions are a warning. Both
+  commands say "Checking your setup…" before the packages load, and a records folder that does not exist yet is normal,
+  not a warning.
 - Project packages are not imported until Pi would trust the folder: the closest saved decision in the agent folder's
-  `trust.json`, or `defaultProjectTrust: "always"` there; a missing or malformed trust file fails closed. The doctor shows
-  a `skip` line naming what was skipped, setup says the same instead of asking, and Jig listed only in an untrusted project
-  is a skip, not "not installed". User-scope packages are unaffected.
-
+  `trust.json`, or `defaultProjectTrust: "always"` there; a malformed trust file fails closed. The doctor shows a `skip`
+  line naming what was skipped, setup says the same instead of asking, and Jig listed only in an untrusted project is a
+  skip, not "not installed". User-scope packages are unaffected.
 - A package installed from git is found where Pi puts it: user scope under `<agent folder>/git/<host>/<path>`, project
   scope under `<cwd>/.pi/git/<host>/<path>`, with `.git` and the `@ref` stripped, and project packages read from
   `<cwd>/.pi/settings.json` too. npm packages are looked for at the folder Pi manages, with its global fallback. A package
   Pi lists but whose files are gone is a failure naming the folder, not "not installed"; the doctor's fix line is
   `pi install git:github.com/Dev-Mriganka/jig`.
-- The install line is `npm install -g --allow-git=root github:Dev-Mriganka/jig`, because npm 12 turns git and remote installs
-  off by default; `#v0.4.0` pins a release.
-- Pi's four packages are optional peers now, so a global install carries no 215 MB copy of Pi: it is 51 MB, and the command
-  stops with "jig needs Pi installed" when Pi is absent. The repository's tests pin them as dev dependencies, so `npm ci`
-  and CI still have them.
-
+- Pi's four packages are optional peers now, so a global install carries no copy of Pi: it is 51 MB instead of 215 MB,
+  and the command stops with "jig needs Pi installed" when Pi is absent. The repository's tests pin them as dev
+  dependencies, so `npm ci` and CI still have them.
 - Setup says a suggested credential in words ("Use the entry acme/sso-token"), says "Not in pass yet. Add it with:" once,
   prints "Show the exact change" as plain text, and names the company once in its confirmation.
-
-- `/jig setup`: fills in the missing or invalid fields of plugin sections one question at a time, in plain
-  words, and writes only the fields you confirm. A credential is asked for as **where** it is kept: setup
-  probes each store for metadata only, offers Check again, and turns on the chosen store. It keeps a backup beside `jig.json`, asks you to run
-  `/reload`, and never asks for a secret value. When `jig.json` is a link, setup follows it and leaves the
-  link in place.
-- `/jig doctor`: a read-only check of the machine, the settings, every secret reference, the login tools,
-  the sandbox and the records folder, with `ok`, `warn`, `fail` and `skip` levels and one plain fix per
-  finding. It never reads a secret value. `--json` writes the report to the state folder, `--network` tests
-  the configured hosts and the latest release, and `--quiet` keeps only warnings and failures.
 - An audit of every tool: `plugins/jig-core/test/audit.test.ts` checks each action against its plugin's documentation and the
   effect and approval its `classify` returns, pins the classification of all of them, and reports the actions no test names.
+- `/lens web`'s session view now has **where the time went**, each turn drawn as one bar split into model time, tool time
+  and the time waiting for you, and **one call's text**, opened by clicking a call: its arguments and result, read from
+  Pi's own session file for that session only, cut at 20,000 characters. The file holds what Jig masked before Pi wrote it,
+  and the panel stays behind the page's existing secret link on `127.0.0.1`.
+- `sandbox.env.remove` in `jig.json`: variable names or simple patterns (`ACME_*`, `*_SECRET`) to take out of a command's
+  environment, for a credential the built-in names miss. A company's list and yours add up.
+- `fetch` now asks about a remote host your own configuration does not name as a forge (`git.forges`, `git.cloneHost`,
+  github.com, gitlab.com), because a fetch offers your SSH key outward. The answer is remembered for that host for the
+  session; a local path or `file://` remote does not ask.
 
 ### Changed
 
 - The Release workflow can be run by hand for a tag that has no GitHub release page, which publishes an older tag's notes
   without marking it the latest release.
+- `config.section` hands a plugin a frozen deep copy: a plugin that tries to change another plugin's section now throws in
+  its own code instead of quietly changing what `/jig` and the other plugins read.
+- A review's confirmations wait in `jig-core`'s one-dialog queue like every other question. If another question is open,
+  the page is told after ten seconds to answer it and approve again, instead of opening a dialog over it.
+- The Mongo decision is made from the call alone: an action's effect comes from the call and its pipeline, and a call your
+  settings do not allow is refused by the tool when it runs, with its own message, rather than being blocked as it is
+  classified.
+- Lists a company plugin gives as defaults now add up with yours where that is safe: `agents.folders` and `agents.env`,
+  `workflow.disabled`, and `jira.privateNames` keep the company's entries and add yours, so a teammate cannot drop the
+  company's roles, variables, disabled workflows or private names by writing a list.
+- In `jig-api`, `api.reads` applies outside production only. In production a request reads only with `GET`, `HEAD` or
+  `OPTIONS`, so a `POST` search listed in `reads` is a write there and the floor refuses it.
+- In `jig-api`, `collections.*` is replaced whole, like `environments.*`: a teammate can point a company collection at
+  their own source without the two sources being merged into an invalid entry.
+
+### Fixed
+
+- The doctor no longer warns "Pi — could not be read" when Pi's package is found beside the running program rather than
+  the extension, and an unknown version is a skip, not a warning with a command to run. A secret store that no reference
+  uses and no company prefers is not checked, so a newcomer with no `pass` store no longer sees a warning about it.
+- The masking key and the preview pages are secret protected paths now: the key can confirm a masked value from a short
+  list of guesses, and a preview page written when the local server could not serve it may hold unmasked text. Pi's file
+  tools read neither, and the sandboxed shell cannot reach them.
+- The git settings that run a program are held in one table, shared by the check before git runs and the sandbox's check
+  after a command. It gains the keys one copy had missed, and a repository whose local configuration sets an alias
+  starting with `!` is now refused by both.
+- A drive prefix such as `C:/repos/x` is treated as a path only on Windows; elsewhere git reads it as an SSH address, so
+  it is refused or asks instead of passing as local.
+- The environment a command starts with removes credentials by their value as well as their name: an address with a
+  password in it goes whatever the variable is called, and `_PWD`, `_DSN`, `_WEBHOOK` and `_PAT` names are covered.
+  `env.keep` still wins.
+- `jig-review` opens the page correctly when `$BROWSER` holds arguments (`firefox --new-window`), using the same parser as
+  Jig's preview pages.
+- A tool declaration whose `approval` is not a kind Jig knows, or whose `action` is not a string, blocks the call as an
+  invalid declaration instead of quietly using a different approval screen.
 
 ## [0.3.0] - 2026-11-04
 
@@ -111,10 +144,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   reminder say today's local date.
 
 ### Fixed
-
-- The doctor no longer warns "Pi — could not be read" when Pi's package is found beside the running program rather than
-  the extension, and an unknown version is a skip, not a warning with a command to run. A secret store that no reference
-  uses and no company prefers is not checked, so a newcomer with no `pass` store no longer sees a warning about it.
 
 - The Herdr Work panel's Outputs no longer empty after Pi restarts or a session resumes: `jig-session` rebuilds them from the session's `edit` and `write` calls and lists the active ticket's notes, plans and evidence files (not `ticket.json`, `workflow.json` or `history/`).
 
