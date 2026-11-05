@@ -168,6 +168,17 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Jig's sandbox is filtered out/);
     });
 
+    test("the sandbox is checked for real, not skipped", async () => {
+        settingsWith();
+        const empty = path.join(work, "no-programs");
+        mkdirSync(empty);
+        const result = await run(["doctor"], { env: { PATH: empty } });
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /fail Sandbox program bwrap/);
+        assert.match(result.stdout, /fix: sudo (apt|dnf|pacman|zypper) install /);
+        assert.doesNotMatch(result.stdout, /the sandbox starts with Pi/);
+    });
+
     test("a choosable plugin that is off is a calm skip, and its section is not a problem", async () => {
         settingsFiltered(["!plugins/jig-jira/index.ts"]);
         writeFileSync(

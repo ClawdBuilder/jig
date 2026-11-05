@@ -1,11 +1,13 @@
 // The tool checks of `/jig doctor`: the login tools, the sandbox and the records folder. Each starts a program only to
 // ask a login tool for its status; none signs in, and none writes.
-import { accessSync, constants, statSync } from "node:fs";
+import { accessSync, constants, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import type { DoctorContext, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { findOnPath, sectionTexts } from "./doctor-secrets.ts";
 import { run as runProgram } from "./exec.ts";
 import { shorten } from "./secret-status.ts";
+import { APPARMOR_SYSCTL, distroOf, findPrograms, installCommand } from "./kit/sandbox-programs.ts";
+import type { ProgramPaths } from "./kit/sandbox-programs.ts";
 
 export async function loginChecks(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
     const texts = sectionTexts(context).map((text) => text.toLowerCase());
@@ -115,10 +117,11 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
     return lines;
 }
 
-export function sandboxChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
+export async function sandboxChecks(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
     const platform = options.platform ?? process.platform;
     const provider = context.sandbox;
     if (provider === undefined) {
+        if (context.filtered?.sandbox !== undefined) return [];
         return [
             {
                 id: "sandbox.provider",
@@ -130,17 +133,7 @@ export function sandboxChecks(context: DoctorContext, options: DoctorOptions): D
             },
         ];
     }
-    if (!provider.active && context.standalone === true) {
-        return [
-            {
-                id: "sandbox.provider",
-                group: "sandbox",
-                level: "skip",
-                title: "Sandbox",
-                detail: "the sandbox starts with Pi, so this is not checked here.",
-            },
-        ];
-    }
+    if (!provider.active && context.standalone === true) return await sandboxHostChecks(context, options);
     if (!provider.active) {
         return [
             {
@@ -268,4 +261,95 @@ export function recordsChecks(context: DoctorContext, options: DoctorOptions): D
             },
         ];
     }
+}
+
+/** What the sandbox needs on this machine, checked for real: programs, then a new user namespace on Linux/WSL. */
+async function sandboxHostChecks(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
+    const platform = options.platform ?? process.platform;
+    if (platform === "darwin") {
+        return [
+            {
+                id: "sandbox.programs",
+                group: "sandbox",
+                level: "ok",
+                title: "Sandbox",
+                detail: "the sandbox is part of macOS; nothing to install.",
+            },
+        ];
+    }
+    if (platform !== "linux") {
+        return [
+            {
+                id: "sandbox.programs",
+                group: "sandbox",
+                level: "fail",
+                title: "Sandbox",
+                detail: `${platform} is not supported yet; Linux, WSL2 and macOS are.`,
+            },
+        ];
+    }
+    const section = context.sections.get("sandbox") as { programs?: ProgramPaths } | undefined;
+    const settings = section?.programs ?? {};
+    const osRelease = (() => {
+        try {
+            return readFileSync("/etc/os-release", "utf8");
+        } catch {
+            return "";
+        }
+    })();
+    const distro = distroOf(osRelease);
+    const writable = (place: string): boolean => {
+        try {
+            accessSync(place, constants.W_OK);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+    const found = findPrograms("linux", settings, context.env.PATH, writable);
+    const lines: DoctorLine[] = [];
+    for (const missing of found.missing) {
+        lines.push({
+            id: `sandbox.program.${missing.name}`,
+            group: "sandbox",
+            level: "fail",
+            title: `Sandbox program ${missing.command}`,
+            detail: `${missing.command} is not found; the sandbox cannot start without it, and bash would be refused.`,
+            fix: installCommand("linux", [{ name: missing.name }], distro),
+        });
+    }
+    if (found.missing.length === 0) {
+        lines.push({
+            id: "sandbox.programs",
+            group: "sandbox",
+            level: "ok",
+            title: "Sandbox programs",
+            detail: "bwrap, socat and rg are found.",
+        });
+    }
+    const bwrap = found.found.bwrap;
+    if (bwrap === undefined) return lines;
+    const run = options.run ?? runProgram;
+    const result = await run(bwrap, ["--unshare-user", "--ro-bind", "/", "/", "--", "/bin/true"], { timeoutMs: 5_000 });
+    if (result.code === 0) {
+        lines.push({
+            id: "sandbox.start",
+            group: "sandbox",
+            level: "ok",
+            title: "Sandbox start",
+            detail: "a real command ran in a new user namespace.",
+        });
+        return lines;
+    }
+    const said = (result.stderr || result.stdout).trim().split("\n")[0] ?? "";
+    const sysctl = /namespace|apparmor|permission denied|operation not permitted/i.test(said);
+    lines.push({
+        id: "sandbox.start",
+        group: "sandbox",
+        level: "fail",
+        title: "Sandbox start",
+        detail: `bwrap could not make a user namespace${said === "" ? "." : `: ${said.slice(0, 200)}`}`,
+        fix: sysctl ? APPARMOR_SYSCTL : "Run /sandbox doctor in Pi for the full check.",
+    });
+    return lines;
 }

@@ -162,6 +162,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |
 | `kit/ports.ts` | For a tunnel that starts a program: a really free port, a test that it answers, a wait | a company plugin keeps a copy; no file here |
+| `kit/sandbox-programs.ts` | The programs the sandbox needs, where they are found, the install command per system, and the AppArmor sysctl | `jig-sandbox/src/programs.ts`, `doctor-tools.ts` |
 | `kit/tools.ts` | `registerJigTool`: registers a plugin's tool, and again as `deferred` at session start when `tools.deferred` names it | every plugin's entry, `watch/tool.ts`, `tool-exposure.ts` |
 | `kit/values.ts` | Small stateless helpers that plugins share, such as the invalid-input error | `config.ts`, `kit/http.ts`, `kit/oauth.ts`, the watch files |
 
