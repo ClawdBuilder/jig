@@ -331,7 +331,7 @@ describe("the state folder", () => {
                     const dir = runDirOf(stateDir, "s", id);
                     writeMeta(dir, meta({ id, state, parentPid: process.pid }));
                     if (id.startsWith("old")) {
-                        const old = new Date(Date.now() - 20 * 24 * 3600_000);
+                        const old = new Date(Date.now() - 30 * 24 * 3600_000);
                         utimesSync(path.join(dir, "meta.json"), old, old);
                     }
                 }
