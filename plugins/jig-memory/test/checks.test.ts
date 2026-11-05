@@ -82,6 +82,6 @@ test("the open checks are worded with the rule for the next command", () => {
     ]);
     assert.equal(
         text,
-        "[ticket PROJ-123] 1 open check:\n#2 re-derive the locations\nBefore you hand the user a command for the next step, close each check (ticket close-check) or say plainly that it is still open.",
+        "[ticket PROJ-123] 1 open check:\n#2 re-derive the locations\nBefore you hand the user a command for the next step, close each check (ticket close_check) or say plainly that it is still open.",
     );
 });

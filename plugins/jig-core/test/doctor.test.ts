@@ -246,6 +246,18 @@ describe("/jig doctor checks", () => {
 });
 
 describe("/jig doctor secrets", () => {
+    test("a rule that names an action renamed in 0.4.0 is a warning, not a silent loss", async () => {
+        const personal = loaded({
+            config: { ...defaultConfig(), rules: [{ tool: "api", action: "run-folder", decision: "ask" }] },
+        });
+        const report = await runDoctor(context({ overrides: { personal } }), options());
+        const line = report.lines.find((entry) => entry.id.startsWith("config.renamed."));
+        assert.ok(line, "the rename is named");
+        assert.equal(line.level, "warn");
+        assert.match(line.title, /Rule action run-folder is now run_folder/);
+        assert.match(line.detail ?? "", /still applies through 0\.4\.x/);
+    });
+
     test("a missing pass entry says so plainly and gives the pass command", async () => {
         const report = await runDoctor(
             context({ sections: new Map([["jira", { token: "pass:work/jira-token" }]]) }),

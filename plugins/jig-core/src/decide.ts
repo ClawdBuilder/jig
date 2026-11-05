@@ -10,6 +10,7 @@
 //      `bash` run outside its sandbox without a rule that names the command, a call that needs a screen when there is
 //      none, and a file tool aimed at a protected path.
 import { matchesName } from "./classify.ts";
+import { canonicalAction } from "./kit/action-names.ts";
 import type {
     ApprovalKind,
     Decision,
@@ -106,7 +107,7 @@ export function namesNothing(pattern: string): boolean {
 /** Whether a rule applies to a call. A rule that leaves out `action`, `environment` or `effect` applies to any. */
 export function ruleMatches(rule: Rule, call: DecidedCall): boolean {
     if (!matchesName(rule.tool, call.tool)) return false;
-    if (rule.action !== undefined && rule.action !== call.action) return false;
+    if (rule.action !== undefined && canonicalAction(call.tool, rule.action) !== call.action) return false;
     if (rule.environment !== undefined && rule.environment !== call.environment) return false;
     if (rule.effect !== undefined && rule.effect !== call.effect) return false;
     if (rule.command !== undefined && (call.command === undefined || !commandMatches(rule.command, call.command))) {

@@ -37,6 +37,6 @@ export function reminderText(key: string, notesFile: string, today: string, open
     const checks =
         openChecks === 0
             ? ""
-            : ` ${openChecks === 1 ? "1 check is" : `${openChecks} checks are`} still open (ticket list-checks).`;
+            : ` ${openChecks === 1 ? "1 check is" : `${openChecks} checks are`} still open (ticket list_checks).`;
     return `[ticket ${key}] ${REMIND_AFTER} tool results since the ## Now block of notes.md last changed: update it in ${notesFile} (status, next step, open questions). Today is ${today}.${checks}`;
 }

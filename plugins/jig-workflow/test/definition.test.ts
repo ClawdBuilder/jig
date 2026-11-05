@@ -168,6 +168,11 @@ describe("a hold's call", () => {
         assert.equal(callText({ tool: "git", action: "push" }), "git push");
         assert.equal(callText({ tool: "edit" }), "edit");
     });
+
+    test("an action renamed in 0.4.0 keeps matching through its old name", () => {
+        assert.deepEqual(parseCall("workflow submit-plan"), { tool: "workflow", action: "submit_plan" });
+        assert.equal(callText({ tool: "workflow", action: "submit_plan" }), "workflow submit_plan");
+    });
 });
 
 describe("the examples that ship", () => {

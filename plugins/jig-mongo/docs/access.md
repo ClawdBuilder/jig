@@ -73,7 +73,7 @@ These hold in every environment, and a configuration can add to them but never r
   - a requested field that is not allowed is refused;
   - a field that is only partly allowed expands to the allowed fields under it;
   - excluding fields (`{"status": 0}`) is refused.
-- **`indexes`, `index-stats`:** an index on a field that may not be seen is left out, and the count says so. The condition of a partial
+- **`indexes`, `index_stats`:** an index on a field that may not be seen is left out, and the count says so. The condition of a partial
   index names fields, so it is not shown.
 - **`databases`, `collections`:** only what the lists allow.
 - **`stats`:** of a collection that may be seen. The statistics of a whole database count every collection in it, listed or not: sizes

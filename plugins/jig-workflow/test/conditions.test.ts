@@ -128,7 +128,7 @@ describe("plan-approved", () => {
         w.writePlan(PLAN);
         const result = await check(w, "plan-approved");
         assert.equal(result.ok, false);
-        assert.match(result.lines[0] ?? "", /has not been submitted: run workflow submit-plan/);
+        assert.match(result.lines[0] ?? "", /has not been submitted: run workflow submit_plan/);
     });
 
     test("when the fingerprint you approved is the plan's now; an edit ends it", async (t) => {
@@ -141,7 +141,7 @@ describe("plan-approved", () => {
         w.writePlan(PLAN.replace("Cache the price list.", "Cache the price list per tenant."));
         const edited = await check(w, "plan-approved");
         assert.equal(edited.ok, false);
-        assert.match(edited.lines[0] ?? "", /changed since you approved it: run workflow submit-plan again/);
+        assert.match(edited.lines[0] ?? "", /changed since you approved it: run workflow submit_plan again/);
     });
 });
 

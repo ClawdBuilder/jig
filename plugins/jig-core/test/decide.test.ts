@@ -15,6 +15,15 @@ function run(c: DecidedCall, extra: Partial<DecideInput> = {}) {
     return decide({ call: c, rules: [], sessionAllows: new Set(), hasUI: true, ...extra });
 }
 
+describe("an action renamed in 0.4.0", () => {
+    test("a rule that names the old hyphenated action still matches, through 0.4.x", () => {
+        const c = call("local", "read", { tool: "api", action: "run_folder" });
+        const verdict = run(c, { rules: [{ tool: "api", action: "run-folder", decision: "ask" }] });
+        assert.equal(verdict.decision, "ask");
+        assert.equal(verdict.source, "rule");
+    });
+});
+
 describe("the rules table", () => {
     const table: Array<[EnvironmentKind, Effect, Decision]> = [
         ["local", "read", "allow"],

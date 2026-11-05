@@ -1,4 +1,4 @@
-// run-folder: a folder of saved requests run in order, stopping at the first failure, with one line per request. It is approved
+// run_folder: a folder of saved requests run in order, stopping at the first failure, with one line per request. It is approved
 // as one: the person sees every request, and the fingerprint covers them all.
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 const folder = (name: string, extra: Record<string, unknown> = {}) =>
-    h.call({ action: "run-folder", folder: name, environment: "Staging", ...extra });
+    h.call({ action: "run_folder", folder: name, environment: "Staging", ...extra });
 
 describe("a folder of reads", () => {
     test("runs at once, in order, with one line per request", async () => {
@@ -152,12 +152,12 @@ describe("a folder with a write", () => {
         h.api.reset();
         ok(await folder("Lifecycle", { variables: { orderId: "7" } }));
         const refused = await h.call(
-            { action: "run-folder", folder: "Lifecycle", environment: "Staging", variables: { orderId: "7" } },
+            { action: "run_folder", folder: "Lifecycle", environment: "Staging", variables: { orderId: "7" } },
             { between: (input) => void (input.variables = { orderId: "8" }) },
         );
         assert.equal(
             refused.error?.message,
-            "api run-folder Lifecycle: changed since the preview; run it again to see the new preview. Nothing was sent.",
+            "api run_folder Lifecycle: changed since the preview; run it again to see the new preview. Nothing was sent.",
         );
         assert.equal(h.api.requests.length, 3, "only the approved run sent anything");
     });
@@ -234,7 +234,7 @@ describe("a folder that cannot be run", () => {
             environments: { staging: "staging" },
             allowPlainLocal: true,
         });
-        const smoke = await h.call({ action: "run-folder", folder: "smoke", environment: "staging" });
+        const smoke = await h.call({ action: "run_folder", folder: "smoke", environment: "staging" });
         assert.deepEqual(smoke.cls, { action: "files/smoke", environment: "staging", effect: "read" });
         ok(smoke);
         assert.deepEqual(
@@ -243,10 +243,10 @@ describe("a folder that cannot be run", () => {
             "the other file is not in the folder",
         );
         h.api.reset();
-        ok(await h.call({ action: "run-folder", folder: "smoke/health.http", environment: "staging" }));
+        ok(await h.call({ action: "run_folder", folder: "smoke/health.http", environment: "staging" }));
         assert.equal(h.api.requests.length, 2);
         h.api.reset();
-        ok(await h.call({ action: "run-folder", folder: "other.http", environment: "staging" }));
+        ok(await h.call({ action: "run_folder", folder: "other.http", environment: "staging" }));
         assert.deepEqual(
             h.api.requests.map((r) => r.path),
             ["/other"],

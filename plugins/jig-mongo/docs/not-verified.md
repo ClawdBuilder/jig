@@ -22,7 +22,7 @@ named `mongo1` to `mongo3`, which only that network can look up, so the routes a
 |---|---|
 | Every action through the tool and the driver, with what a write did read back by a client of the test's own | `mongo.test.ts` |
 | Typed values both ways: a decimal, a 64-bit integer beyond 2^53, a date and an ObjectId | `mongo.test.ts` |
-| A find with and without an index in `explain`; `stats`; `indexes`; `index-stats` and its Unauthorized message for a user that only reads | `mongo.test.ts` |
+| A find with and without an index in `explain`; `stats`; `indexes`; `index_stats` and its Unauthorized message for a user that only reads | `mongo.test.ts` |
 | Views and time series in `collections` | `mongo.test.ts` |
 | A preview with its count and fingerprint, "changed since the preview", the guards on an empty filter and on the cap | `mongo.test.ts` |
 | A duplicate key from `insert` as the server's rejection (it was reported as a lost reply: fixed) | `mongo.test.ts` |

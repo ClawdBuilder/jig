@@ -30,7 +30,7 @@ repository, only that repository counts.
 - **`notes-updated`.** When a stage begins, the plugin saves the hash of `notes.md`. The condition holds
   when the file differs. It is the cheapest check that the agent wrote down what it learned before moving
   on; it does not judge the notes.
-- **`plan-approved`.** Holds when the fingerprint saved by `submit-plan` is the fingerprint of `plan.md`
+- **`plan-approved`.** Holds when the fingerprint saved by `submit_plan` is the fingerprint of `plan.md`
   now. Any edit, even a comma, ends it. See [Plan](plan.md).
 - **`tests-pass-at-head`.** Holds when the last result for the repository passed, on a clean tree, at the
   commit HEAD is now. Uncommitted changes after the run do not undo it, because a push sends commits, not

@@ -9,7 +9,7 @@ requests. Back to the [jig-api overview](../README.md).
 
 The folder is the **collection folder**. Every `.http` and `.rest` file below it is read, in a fixed order; links, hidden folders
 and `node_modules` are not (a link gets a warning). A request's folder path is its sub-folders and then its file, such as
-`smoke/health.http`, so `run-folder` can run one file or one folder.
+`smoke/health.http`, so `run_folder` can run one file or one folder.
 
 ## Requests
 

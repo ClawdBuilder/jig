@@ -52,6 +52,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- Action names are snake_case now, as function-calling tools and MCP write them: `run_folder`, `postman_environments`,
+  `index_stats`, `create_index`, `drop_index`, `save_evidence`, `add_check`, `list_checks`, `close_check`, `submit_plan`.
+  Tool names are unchanged, and so are slash commands, `jig.json` keys and the `jig` command's words. A rule, a role's
+  `actions`/`ask` list or a workflow hold that still names an old, hyphenated action keeps matching through 0.4.x; `/jig`
+  and `jig doctor` name each one, and 0.5.0 removes the old names. Update them when you see the notice.
 - The Release workflow can be run by hand for a tag that has no GitHub release page, which publishes an older tag's notes
   without marking it the latest release.
 - `config.section` hands a plugin a frozen deep copy: a plugin that tries to change another plugin's section now throws in

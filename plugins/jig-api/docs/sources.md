@@ -34,7 +34,7 @@ export interface Source<Config = unknown> {
     refresher?(config: Config, name: string): Refresher;
 
     /** Optional. For a source whose service can list its environments by name and id, never their values: what the
-     *  `postman-environments` action runs. */
+     *  `postman_environments` action runs. */
     environmentLister?(config: Config, name: string): EnvironmentLister;
 }
 ```

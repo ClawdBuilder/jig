@@ -63,7 +63,7 @@ that your answer is a fresh one ([Approvals](../../../docs/approvals.md)):
 
 | Call | Why it asks |
 |---|---|
-| `workflow submit-plan` | You approve this exact plan, with its fingerprint |
+| `workflow submit_plan` | You approve this exact plan, with its fingerprint |
 | `workflow advance`, from a stage that lists `you-approve` | You decide to move on, with the evidence in view |
 | `workflow start` with `replace`, over a workflow that has state | Starting over loses evidence, and the question says which |
 | `workflow test` when `jig-sandbox` cannot run it | The commands run as you, outside the sandbox ([Tests](tests.md)) |

@@ -88,7 +88,7 @@ of up to 8 KB; a longer text is cut and the file says so.
 - **A result that cannot be saved** is a warning, and the tool's result is not
   changed.
 - **Results of the `ticket` tool** are not saved again. Text the user pasted is
-  saved by its `save-evidence` action, with the index line
+  saved by its `save_evidence` action, with the index line
   `- <time> | pasted | <label> | <file>` (see [Handoff](handoff.md#pasted-evidence)).
 
 ## Empty files

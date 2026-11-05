@@ -56,7 +56,7 @@ orders: fetched the collection and 1 environment
 
 ## Listing environments
 
-To map an environment you need its id. The `postman-environments` action of the `api` tool lists the environments the key of a
+To map an environment you need its id. The `postman_environments` action of the `api` tool lists the environments the key of a
 Postman cloud collection can see, so neither you nor the agent has to fetch one to learn its id:
 
 ```text

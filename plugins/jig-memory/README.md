@@ -45,10 +45,10 @@ the agent said it would do before the next step ([Handoff](docs/handoff.md)).
 
 | Action | Kind | What it does |
 |---|---|---|
-| `save-evidence` | local write | Saves text the user pasted, such as a run's output, to `evidence/`, masked |
-| `add-check` | local write | Adds an open check: something to do before the next step |
-| `list-checks` | read | The open checks, and how many are closed |
-| `close-check` | local write | Closes a check by its number, with what was found or done |
+| `save_evidence` | local write | Saves text the user pasted, such as a run's output, to `evidence/`, masked |
+| `add_check` | local write | Adds an open check: something to do before the next step |
+| `list_checks` | read | The open checks, and how many are closed |
+| `close_check` | local write | Closes a check by its number, with what was found or done |
 
 ## Commands
 

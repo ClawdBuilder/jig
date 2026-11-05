@@ -8,6 +8,7 @@
 //   skills, preload, context, thinking   configuration's when it gives one, else the file's
 //
 // `policyOf` is the part the child enforces; the rest is read by the parent when it starts the child.
+import { canonicalAction } from "../../jig-core/src/kit/action-names.ts";
 import type { ActionMap, RolePolicy } from "../../jig-core/src/kit/role-policy.ts";
 import type { ContextMode, RoleSettings, SkillChoice } from "./config.ts";
 import type { Role } from "./roles.ts";
@@ -44,6 +45,14 @@ function replaced<T>(file: T | undefined, configured: T | undefined): { value: T
 }
 
 /** Both maps' tools; a tool in both keeps `join` of the two lists. */
+/** A map of actions with the 0.4.0 renames applied, so a role file or a setting that names the old one still works. */
+function canonicalMap(map: ActionMap | undefined): ActionMap | undefined {
+    if (map === undefined) return undefined;
+    return Object.fromEntries(
+        Object.entries(map).map(([tool, list]) => [tool, list.map((action) => canonicalAction(tool, action))]),
+    );
+}
+
 function combine(
     file: ActionMap | undefined,
     configured: ActionMap | undefined,
@@ -78,8 +87,8 @@ export const union = (fromFile: readonly string[], fromConfiguration: readonly s
 
 /** The role with configuration laid over it: narrower in what it may do, and with the reading replaced. */
 export function effectiveRole(role: Role, own: RoleSettings | undefined): Effective {
-    const actions = combine(role.actions, own?.actions, intersection);
-    const ask = combine(role.ask, own?.ask, union);
+    const actions = combine(canonicalMap(role.actions), canonicalMap(own?.actions), intersection);
+    const ask = combine(canonicalMap(role.ask), canonicalMap(own?.ask), union);
     const skills = replaced<SkillChoice>(role.skills, own?.skills);
     const preload = replaced<string[]>(role.preload, own?.preload);
     const context = replaced<ContextMode>(role.context, own?.context);

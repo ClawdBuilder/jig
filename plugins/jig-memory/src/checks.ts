@@ -100,7 +100,7 @@ export function addCheck(folder: string, key: string, text: string, now: Date): 
 export function closeCheck(folder: string, key: string, id: number, outcome: string, now: Date): Check {
     const checks = readChecks(folder, key);
     const found = checks.find((check) => check.id === id);
-    if (found === undefined) throw new CheckError(`no check #${id}; list-checks shows them`);
+    if (found === undefined) throw new CheckError(`no check #${id}; list_checks shows them`);
     if (found.status === "closed") throw new CheckError(`check #${id} is closed already`);
     const closed: Check = {
         ...found,
@@ -127,6 +127,6 @@ export function openChecksText(key: string, checks: readonly Check[]): string | 
     const are = checks.length === 1 ? "1 open check" : `${checks.length} open checks`;
     return (
         `[ticket ${key}] ${are}:\n${checkLines(checks)}\n` +
-        "Before you hand the user a command for the next step, close each check (ticket close-check) or say plainly that it is still open."
+        "Before you hand the user a command for the next step, close each check (ticket close_check) or say plainly that it is still open."
     );
 }

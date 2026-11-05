@@ -2,7 +2,7 @@
 // transport or sign-in service carries it like any other request and the key is read by jig-core at the moment it is sent. The
 // key is never in a message or an error, whatever the service or a transport says.
 //
-// Two uses: `/api refresh` fetches a collection and its environments (postman-cloud.ts), and the `postman-environments` action
+// Two uses: `/api refresh` fetches a collection and its environments (postman-cloud.ts), and the `postman_environments` action
 // lists the environments the key can see, by name and id only (`listEnvironments`). The list answer of the API carries no
 // variables, and only the name, id, owner and time of each environment are read from it.
 // API: https://learning.postman.com/api-docs/api-reference/environments/get-all-environments
@@ -134,7 +134,7 @@ export async function listEnvironments(
     const route =
         workspace === undefined ? "/environments" : `/environments?workspace=${encodeURIComponent(workspace)}`;
     const got = await fetchJson(config, name, route, deps, signal, {
-        request: "postman-environments",
+        request: "postman_environments",
         maxBytes: LIST_MAX_BYTES,
     });
     if (!got.ok) return got;

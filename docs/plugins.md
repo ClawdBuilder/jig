@@ -55,17 +55,17 @@ Each plugin's README has the full table of its tool's actions.
 - **`pr`:** `view`, `list`, `comments`, `create`, `edit`, `ready`, `comment`,
   `reply`, `resolve`, `review`, `merge`.
 - **`release`:** `tags`, `releases`, `tag_create`, `tag_push`, `release_create`.
-- **`workflow`** (`jig-workflow`): `list`, `status`, `start`, `bind`, `submit-plan`,
+- **`workflow`** (`jig-workflow`): `list`, `status`, `start`, `bind`, `submit_plan`,
   `test`, `scenario`, `advance`, `back`.
 - **`mongo`:** `databases`, `collections`, `schema`, `stats`, `indexes`,
-  `index-stats`, `explain`, `count`, `find`, `distinct`, `sample`, `aggregate`,
-  `insert`, `update`, `replace`, `delete`, `bulk`, `create-index`, `drop-index`.
+  `index_stats`, `explain`, `count`, `find`, `distinct`, `sample`, `aggregate`,
+  `insert`, `update`, `replace`, `delete`, `bulk`, `create_index`, `drop_index`.
 - **`jira`:** `get`, `search`, `comments`, `transitions`, `changelog`,
   `attachments`, `assignable`, `find_field`, `create`, `comment`,
   `edit_comment`, `delete_comment`, `transition`, `update`.
 - **`logs`:** one search, by phrase or query, with a time window, filters and
   paging.
-- **`api`:** `list`, `show`, `run`, `run-folder`, `call`.
+- **`api`:** `list`, `show`, `run`, `run_folder`, `call`.
 - **`ci`:** `status`, `runs`, `run`, `log`, `rerun`, `trigger`, `watch`.
 - **`deploy`:** `plan`, `run`, `status`, `rollback`, `watch`.
 - **`runtime`:** `pods`, `rollout`, `logs`, `events`, `health`.

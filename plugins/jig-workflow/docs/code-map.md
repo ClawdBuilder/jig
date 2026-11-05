@@ -30,7 +30,7 @@ gone, so this table cannot drift from the code.
 | `actions.ts` | Puts the action files back under one name | `tool.ts`, `commands.ts` |
 | `action-support.ts` | What every action shares: the parameters, the ticket, the started workflow, the stage text | the other `action-` files |
 | `action-start.ts` | `list`, `status`, `start` with its replace question, and `bind` | `actions.ts` |
-| `action-plan.ts` | `submit-plan` and its question, and `scenario` with its evidence | `actions.ts` |
+| `action-plan.ts` | `submit_plan` and its question, and `scenario` with its evidence | `actions.ts` |
 | `action-tests.ts` | `test`: what would run, the question outside a sandbox, and the run | `actions.ts` |
 | `action-stages.ts` | `advance` with its question, and `back` | `actions.ts` |
 

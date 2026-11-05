@@ -45,7 +45,7 @@ export const ACTIONS = {
     schema: { required: TARGET, optional: ["filter", "limit", "maxTimeMS"], effect: "read" },
     stats: { required: ["environment", "database"], optional: ["collection", "maxTimeMS"], effect: "read" },
     indexes: { required: TARGET, optional: ["maxTimeMS"], effect: "read" },
-    "index-stats": { required: TARGET, optional: ["maxTimeMS"], effect: "read" },
+    index_stats: { required: TARGET, optional: ["maxTimeMS"], effect: "read" },
     explain: {
         required: TARGET,
         optional: ["filter", "projection", "sort", "limit", "pipeline", "verbosity", "maxTimeMS"],
@@ -65,8 +65,8 @@ export const ACTIONS = {
     replace: { required: [...TARGET, "filter", "replacement"], optional: ["maxTimeMS"], effect: "write" },
     delete: { required: [...TARGET, "filter", "which"], optional: ["limit", "maxTimeMS"], effect: "write" },
     bulk: { required: [...TARGET, "operations"], optional: ["limit", "maxTimeMS"], effect: "write" },
-    "create-index": { required: [...TARGET, "keys"], optional: ["options", "maxTimeMS"], effect: "write" },
-    "drop-index": { required: [...TARGET, "name"], optional: ["maxTimeMS"], effect: "write" },
+    create_index: { required: [...TARGET, "keys"], optional: ["options", "maxTimeMS"], effect: "write" },
+    drop_index: { required: [...TARGET, "name"], optional: ["maxTimeMS"], effect: "write" },
 } as const satisfies Record<string, ActionSpec>;
 
 export type ActionName = keyof typeof ACTIONS;
@@ -161,11 +161,11 @@ export const parameters = Type.Object({
                 'bulk: operations such as {"updateOne": {"filter": {...}, "update": {...}}}, insertOne, updateMany, replaceOne, deleteOne, deleteMany',
         }),
     ),
-    keys: Type.Optional(json('create-index: the fields, such as {"status": 1, "createdAt": -1}')),
+    keys: Type.Optional(json('create_index: the fields, such as {"status": 1, "createdAt": -1}')),
     options: Type.Optional(
-        json("create-index: name, unique, sparse, expireAfterSeconds, partialFilterExpression, hidden"),
+        json("create_index: name, unique, sparse, expireAfterSeconds, partialFilterExpression, hidden"),
     ),
-    name: Type.Optional(Type.String({ description: "drop-index: the index name, from indexes" })),
+    name: Type.Optional(Type.String({ description: "drop_index: the index name, from indexes" })),
     verbosity: Type.Optional(
         stringEnum(["queryPlanner", "executionStats"], {
             description: "explain: executionStats (default) also runs the query",

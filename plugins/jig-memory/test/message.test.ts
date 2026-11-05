@@ -41,7 +41,7 @@ test("the reminder names the count, the notes file, what to update and today's d
 test("the reminder says how many checks are open", () => {
     assert.match(
         reminderText("ACME-1", "/n.md", "2026-11-02", 1),
-        /Today is 2026-11-02\. 1 check is still open \(ticket list-checks\)\.$/,
+        /Today is 2026-11-02\. 1 check is still open \(ticket list_checks\)\.$/,
     );
     assert.match(reminderText("ACME-1", "/n.md", "2026-11-02", 3), / 3 checks are still open /);
 });

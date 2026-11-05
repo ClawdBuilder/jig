@@ -23,12 +23,12 @@ to see whether the query used an index, and `update` to fix the test document, a
 | | `schema` | read | Field names and types, from a sample |
 | | `stats` | read | Sizes and counts of a collection or database |
 | Indexes | `indexes` | read | The indexes of a collection |
-| | `index-stats` | read | How often each index is used (`$indexStats`) |
+| | `index_stats` | read | How often each index is used (`$indexStats`) |
 | | `explain` | read | The plan of a query: which index, documents examined, time |
 | Query | `count`, `find`, `distinct`, `sample` | read | Documents, with filter, projection, sort and limit |
 | Aggregation | `aggregate` | read, or write | The full pipeline. With `$out` or `$merge` it is a write |
 | Write | `insert`, `update`, `replace`, `delete`, `bulk` | write | Changes documents. `update` and `delete` take `one` or `many` |
-| Index changes | `create-index`, `drop-index` | write | Changes indexes |
+| Index changes | `create_index`, `drop_index` | write | Changes indexes |
 
 Filters, documents and pipelines are Extended JSON, such as `{"$oid": "..."}`, and so are the results, so an `_id` from one
 call can be used in the next. A result that reaches its limit (1 to 2000, default 20) is marked "possibly partial".

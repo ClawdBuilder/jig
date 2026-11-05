@@ -29,7 +29,7 @@ describe("the class of each action", () => {
         { action: "schema", ...target },
         { action: "stats", database: "orders" },
         { action: "indexes", ...target },
-        { action: "index-stats", ...target },
+        { action: "index_stats", ...target },
         { action: "explain", ...target, filter: { status: "open" } },
         { action: "count", ...target },
         { action: "find", ...target, filter: { status: "open" } },
@@ -44,8 +44,8 @@ describe("the class of each action", () => {
         { action: "replace", ...target, filter: { a: 1 }, replacement: { a: 2 } },
         { action: "delete", ...target, filter: { a: 1 }, which: "many" },
         { action: "bulk", ...target, operations: [{ deleteOne: { filter: { a: 1 } } }] },
-        { action: "create-index", ...target, keys: { a: 1 } },
-        { action: "drop-index", ...target, name: "a_1" },
+        { action: "create_index", ...target, keys: { a: 1 } },
+        { action: "drop_index", ...target, name: "a_1" },
     ];
 
     test("reads are reads, in the environment the call names", () => {
@@ -102,8 +102,8 @@ describe("production is read-only, refused at classification through the kind of
         { action: "replace", ...target, filter: { status: "open" }, replacement: { status: "x" } },
         { action: "delete", ...target, filter: { status: "open" }, which: "one" },
         { action: "bulk", ...target, operations: [{ deleteOne: { filter: { status: "open" } } }] },
-        { action: "create-index", ...target, keys: { status: 1 } },
-        { action: "drop-index", ...target, name: "status_1" },
+        { action: "create_index", ...target, keys: { status: 1 } },
+        { action: "drop_index", ...target, name: "status_1" },
         { action: "aggregate", ...target, pipeline: [{ $match: { status: "open" } }, { $out: "orders" }] },
     ];
 
@@ -220,7 +220,7 @@ describe("input that is invalid blocks the call without asking", () => {
         await refused(
             {
                 environment: "staging",
-                action: "create-index",
+                action: "create_index",
                 database: "billing",
                 collection: "cards",
                 keys: { a: 1 },

@@ -140,6 +140,29 @@ describe("1. the tool's own declaration", () => {
     });
 });
 
+describe("an action renamed in 0.4.0", () => {
+    test("a classification rule that names the old action still matches, and the call gets the new one", () => {
+        const result = classify(
+            "api",
+            { action: "postman_environments" },
+            deps({
+                rules: [
+                    {
+                        tool: "api",
+                        action: "postman-environments",
+                        param: "action",
+                        value: "postman_environments",
+                        environment: "external",
+                        effect: "read",
+                    },
+                ],
+            }),
+        );
+        assert.equal(result.source, "rule");
+        assert.equal(result.action, "postman_environments");
+    });
+});
+
 describe("2. classification rules", () => {
     const rule = (extra: Partial<ClassifyRule> = {}): ClassifyRule => ({
         tool: "other_db",

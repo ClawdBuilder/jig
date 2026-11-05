@@ -13,12 +13,12 @@ both down in the ticket folder.
 
 | Action | Takes | What it does |
 |---|---|---|
-| `save-evidence` | `text`, `label` | Saves pasted text to `evidence/`, masked, with an index line |
-| `add-check` | `text` | Adds an open check of up to 200 characters |
-| `list-checks` | nothing | The open checks, and how many are closed |
-| `close-check` | `id`, `outcome` | Closes a check, with what was found or done, up to 200 characters |
+| `save_evidence` | `text`, `label` | Saves pasted text to `evidence/`, masked, with an index line |
+| `add_check` | `text` | Adds an open check of up to 200 characters |
+| `list_checks` | nothing | The open checks, and how many are closed |
+| `close_check` | `id`, `outcome` | Closes a check, with what was found or done, up to 200 characters |
 
-- **Every action is local.** `list-checks` reads; the others write the ticket
+- **Every action is local.** `list_checks` reads; the others write the ticket
   folder, which the rules allow by default ([Permissions](../../../docs/permissions.md)).
 - **Each needs an active ticket,** and says how to set one when there is none.
 - **Nothing is blocked.** The open checks are shown and the agent is asked to close
@@ -26,7 +26,7 @@ both down in the ticket folder.
 
 ## Pasted evidence
 
-`save-evidence` takes the text as the user pasted it and a label of 1 to 40
+`save_evidence` takes the text as the user pasted it and a label of 1 to 40
 letters, digits, spaces, `-` or `_`, such as `batch 3 output`.
 - **Masked like a production result.** The tool masks it through `jig-core`, since
   pasted output may hold customer data, whatever system it came from.

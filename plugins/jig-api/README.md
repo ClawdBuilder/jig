@@ -56,16 +56,16 @@ to their local copy and says what changed.
 | `list` | read | Saved requests by collection and folder, with method, address and variables |
 | `show` | read | One request in full: address, headers, body, where each variable gets its value |
 | `run` | depends on the request | Runs one saved request in an environment, with variables |
-| `run-folder` | the strictest of its requests | Runs a folder in order, stopping at the first failure |
+| `run_folder` | the strictest of its requests | Runs a folder in order, stopping at the first failure |
 | `call` | depends on the method | An ad-hoc request where you allowed it. Off by default, never production |
-| `postman-environments` | read | The names and ids of the Postman environments a key can see, never their values |
+| `postman_environments` | read | The names and ids of the Postman environments a key can see, never their values |
 
 - **`list`** can filter by text, and says whether each request reads.
 - **`run`:** `GET`, `HEAD` and `OPTIONS` read; other methods write, unless the
   request is in `reads` — and in production only those three methods read, so a
   `POST` search listed there is a write there and the floor denies it.
-- **`run-folder`** gives one line per request.
-- **`postman-environments`** uses a Postman cloud collection's key, to find the id to map
+- **`run_folder`** gives one line per request.
+- **`postman_environments`** uses a Postman cloud collection's key, to find the id to map
   ([Listing environments](docs/postman-cloud.md#listing-environments)).
 
 A request's name is its action, so a rule can name one request:
@@ -133,7 +133,7 @@ example of each source, is in [Configuration](docs/configuration.md).
 - **Collections with scripts,** run by their own CLI only in a test environment you
   opt into, with the output masked again.
 - **Asserts,** as declared in Bruno and Hurl files. Bruno's are read and shown
-  today; `run-folder` would report them.
+  today; `run_folder` would report them.
 - **The Postman CLI and `bru`,** so those tools sign in themselves. Not built: Jig
   never signs in (see [Decisions](../../docs/decisions.md)).
 

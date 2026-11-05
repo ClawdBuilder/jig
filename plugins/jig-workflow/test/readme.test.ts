@@ -51,8 +51,8 @@ describe("the README", () => {
         const kinds = Object.fromEntries(
             readme
                 .split("\n")
-                .filter((line) => /^\| `[a-z-]+` \| (read|local write)/.test(line))
-                .map((line) => [/`([a-z-]+)`/.exec(line)?.[1], /\| (read|local write)/.exec(line)?.[1]]),
+                .filter((line) => /^\| `[a-z0-9_-]+` \| (read|local write)/.test(line))
+                .map((line) => [/`([a-z0-9_-]+)`/.exec(line)?.[1], /\| (read|local write)/.exec(line)?.[1]]),
         );
         assert.deepEqual(
             Object.entries(kinds)
@@ -122,7 +122,7 @@ describe("the pages", () => {
 
     test("holds.md lists the calls that always ask, and the tool asks for each", () => {
         const page = read("docs/holds.md");
-        for (const call of ["workflow submit-plan", "workflow advance", "workflow start", "workflow test"]) {
+        for (const call of ["workflow submit_plan", "workflow advance", "workflow start", "workflow test"]) {
             assert.match(page, new RegExp(`\`${call}`), call);
         }
     });

@@ -45,7 +45,7 @@ location: /v1/orders/42
 
 ## A folder
 
-`run-folder` returns one line per request, in order, and stops at the first request that does not answer 2xx or that gets no answer.
+`run_folder` returns one line per request, in order, and stops at the first request that does not answer 2xx or that gets no answer.
 The requests after it are `skipped`. The failed request follows in full, as `run` would show it.
 
 ```text

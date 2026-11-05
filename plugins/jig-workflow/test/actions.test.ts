@@ -380,7 +380,7 @@ describe("scenario", () => {
         const w = await started(t);
         w.writePlan(PLAN);
         const result = await w.call({ action: "scenario", number: 1, result: "fail" });
-        assert.match(result.text, /the plan is not approved as it stands: run workflow submit-plan first/);
+        assert.match(result.text, /the plan is not approved as it stands: run workflow submit_plan first/);
     });
 
     test("a pass with what was observed", async (t) => {

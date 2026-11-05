@@ -18,13 +18,13 @@ import { labelProblem, PASTED_LIMIT, pastedProblem, savePasted } from "./evidenc
 export const TOOL_NAME = "ticket";
 
 const ACTIONS = {
-    "save-evidence": {
+    save_evidence: {
         summary: "save text the user pasted, such as a run's output, to evidence/",
         required: ["text", "label"],
     },
-    "add-check": { summary: "add an open check: something to do before the next step", required: ["text"] },
-    "list-checks": { summary: "the open checks", required: [] },
-    "close-check": { summary: "close a check, saying what was found or done", required: ["id", "outcome"] },
+    add_check: { summary: "add an open check: something to do before the next step", required: ["text"] },
+    list_checks: { summary: "the open checks", required: [] },
+    close_check: { summary: "close a check, saying what was found or done", required: ["id", "outcome"] },
 } as const satisfies Record<string, { summary: string; required: readonly string[] }>;
 
 type ActionName = keyof typeof ACTIONS;
@@ -40,16 +40,16 @@ const parameters = Type.Object(
         }),
         text: Type.Optional(
             Type.String({
-                description: `save-evidence: the pasted text as the user gave it, at most ${PASTED_LIMIT} bytes. add-check: the check, at most ${CHECK_TEXT_LIMIT} characters.`,
+                description: `save_evidence: the pasted text as the user gave it, at most ${PASTED_LIMIT} bytes. add_check: the check, at most ${CHECK_TEXT_LIMIT} characters.`,
             }),
         ),
         label: Type.Optional(
-            Type.String({ maxLength: 40, description: "save-evidence: a few words, such as batch-3-output." }),
+            Type.String({ maxLength: 40, description: "save_evidence: a few words, such as batch-3-output." }),
         ),
-        id: Type.Optional(Type.Integer({ minimum: 1, description: "close-check: the check's number." })),
+        id: Type.Optional(Type.Integer({ minimum: 1, description: "close_check: the check's number." })),
         outcome: Type.Optional(
             Type.String({
-                description: `close-check: what was found or done, at most ${CHECK_TEXT_LIMIT} characters.`,
+                description: `close_check: what was found or done, at most ${CHECK_TEXT_LIMIT} characters.`,
             }),
         ),
     },
@@ -58,8 +58,8 @@ const parameters = Type.Object(
 
 const DESCRIPTION = [
     "The handoff record of the active ticket.",
-    "save-evidence keeps text the user pasted (the output of a run they did) in the ticket's evidence, masked.",
-    "add-check records something you said you would do before the next step; it is shown with every prompt until close-check.",
+    "save_evidence keeps text the user pasted (the output of a run they did) in the ticket's evidence, masked.",
+    "add_check records something you said you would do before the next step; it is shown with every prompt until close_check.",
     "Before you hand the user a command for the next step, close each open check or say plainly that it is still open.",
 ].join(" ");
 
@@ -83,17 +83,17 @@ export function checkInput(input: Readonly<Record<string, unknown>>): ActionName
     for (const key of ["text", "label", "outcome"]) {
         if (input[key] !== undefined && typeof input[key] !== "string") throw new InputError(`${key} must be text`);
     }
-    if (name === "save-evidence") {
+    if (name === "save_evidence") {
         const problem = labelProblem(input.label as string) ?? pastedProblem(input.text as string);
         if (problem !== undefined) throw new InputError(problem);
     }
     return name;
 }
 
-/** Every action acts on the ticket folder on this machine. Only list-checks reads. */
+/** Every action acts on the ticket folder on this machine. Only list_checks reads. */
 export function classify(input: Readonly<Record<string, unknown>>): CallClass {
     const action = checkInput(input);
-    return { action, environment: "local", effect: action === "list-checks" ? "read" : "write" };
+    return { action, environment: "local", effect: action === "list_checks" ? "read" : "write" };
 }
 
 export const declaration: ToolDeclaration = { tool: TOOL_NAME, plugin: "jig-memory", classify };
@@ -115,7 +115,7 @@ export function ticketTool(host: TicketHost): ToolDefinition<typeof parameters> 
         label: "Ticket",
         description: DESCRIPTION,
         promptSnippet:
-            "ticket: save pasted output as evidence (save-evidence); track open checks (add-check, list-checks, close-check)",
+            "ticket: save pasted output as evidence (save_evidence); track open checks (add_check, list_checks, close_check)",
         parameters,
         executionMode: "sequential",
         async execute(_toolCallId, params) {
@@ -125,22 +125,22 @@ export function ticketTool(host: TicketHost): ToolDefinition<typeof parameters> 
             if (ticket === undefined) throw new Error("No active ticket: /ticket KEY makes one active.");
             const { folder, key } = ticket;
             const now = host.now();
-            if (action === "save-evidence") {
+            if (action === "save_evidence") {
                 // Masked here, as a production result is; jig-core removes secrets from the result next, and finishPasted
                 // saves what is left. The pasted text may hold anything, so it is always masked, whatever it came from.
                 const masked = jig().mask.text(input.text as string);
                 return text(masked, { action, key, label: input.label, pending: true });
             }
-            if (action === "add-check") {
+            if (action === "add_check") {
                 const check = addCheck(folder, key, input.text as string, now);
                 const open = openChecks(folder, key).length;
                 return text(
                     `Check #${check.id} added to ${key} (${open} open). It is shown with every prompt until you close it with ` +
-                        "close-check. Before you hand the user a command for the next step, close it or say plainly that it is still open.",
+                        "close_check. Before you hand the user a command for the next step, close it or say plainly that it is still open.",
                     { action, key, id: check.id, open },
                 );
             }
-            if (action === "close-check") {
+            if (action === "close_check") {
                 const closed = closeCheck(folder, key, input.id as number, input.outcome as string, now);
                 const open = openChecks(folder, key);
                 const left = open.length === 0 ? "No check is open." : `Still open:\n${checkLines(open)}`;
@@ -171,7 +171,7 @@ export interface ResultEvent {
 }
 
 /**
- * For a `save-evidence` result: saves the text as jig-core left it, masked and without secrets, and gives the model the
+ * For a `save_evidence` result: saves the text as jig-core left it, masked and without secrets, and gives the model the
  * file's name instead of the text it already has. Undefined for any other result.
  */
 export function finishPasted(
@@ -198,13 +198,13 @@ export function finishPasted(
                     text: `Saved the pasted text (${bytes} bytes, masked, secrets removed) to ${key}'s evidence/${name}, and a line in evidence/index.md.`,
                 },
             ],
-            details: { action: "save-evidence", key, file: `evidence/${name}` },
+            details: { action: "save_evidence", key, file: `evidence/${name}` },
         };
     } catch (error) {
         const why = (error instanceof Error ? error.message : String(error)).split("\n")[0] ?? "";
         return {
             content: [{ type: "text", text: `Could not save the pasted text for ${key}: ${why}. Nothing was saved.` }],
-            details: { action: "save-evidence", key },
+            details: { action: "save_evidence", key },
             isError: true,
         };
     }

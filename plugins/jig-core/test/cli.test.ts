@@ -143,6 +143,18 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
     });
 
+    test("a rule that still names an old action is a warning in the terminal doctor too", async () => {
+        settingsWith();
+        writeFileSync(
+            path.join(agent, "jig.json"),
+            JSON.stringify({ rules: [{ tool: "api", action: "run-folder", decision: "ask" }] }),
+        );
+        const result = await run(["doctor"]);
+        assert.match(result.stdout, /Rule action run-folder is now run_folder/);
+        assert.match(result.stdout, /still applies through 0\.4\.x/);
+        assert.match(result.stdout, /stop applying in 0\.5\.0/);
+    });
+
     test("--json prints the report and keeps the exit code", async () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--json"]);

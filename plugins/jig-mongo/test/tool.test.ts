@@ -237,7 +237,7 @@ describe("the tool", () => {
             "schema",
             "stats",
             "indexes",
-            "index-stats",
+            "index_stats",
             "explain",
             "count",
             "find",
@@ -249,8 +249,8 @@ describe("the tool", () => {
             "replace",
             "delete",
             "bulk",
-            "create-index",
-            "drop-index",
+            "create_index",
+            "drop_index",
         ]) {
             assert.ok(action.enum.includes(name), name);
         }

@@ -20,13 +20,13 @@ While a ticket is active, its folder holds `notes.md`, `evidence/` and `checks.j
 
 ## Output the user pasted
 
-When the user ran something themselves and pasted its output, save it before you use it: `ticket save-evidence` with `text` (the output as pasted) and a short `label` such as `batch-3-output`. It is masked and saved in `evidence/`, with a line in `evidence/index.md`. Text over 48 KB is refused: save it in parts, each with its own label.
+When the user ran something themselves and pasted its output, save it before you use it: `ticket save_evidence` with `text` (the output as pasted) and a short `label` such as `batch-3-output`. It is masked and saved in `evidence/`, with a line in `evidence/index.md`. Text over 48 KB is refused: save it in parts, each with its own label.
 
 ## Open checks
 
-- When you say you will check something before the next step ("re-derive the locations before the next batch"), record it at once: `ticket add-check` with `text`.
-- Every prompt carries the open checks until they are closed. `ticket list-checks` shows them.
-- Before you hand the user a command for the next step, close each open check with `ticket close-check` (`id`, and `outcome`: what you found or did), or say plainly that it is still open and why. Never hand over the next command in the same message that promises a check you have not done.
+- When you say you will check something before the next step ("re-derive the locations before the next batch"), record it at once: `ticket add_check` with `text`.
+- Every prompt carries the open checks until they are closed. `ticket list_checks` shows them.
+- Before you hand the user a command for the next step, close each open check with `ticket close_check` (`id`, and `outcome`: what you found or did), or say plainly that it is still open and why. Never hand over the next command in the same message that promises a check you have not done.
 
 ## Empty files
 

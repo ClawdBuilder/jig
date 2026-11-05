@@ -9,6 +9,7 @@
 import type { ToolAnnotations, ToolInfo } from "@earendil-works/pi-coding-agent";
 import type { ApprovalKind, CallClass, ClassifyRule, Effect, EnvironmentName, ToolDeclaration } from "./contract.ts";
 import { errorMessage, InvalidInputError } from "./errors.ts";
+import { canonicalAction } from "./kit/action-names.ts";
 
 /** Which source gave the answer. `/jig rules` shows it. */
 export type ClassSource = "declaration" | "rule" | "builtin" | "hint" | "unknown";
@@ -93,7 +94,7 @@ export function classify(tool: string, input: Readonly<Record<string, unknown>>,
             return {
                 environment: rule.environment,
                 effect: rule.effect,
-                ...(rule.action === undefined ? {} : { action: rule.action }),
+                ...(rule.action === undefined ? {} : { action: canonicalAction(tool, rule.action) }),
                 source: "rule",
             };
         }
@@ -127,7 +128,7 @@ function isValidClass(answer: CallClass): boolean {
 function classifyRuleMatches(rule: ClassifyRule, tool: string, input: Readonly<Record<string, unknown>>): boolean {
     if (!matchesName(rule.tool, tool)) return false;
     // Tools with several operations take an `action` parameter by convention; a rule can name one of them.
-    if (rule.action !== undefined && input.action !== rule.action) return false;
+    if (rule.action !== undefined && input.action !== canonicalAction(tool, rule.action)) return false;
     const seen = input[rule.param];
     if (typeof seen !== "string" && typeof seen !== "number" && typeof seen !== "boolean") return false;
     const value = String(seen);

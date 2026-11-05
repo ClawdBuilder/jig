@@ -14,6 +14,23 @@ const role = (lines: string[] = [], name = "scout"): Role =>
         name,
     );
 
+describe("an action renamed in 0.4.0", () => {
+    test("a role file or a setting that names the old action still narrows the child the same way", () => {
+        const text = (lines: string): Role =>
+            parseRole(
+                `---\ndescription: d\ntools: read, workflow\nwrites: false\n${lines}\n---\nYou do the work.\n`,
+                "/roles/planner.md",
+                "planner",
+            );
+        const e = effectiveRole(text("actions: workflow submit-plan|back"), {
+            actions: { workflow: ["submit_plan", "back"] },
+        });
+        assert.deepEqual(e.actions, { workflow: ["submit_plan", "back"] });
+        const asked = effectiveRole(text("ask: workflow submit-plan"), undefined);
+        assert.deepEqual(policyOf(asked).ask, { workflow: ["submit_plan"] });
+    });
+});
+
 describe("actions: configuration narrows the file's, and cannot add to them", () => {
     test("a tool in both keeps the actions both list", () => {
         const e = effectiveRole(role(["actions: git status|log|diff|show"]), {

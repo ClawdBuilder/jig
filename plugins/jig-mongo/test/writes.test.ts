@@ -130,7 +130,7 @@ describe("changed since the preview", () => {
                 () => void (h.backend.answers.count = 8),
             ],
             [
-                { action: "create-index", ...target, keys: { a: 1 } },
+                { action: "create_index", ...target, keys: { a: 1 } },
                 () =>
                     void (h.backend.answers.indexes = [
                         { name: "_id_", key: { _id: 1 } },
@@ -138,7 +138,7 @@ describe("changed since the preview", () => {
                     ]),
             ],
             [
-                { action: "drop-index", ...target, name: "status_1" },
+                { action: "drop_index", ...target, name: "status_1" },
                 () =>
                     void (h.backend.answers.indexes = [
                         { name: "_id_", key: { _id: 1 } },
@@ -356,14 +356,14 @@ describe("each write", () => {
         assert.match(tooMany.blocked ?? "", /bulk takes 1 to 100 operations/);
     });
 
-    test("create-index: the preview lists the indexes there are, and the index is made with its options", async () => {
+    test("create_index: the preview lists the indexes there are, and the index is made with its options", async () => {
         const result = await h.call({
-            action: "create-index",
+            action: "create_index",
             ...target,
             keys: { status: 1, createdAt: -1 },
             options: { unique: true, name: "by_status" },
         });
-        assert.equal(ok(result), "mongo create-index staging orders.orders: created the index status_1_createdAt_-1");
+        assert.equal(ok(result), "mongo create_index staging orders.orders: created the index status_1_createdAt_-1");
         assert.deepEqual(h.backend.of("createIndex")[0]?.query, {
             db: "orders",
             coll: "orders",
@@ -375,7 +375,7 @@ describe("each write", () => {
         assert.equal(result.preview?.summary, "create an index on orders.orders (staging)");
     });
 
-    test("create-index: keys and options are checked", async () => {
+    test("create_index: keys and options are checked", async () => {
         const bad: Array<[Record<string, unknown>, RegExp]> = [
             [{ keys: {} }, /keys takes 1 to 32 fields/],
             [{ keys: { a: 2 } }, /must be 1, -1/],
@@ -389,13 +389,13 @@ describe("each write", () => {
         ];
         for (const [extra, pattern] of bad)
             assert.match(
-                (await h.call({ action: "create-index", ...target, ...extra })).blocked ?? "",
+                (await h.call({ action: "create_index", ...target, ...extra })).blocked ?? "",
                 pattern,
                 JSON.stringify(extra),
             );
         ok(
             await h.call({
-                action: "create-index",
+                action: "create_index",
                 ...target,
                 keys: { a: 1 },
                 options: { partialFilterExpression: { status: "open" }, sparse: true, hidden: false },
@@ -403,20 +403,20 @@ describe("each write", () => {
         );
     });
 
-    test("drop-index: the index must exist, its definition is in the preview, and _id_ cannot go", async () => {
-        const result = await h.call({ action: "drop-index", ...target, name: "status_1" });
-        assert.equal(ok(result), "mongo drop-index staging orders.orders: dropped the index status_1");
+    test("drop_index: the index must exist, its definition is in the preview, and _id_ cannot go", async () => {
+        const result = await h.call({ action: "drop_index", ...target, name: "status_1" });
+        assert.equal(ok(result), "mongo drop_index staging orders.orders: dropped the index status_1");
         assert.deepEqual(h.backend.of("dropIndex")[0]?.query, { db: "orders", coll: "orders", name: "status_1" });
         assert.match(result.preview?.body ?? "", /Index:\n\{\n {2}"name": "status_1",\n {2}"key": \{\n {4}"status": 1/);
         assert.match(
-            (await h.call({ action: "drop-index", ...target, name: "nope_1" })).blocked ?? "",
+            (await h.call({ action: "drop_index", ...target, name: "nope_1" })).blocked ?? "",
             /there is no index named nope_1 \(indexes lists them\)/,
         );
         assert.match(
-            (await h.call({ action: "drop-index", ...target, name: "_id_" })).blocked ?? "",
+            (await h.call({ action: "drop_index", ...target, name: "_id_" })).blocked ?? "",
             /the _id index cannot be dropped/,
         );
-        assert.match((await h.call({ action: "drop-index", ...target, name: "*" })).blocked ?? "", /one index/);
+        assert.match((await h.call({ action: "drop_index", ...target, name: "*" })).blocked ?? "", /one index/);
         assert.equal(h.backend.of("dropIndex").length, 1);
     });
 });
@@ -578,10 +578,10 @@ describe("a reply that is lost is never answered by sending again", () => {
             /Read once per operation to check: operation 1: 2 documents match now \(2 documents before\)\./,
         );
         h.backend.answers.createIndex = lost;
-        const created = await h.call({ action: "create-index", ...target, keys: { a: 1 } });
+        const created = await h.call({ action: "create_index", ...target, keys: { a: 1 } });
         assert.match(created.error?.message ?? "", /Read once to check: the indexes are now _id_, status_1\./);
         h.backend.answers.dropIndex = lost;
-        const dropped = await h.call({ action: "drop-index", ...target, name: "status_1" });
+        const dropped = await h.call({ action: "drop_index", ...target, name: "status_1" });
         assert.match(dropped.error?.message ?? "", /Read once to check: the index status_1 still exists\./);
         h.backend.answers.aggregate = (query: any) => {
             if (query.pipeline.some((stage: any) => "$out" in stage)) throw driverError("MongoNetworkError");

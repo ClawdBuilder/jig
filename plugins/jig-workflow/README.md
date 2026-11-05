@@ -67,7 +67,7 @@ A fixed list, checked by the plugin itself, so a file never runs code. Each is d
 | `status` | read | The stage, what each exit condition still needs, the holds in force; without a ticket, all active work |
 | `start` | local write | Starts a workflow for a ticket; replacing one needs `replace` and asks you |
 | `bind` | local write | A worktree for a repository on the work's branch, added to the ticket's repositories |
-| `submit-plan` | local write, asks | Checks `plan.md` and shows it for your approval, with a fingerprint |
+| `submit_plan` | local write, asks | Checks `plan.md` and shows it for your approval, with a fingerprint |
 | `test` | local write | Runs a bound repository's tests at HEAD, in the sandbox, and records the result |
 | `scenario` | local write | Records pass or fail for one numbered scenario; a pass needs evidence |
 | `advance` | local write | Moves one stage when every exit condition holds, or lists what is missing |

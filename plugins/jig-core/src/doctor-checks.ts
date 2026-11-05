@@ -8,6 +8,7 @@ import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
 import { installLocation, meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
+import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionState } from "./section-state.ts";
 import { shorten } from "./secret-status.ts";
@@ -219,6 +220,22 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             title: "This folder's Pi packages",
             detail: context.projectSkipped.detail,
             fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
+        });
+    }
+
+    for (const [index, renamed] of renamedInRules([
+        ...context.personal.config.rules,
+        ...context.personal.config.classify,
+    ]).entries()) {
+        lines.push({
+            id: `config.renamed.${index}`,
+            group: "config",
+            level: "warn",
+            title: `Rule action ${renamed.from} is now ${renamed.to}`,
+            detail:
+                "A rule in your settings names the action's old, hyphenated name. It still applies through 0.4.x, and it will " +
+                "stop applying in 0.5.0.",
+            fix: `Change ${renamed.from} to ${renamed.to} where it appears in your Jig settings.`,
         });
     }
 

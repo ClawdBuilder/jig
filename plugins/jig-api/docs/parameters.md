@@ -9,7 +9,7 @@ One flat object, with `action` choosing what to do:
 | `list` | | `collection`, `folder`, `text` |
 | `show` | `request` | `collection`, `folder`, `environment` |
 | `run` | `request`, `environment` | `collection`, `folder`, `variables`, `timeoutSec` |
-| `run-folder` | `folder`, `environment` | `collection`, `variables`, `timeoutSec` |
+| `run_folder` | `folder`, `environment` | `collection`, `variables`, `timeoutSec` |
 | `call` | `environment`, `method`, `url` | `collection`, `body`, `headers`, `timeoutSec` |
 
 A call with a missing or an unused parameter is refused with the usage line, such as
@@ -27,7 +27,7 @@ A call with a missing or an unused parameter is refused with the usage line, suc
 - **`folder`** is a folder path, `Orders` or `Orders/Smoke`, with every request below it. For a `.http` collection the last part
   is the file: `smoke/health.http`. An unknown folder is refused with the folders there are.
 - **`environment`** is the collection's own name for it, such as `Staging`. An unknown one is refused with the ones the collection
-  has. `run-folder` runs every request of the folder in that environment.
+  has. `run_folder` runs every request of the folder in that environment.
 - **`text`** keeps the requests whose folder, name or address holds it, ignoring case.
 
 The reasons are cut at about 200 characters when `jig-core` shows them, so a list of choices lists the first few.
@@ -35,7 +35,7 @@ The reasons are cut at about 200 characters when `jig-core` shows them, so a lis
 ## `variables`
 
 An object of name to value, for the variables the request uses. Values are text, numbers or booleans. See
-[Variables](variables.md) for what is refused and how a value is written. For `run-folder` the values are for the whole folder:
+[Variables](variables.md) for what is refused and how a value is written. For `run_folder` the values are for the whole folder:
 each request gets the ones it uses, and a value that no request of the folder uses is refused.
 
 ## `call`

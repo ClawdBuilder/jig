@@ -192,8 +192,8 @@ describe("indexes", () => {
         assert.match(lines(listed)[0] as string, /: 1 index; 2 indexes on fields/);
     });
 
-    test("index-stats: how often each index is used", async () => {
-        const rendered = await run({ action: "index-stats" });
+    test("index_stats: how often each index is used", async () => {
+        const rendered = await run({ action: "index_stats" });
         assert.equal(backend.calls[0]?.method, "indexStats");
         assert.deepEqual(docsOf(rendered), [
             { name: "status_1", key: { status: 1 }, accesses: { ops: 12, since: "2026-01-01T00:00:00Z" } },

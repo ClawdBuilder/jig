@@ -244,7 +244,7 @@ for (const format of ["yaml", "bru"] as const) {
 
         test("a folder runs in Bruno's order, one line per request", async () => {
             const text = ok(
-                await h.call({ action: "run-folder", folder: "Smoke", collection: "acme", environment: "Staging" }),
+                await h.call({ action: "run_folder", folder: "Smoke", collection: "acme", environment: "Staging" }),
             );
             assert.match(
                 text,
@@ -256,7 +256,7 @@ for (const format of ["yaml", "bru"] as const) {
 
         test("a folder with one refused request is refused as a whole", async () => {
             const result = await h.call({
-                action: "run-folder",
+                action: "run_folder",
                 folder: "Admin",
                 collection: "acme",
                 environment: "Staging",

@@ -29,11 +29,11 @@ async function started(t: Parameters<typeof world>[0], options: Parameters<typeo
     return w;
 }
 
-describe("submit-plan", () => {
+describe("submit_plan", () => {
     test("asks, shows the plan with its fingerprint, and records the approval of that exact text", async (t) => {
         const w = await started(t);
         w.writePlan(PLAN);
-        const result = await w.call({ action: "submit-plan" });
+        const result = await w.call({ action: "submit_plan" });
         assert.equal(result.isError, false, result.text);
         assert.match(result.text, /The user approved the plan for PROJ-1: 2 scenarios, fingerprint [0-9a-f]{12}/);
         assert.equal(w.asked.length, 1);
@@ -41,7 +41,7 @@ describe("submit-plan", () => {
             w.asked[0]?.title ?? "",
             /Approve the plan for PROJ-1: 2 scenarios, repositories orders-api \(fingerprint [0-9a-f]{12}\)/,
         );
-        assert.match(w.asked[0]?.title ?? "", /Asked by workflow: workflow submit-plan always asks/);
+        assert.match(w.asked[0]?.title ?? "", /Asked by workflow: workflow submit_plan always asks/);
         assert.deepEqual(w.asked[0]?.options, ["Approve this plan", "Allow for this session", "Not yet"]);
         assert.equal(w.state()?.plan.scenarios, 2);
         // Then the hold on writing is released.
@@ -53,7 +53,7 @@ describe("submit-plan", () => {
         w.core.api.config.addRules([{ tool: "workflow", decision: "allow" }]);
         w.writePlan(PLAN);
         w.answers.push(1, 0, 0);
-        for (let n = 0; n < 3; n++) assert.equal((await w.call({ action: "submit-plan" })).isError, false);
+        for (let n = 0; n < 3; n++) assert.equal((await w.call({ action: "submit_plan" })).isError, false);
         assert.equal(w.asked.length, 3, "asked every time");
     });
 
@@ -61,7 +61,7 @@ describe("submit-plan", () => {
         const w = await started(t);
         w.writePlan(PLAN);
         w.answers.push("decline");
-        const result = await w.call({ action: "submit-plan" });
+        const result = await w.call({ action: "submit_plan" });
         assert.equal(result.blocked, true);
         assert.match(result.reason ?? "", /the user declined this call/);
         assert.equal(w.state()?.plan, undefined);
@@ -71,7 +71,7 @@ describe("submit-plan", () => {
         const w = await started(t);
         w.writePlan(PLAN);
         w.beforeAnswer = () => writeFileSync(path.join(w.ticketDir(), "plan.md"), `${PLAN}\n3. A late scenario.\n`);
-        const result = await w.call({ action: "submit-plan" });
+        const result = await w.call({ action: "submit_plan" });
         assert.equal(result.isError, true);
         assert.match(result.text, /plan.md changed since the preview the user approved: nothing was recorded/);
         assert.equal(w.state()?.plan, undefined);
@@ -80,7 +80,7 @@ describe("submit-plan", () => {
     test("a plan that fails the check is refused with the problems, and nobody is asked", async (t) => {
         const w = await started(t);
         w.writePlan("## Approach\nx\n");
-        const result = await w.call({ action: "submit-plan" });
+        const result = await w.call({ action: "submit_plan" });
         assert.equal(result.blocked, true);
         assert.match(result.reason ?? "", /plan.md cannot be submitted yet:/);
         assert.match(result.reason ?? "", /## Repositories: add the heading/);
@@ -90,16 +90,16 @@ describe("submit-plan", () => {
 
     test("a missing plan, and a ticket with no workflow, are refused without asking", async (t) => {
         const w = await started(t);
-        assert.match((await w.call({ action: "submit-plan" })).reason ?? "", /plan.md is empty or missing/);
+        assert.match((await w.call({ action: "submit_plan" })).reason ?? "", /plan.md is empty or missing/);
         w.activate("PROJ-2");
-        assert.match((await w.call({ action: "submit-plan" })).reason ?? "", /PROJ-2 has no workflow/);
+        assert.match((await w.call({ action: "submit_plan" })).reason ?? "", /PROJ-2 has no workflow/);
         assert.equal(w.asked.length, 0);
     });
 
     test("with no screen to ask on, it is denied, never approved", async (t) => {
         const w = await started(t, { ui: false });
         w.writePlan(PLAN);
-        const result = await w.call({ action: "submit-plan" });
+        const result = await w.call({ action: "submit_plan" });
         assert.equal(result.blocked, true);
         assert.match(result.reason ?? "", /there is no screen to ask on/);
         assert.equal(w.state()?.plan, undefined);
@@ -108,7 +108,7 @@ describe("submit-plan", () => {
     test("a repository the plan does not name is noticed in the question", async (t) => {
         const w = await started(t);
         w.writePlan(PLAN.replace("orders-api", "billing-api"));
-        await w.call({ action: "submit-plan" });
+        await w.call({ action: "submit_plan" });
         assert.equal(w.asked.length, 1);
         // The review screen shows the body; the selector shows its first lines, with the notice at the top.
         assert.match(w.asked[0]?.title ?? "", /Noticed: the plan does not name orders-api/);
