@@ -61,10 +61,11 @@ A weekly run tries the newest Pi too, so a release that breaks Jig is seen early
 says what that covers and which names Jig keeps stable for company plugins.
 
 ```bash
-pi install git:github.com/Dev-Mriganka/jig
+pi install npm:@dev-mriganka/jig
 ```
 
-That follows `main`. To pin a release instead, add its tag: `pi install git:github.com/Dev-Mriganka/jig@v0.3.0`.
+To pin a release, name it: `pi install npm:@dev-mriganka/jig@0.4.0`. From an unreleased checkout the `git:` form still
+works: `pi install git:github.com/Dev-Mriganka/jig`.
 Pi keeps a tag or a commit pinned and never moves it. [Releases](docs/releases.md) says what a version means
 and how one is cut.
 
@@ -75,8 +76,8 @@ and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
 For the setup questions themselves, run `jig setup` in a terminal, outside Pi: no Pi session, model or provider login
 is needed. `jig doctor` there prints the same report as `/jig doctor` and exits non-zero when something failed.
 `pi install` copies a package but does not link programs, so get the command with
-`npm install -g --allow-git=root github:Dev-Mriganka/jig` (npm 12 turns git and remote installs off, so `--allow-git=root`
-is needed; from a checkout, `npm install -g --install-links .`). Add `#v0.4.0` to pin a release.
+`npm install -g @dev-mriganka/jig`. Add `@0.4.0` to pin a release; from a checkout,
+`npm install -g --install-links .` does the same.
 [Setup and doctor](docs/setup-and-doctor.md) has the exit codes and the PATH notes.
 
 To load only some plugins, filter the package in Pi's settings. Name each plugin by
@@ -88,7 +89,7 @@ needs it:
 {
   "packages": [
     {
-      "source": "git:github.com/Dev-Mriganka/jig",
+      "source": "npm:@dev-mriganka/jig",
       "extensions": [
         "plugins/jig-core/index.ts",
         "plugins/jig-sandbox/index.ts",

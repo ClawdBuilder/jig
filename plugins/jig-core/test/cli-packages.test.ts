@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { readFileSync } from "node:fs";
 import { gitFolder, parseGitSource, parseNpmSource, readPackages } from "../src/cli/packages.ts";
-import { installLocation } from "../src/pi-version.ts";
+import { installLocation, npmInstall } from "../src/pi-version.ts";
 
 let root: string;
 let agent: string;
@@ -144,11 +144,24 @@ describe("the packages Pi lists", () => {
 describe("the package manifest", () => {
     const root = path.resolve(import.meta.dirname, "../../..");
     const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as {
+        name: string;
+        private?: boolean;
+        publishConfig?: { access?: string };
+        files?: string[];
         peerDependencies: Record<string, string>;
         peerDependenciesMeta: Record<string, { optional?: boolean }>;
         devDependencies: Record<string, string>;
         repository?: unknown;
     };
+
+    test("it is the scoped npm package, publishable, with a files allowlist", () => {
+        assert.equal(pkg.name, "@dev-mriganka/jig");
+        assert.equal(pkg.private, undefined);
+        assert.equal(pkg.publishConfig?.access, "public");
+        assert.ok((pkg.files ?? []).includes("bin/"));
+        assert.ok((pkg.files ?? []).includes("plugins/*/src/"));
+        assert.equal(npmInstall(pkg.name), "npm:@dev-mriganka/jig");
+    });
 
     test("Pi's four packages are optional peers, and exact dev dependencies", () => {
         for (const name of [

@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -68,3 +69,12 @@ jobs:
           else
             gh release create "${TAG}" --title "${TAG}" --notes-file "${notes}" "${latest[@]}"
           fi
+
+      # The same tag is the npm release. A manual run writes a page for an older tag; it does not publish that tag's code.
+      - name: Publish to npm
+        if: github.event_name == 'push'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
+          npm publish --provenance --access public

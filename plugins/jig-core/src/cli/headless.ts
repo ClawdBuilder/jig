@@ -168,13 +168,17 @@ export async function loadHeadless(
             problem: `Pi's settings there could not be read: ${settingsProblem.problem}`,
         });
     }
+    // The package's name is scoped now; a Jig installed before that is a `git:` package or a folder named `jig`.
+    const bareName = own.name?.split("/").at(-1);
+    const isOwnName = (candidate: string | undefined): boolean =>
+        candidate !== undefined && (candidate === own.name || candidate === bareName);
     const looksLikeJig = (entry: ListedPackage): boolean => {
         if (own.name === undefined) return false;
         const npm = parseNpmSource(entry.source);
         if (npm !== undefined) return npm.name === own.name;
         const git = parseGitSource(entry.source);
-        if (git !== undefined) return git.path.split("/").at(-1) === own.name;
-        return entry.folder !== undefined && path.basename(entry.folder) === own.name;
+        if (git !== undefined) return isOwnName(git.path.split("/").at(-1));
+        return entry.folder !== undefined && isOwnName(path.basename(entry.folder));
     };
     const jigListedButMissing = installed.listed.find((entry) => entry.problem !== undefined && looksLikeJig(entry));
     const jigSkippedUntrusted = skippedProject.some((entry) => looksLikeJig(entry));
@@ -189,9 +193,11 @@ export async function loadHeadless(
             continue;
         }
         const manifest = manifestOf(entry.folder);
-        if (own.name !== undefined && manifest?.name === own.name) {
+        const npmSource = parseNpmSource(entry.source);
+        const match = manifest?.name;
+        if (own.name !== undefined && isOwnName(match) && (npmSource === undefined || match === own.name)) {
             jigInPi = true;
-            if (manifest.version !== undefined) jigInPiVersion = manifest.version;
+            if (manifest?.version !== undefined) jigInPiVersion = manifest.version;
         }
         for (const file of files) {
             const fileStarted = performance.now();

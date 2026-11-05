@@ -22,10 +22,10 @@ group has a failure with the command to install it: the doctor does not give an 
 Two copies with different versions are a warning.
 
 **Getting the command.** Pi's `pi install` copies a package but does not link programs. Install Jig with npm, which
-does: `npm install -g --allow-git=root github:Dev-Mriganka/jig` puts `jig` on your PATH (the same folder as `node` and
-`npm`), on Linux, WSL and macOS. `--allow-git=root` is there because npm 12 turns git and remote installs off by default.
-Add `#v0.4.0` to install a release rather than `main`. For a checkout, `npm install -g --install-links <checkout>` does
-the same from the folder, and `npm link` inside it is for development. Setup never edits your shell files.
+does: `npm install -g @dev-mriganka/jig` puts `jig` on your PATH (the same folder as `node` and `npm`), on Linux, WSL and
+macOS. Add `@0.4.0` to install a release rather than the latest. For a checkout,
+`npm install -g --install-links <checkout>` does the same from the folder, and `npm link` inside it is for development.
+Setup never edits your shell files.
 
 The command runs from `node_modules`, where Node will not strip TypeScript itself: its first line installs a small loader
 that does, so the installed copy behaves like a checkout. If `jig` cannot find Pi, it says so with the folder to set in

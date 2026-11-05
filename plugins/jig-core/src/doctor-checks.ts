@@ -6,7 +6,7 @@ import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
-import { installLocation, meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
+import { meetsMinimum, minimumVersion, jigPackage, npmInstall, piVersion, reinstallFix } from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
@@ -106,7 +106,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                         context.jigListedButMissing === undefined
                             ? "not installed in Pi yet, so Pi does not load Jig's plugins."
                             : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
-                    fix: `Install it: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                    fix: `Install it: pi install ${npmInstall(pkg.name)}`,
                 }
               : {
                     id: "machine.jig",
@@ -127,7 +127,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                       level: "warn" as const,
                       title: "Two copies of Jig",
                       detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
-                      fix: `Install one version: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                      fix: `Install one version: pi install ${npmInstall(pkg.name)}`,
                   },
               ]
             : []),

@@ -47,6 +47,7 @@ export function piVersion(): string | undefined {
 /** Jig's version, the Node.js range its package.json requires, and where its repository is. Empty when it cannot be
  *  read. `file` is for a test; the default is this checkout's own package.json. */
 export function jigPackage(file: string | URL = new URL("../../../package.json", import.meta.url)): {
+    name?: string;
     version?: string;
     node?: string;
     repository?: string;
@@ -55,6 +56,7 @@ export function jigPackage(file: string | URL = new URL("../../../package.json",
     const node = typeof found?.engines?.node === "string" ? found.engines.node : undefined;
     const repository = repositoryOf(found?.repository);
     return {
+        ...(typeof found?.name === "string" ? { name: found.name } : {}),
         ...(typeof found?.version === "string" ? { version: found.version } : {}),
         ...(node ? { node } : {}),
         ...(repository === undefined ? {} : { repository }),
@@ -93,11 +95,21 @@ export function installLocation(repository: string | undefined): string | undefi
 }
 
 /** The one command that reinstalls Jig, or plain words when the package does not say where its repository is. */
+/** The npm spec a person installs Jig from: the package's own name, as npm and Pi take it. */
+export function npmInstall(name: string | undefined, version?: string): string {
+    const packageName = name === undefined || name === "" ? "@dev-mriganka/jig" : name;
+    return `npm:${packageName}${version === undefined || version === "" ? "" : `@${version}`}`;
+}
+
 export function reinstallFix(repository: string | undefined): string {
     const location = installLocation(repository);
     return location === undefined
         ? "Reinstall Jig the way you installed it."
-        : `Reinstall Jig: pi install git:${location}`;
+        : `Reinstall Jig: pi install npm:${npmPackageName()}`;
+}
+
+function npmPackageName(): string {
+    return jigPackage().name ?? "@dev-mriganka/jig";
 }
 
 function cleanLocation(location: string): string {

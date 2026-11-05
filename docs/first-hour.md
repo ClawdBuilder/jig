@@ -24,7 +24,7 @@ sudo apt install bubblewrap socat ripgrep
 ## 1. Install
 
 ```bash
-pi install git:github.com/Dev-Mriganka/jig
+pi install npm:@dev-mriganka/jig
 ```
 
 This installs every plugin. [`jig-core`](../plugins/jig-core/README.md) is the one that governs the others, so it

@@ -125,7 +125,7 @@ describe("jig doctor", () => {
         assert.equal(result.code, 1);
         assert.match(result.stdout, /fail Jig/);
         assert.match(result.stdout, /not installed in Pi yet/);
-        assert.match(result.stdout, /Install it: pi install git:github\.com\/Dev-Mriganka\/jig/);
+        assert.match(result.stdout, /Install it: pi install npm:@dev-mriganka\/jig/);
     });
 
     test("two copies of Jig with different versions are a warning", async () => {
@@ -139,7 +139,7 @@ describe("jig doctor", () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
         const result = await run(["doctor"]);
         assert.match(result.stdout, /Two copies of Jig/);
-        assert.match(result.stdout, /this command is 0\.3\.0/);
+        assert.match(result.stdout, /this command is 0\.4\.0/);
         assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
     });
 
@@ -268,7 +268,7 @@ describe("jig setup", () => {
         const result = await runSetup([]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /Jig is not installed in Pi yet/);
-        assert.match(result.stdout, /Install it with: pi install git:github\.com\/Dev-Mriganka\/jig/);
+        assert.match(result.stdout, /Install it with: pi install npm:@dev-mriganka\/jig/);
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
@@ -508,7 +508,7 @@ describe("a real global install", () => {
         const jig = path.join(prefix, "bin", "jig");
         assert.ok(existsSync(jig), "the install links the command");
         // The copy npm installed is what Pi would load, so settings name it.
-        const installedPackage = path.join(prefix, "lib/node_modules/jig");
+        const installedPackage = path.join(prefix, "lib/node_modules/@dev-mriganka/jig");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [installedPackage] }));
         const doctor = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
             const child = spawn(jig, ["doctor", "--quiet"], { env: env(), cwd: work });
