@@ -16,17 +16,23 @@ const context = (path: string): DoctorContext =>
 
 describe("the sandbox on this machine", () => {
     test("names the install command for the system", () => {
-        assert.equal(distroOf('ID=ubuntu\nID_LIKE=debian\n'), "apt");
-        assert.equal(distroOf('ID=fedora\n'), "dnf");
+        assert.equal(distroOf("ID=ubuntu\nID_LIKE=debian\n"), "apt");
+        assert.equal(distroOf("ID=fedora\n"), "dnf");
         assert.equal(distroOf('NAME="Rocky Linux"\nID="rocky"\n'), "dnf");
-        assert.equal(distroOf('ID=arch\n'), "pacman");
+        assert.equal(distroOf("ID=arch\n"), "pacman");
         assert.equal(distroOf('ID="opensuse-tumbleweed"\n'), "zypper");
-        assert.match(installCommand("linux", [{ name: "bwrap" }, { name: "socat" }], "dnf"), /sudo dnf install bubblewrap socat/);
+        assert.match(
+            installCommand("linux", [{ name: "bwrap" }, { name: "socat" }], "dnf"),
+            /sudo dnf install bubblewrap socat/,
+        );
         assert.equal(installCommand("darwin", [{ name: "bwrap" }]), "the sandbox is part of macOS; nothing to install");
     });
 
     test("missing programs are a failure with the exact command, not a skip", async () => {
-        const lines = await sandboxChecks(context("/nonexistent"), { platform: "linux", run: async () => ({ code: 0, stdout: "", stderr: "", timedOut: false }) });
+        const lines = await sandboxChecks(context("/nonexistent"), {
+            platform: "linux",
+            run: async () => ({ code: 0, stdout: "", stderr: "", timedOut: false }),
+        });
         const failures = lines.filter((line) => line.level === "fail");
         assert.equal(failures.length, 3);
         assert.match(failures[0]?.detail ?? "", /bubblewrap|bwrap/);
@@ -37,7 +43,12 @@ describe("the sandbox on this machine", () => {
     test("a real namespace start is checked", async () => {
         const lines = await sandboxChecks(context("/usr/bin"), {
             platform: "linux",
-            run: async () => ({ code: 1, stdout: "", stderr: "bwrap: setting up uid map: Permission denied", timedOut: false }),
+            run: async () => ({
+                code: 1,
+                stdout: "",
+                stderr: "bwrap: setting up uid map: Permission denied",
+                timedOut: false,
+            }),
         });
         const start = lines.find((line) => line.id === "sandbox.start");
         assert.equal(start?.level, "fail");

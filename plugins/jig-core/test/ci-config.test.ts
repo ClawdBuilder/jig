@@ -138,6 +138,15 @@ describe("the Pi version Jig is tested with", () => {
         assert.equal(row("README.md"), row("docs/compatibility.md"));
     });
 
+    test("package.json's exact Pi devDependencies move with the pinned Pi", () => {
+        const manifest = JSON.parse(read("package.json")) as { devDependencies?: Record<string, string> };
+        const development = manifest.devDependencies ?? {};
+        assert.equal(development["@earendil-works/pi-coding-agent"], pinned);
+        for (const name of ["@earendil-works/pi-ai", "@earendil-works/pi-tui", "typebox"]) {
+            assert.match(development[name] ?? "", /^\d+\.\d+\.\d+$/, `${name} is not exact`);
+        }
+    });
+
     test("AGENTS.md and the integration test page name the same Pi", () => {
         assert.ok(read("AGENTS.md").includes(`pi-coding-agent@${pinned}`), "AGENTS.md installs another Pi");
         assert.ok(

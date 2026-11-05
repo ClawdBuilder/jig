@@ -64,7 +64,7 @@ says what that covers and which names Jig keeps stable for company plugins.
 pi install git:github.com/Dev-Mriganka/jig
 ```
 
-That follows `main`. To pin a release instead, add its tag: `pi install git:github.com/Dev-Mriganka/jig@v0.3.0`.
+That follows `main`. To pin a release instead, add its tag: `pi install git:github.com/Dev-Mriganka/jig@v0.4.0`.
 Pi keeps a tag or a commit pinned and never moves it. [Releases](docs/releases.md) says what a version means
 and how one is cut.
 

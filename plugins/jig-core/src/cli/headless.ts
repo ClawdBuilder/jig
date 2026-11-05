@@ -84,11 +84,6 @@ function manifestExtensions(folder: string): string[] {
     return [];
 }
 
-/** A package's extension files, from its `pi.extensions`, or its main file when the manifest says nothing. */
-function extensionsOf(folder: string): string[] {
-    return manifestExtensions(folder).map((item) => path.resolve(folder, item));
-}
-
 /** The plugin a Jig extension file belongs to, as in `plugins/jig-jira/index.ts`. */
 function pluginOf(file: string): string | undefined {
     return /^plugins\/([^/]+)\/index\.ts$/.exec(file.replace(/^\.\//, ""))?.[1];

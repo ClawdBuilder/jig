@@ -4,6 +4,17 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Fixed
+
+- `jig doctor` reads the package filter in Pi's settings, as Pi does. A filter that leaves out Jig's core or its sandbox is
+  a failure naming the file to change, not an all-clear; a filter that turns off a choosable plugin is a calm skip, and a
+  section that plugin left in `jig.json` is kept and comes back with it. Before this, a filter that left out the core
+  still showed "0 failures" while Pi loaded Jig without its rules, approvals and protected paths.
+- `jig doctor` checks the sandbox for real instead of skipping it: the programs the sandbox needs, and a real command in a
+  new user namespace on Linux and WSL2, with the exact install command for the detected system. A missing program is a
+  failure that says how to install it, so a setup that would refuse every bash command no longer looks finished. macOS
+  says the sandbox is part of the system.
+
 ## [0.4.0] - 2026-11-05
 
 ### Added
