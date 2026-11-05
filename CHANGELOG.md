@@ -4,6 +4,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-05
+
 ### Added
 
 - `jig doctor` and `jig setup` run in a terminal, with no Pi session, model or provider login. Install the command with
