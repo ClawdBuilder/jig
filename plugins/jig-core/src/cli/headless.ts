@@ -9,6 +9,8 @@ import { buildApi } from "../api.ts";
 import { publishJig } from "../client.ts";
 import { errorMessage } from "../errors.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
+import { manifestOf, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
+import type { ListedPackage } from "./packages.ts";
 import type { JigState } from "../state.ts";
 
 /** One package that could not be loaded, with the plain reason: the doctor shows it as a FAIL line. */
@@ -102,74 +104,6 @@ export function ownPackage(): { name?: string; version?: string; repository?: st
     }
 }
 
-/** Where a settings entry lives: a local folder, or the npm package Pi installed under the agent folder. */
-function folderOf(source: string, agentDir: string): string | undefined {
-    const trimmed = source.trim();
-    if (trimmed.startsWith("npm:")) {
-        const spec = trimmed.slice(4);
-        const at = spec.lastIndexOf("@");
-        const name = at > 0 ? spec.slice(0, at) : spec;
-        return path.join(agentDir, "npm", "node_modules", name);
-    }
-    if (trimmed.startsWith("git:") || trimmed.includes("://")) return undefined;
-    const expanded = trimmed.startsWith("~/") ? path.join(homedir(), trimmed.slice(2)) : trimmed;
-    // Pi writes a local package as a path relative to the agent folder, so that is where a relative one is read from.
-    return path.isAbsolute(expanded) ? expanded : path.resolve(agentDir, expanded);
-}
-
-/** The packages named in the agent folder's settings.json, resolved, and whether Jig itself is one of them. */
-export function installedPackages(
-    agentDir: string,
-    env: NodeJS.ProcessEnv,
-): { packages: Array<{ name: string; folder: string }>; jigInPi: boolean; jigInPiVersion?: string } {
-    const out: Array<{ name: string; folder: string }> = [];
-    let settings: Record<string, unknown> = {};
-    try {
-        const raw = JSON.parse(readFileSync(path.join(agentDir, "settings.json"), "utf8")) as unknown;
-        if (typeof raw === "object" && raw !== null) settings = raw as Record<string, unknown>;
-    } catch {
-        // No settings, or not JSON: nothing installed through Pi. The package this CLI runs from is still loaded.
-    }
-    const listed = Array.isArray(settings.packages) ? settings.packages : [];
-    for (const entry of listed) {
-        const source =
-            typeof entry === "string"
-                ? entry
-                : typeof entry === "object" && entry !== null
-                  ? (entry as { source?: unknown }).source
-                  : undefined;
-        if (typeof source !== "string" || source.trim() === "") continue;
-        const folder = folderOf(source, agentDir);
-        if (folder === undefined || !existsSync(folder)) continue;
-        out.push({ name: source, folder });
-    }
-    const own = ownPackage();
-    let jigInPi = false;
-    let jigInPiVersion: string | undefined;
-    for (const entry of out) {
-        try {
-            const manifest = JSON.parse(readFileSync(path.join(entry.folder, "package.json"), "utf8")) as {
-                name?: unknown;
-                version?: unknown;
-            };
-            if (own.name !== undefined && manifest.name === own.name) {
-                jigInPi = true;
-                if (typeof manifest.version === "string") jigInPiVersion = manifest.version;
-            }
-        } catch {
-            // Not a package; loading it reports that.
-        }
-    }
-    // The CLI lives in the jig package: load it even when settings do not list it, so doctor can say that plainly.
-    const ownFolder = path.resolve(import.meta.dirname, "../../../..");
-    if (existsSync(path.join(ownFolder, "package.json"))) {
-        const at = out.findIndex((entry) => path.resolve(entry.folder) === ownFolder);
-        if (at > 0) out.splice(at, 1);
-        if (at !== 0) out.unshift({ name: own.name ?? "jig", folder: ownFolder });
-    }
-    return { packages: out, jigInPi, ...(jigInPiVersion === undefined ? {} : { jigInPiVersion }) };
-}
-
 export interface Headless {
     state: JigState;
     failures: LoadFailure[];
@@ -179,6 +113,10 @@ export interface Headless {
     jigInPi: boolean;
     /** The version of the Jig copy Pi loads, when it is installed. */
     jigInPiVersion?: string;
+    /** Set when Pi lists Jig but its folder is not there: not the same as Jig never installed. */
+    jigListedButMissing?: { source: string; problem: string };
+    /** Packages Pi lists whose files are not there, or whose source cannot be read. */
+    packageProblems: Array<{ source: string; problem: string }>;
     /** How long each package's extensions took to load, slowest first: what the blank screen was. */
     timings: Array<{ name: string; ms: number }>;
 }
@@ -204,20 +142,45 @@ export async function loadHeadless(
     const failures: LoadFailure[] = [];
     const loaded: string[] = [];
     const timings: Array<{ name: string; ms: number }> = [];
-    const installed = installedPackages(agentDir, env);
-    const jigInPi = installed.jigInPi;
-    const jigInPiVersion = installed.jigInPiVersion;
-    for (const entry of installed.packages) {
+    const installed = readPackages(agentDir, workingDir);
+    const own = ownPackage();
+    const packageProblems: Array<{ source: string; problem: string }> = installed.listed.flatMap((entry) =>
+        entry.problem === undefined ? [] : [{ source: entry.source, problem: entry.problem }],
+    );
+    for (const settingsProblem of installed.settingsProblems) {
+        packageProblems.push({
+            source: settingsProblem.file,
+            problem: `Pi's settings there could not be read: ${settingsProblem.problem}`,
+        });
+    }
+    const looksLikeJig = (entry: ListedPackage): boolean => {
+        if (own.name === undefined) return false;
+        const npm = parseNpmSource(entry.source);
+        if (npm !== undefined) return npm.name === own.name;
+        const git = parseGitSource(entry.source);
+        if (git !== undefined) return git.path.split("/").at(-1) === own.name;
+        return entry.folder !== undefined && path.basename(entry.folder) === own.name;
+    };
+    const jigListedButMissing = installed.listed.find((entry) => entry.problem !== undefined && looksLikeJig(entry));
+    let jigInPi = false;
+    let jigInPiVersion: string | undefined;
+    for (const entry of installed.listed) {
+        if (entry.problem !== undefined || entry.folder === undefined) continue;
         const startedAt = performance.now();
         const files = extensionsOf(entry.folder);
         if (files.length === 0) {
-            failures.push({ package: entry.name, reason: "no Pi extensions: its package.json names none" });
+            failures.push({ package: entry.source, reason: "no Pi extensions: its package.json names none" });
             continue;
+        }
+        const manifest = manifestOf(entry.folder);
+        if (own.name !== undefined && manifest?.name === own.name) {
+            jigInPi = true;
+            if (manifest.version !== undefined) jigInPiVersion = manifest.version;
         }
         for (const file of files) {
             const fileStarted = performance.now();
             if (!existsSync(file) || !statSync(file).isFile()) {
-                failures.push({ package: entry.name, file, reason: "the file a package.json names is not there" });
+                failures.push({ package: entry.source, file, reason: "the file a package.json names is not there" });
                 continue;
             }
             // jig-core's own extension is the one module this command does not need: its state is made above.
@@ -226,13 +189,13 @@ export async function loadHeadless(
                 const module = (await import(pathToFileURL(file).href)) as { default?: unknown };
                 const factory = module.default;
                 if (typeof factory !== "function") {
-                    failures.push({ package: entry.name, file, reason: "the extension exports no default function" });
+                    failures.push({ package: entry.source, file, reason: "the extension exports no default function" });
                     continue;
                 }
                 (factory as (pi: unknown) => void)(pi);
-                loaded.push(entry.name);
+                loaded.push(entry.source);
             } catch (error) {
-                failures.push({ package: entry.name, file, reason: errorMessage(error).slice(0, 300) });
+                failures.push({ package: entry.source, file, reason: errorMessage(error).slice(0, 300) });
             }
             timings.push({ name: path.relative(entry.folder, file), ms: performance.now() - fileStarted });
         }
@@ -241,5 +204,21 @@ export async function loadHeadless(
     timings.sort((left, right) => right.ms - left.ms);
     // The person's file last: the sections and defaults above are what it is checked against.
     loadPersonalConfig(state);
-    return { state, failures, loaded, jigInPi, ...(jigInPiVersion === undefined ? {} : { jigInPiVersion }), timings };
+    return {
+        state,
+        failures,
+        loaded,
+        jigInPi,
+        ...(jigInPiVersion === undefined ? {} : { jigInPiVersion }),
+        ...(jigListedButMissing === undefined
+            ? {}
+            : {
+                  jigListedButMissing: {
+                      source: jigListedButMissing.source,
+                      problem: jigListedButMissing.problem ?? "",
+                  },
+              }),
+        packageProblems,
+        timings,
+    };
 }

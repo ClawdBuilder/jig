@@ -122,7 +122,7 @@ describe("jig doctor", () => {
         assert.equal(result.code, 1);
         assert.match(result.stdout, /fail Jig/);
         assert.match(result.stdout, /not installed in Pi yet/);
-        assert.match(result.stdout, /pi install git:/);
+        assert.match(result.stdout, /Install it: pi install git:github\.com\/Dev-Mriganka\/jig/);
     });
 
     test("--json prints the report and keeps the exit code", async () => {
@@ -132,6 +132,95 @@ describe("jig doctor", () => {
         const report = JSON.parse(result.stdout) as { lines: Array<{ level: string }>; counts: { fail: number } };
         assert.ok(report.lines.some((line) => line.level === "fail"));
         assert.equal(report.counts.fail >= 1, true);
+    });
+});
+
+/** A package laid out where Pi clones a git install: <agent>/git/<host>/<path> or <cwd>/.pi/git/<host>/<path>. */
+function gitInstall(
+    scope: "user" | "project",
+    repo: string,
+    name: string,
+    version: string,
+    extension?: string,
+): string {
+    const folder =
+        scope === "user"
+            ? path.join(agent, "git", ...repo.split("/"))
+            : path.join(work, ".pi", "git", ...repo.split("/"));
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+        path.join(folder, "package.json"),
+        JSON.stringify({
+            name,
+            version,
+            type: "module",
+            ...(extension === undefined ? {} : { pi: { extensions: ["./index.mjs"] } }),
+        }),
+    );
+    if (extension !== undefined) writeFileSync(path.join(folder, "index.mjs"), extension);
+    return folder;
+}
+
+/** A company plugin that registers a profile, a section and one onboarding item, from wherever it is installed. */
+function companyExtension(): string {
+    return `import { withJig } from ${JSON.stringify(path.join(ROOT, "plugins/jig-core/src/client.ts"))};
+export default function () {
+    withJig((api) => {
+        const scoped = api.profiles.register("git-co", { displayName: "Git Co" });
+        scoped.config.registerSection("gitco", (raw) =>
+            typeof raw?.login === "string" && raw.login !== "" ? [] : ["gitco.login is required"],
+        );
+        scoped.onboarding.register({
+            items: [{ kind: "text", section: "gitco", path: "login", label: "Your Git Co login" }],
+        });
+    });
+}
+`;
+}
+
+describe("a package installed from git", () => {
+    test("user scope: Jig cloned under git/<host>/<path> is installed, not missing", async () => {
+        gitInstall("user", "github.com/example/jig", "jig", "0.3.0", "export default function () {}\n");
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.doesNotMatch(result.stdout, /not installed in Pi yet/);
+    });
+
+    test("a listed clone whose folder is gone is a failure naming the folder, not an all-clear", async () => {
+        writeFileSync(
+            path.join(agent, "settings.json"),
+            JSON.stringify({ packages: ["git:github.com/Dev-Mriganka/jig"] }),
+        );
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1);
+        assert.match(result.stdout, /Pi lists it, but its files are not there/);
+        assert.match(result.stdout, /git\/github\.com\/Dev-Mriganka\/jig/);
+    });
+
+    test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", async () => {
+        gitInstall("user", "github.com/example/jig", "jig", "0.3.0", "export default function () {}\n");
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
+        gitInstall("project", "github.com/example/git-co", "git-co", "1.0.0", companyExtension());
+        writeFileSync(
+            path.join(work, ".pi", "settings.json"),
+            JSON.stringify({ packages: ["git:github.com/example/git-co"] }),
+        );
+        const doctor = await run(["doctor", "--quiet"]);
+        assert.doesNotMatch(doctor.stdout, /git-co.*could not be loaded/);
+        const result = await runSetup([
+            { when: "Git Co (git-co)", answer: "1" },
+            { when: "Use Git Co's setup in:", answer: "1" },
+            { when: "Save this company choice?", answer: "y" },
+            { when: "needs 1 thing", answer: "1" },
+            { when: "Your Git Co login", answer: "gdev" },
+            { when: "Review these changes", answer: "1" },
+            { when: "Save these changes?", answer: "y" },
+        ]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.profile, "git-co");
+        assert.equal(written.gitco.login, "gdev");
     });
 });
 
@@ -148,7 +237,7 @@ describe("jig setup", () => {
         const result = await runSetup([{ when: "Jig is not installed in Pi yet", answer: "" }]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /Jig is not installed in Pi yet/);
-        assert.match(result.stdout, /pi install git:/);
+        assert.match(result.stdout, /Install it with: pi install git:github\.com\/Dev-Mriganka\/jig/);
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 

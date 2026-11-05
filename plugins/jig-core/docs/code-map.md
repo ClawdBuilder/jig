@@ -108,6 +108,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
 | `cli/main.ts` | The `jig` command: arguments, the doctor's exit code and report, setup's company step and exit codes | `bin/jig.mjs` |
 | `cli/headless.ts` | The packages Pi would load, their extension files loaded into a host that only records, and the person's settings read against their sections and defaults | `cli/main.ts` |
+| `cli/packages.ts` | Where Pi puts a package: local, npm and git layouts for user and project scope, and the entries listed but not found | `cli/headless.ts` |
 | `cli/terminal.ts` | The setup questions on node:readline: numbered choices, plain input, a yes/no confirm | `cli/main.ts` |
 | `plain-label.ts` | Plain names for configuration paths, shared by the doctor and setup: "Jira auth token", not `jira.auth.token` | `doctor-secrets.ts`, `setup-fields.ts` |
 

@@ -21,6 +21,17 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `settings.json` packages, or Pi is not found, the machine group fails with the install command, and setup stops before
   asking anything. Two copies with different versions are a warning. Both commands say "Checking your setup…" before the
   packages load, and a records folder that does not exist yet is normal, not a warning.
+- A package installed from git is found where Pi puts it: user scope under `<agent folder>/git/<host>/<path>`, project
+  scope under `<cwd>/.pi/git/<host>/<path>`, with `.git` and the `@ref` stripped, and project packages read from
+  `<cwd>/.pi/settings.json` too. npm packages are looked for at the folder Pi manages, with its global fallback. A package
+  Pi lists but whose files are gone is a failure naming the folder, not "not installed"; the doctor's fix line is
+  `pi install git:github.com/Dev-Mriganka/jig`.
+- The install line is `npm install -g --allow-git=root github:Dev-Mriganka/jig`, because npm 12 turns git and remote installs
+  off by default; `#v0.4.0` pins a release.
+- Pi's four packages are optional peers now, so a global install carries no 215 MB copy of Pi: it is 51 MB, and the command
+  stops with "jig needs Pi installed" when Pi is absent. The repository's tests pin them as dev dependencies, so `npm ci`
+  and CI still have them.
+
 - Setup says a suggested credential in words ("Use the entry acme/sso-token"), says "Not in pass yet. Add it with:" once,
   prints "Show the exact change" as plain text, and names the company once in its confirmation.
 

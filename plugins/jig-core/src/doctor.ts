@@ -69,6 +69,8 @@ export interface DoctorContext {
     /** In the `jig` command: whether Pi's settings name the Jig package, and the version of the copy Pi loads. */
     jigInPi?: boolean;
     jigInPiVersion?: string;
+    /** Pi lists Jig, but its folder is not there: a different problem from never installing it. */
+    jigListedButMissing?: { source: string; problem: string };
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;

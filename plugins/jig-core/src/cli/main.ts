@@ -54,7 +54,17 @@ async function doctor(args: readonly string[]): Promise<number> {
         process.stderr.write(`jig doctor could not start: ${errorMessage(error)}\n`);
         return 1;
     }
-    const loadedFailures = failureLines(loaded.failures);
+    const loadedFailures = [
+        ...failureLines(loaded.failures),
+        ...loaded.packageProblems.map((problem, index) => ({
+            id: `plugins.${index}.missing`,
+            group: "config" as const,
+            level: "fail" as const,
+            title: problem.source,
+            detail: problem.problem,
+            fix: `Reinstall it: pi install ${problem.source}`,
+        })),
+    ];
     let report: DoctorReport;
     try {
         report = await runDoctor(
@@ -63,6 +73,9 @@ async function doctor(args: readonly string[]): Promise<number> {
                 standalone: true,
                 jigInPi: loaded.jigInPi,
                 ...(loaded.jigInPiVersion === undefined ? {} : { jigInPiVersion: loaded.jigInPiVersion }),
+                ...(loaded.jigListedButMissing === undefined
+                    ? {}
+                    : { jigListedButMissing: loaded.jigListedButMissing }),
             },
             {
                 network: flags.has("--network"),
@@ -200,11 +213,12 @@ async function setup(): Promise<number> {
     }
     if (!loaded.jigInPi) {
         const pkg = ownPackage();
-        const where = installLocation(pkg.repository) ?? "Dev-Mriganka/jig";
-        ui.notify(
-            `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install git:${where}\nThen run jig setup again.`,
-            "error",
-        );
+        const where = installLocation(pkg.repository) ?? "github.com/Dev-Mriganka/jig";
+        const why =
+            loaded.jigListedButMissing === undefined
+                ? "Jig is not installed in Pi yet, so there is nothing to set up for."
+                : `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}`;
+        ui.notify(`${why}\nInstall it with: pi install git:${where}\nThen run jig setup again.`, "error");
         ui.close();
         return 1;
     }

@@ -77,8 +77,10 @@ session, a watch, a tunnel or a sign-in. A plugin that fails at load is a failur
 Setup starts with the company question and writes the `profiles`/`profile` entry itself. Without a terminal it refuses
 and writes nothing. Exit codes: doctor 0/1, setup 0/1/130.
 
-The command comes from npm's `bin`: `npm install -g` links it beside `node` on Linux, WSL and macOS. `pi install` does
-not link programs, so the docs say that plainly instead of editing anyone's shell files. Inside Pi, an unknown or
+The command comes from npm's `bin`: `npm install -g --allow-git=root github:Dev-Mriganka/jig` links it beside `node` on
+Linux, WSL and macOS. `--allow-git=root` is needed because npm 12 turns git and remote installs off by default; a release
+is pinned with `#v0.4.0`. `pi install` does not link programs, so the docs say that plainly instead of editing anyone's
+shell files. Inside Pi, an unknown or
 unreadable Pi version is now a skip rather than a warning, and a secret store that no reference uses is not checked.
 
 ## 2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words
