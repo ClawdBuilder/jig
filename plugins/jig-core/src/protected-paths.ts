@@ -15,6 +15,8 @@
 import { lstatSync, readlinkSync } from "node:fs";
 import path from "node:path";
 import { PI_PROJECT_PATHS, projectFoldersBelowHome } from "./kit/pi-project-paths.ts";
+import { runsLaterPaths } from "./kit/runs-later.ts";
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export type ProtectedKind = "secret" | "guarded";
@@ -31,6 +33,8 @@ export interface ProtectedPath {
     source: ProtectedSource;
     /** What the model should do instead, when the person can: said after a write refusal. */
     advice?: string;
+    /** The write asks the person instead of being refused: the path runs later, and a person may want the change. */
+    ask?: boolean;
 }
 
 /** What differs between systems, so a test can simulate Windows or macOS on Linux. */
@@ -69,6 +73,8 @@ export interface CheckContext extends PathContext {
 export interface Refusal {
     /** One line for the model, naming the protected path and never any file content. */
     reason: string;
+    /** The write is not refused outright: the person is asked (and with no screen it is refused). */
+    ask?: boolean;
     /** The protected path that stopped the call. Absent when the path was not text. */
     entry?: ProtectedPath;
 }
@@ -237,8 +243,11 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     }
     // The project files Pi loads at its next start, in the working folder and every folder above it below the home folder.
     // A path is guarded whether or not it exists yet: a file made there before the next start would be loaded.
+    const projectFolders =
+        input.cwd === undefined || input.cwd === "" ? [] : projectFoldersBelowHome(input.cwd, home, input.platform);
+    const askAdvice = "Ask the person to allow this, or to make the change themselves outside Pi.";
     if (input.cwd !== undefined && input.cwd !== "") {
-        for (const folder of projectFoldersBelowHome(input.cwd, home, input.platform)) {
+        for (const folder of projectFolders) {
             for (const item of PI_PROJECT_PATHS) {
                 out.push({
                     ...guardedEntry(
@@ -247,7 +256,54 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
                         home,
                         input.platform,
                     ),
-                    advice: "Ask the person to change it themselves, outside Pi, or run pi install -l.",
+                    advice: "Ask the person to change it themselves, outside Pi.",
+                });
+            }
+        }
+    }
+    // Everything else the sandbox locks for bash because it runs later outside the sandbox: the file tools ask.
+    for (const item of runsLaterPaths("home", { home, folders: [], platform: input.platform })) {
+        if (item.path.includes("/Library/LaunchAgents") && (input.platform ?? process.platform) !== "darwin") continue;
+        out.push({
+            ...guardedEntry(item.path, "it runs later outside the sandbox", home, input.platform),
+            advice: askAdvice,
+            ...(item.group === "toolchain" ? { ask: true } : {}),
+        });
+    }
+    for (const item of runsLaterPaths("project", { home, folders: projectFolders, platform: input.platform })) {
+        out.push({
+            ...guardedEntry(item.path, "it runs later outside the sandbox", home, input.platform),
+            advice: askAdvice,
+            ...(item.group === "toolchain" ? { ask: true } : {}),
+        });
+    }
+    if (input.cwd !== undefined && input.cwd !== "") {
+        const repos: string[] = [];
+        const consider = (folder: string, depth: number): void => {
+            try {
+                if (readdirSync(folder).includes(".git")) repos.push(folder);
+                if (depth >= 2) return;
+                for (const name of readdirSync(folder)) {
+                    if (name.startsWith(".")) continue;
+                    const child = pathApi.join(folder, name);
+                    try {
+                        if (!readdirSync(child).some((entry) => entry === "package.json" || entry === ".git")) continue;
+                        consider(child, depth + 1);
+                    } catch {
+                        // not a folder
+                    }
+                }
+            } catch {
+                // not readable
+            }
+        };
+        consider(input.cwd, 0);
+        for (const folder of repos) {
+            for (const item of runsLaterPaths("repository", { home, folders: [folder], platform: input.platform })) {
+                out.push({
+                    ...guardedEntry(item.path, "it runs later outside the sandbox", home, input.platform),
+                    advice: askAdvice,
+                    ...(item.group === "toolchain" ? { ask: true } : {}),
                 });
             }
         }
@@ -489,12 +545,18 @@ export function checkFileTool(
     if (tool === "write" || tool === "edit") {
         const hit = find(targetForms, entries, ANY, "inside", sep);
         if (hit === undefined) return undefined;
-        return hit.kind === "secret"
-            ? secret(hit)
-            : refuse(
-                  hit,
-                  `${hit.shown} is guarded: the file tools can read it but not write it${hit.advice === undefined ? "" : `. ${hit.advice}`}`,
-              );
+        if (hit.kind === "secret") return secret(hit);
+        if (hit.ask === true) {
+            return {
+                ask: true,
+                reason: `${hit.shown} runs later outside the sandbox: ${hit.advice ?? "ask the person to allow the change"}.`,
+                entry: hit,
+            };
+        }
+        return refuse(
+            hit,
+            `${hit.shown} is guarded: the file tools can read it but not write it${hit.advice === undefined ? "" : `. ${hit.advice}`}`,
+        );
     }
     const inside = find(targetForms, entries, SECRET, "inside", sep);
     if (inside !== undefined) return secret(inside);

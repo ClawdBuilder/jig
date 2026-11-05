@@ -91,3 +91,32 @@ describe("the project files Pi loads", () => {
         ]);
     });
 });
+
+describe("the sandbox's locks and the file tools' guards are one table", () => {
+    test("every locked and ask-first path on the bash side has a file-tool entry", async () => {
+        const { LOCKED_IN_HOME, LOCKED_ON_MAC, LOCKED_IN_PROJECT, ASK_FIRST } = await import(
+            "../../jig-sandbox/src/lists.ts"
+        );
+        const expand = (listed: string): string => path.join(home, listed.replace(/^~\//, ""));
+        const entries = defaultProtectedPaths({ agentDir, home, cwd: work });
+        const has = (target: string): boolean =>
+            entries.some((entry) => entry.path === target || entry.path === path.resolve(target));
+        for (const item of [...LOCKED_IN_HOME, ...ASK_FIRST]) assert.ok(has(expand(item.path)), item.path);
+        const macEntries = defaultProtectedPaths({ agentDir, home, cwd: work, platform: "darwin" });
+        for (const item of LOCKED_ON_MAC) {
+            assert.ok(
+                macEntries.some((entry) => entry.path === expand(item.path)),
+                item.path,
+            );
+        }
+        // Repository scope: the working folder is a repository, and each relative entry is guarded there.
+        mkdirSync(path.join(work, ".git"), { recursive: true });
+        const repoEntries = defaultProtectedPaths({ agentDir, home, cwd: work });
+        for (const item of LOCKED_IN_PROJECT) {
+            assert.ok(
+                repoEntries.some((entry) => entry.path === path.join(work, item.path)),
+                item.path,
+            );
+        }
+    });
+});

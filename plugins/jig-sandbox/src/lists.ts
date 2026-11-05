@@ -2,6 +2,7 @@
 // docs/rules.md, which says why each group is there. Paths start with `~/` (the home folder) or are absolute.
 // Everything not listed is writable, because an allow-only sandbox breaks every tool that keeps state somewhere
 // nobody thought of.
+import { PI_PROJECT_PATHS } from "../../jig-core/src/kit/pi-project-paths.ts";
 
 /** A group of paths that share a reason and a way through, as a message says them. */
 export interface Group {
@@ -202,9 +203,9 @@ export const LOCKED_IN_HOME: readonly Listed[] = [
 /** Locked on a Mac only. */
 export const LOCKED_ON_MAC: readonly Listed[] = at("session", "~/Library/LaunchAgents");
 
-/** Locked, in the project and every folder above it below the home folder: what Pi loads. The one table is shared with
- *  Pi's file tools, in jig-core's kit, so bash and write/edit cannot guard different paths. */
-export { PI_PROJECT_PATHS as LOCKED_PI_IN_PROJECT } from "../../jig-core/src/kit/pi-project-paths.ts";
+/** Locked, in the project and every folder above it below the home folder: what Pi loads, plus the direnv file a shell
+ *  runs. One table with Pi's file tools, in jig-core's kit, so bash and write/edit cannot guard different paths. */
+export const LOCKED_PI_IN_PROJECT: readonly string[] = [...PI_PROJECT_PATHS, ".envrc"];
 
 /** Locked, in the project and in each repository one and two levels below it. */
 export const LOCKED_IN_PROJECT: readonly Listed[] = [

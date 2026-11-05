@@ -116,6 +116,12 @@ paths.
     rest of the state folder stays readable: a spill file is the rest of a result the model was given.
   - *Guarded* (readable, not writable): the whole agent folder (`~/.pi/agent`,
     or where `PI_CODING_AGENT_DIR` points).
+  - *Guarded or asked*, everything else that runs later outside the sandbox: the shell and session files (`~/.bashrc`,
+    `~/.profile`, `~/.zshrc`, fish, systemd user units, autostart, tmux), `~/.gitconfig` and `~/.config/git`, agent
+    settings, build start-up files (`~/.gradle/init.gradle`, `~/.m2/extensions.xml`, Cargo and pip config), `~/.local/bin`
+    and `~/.npm-global/bin`, the editor and agent files in a project (`.vscode/tasks.json`, `.vscode/settings.json`,
+    `.idea`, `.claude`), `.mvn`, `.envrc`, and each repository's `.git/config` and `.git/hooks`. The toolchain managers
+    (`~/.nvm`, `~/.pyenv`, `~/.cargo/bin`, …) **ask** instead: a person may want to install a tool.
   - *Guarded*, the code Pi loads at its next start, which runs with no sandbox. `/jig rules` says what named each path,
     as in `~/work/ext (a package in settings.json)`:
     - **Local packages and extensions** that Pi's settings name: the `packages` and the plain `extensions` entries of

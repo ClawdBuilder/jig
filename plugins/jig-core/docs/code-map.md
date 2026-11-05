@@ -157,6 +157,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/browser.ts` | The program and arguments that open an address, from `$BROWSER` or the platform's opener | `preview-html.ts`, `jig-review`'s `open.ts` |
 | `kit/files.ts` | Writing a file so it survives a crash: synced, renamed into place, its folder synced | `paths.ts`, `mask/key.ts`, plugins' stores |
 | `kit/git-settings.ts` | The git settings that make git run a program or redirect a remote: one table for the guard and the sandbox | `git-config-guard.ts`, `jig-sandbox`'s `gitconfig.ts` |
+| `kit/runs-later.ts` | Everything that runs later outside the sandbox: home, project and repository paths, with the ones a person may allow as an ask | `protected-paths.ts`, `jig-git` |
 | `kit/pi-project-paths.ts` | The project files Pi loads at its next start, and the project folders below home, shared by the file tools' guard and the sandbox's lock | `protected-paths.ts`, `jig-sandbox/src/lists.ts` |
 | `kit/role-policy.ts` | The policy a role gives its child agent in `JIG_ROLE_POLICY`: written, read, and checked | `jig-agents`, `jig-sandbox`; no file here |
 | `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |

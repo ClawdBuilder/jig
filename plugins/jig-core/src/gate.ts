@@ -89,6 +89,11 @@ async function decideCall(
 
     const command = typeof input.command === "string" ? input.command : undefined;
     const cwd = ctx.cwd ?? process.cwd();
+    const fileDecision = checkFileTool(event.toolName, input, {
+        entries: policy.protectedPaths,
+        cwd,
+        home: homedir(),
+    });
     let verdict = decide({
         call: {
             tool: event.toolName,
@@ -104,11 +109,8 @@ async function decideCall(
         rules: policy.rules,
         sessionAllows: state.sessionAllows,
         hasUI: ctx.hasUI,
-        protectedRefusal: checkFileTool(event.toolName, input, {
-            entries: policy.protectedPaths,
-            cwd,
-            home: homedir(),
-        })?.reason,
+        protectedRefusal: fileDecision?.ask === true ? undefined : fileDecision?.reason,
+        protectedAsk: fileDecision?.ask === true ? fileDecision.reason : undefined,
     });
 
     // The gates other plugins registered see the call once the rules have decided. They can only make it stricter, and a

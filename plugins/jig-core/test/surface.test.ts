@@ -265,6 +265,7 @@ describe("what plugins import", () => {
             "pi-project-paths.ts",
             "ports.ts",
             "role-policy.ts",
+            "runs-later.ts",
             "schema.ts",
             "text.ts",
             "tools.ts",
@@ -291,6 +292,7 @@ describe("what plugins import", () => {
             ],
             "oauth.ts": ["Login", "REPLACE_EARLY_MS", "Token", "Tokens", "createTokens"],
             "pi-project-paths.ts": ["PI_PROJECT_PATHS", "projectFoldersBelowHome"],
+            "runs-later.ts": ["RUNS_LATER", "RunsLaterPath", "isRepositoryRunsLater", "runsLaterPaths"],
             "ports.ts": [
                 "FreePortOptions",
                 "PortWaitError",

@@ -13,7 +13,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   unaffected. `bash` locks the same list from the same table, which gains `.pi/git`, `.pi/npm`, `SYSTEM.md` and
   `APPEND_SYSTEM.md`. A person can still run `pi install -l` or edit the files themselves outside Pi; there is no new
   override, and a team repository that keeps `.pi/skills` in git is now read-only to the agent, as it already was for
-  `bash`.
+  `bash`. The same now covers the home shell, session, git, agent and build start-up files, the project editor and agent
+  files, `.envrc`, `~/.local/bin`, and each repository's `.git/config` and `.git/hooks`; toolchain managers ask instead.
+  A git operation that would change a guarded file (switch, merge, sync, rebase, cherry-pick, stash pop, restore,
+  worktree add, clone) asks the person first, naming the paths and commits; a normal switch does not ask.
 
 ## [0.4.0] - 2026-11-05
 

@@ -166,7 +166,6 @@ describe("the defaults", () => {
     test("an unknown agent folder leaves out the paths inside it, and the home ones stay", () => {
         const entries = defaultProtectedPaths({ agentDir: "", home, env: {} });
         assert.ok(entries.some((entry) => entry.shown === "~/.ssh"));
-        assert.ok(!entries.some((entry) => entry.kind === "guarded"));
     });
 });
 
