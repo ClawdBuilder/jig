@@ -3,13 +3,24 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { guardedChanges, guardedPathsFor, guardedStashChanges, guardedTargets, guardedRelative } from "../src/guarded.ts";
+import {
+    guardedChanges,
+    guardedPathsFor,
+    guardedStashChanges,
+    guardedTargets,
+    guardedRelative,
+} from "../src/guarded.ts";
 import type { GitSettings } from "../src/config.ts";
 import { git, makeRepo, writeFile } from "./support/repos.ts";
 import { setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
 
-const settings = { base: "main", protectedBranches: ["main"], forges: [], cloneHost: "github.com" } as unknown as GitSettings;
+const settings = {
+    base: "main",
+    protectedBranches: ["main"],
+    forges: [],
+    cloneHost: "github.com",
+} as unknown as GitSettings;
 let h: Harness;
 let counter = 0;
 before(() => {
@@ -63,7 +74,7 @@ test("the resolver reads @{upstream}, the real branch, and the stash index", asy
     writeFileSync(path.join(r.dir, ".pi/settings.json"), "{}");
     git(r.dir, "add", "-A");
     git(r.dir, "commit", "-qm", "stash me");
-    writeFileSync(path.join(r.dir, ".pi/settings.json"), "{\"x\":1}");
+    writeFileSync(path.join(r.dir, ".pi/settings.json"), '{"x":1}');
     git(r.dir, "stash", "push", "-q");
     const stash = await guardedTargets("stash", { operation: "pop", index: 0 }, r.dir, settings);
     assert.equal(stash?.targets[0]?.label, "stash@{0}");

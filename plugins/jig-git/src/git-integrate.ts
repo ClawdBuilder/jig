@@ -41,11 +41,13 @@ export async function planSync(params: { repo?: string }, call: Call): Promise<P
                 );
             // The fetch happened after the question: check the target it brought, then apply that sha, not the name.
             const fetchedTarget = await guardedTargets("sync", {}, repo.root, call.settings, signal);
-            if (fetchedTarget === undefined) throw new Error("@{upstream} is not there after the fetch; nothing was applied");
+            if (fetchedTarget === undefined)
+                throw new Error("@{upstream} is not there after the fetch; nothing was applied");
             const brought = newGuarded(plannedGuarded, await guardedPathsFor(fetchedTarget, "sync", signal));
             if (brought.length > 0) throw lateGuardError(brought);
             const upstreamSha = fetchedTarget.targets[0]?.sha;
-            if (upstreamSha === undefined) throw new Error("@{upstream} is not there after the fetch; nothing was applied");
+            if (upstreamSha === undefined)
+                throw new Error("@{upstream} is not there after the fetch; nothing was applied");
             const merged = await git(repo.root, ["merge", "--ff-only", upstreamSha], { signal });
             if (merged.code !== 0) {
                 const counts = (
@@ -103,7 +105,13 @@ export async function planMerge(
     await requireClean(repo, `merging into ${current}`, signal);
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
     const label = other ?? `origin/${base}`;
-    const plannedTarget = await guardedTargets("merge", { ...(other === undefined ? { base } : { branch: other }) }, repo.root, call.settings, signal);
+    const plannedTarget = await guardedTargets(
+        "merge",
+        { ...(other === undefined ? { base } : { branch: other }) },
+        repo.root,
+        call.settings,
+        signal,
+    );
     const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "merge", signal);
     return {
         preview: {
@@ -169,7 +177,8 @@ export async function planRebase(params: { repo?: string; base?: string }, call:
         run: async () => {
             await fetchBranch(repo, "origin", base, signal);
             const fetched = await revParse(repo.root, `refs/remotes/origin/${base}`, signal);
-            if (fetched === undefined) throw new Error(`origin/${base} is not there after the fetch; nothing was rebased`);
+            if (fetched === undefined)
+                throw new Error(`origin/${base} is not there after the fetch; nothing was rebased`);
             const brought = newGuarded(plannedGuarded, await guardedChanges(repo.root, before, fetched, signal));
             if (brought.length > 0) throw lateGuardError(brought);
             const rebased = await git(repo.root, ["rebase", fetched], { signal });
@@ -214,7 +223,8 @@ export async function planCherryPick(params: { repo?: string; revs?: string[] },
     }
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
     const plannedTarget = await guardedTargets("cherry_pick", { revs }, repo.root, call.settings, signal);
-    const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "cherry_pick", signal);
+    const plannedGuarded =
+        plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "cherry_pick", signal);
     return {
         preview: {
             summary: `cherry-pick ${plural(revs.length, "commit")} onto ${current} in ${repo.name}; a conflict aborts it`,
@@ -229,7 +239,10 @@ export async function planCherryPick(params: { repo?: string; revs?: string[] },
                     if (!plannedGuarded.includes(path)) brought.push(path);
                 }
             }
-            if (brought.length > 0) throw new Error(`cherry-picking would change files Pi loads (${brought.slice(0, 5).join(", ")}); nothing was applied. Run this again and the person will be asked`);
+            if (brought.length > 0)
+                throw new Error(
+                    `cherry-picking would change files Pi loads (${brought.slice(0, 5).join(", ")}); nothing was applied. Run this again and the person will be asked`,
+                );
             const picked = await git(repo.root, ["cherry-pick", ...shas], { signal });
             if (picked.code !== 0) {
                 const files = await conflicts(repo, signal);

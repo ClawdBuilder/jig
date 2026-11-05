@@ -44,14 +44,18 @@ export async function guardedChanges(root: string, from: string, to: string, sig
 
 /** The guarded files a stash would restore: tracked, index, and the untracked third parent. */
 export async function guardedStashChanges(root: string, stash: string, signal?: AbortSignal): Promise<string[]> {
-    const parents = (await gitOut(root, ["rev-list", "--parents", "-n", "1", stash], { signal })).trim().split(/\s+/).slice(1);
+    const parents = (await gitOut(root, ["rev-list", "--parents", "-n", "1", stash], { signal }))
+        .trim()
+        .split(/\s+/)
+        .slice(1);
     const files = new Set<string>();
     for (const parent of parents) {
         for (const name of await guardedChanges(root, parent, stash, signal)) files.add(name);
     }
     if (parents[2] !== undefined) {
         const out = await git(root, ["ls-tree", "-r", "--name-only", "-z", parents[2] ?? ""], { signal });
-        if (out.code === 0) for (const name of out.stdout.split("\u0000")) if (name !== "" && guardedRelative(name)) files.add(name);
+        if (out.code === 0)
+            for (const name of out.stdout.split("\u0000")) if (name !== "" && guardedRelative(name)) files.add(name);
     }
     return [...files];
 }
@@ -72,7 +76,8 @@ export async function guardedTargets(
     settings: GitSettings,
     signal?: AbortSignal,
 ): Promise<GuardTarget | undefined> {
-    const text = (value: unknown): string | undefined => (typeof value === "string" && value !== "" ? value : undefined);
+    const text = (value: unknown): string | undefined =>
+        typeof value === "string" && value !== "" ? value : undefined;
     const from = await headSha(root, signal);
     const operation = text(input.operation);
     const wanted: Array<{ ref: string; label: string }> = [];
@@ -84,21 +89,33 @@ export async function guardedTargets(
             const branch = text(input.branch);
             wanted.push(
                 branch === undefined
-                    ? { ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`, label: `origin/${text(input.base) ?? baseOf(settings)}` }
+                    ? {
+                          ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
+                          label: `origin/${text(input.base) ?? baseOf(settings)}`,
+                      }
                     : { ref: `refs/heads/${branch}`, label: branch },
             );
             break;
         }
         case "rebase":
-            wanted.push({ ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`, label: `origin/${text(input.base) ?? baseOf(settings)}` });
+            wanted.push({
+                ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
+                label: `origin/${text(input.base) ?? baseOf(settings)}`,
+            });
             break;
         case "branch": {
             if (operation === "switch") {
                 const branch = text(input.branch);
                 if (branch === undefined) return undefined;
-                wanted.push({ ref: `refs/heads/${branch}`, label: branch }, { ref: `refs/remotes/origin/${branch}`, label: `origin/${branch}` });
+                wanted.push(
+                    { ref: `refs/heads/${branch}`, label: branch },
+                    { ref: `refs/remotes/origin/${branch}`, label: `origin/${branch}` },
+                );
             } else if (operation === "create") {
-                wanted.push({ ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`, label: `origin/${text(input.base) ?? baseOf(settings)}` });
+                wanted.push({
+                    ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
+                    label: `origin/${text(input.base) ?? baseOf(settings)}`,
+                });
             } else return undefined;
             break;
         }

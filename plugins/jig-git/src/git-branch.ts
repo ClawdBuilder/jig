@@ -36,8 +36,15 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                 ? await baseBranch(repo, call.settings, signal)
                 : checkBranch(params.base, "base");
         const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
-        const plannedTarget = await guardedTargets("branch", { operation: "create", base }, repo.root, call.settings, signal);
-        const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
+        const plannedTarget = await guardedTargets(
+            "branch",
+            { operation: "create", base },
+            repo.root,
+            call.settings,
+            signal,
+        );
+        const plannedGuarded =
+            plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
         return {
             preview: {
                 summary: `create branch ${name} from the fetched ${base} in ${repo.name}`,
@@ -47,7 +54,8 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                 // Always cut from the freshly fetched remote base, never from a possibly stale local copy.
                 await fetchBranch(repo, "origin", base, signal);
                 const target = await revParse(repo.root, `refs/remotes/origin/${base}`, signal);
-                if (target === undefined) throw new Error(`origin/${base} is not there after the fetch; nothing was created`);
+                if (target === undefined)
+                    throw new Error(`origin/${base} is not there after the fetch; nothing was created`);
                 const brought = newGuarded(plannedGuarded, await guardedChanges(repo.root, before, target, signal));
                 if (brought.length > 0) throw lateGuardError(brought);
                 await gitOut(repo.root, ["switch", "-c", name, "--no-track", target], { signal });
@@ -56,7 +64,9 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                     const old = await revParse(repo.root, "HEAD", signal);
                     void old;
                     await git(repo.root, ["switch", "--detach", before], { signal });
-                    throw new Error(`the branch ${name} did not stay on the checked commit; the previous HEAD was restored`);
+                    throw new Error(
+                        `the branch ${name} did not stay on the checked commit; the previous HEAD was restored`,
+                    );
                 }
                 return {
                     text: `Created ${name} from origin/${base} (${(sha ?? "").slice(0, 7)}) in ${repo.name}.`,
@@ -78,8 +88,15 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
         if (!local && !remote)
             throw new Error(`branch ${name} not found locally or at origin; use operation create for a new branch`);
         const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
-        const plannedTarget = await guardedTargets("branch", { operation: "switch", branch: name }, repo.root, call.settings, signal);
-        const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
+        const plannedTarget = await guardedTargets(
+            "branch",
+            { operation: "switch", branch: name },
+            repo.root,
+            call.settings,
+            signal,
+        );
+        const plannedGuarded =
+            plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
         const targetSha = plannedTarget?.targets[0]?.sha;
         return {
             preview: {
@@ -87,9 +104,15 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                 fingerprint: digest("branch", repo.root, "switch", name, local, ...plannedGuarded),
             },
             run: async () => {
-                const now = await revParse(repo.root, local ? `refs/heads/${name}` : `refs/remotes/origin/${name}`, signal);
+                const now = await revParse(
+                    repo.root,
+                    local ? `refs/heads/${name}` : `refs/remotes/origin/${name}`,
+                    signal,
+                );
                 if (targetSha === undefined || now !== targetSha)
-                    throw new Error(`the branch ${name} moved after the question; nothing was applied. Run this again and the person will be asked`);
+                    throw new Error(
+                        `the branch ${name} moved after the question; nothing was applied. Run this again and the person will be asked`,
+                    );
                 await gitOut(
                     repo.root,
                     local ? ["switch", name] : ["switch", "-c", name, "--track", `origin/${name}`],
@@ -98,7 +121,9 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                 const head = await revParse(repo.root, "HEAD", signal);
                 if (head !== targetSha) {
                     await git(repo.root, ["switch", "--detach", before], { signal });
-                    throw new Error(`HEAD was not the checked commit after switching to ${name}; the previous HEAD was restored`);
+                    throw new Error(
+                        `HEAD was not the checked commit after switching to ${name}; the previous HEAD was restored`,
+                    );
                 }
                 return { text: `Switched to ${name} (${await shortHead(repo, signal)}) in ${repo.name}.` };
             },

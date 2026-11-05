@@ -156,7 +156,9 @@ export async function planStash(params: StashParams, call: Call): Promise<Planne
             run: async () => {
                 // The stash is a name: verify it is still the checked commit immediately before applying it.
                 if ((await revParse(repo.root, ref, signal)) !== stashed)
-                    throw new Error(`the ${ref} moved after the question; nothing was applied. Run this again and the person will be asked`);
+                    throw new Error(
+                        `the ${ref} moved after the question; nothing was applied. Run this again and the person will be asked`,
+                    );
                 const result = await git(repo.root, ["stash", "pop", ref], { signal });
                 if (result.code !== 0) {
                     const conflicts = (await gitOut(repo.root, ["diff", "--name-only", "--diff-filter=U"], { signal }))
