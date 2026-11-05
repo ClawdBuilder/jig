@@ -1,6 +1,6 @@
 // The shared guard resolver, against a real repository: the same refs the operations use, and every parent of a stash.
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import {
@@ -155,4 +155,15 @@ test("the gate asks only when a guarded file is in the change, and never for clo
     );
     assert.equal(verdict?.decision, "ask");
     assert.match(verdict?.reason ?? "", /\.pi\/settings\.json/);
+});
+
+test("a repo name cannot reach outside the workspace through a symlink or ..", async () => {
+    const { resolveRepo, setWorkingDirectory } = await import("../src/repo.ts");
+    const r = makeRepo(h.sb, `safe${++counter}`);
+    setWorkingDirectory(r.dir);
+    await assert.rejects(() => resolveRepo("..", undefined), /must be a folder name|outside|not the root/);
+    const outside = path.join(h.sb.root, `outside${counter}`);
+    git(h.sb.root, "clone", "-q", r.origin, outside);
+    symlinkSync(outside, path.join(r.dir, `link${counter}`));
+    await assert.rejects(() => resolveRepo(`link${counter}`, undefined), /outside|not the root/);
 });

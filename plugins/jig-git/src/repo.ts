@@ -110,7 +110,14 @@ export async function resolveRepo(input: string | undefined, signal?: AbortSigna
     }
     const root = await topLevel(real, signal);
     if (root === undefined) throw new Error(`"${input.slice(0, 120)}" is not inside a git work tree`);
-    if (byName && root !== real) throw new Error(`"${input}" in ${workspace} is not the root of a git repository`);
+    if (byName) {
+        // A name is a folder in the workspace or below the folder Pi runs in, and a link must not carry it elsewhere.
+        const inside = (parent: string): boolean =>
+            real === parent || real.startsWith(parent.endsWith(path.sep) ? parent : `${parent}${path.sep}`);
+        if (!inside(workspace) && !inside(workingDirectory()))
+            throw new Error(`repo "${input}" resolves outside ${workspace} and ${workingDirectory()}`);
+        if (root !== real) throw new Error(`"${input}" in ${workspace} is not the root of a git repository`);
+    }
     return { root, name: byName ? input : root };
 }
 

@@ -471,16 +471,28 @@ describe("filtered keeps everything else working", { skip }, () => {
         const git = await s.bash(
             "git init -q && git config user.name Test && git config user.email t@example.com && echo hello > f && git add f && git commit -qm first && git log --oneline | wc -l",
         );
-        assert.equal(
-            git.text
-                .split("\n")
-                .filter((line) => !line.startsWith("[sandbox] removed"))
-                .join("\n")
-                .trim(),
-            "1",
-        );
+        assert.equal(git.text.trim(), "1");
         const socket = await s.bash('python3 -c "import socket; socket.socket(socket.AF_UNIX)" 2>&1 | tail -1');
         assert.match(socket.text, /not permitted|Errno 1/i, "the forwarders do not open the Unix-socket door");
+    });
+
+    test("an existing repository: config, remote, commit, branch, stash and ordinary project files", async () => {
+        const s = await begin(filtered());
+        const made = await s.bash(
+            "git init -q && git config user.name Test && git config user.email t@example.com && echo one > f && git add f && git commit -qm one",
+        );
+        assert.doesNotMatch(made.text, /error|fatal|refused/i);
+        const config = await s.bash(
+            "git remote add origin https://example.com/x.git && git config branch.main.remote origin && git config user.name Test && echo rc=$?",
+        );
+        assert.equal(config.text.trim(), "rc=0");
+        assert.doesNotMatch(config.text, /\[sandbox\] removed/);
+        const work = await s.bash(
+            "git checkout -qb feature && echo two >> f && git commit -qam two && git stash -q && git checkout -q - && mkdir -p sub-repo/.vscode && git -C sub-repo init -q && echo '{}' > sub-repo/.vscode/extensions.json && echo rc=$?; cat .git/config | head -2",
+        );
+        assert.match(work.text, /rc=0/);
+        const guarded = await s.bash("printf '{}' > sub-repo/.vscode/tasks.json; echo rc=$?");
+        assert.match(guarded.text, /removed .*sub-repo\/.vscode\/tasks\.json/);
     });
 
     test("a server and its client in one command work with no bridge at all", async () => {

@@ -234,6 +234,8 @@ export function computeRules(input: RulesInput): RuleSet {
     // Hidden and locked: what jig-core keeps from Pi's file tools, company additions included. One list, so the file
     // tools and bash cannot disagree.
     for (const entry of input.protectedPaths) {
+        // .git/config is the file-tools-only exception: git has to write it, and the after-command audit keeps it clean.
+        if (entry.source === "default" && /(^|\/)\.git\/config$/.test(entry.path)) continue;
         if (entry.kind === "secret") add("hidden", entry.path, "credentials", CORE_SOURCE[entry.source]);
         else add("locked", entry.path, "pi", CORE_SOURCE[entry.source]);
     }
