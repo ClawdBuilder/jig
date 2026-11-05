@@ -21,6 +21,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `settings.json` packages, or Pi is not found, the machine group fails with the install command, and setup stops before
   asking anything. Two copies with different versions are a warning. Both commands say "Checking your setup…" before the
   packages load, and a records folder that does not exist yet is normal, not a warning.
+- Project packages are not imported until Pi would trust the folder: the closest saved decision in the agent folder's
+  `trust.json`, or `defaultProjectTrust: "always"` there; a missing or malformed trust file fails closed. The doctor shows
+  a `skip` line naming what was skipped, setup says the same instead of asking, and Jig listed only in an untrusted project
+  is a skip, not "not installed". User-scope packages are unaffected.
+
 - A package installed from git is found where Pi puts it: user scope under `<agent folder>/git/<host>/<path>`, project
   scope under `<cwd>/.pi/git/<host>/<path>`, with `.git` and the `@ref` stripped, and project packages read from
   `<cwd>/.pi/settings.json` too. npm packages are looked for at the folder Pi manages, with its global fallback. A package

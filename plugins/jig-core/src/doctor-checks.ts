@@ -94,26 +94,35 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                             : `${pi} (Jig needs 1.4 or later)`,
                   ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
               },
-        context.standalone === true && context.jigInPi === false
+        context.standalone === true && context.jigInPi === false && context.projectSkipped?.jigIncluded === true
             ? {
                   id: "machine.jig",
                   group: "machine",
-                  level: "fail",
+                  level: "skip",
                   title: "Jig",
-                  detail:
-                      context.jigListedButMissing === undefined
-                          ? "not installed in Pi yet, so Pi does not load Jig's plugins."
-                          : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
-                  fix: `Install it: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                  detail: "listed in this folder's Pi packages, which were not loaded: the folder is not trusted in Pi.",
+                  fix: "Open Pi here and choose Trust, then run jig doctor again.",
               }
-            : {
-                  id: "machine.jig",
-                  group: "machine",
-                  level: jig === undefined ? "warn" : "ok",
-                  title: "Jig",
-                  detail: jig ?? "could not be read",
-                  ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
-              },
+            : context.standalone === true && context.jigInPi === false
+              ? {
+                    id: "machine.jig",
+                    group: "machine",
+                    level: "fail",
+                    title: "Jig",
+                    detail:
+                        context.jigListedButMissing === undefined
+                            ? "not installed in Pi yet, so Pi does not load Jig's plugins."
+                            : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
+                    fix: `Install it: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                }
+              : {
+                    id: "machine.jig",
+                    group: "machine",
+                    level: jig === undefined ? "warn" : "ok",
+                    title: "Jig",
+                    detail: jig ?? "could not be read",
+                    ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
+                },
         ...(context.standalone === true &&
         jig !== undefined &&
         context.jigInPiVersion !== undefined &&
@@ -208,6 +217,17 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             detail: "Their state is unknown until the settings file can be read.",
         });
         return [...lines, ...protectedLines(context, options)];
+    }
+
+    if (context.projectSkipped !== undefined) {
+        lines.push({
+            id: "config.project-trust",
+            group: "config",
+            level: "skip",
+            title: "This folder's Pi packages were not loaded",
+            detail: context.projectSkipped.line,
+            fix: "Open Pi here and choose Trust, then run jig doctor again.",
+        });
     }
 
     const notSet: string[] = [];

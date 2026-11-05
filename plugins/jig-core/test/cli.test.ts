@@ -27,12 +27,15 @@ function env(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
     return { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
 }
 
-function run(args: string[], options: { input?: string; tty?: boolean; env?: Record<string, string> } = {}) {
+function run(
+    args: string[],
+    options: { input?: string; tty?: boolean; env?: Record<string, string>; cwd?: string } = {},
+) {
     const command = options.tty === true ? "script" : process.execPath;
     const argv =
         options.tty === true ? ["-qec", `${process.execPath} ${BIN} ${args.join(" ")}`, "/dev/null"] : [BIN, ...args];
     return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-        const child = spawn(command, argv, { cwd: work, env: env(options.env) });
+        const child = spawn(command, argv, { cwd: options.cwd ?? work, env: env(options.env) });
         let stdout = "";
         let stderr = "";
         child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
@@ -44,9 +47,9 @@ function run(args: string[], options: { input?: string; tty?: boolean; env?: Rec
 }
 
 /** The setup prompts, answered when each one appears on the (pseudo-)terminal. */
-function runSetup(expectations: Array<{ when: string; answer: string }>) {
+function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = work) {
     const child = spawn("script", ["-qec", `${process.execPath} ${BIN} setup`, "/dev/null"], {
-        cwd: work,
+        cwd,
         env: env(),
     });
     let stdout = "";
@@ -206,6 +209,7 @@ describe("a package installed from git", () => {
             path.join(work, ".pi", "settings.json"),
             JSON.stringify({ packages: ["git:github.com/example/git-co"] }),
         );
+        writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
         const doctor = await run(["doctor", "--quiet"]);
         assert.doesNotMatch(doctor.stdout, /git-co.*could not be loaded/);
         const result = await runSetup([
@@ -258,6 +262,140 @@ describe("jig setup", () => {
         assert.equal(written.profiles["fixture-co"].plugin, "fixture-co");
         assert.equal(written.fixture.login, "jdoe");
         assert.match(result.stdout, /Start Pi again, or run \/reload in it, to apply\./);
+    });
+});
+
+/** A project-scope package whose extension writes `marker` as soon as it is imported. */
+function markerPackage(marker: string, cwd = work, name = "tool"): void {
+    const folder = path.join(cwd, ".pi", "git", "github.com", "acme", name);
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+        path.join(folder, "package.json"),
+        JSON.stringify({ name, version: "1.0.0", type: "module", pi: { extensions: ["./index.mjs"] } }),
+    );
+    writeFileSync(
+        path.join(folder, "index.mjs"),
+        `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "ran");\nexport default function () {}\n`,
+    );
+    mkdirSync(path.join(cwd, ".pi"), { recursive: true });
+    writeFileSync(
+        path.join(cwd, ".pi", "settings.json"),
+        JSON.stringify({ packages: [`git:github.com/acme/${name}`] }),
+    );
+}
+
+describe("project packages follow Pi's trust, and import nothing before it", () => {
+    test("the marker appears only in the cases Pi would load", async () => {
+        const cases: Array<{
+            name: string;
+            trust?: Record<string, unknown>;
+            agentAlways?: boolean;
+            projectAlways?: boolean;
+            run: boolean;
+        }> = [
+            { name: "no trust.json", run: false },
+            { name: "false", trust: { WORK: false }, run: false },
+            { name: "parent true, closer false", trust: { PARENT: true, WORK: false }, run: false },
+            { name: "parent true", trust: { PARENT: true }, run: true },
+            { name: "exact true", trust: { WORK: true }, run: true },
+            { name: "default always in the agent settings", agentAlways: true, run: true },
+            { name: "default always in the project settings only", projectAlways: true, run: false },
+            { name: "malformed trust.json", trust: { WORK: "yes" }, run: false },
+        ];
+        for (const scenario of cases) {
+            const cwd = path.join(work, scenario.name.replace(/[^a-z]+/gi, "-"));
+            mkdirSync(cwd, { recursive: true });
+            const marker = path.join(cwd, "marker.txt");
+            markerPackage(marker, cwd);
+            writeFileSync(path.join(agent, "trust.json"), "{}");
+            rmSync(path.join(agent, "trust.json"), { force: true });
+            if (scenario.trust !== undefined) {
+                const entries = Object.fromEntries(
+                    Object.entries(scenario.trust).map(([key, value]) => [
+                        key === "WORK" ? cwd : path.dirname(cwd),
+                        value,
+                    ]),
+                );
+                writeFileSync(path.join(agent, "trust.json"), JSON.stringify(entries));
+            }
+            settingsWith();
+            if (scenario.agentAlways === true) {
+                writeFileSync(
+                    path.join(agent, "settings.json"),
+                    JSON.stringify({ packages: [ROOT], defaultProjectTrust: "always" }),
+                );
+            }
+            if (scenario.projectAlways === true) {
+                writeFileSync(
+                    path.join(cwd, ".pi", "settings.json"),
+                    JSON.stringify({ packages: ["git:github.com/acme/tool"], defaultProjectTrust: "always" }),
+                );
+            }
+            const result = await run(["doctor"], { cwd });
+            assert.equal(existsSync(marker), scenario.run, `${scenario.name}: ${result.stdout}`);
+            assert.match(result.stdout, scenario.run ? /Jig doctor/ : /Pi packages were not loaded/, scenario.name);
+        }
+    });
+
+    test("a user-scope package still runs without any trust", async () => {
+        const marker = path.join(work, "user-marker.txt");
+        const folder = path.join(agent, "git", "github.com", "acme", "usertool");
+        mkdirSync(folder, { recursive: true });
+        writeFileSync(
+            path.join(folder, "package.json"),
+            JSON.stringify({ name: "usertool", version: "1.0.0", type: "module", pi: { extensions: ["./index.mjs"] } }),
+        );
+        writeFileSync(
+            path.join(folder, "index.mjs"),
+            `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "ran");\nexport default function () {}\n`,
+        );
+        writeFileSync(
+            path.join(agent, "settings.json"),
+            JSON.stringify({ packages: [ROOT, "git:github.com/acme/usertool"] }),
+        );
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(existsSync(marker), true, result.stdout);
+    });
+
+    test("Jig listed only in an untrusted project is a skip, not a failure, and setup stops with the reason", async () => {
+        const cwd = path.join(work, "jig-project");
+        mkdirSync(cwd, { recursive: true });
+        markerPackage(path.join(cwd, "marker.txt"), cwd, "jig");
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
+        const doctor = await run(["doctor"], { cwd });
+        assert.match(doctor.stdout, /skip Jig/);
+        assert.match(doctor.stdout, /not trusted in Pi/);
+        assert.doesNotMatch(doctor.stdout, /fail Jig/);
+        assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
+        assert.equal(existsSync(path.join(cwd, "marker.txt")), false, "the project extension was not imported");
+        const setup = await runSetup([{ when: "not trusted in Pi", answer: "" }], cwd);
+        assert.equal(setup.code, 1);
+        assert.match(setup.stdout, /this folder is not trusted in Pi/);
+        assert.doesNotMatch(setup.stdout, /Which company setup do you use/);
+    });
+
+    test("a company only at project scope in an untrusted folder is named, not treated as no company", async () => {
+        const cwd = path.join(work, "company-project");
+        mkdirSync(cwd, { recursive: true });
+        const folder = path.join(cwd, ".pi", "git", "github.com", "acme", "git-co");
+        mkdirSync(folder, { recursive: true });
+        writeFileSync(
+            path.join(folder, "package.json"),
+            JSON.stringify({ name: "git-co", version: "1.0.0", type: "module", pi: { extensions: ["./index.mjs"] } }),
+        );
+        writeFileSync(
+            path.join(folder, "index.mjs"),
+            `import { withJig } from ${JSON.stringify(path.join(ROOT, "plugins/jig-core/src/client.ts"))};\nexport default function () { withJig((api) => api.profiles.register("git-co", { displayName: "Git Co" })); }\n`,
+        );
+        writeFileSync(
+            path.join(cwd, ".pi", "settings.json"),
+            JSON.stringify({ packages: ["git:github.com/acme/git-co"] }),
+        );
+        settingsWith();
+        const setup = await runSetup([{ when: "Pi packages were not loaded", answer: "" }], cwd);
+        assert.equal(setup.code, 1);
+        assert.match(setup.stdout, /git:github\.com\/acme\/git-co/);
+        assert.doesNotMatch(setup.stdout, /No company plugin is installed/);
     });
 });
 

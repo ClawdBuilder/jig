@@ -11,6 +11,7 @@ import { errorMessage } from "../errors.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
 import { manifestOf, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
 import type { ListedPackage } from "./packages.ts";
+import { projectTrust, untrustedSkipLine } from "./trust.ts";
 import type { JigState } from "../state.ts";
 
 /** One package that could not be loaded, with the plain reason: the doctor shows it as a FAIL line. */
@@ -117,6 +118,8 @@ export interface Headless {
     jigListedButMissing?: { source: string; problem: string };
     /** Packages Pi lists whose files are not there, or whose source cannot be read. */
     packageProblems: Array<{ source: string; problem: string }>;
+    /** Project-scope packages that were not loaded because Pi would not load them either, and why. */
+    projectSkipped?: { sources: string[]; line: string; jigIncluded: boolean };
     /** How long each package's extensions took to load, slowest first: what the blank screen was. */
     timings: Array<{ name: string; ms: number }>;
 }
@@ -143,6 +146,12 @@ export async function loadHeadless(
     const loaded: string[] = [];
     const timings: Array<{ name: string; ms: number }> = [];
     const installed = readPackages(agentDir, workingDir);
+    // Project-scope packages are code from a folder the person may not have trusted: import nothing from them until Pi's
+    // own saved decisions (or its global default) say Pi would load them too.
+    const trust = projectTrust(agentDir, workingDir);
+    const projectEntries = installed.listed.filter((entry) => entry.scope === "project");
+    const skippedProject = trust.trusted ? [] : projectEntries;
+    const loadable = installed.listed.filter((entry) => !skippedProject.includes(entry));
     const own = ownPackage();
     const packageProblems: Array<{ source: string; problem: string }> = installed.listed.flatMap((entry) =>
         entry.problem === undefined ? [] : [{ source: entry.source, problem: entry.problem }],
@@ -162,9 +171,10 @@ export async function loadHeadless(
         return entry.folder !== undefined && path.basename(entry.folder) === own.name;
     };
     const jigListedButMissing = installed.listed.find((entry) => entry.problem !== undefined && looksLikeJig(entry));
+    const jigSkippedUntrusted = skippedProject.some((entry) => looksLikeJig(entry));
     let jigInPi = false;
     let jigInPiVersion: string | undefined;
-    for (const entry of installed.listed) {
+    for (const entry of loadable) {
         if (entry.problem !== undefined || entry.folder === undefined) continue;
         const startedAt = performance.now();
         const files = extensionsOf(entry.folder);
@@ -219,6 +229,18 @@ export async function loadHeadless(
                   },
               }),
         packageProblems,
+        ...(skippedProject.length === 0
+            ? {}
+            : {
+                  projectSkipped: {
+                      sources: skippedProject.map((entry) => entry.source),
+                      line: untrustedSkipLine(
+                          skippedProject.map((entry) => entry.source),
+                          trust,
+                      ),
+                      jigIncluded: jigSkippedUntrusted,
+                  },
+              }),
         timings,
     };
 }

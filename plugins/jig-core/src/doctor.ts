@@ -71,6 +71,8 @@ export interface DoctorContext {
     jigInPiVersion?: string;
     /** Pi lists Jig, but its folder is not there: a different problem from never installing it. */
     jigListedButMissing?: { source: string; problem: string };
+    /** Project packages Pi would not load because the folder is not trusted: skipped, never imported. */
+    projectSkipped?: { sources: string[]; line: string; jigIncluded: boolean };
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;

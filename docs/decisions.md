@@ -62,6 +62,20 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 
+## 2026-11-05: project packages load only when Pi would trust the folder
+
+`jig doctor` and `jig setup` read project packages from `<cwd>/.pi/settings.json` so a company installed for one project is
+offered. But that meant importing code from any folder someone ran the command in, which is the same risk Pi's project
+trust exists to stop: clone a hostile repository, run `jig doctor`, and its extension runs.
+
+The command now applies Pi 1.5's rules itself, without importing Pi: the closest `true`/`false` in the agent folder's
+`trust.json` from the canonical cwd upward decides (`null` does not); without one, only the agent folder's
+`defaultProjectTrust` matters, and `"always"` is the only value that loads outside Pi's screen. A missing, unreadable or
+malformed trust file fails closed. Project packages are still read as facts (settings, manifests), but `import()` and
+factories wait for trust. The doctor shows a `skip` line naming what was skipped, and setup says the same rather than acting
+as if there is no company; Jig listed only in an untrusted project is a skip, not "not installed". User-scope packages are
+unchanged. The `project_trust` extension event is not imitated: there is no screen here, and under-loading is safe.
+
 ## 2026-11-04: setup and doctor run as a standalone command
 
 Setup and doctor are needed on the first day, often before Pi starts and always when Pi cannot: a broken `jig.json`, a

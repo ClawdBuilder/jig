@@ -76,6 +76,7 @@ async function doctor(args: readonly string[]): Promise<number> {
                 ...(loaded.jigListedButMissing === undefined
                     ? {}
                     : { jigListedButMissing: loaded.jigListedButMissing }),
+                ...(loaded.projectSkipped === undefined ? {} : { projectSkipped: loaded.projectSkipped }),
             },
             {
                 network: flags.has("--network"),
@@ -211,14 +212,27 @@ async function setup(): Promise<number> {
         ui.close();
         return 1;
     }
+    if (loaded.projectSkipped !== undefined) ui.notify(loaded.projectSkipped.line, "warning");
     if (!loaded.jigInPi) {
         const pkg = ownPackage();
         const where = installLocation(pkg.repository) ?? "github.com/Dev-Mriganka/jig";
         const why =
-            loaded.jigListedButMissing === undefined
-                ? "Jig is not installed in Pi yet, so there is nothing to set up for."
-                : `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}`;
-        ui.notify(`${why}\nInstall it with: pi install git:${where}\nThen run jig setup again.`, "error");
+            loaded.projectSkipped?.jigIncluded === true
+                ? "Jig is listed only in this folder's Pi packages, and they were not loaded: this folder is not trusted in Pi."
+                : loaded.jigListedButMissing === undefined
+                  ? "Jig is not installed in Pi yet, so there is nothing to set up for."
+                  : `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}`;
+        const next =
+            loaded.projectSkipped?.jigIncluded === true
+                ? "Open Pi here and choose Trust."
+                : `Install it with: pi install git:${where}`;
+        ui.notify(`${why}\n${next}\nThen run jig setup again.`, "error");
+        ui.close();
+        return 1;
+    }
+    if (loaded.projectSkipped !== undefined && loaded.state.companies.size === 0) {
+        // A company only in this folder's untrusted packages is not "no company": say what was skipped and stop.
+        ui.notify(`${loaded.projectSkipped.line}\nThen run jig setup again.`, "error");
         ui.close();
         return 1;
     }

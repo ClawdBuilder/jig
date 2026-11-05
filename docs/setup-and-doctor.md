@@ -59,6 +59,17 @@ If your settings file is a link, as a dotfiles setup often makes it, setup follo
 will change, and writes that file. The link stays a link. A link that points nowhere, or to a folder, is refused
 and nothing changes.
 
+## This folder's Pi packages, and trust
+
+Project packages (the `packages` in `<folder>/.pi/settings.json`, cloned under `<folder>/.pi/git`) are code, and Pi loads
+them only after you trust the folder. `jig doctor` and `jig setup` follow the same rule: they read the folder's settings
+and package folders for facts, but they import and run nothing from project scope until Pi's own saved decision in the
+agent folder's `trust.json` says yes, or the agent folder's settings say `defaultProjectTrust: "always"`. A closer "do not
+trust" wins over a parent's trust; a missing, unreadable or malformed `trust.json` fails closed. The doctor then shows a
+`skip` line naming what was not loaded and how to trust the folder in Pi; setup says the same instead of asking questions.
+User-scope packages are unaffected. Pi's `project_trust` extension event is not imitated: there is no screen for it here,
+and loading less is the safe direction.
+
 ## The four words
 
 | Word | What it means |
