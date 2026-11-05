@@ -2,7 +2,7 @@
 
 # Jig
 
-[![CI](https://github.com/Dev-Mriganka/jig/actions/workflows/ci.yml/badge.svg)](https://github.com/Dev-Mriganka/jig/actions/workflows/ci.yml)
+[![CI](https://github.com/ClawdBuilder/jig/actions/workflows/ci.yml/badge.svg)](https://github.com/ClawdBuilder/jig/actions/workflows/ci.yml)
 
 Jig is a set of plugins for the [Pi](https://pi.dev) coding agent. They decide
 what the agent may do, ask you when it matters, keep secrets out of its reach,
@@ -65,7 +65,7 @@ pi install npm:@dev-mriganka/jig
 ```
 
 To pin a release, name it: `pi install npm:@dev-mriganka/jig@0.4.0`. From an unreleased checkout the `git:` form still
-works: `pi install git:github.com/Dev-Mriganka/jig`.
+works: `pi install git:github.com/ClawdBuilder/jig`.
 Pi keeps a tag or a commit pinned and never moves it. [Releases](docs/releases.md) says what a version means
 and how one is cut.
 

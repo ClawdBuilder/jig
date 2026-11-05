@@ -2,7 +2,7 @@
     "name": "@dev-mriganka/jig",
     "version": "0.4.0",
     "description": "One tool manager and a set of plugins for the Pi coding agent: permissions per tool and environment, approvals, secrets and records.",
-    "repository": "git+https://github.com/Dev-Mriganka/jig.git",
+    "repository": "git+https://github.com/ClawdBuilder/jig.git",
     "type": "module",
     "license": "MIT",
     "engines": {

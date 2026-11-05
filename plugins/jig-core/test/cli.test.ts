@@ -220,12 +220,12 @@ describe("a package installed from git", () => {
     test("a listed clone whose folder is gone is a failure naming the folder, not an all-clear", async () => {
         writeFileSync(
             path.join(agent, "settings.json"),
-            JSON.stringify({ packages: ["git:github.com/Dev-Mriganka/jig"] }),
+            JSON.stringify({ packages: ["git:github.com/ClawdBuilder/jig"] }),
         );
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /Pi lists it, but its files are not there/);
-        assert.match(result.stdout, /git\/github\.com\/Dev-Mriganka\/jig/);
+        assert.match(result.stdout, /git\/github\.com\/ClawdBuilder\/jig/);
     });
 
     test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", async () => {

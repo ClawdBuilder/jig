@@ -11,13 +11,13 @@ production results are masked. A report that breaks one of those promises is the
 | an older tag | no: move to the latest, or open an issue that names why you cannot |
 | a branch or a commit | no: it is not a release, and it changes |
 
-The current release is the one on the [Releases](https://github.com/Dev-Mriganka/jig/releases) page. [Compatibility](docs/compatibility.md)
+The current release is the one on the [Releases](https://github.com/ClawdBuilder/jig/releases) page. [Compatibility](docs/compatibility.md)
 says what this repository promises to keep stable.
 
 ## Report a vulnerability privately
 
 Use GitHub's private advisory form:
-[Report a vulnerability](https://github.com/Dev-Mriganka/jig/security/advisories/new).
+[Report a vulnerability](https://github.com/ClawdBuilder/jig/security/advisories/new).
 
 - **Do not open a public issue** for a vulnerability, and do not post it in a discussion.
 - **Do not paste a real credential**, even to prove the point. A reference such as `pass:example` and the command that
