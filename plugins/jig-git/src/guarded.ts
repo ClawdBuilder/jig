@@ -124,3 +124,28 @@ export async function guardedTargets(
     }
     return targets.length === 0 ? undefined : { root, from, targets };
 }
+
+/** The guarded files a target would change. */
+export async function guardedPathsFor(target: GuardTarget, action: string, signal?: AbortSignal): Promise<string[]> {
+    const files = new Set<string>();
+    for (const one of target.targets) {
+        const found =
+            action === "stash"
+                ? await guardedStashChanges(target.root, one.sha, signal)
+                : await guardedChanges(target.root, target.from, one.sha, signal);
+        for (const path of found) files.add(path);
+    }
+    return [...files];
+}
+
+/** The files a later target would change that the plan did not expect: a fetch brought them after the question. */
+export function newGuarded(before: readonly string[], after: readonly string[]): string[] {
+    const known = new Set(before);
+    return after.filter((path) => !known.has(path));
+}
+
+export function lateGuardError(paths: readonly string[]): Error {
+    return new Error(
+        `the fetch brought changes to files Pi loads (${paths.slice(0, 5).join(", ")}${paths.length > 5 ? ", …" : ""}); nothing was applied. Run this again and the person will be asked`,
+    );
+}

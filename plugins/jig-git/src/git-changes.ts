@@ -8,6 +8,7 @@ import type { Repo } from "./repo.ts";
 import { git, gitOut, refExists, requireBranch, revParse, summaryOf } from "./run.ts";
 import { clip, firstLines, plural } from "./text.ts";
 import { operationOf, requireClean, shortHead } from "./git-guards.ts";
+import { guardedPathsFor, guardedTargets } from "./guarded.ts";
 
 // ---- commit -------------------------------------------------------------------------------------------------------
 
@@ -145,12 +146,17 @@ export async function planStash(params: StashParams, call: Call): Promise<Planne
     const stashed = (await revParse(repo.root, ref, signal)) ?? "";
     if (operation === "pop") {
         await requireClean(repo, `popping ${ref}`, signal);
+        const plannedTarget = await guardedTargets("stash", { operation, index }, repo.root, call.settings, signal);
+        const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "stash", signal);
         return {
             preview: {
                 summary: `apply ${ref} to ${repo.name} and drop it`,
-                fingerprint: digest("stash", repo.root, "pop", ref, stashed),
+                fingerprint: digest("stash", repo.root, "pop", ref, stashed, ...plannedGuarded),
             },
             run: async () => {
+                // The stash is a name: verify it is still the checked commit immediately before applying it.
+                if ((await revParse(repo.root, ref, signal)) !== stashed)
+                    throw new Error(`the ${ref} moved after the question; nothing was applied. Run this again and the person will be asked`);
                 const result = await git(repo.root, ["stash", "pop", ref], { signal });
                 if (result.code !== 0) {
                     const conflicts = (await gitOut(repo.root, ["diff", "--name-only", "--diff-filter=U"], { signal }))
