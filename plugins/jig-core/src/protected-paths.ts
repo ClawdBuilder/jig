@@ -68,6 +68,8 @@ export interface CheckContext extends PathContext {
     /** Pi's working folder: where a relative path starts. */
     cwd: string;
     home: string;
+    /** Whether bash may write this absolute path (the sandbox's own answer). Default: the working folder only. */
+    canWrite?: (absolute: string) => boolean;
 }
 
 export interface Refusal {
@@ -544,7 +546,18 @@ export function checkFileTool(
 
     if (tool === "write" || tool === "edit") {
         const hit = find(targetForms, entries, ANY, "inside", sep);
-        if (hit === undefined) return undefined;
+        if (hit === undefined) {
+            const api = flavour(context.platform);
+            const writable =
+                context.canWrite ?? ((absolute: string) => isInside(absolute, api.resolve(context.cwd), sep));
+            if (targetForms.some((form) => !writable(form))) {
+                return {
+                    ask: true,
+                    reason: `write needs approval: ${abbreviate(target.folded, context.home, api)} is outside the folders bash can write. Ask the person to allow that folder (they can use /sandbox allow), or make the change themselves.`,
+                };
+            }
+            return undefined;
+        }
         if (hit.kind === "secret") return secret(hit);
         if (hit.ask === true) {
             return {

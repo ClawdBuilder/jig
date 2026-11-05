@@ -455,6 +455,9 @@ export interface SandboxProvider {
     /** Whether a command in the sandbox can write this path: absolute, links followed. A program there is not one Jig may run.
      *  `true` means writable, or that the question could not be answered: a caller that must not be wrong treats it as a maybe. */
     canWrite(path: string): boolean;
+    /** The folders the person allowed for this session or always, as bash's rules received them. Optional: without it the
+     *  file tools allow the working folder only outside it. */
+    allowedFolders?(): readonly string[];
     /** Settles when the sandbox has started, or failed to, so that session start can say which. */
     whenReady?(): Promise<void>;
     /** Runs a shell command the way the sandbox runs the agent's `bash`: the same rules, environment and audit, without

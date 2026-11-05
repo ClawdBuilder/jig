@@ -83,7 +83,9 @@ sandbox still asks. A team repository that keeps `.pi/skills` in git becomes rea
 start-up files, PATH folders, editor and agent files, `.envrc`, `.git/config` and `.git/hooks`, and repositories one and
 two levels below); toolchain managers are an ask, not a refusal. The git tool can write the working tree with no sandbox,
 so a gate asks before a switch, merge, sync, rebase, cherry-pick, stash pop, restore, worktree add or clone would change a
-guarded path, naming the paths and commits; a normal switch does not ask.
+guarded path, naming the paths and commits; a normal switch does not ask. A file-tool write outside the working folder
+and the folders the person allowed asks through the same dialog; guarded and secret paths are refused first, never asked,
+and a child agent or a run with no terminal is refused.
 
 ## 2026-11-05: project packages load only when Pi would trust the folder
 

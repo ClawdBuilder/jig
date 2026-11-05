@@ -2,7 +2,7 @@
 // project files can, nothing is planted, and the next start still has its sandbox.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -43,6 +43,7 @@ function runTools(tools: unknown[]): Promise<string[]> {
     const results: string[] = [];
     return new Promise((resolve, reject) => {
         const finish = (): void => {
+            clearTimeout(timer);
             child.kill();
             resolve(results);
         };
@@ -69,7 +70,7 @@ function runTools(tools: unknown[]): Promise<string[]> {
         });
         child.on("error", reject);
         child.stdin.write(JSON.stringify({ id: "1", type: "prompt", message: "go" }) + "\n");
-        setTimeout(finish, 60_000);
+        const timer = setTimeout(finish, 60_000);
     });
 }
 
@@ -174,5 +175,40 @@ describe("Pi's file tools in a trusted project", () => {
         const results = await runTools([{ tool: "bash", args: { command } }]);
         assert.match(results[0] ?? "", /Read-only file system|refused|busy|removed .*created it/);
         for (const item of targets) assert.equal(existsSync(path.join(work, item)), false, item);
+    });
+});
+
+describe("writes outside the working folder", () => {
+    test("ask, and with no screen they are refused; inside and an allowed folder do not ask", async () => {
+        const outside = path.join(home, "outside.txt");
+        const results = await runTools([
+            { tool: "write", args: { path: outside, content: "x" } },
+            { tool: "write", args: { path: path.join(work, "README.md"), content: "ok" } },
+        ]);
+        assert.match(results[0] ?? "", /outside the folders bash can write|needs approval/);
+        assert.equal(existsSync(outside), false);
+        assert.match(results[1] ?? "", /Successfully wrote/);
+
+        // The sandbox's own allowed folder, the way /sandbox allow records it.
+        const allowed = path.join(home, "allowed");
+        mkdirSync(allowed, { recursive: true });
+        mkdirSync(path.join(agent, "jig-sandbox"), { recursive: true });
+        writeFileSync(path.join(agent, "jig-sandbox/allowed.json"), JSON.stringify({ folders: [allowed] }));
+        const [yes] = await runTools([{ tool: "write", args: { path: path.join(allowed, "x.txt"), content: "ok" } }]);
+        assert.match(yes ?? "", /Successfully wrote/);
+        assert.equal(readFileSync(path.join(allowed, "x.txt"), "utf8"), "ok");
+    });
+
+    test("a symlink out of the project asks too, dangling or not", async () => {
+        const target = path.join(home, "outside-dir");
+        mkdirSync(target, { recursive: true });
+        symlinkSync(target, path.join(work, "link"));
+        symlinkSync(path.join(home, "does-not-exist"), path.join(work, "dangling"));
+        const results = await runTools([
+            { tool: "write", args: { path: path.join(work, "link", "x.txt"), content: "x" } },
+            { tool: "write", args: { path: path.join(work, "dangling", "x.txt"), content: "x" } },
+        ]);
+        for (const result of results) assert.match(result ?? "", /outside the folders bash can write|needs approval/);
+        assert.equal(existsSync(path.join(target, "x.txt")), false);
     });
 });

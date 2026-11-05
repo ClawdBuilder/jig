@@ -193,6 +193,7 @@ export function sandbox(options: SandboxOptions = {}): ExtensionFactory {
                 }
             },
             canWrite: (place) => core.canWrite(place),
+            allowedFolders: () => allowed.folders(),
             whenReady: () => core.whenReady(),
             run: (command, runOptions) => runForPlugin(command, runOptions),
         };
