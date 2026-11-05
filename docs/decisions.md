@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-05: the project files Pi loads are guarded for its file tools](#2026-11-05-the-project-files-pi-loads-are-guarded-for-its-file-tools)
 - [2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words](#2026-11-04-jig-doctor-reads-and-jig-setup-writes-in-the-persons-words)
 - [2026-11-03: company profiles, and skill overlays instead of paired skills](#2026-11-03-company-profiles-and-skill-overlays-instead-of-paired-skills)
 - [2026-11-03: deferred tools and stage tools](#2026-11-03-deferred-tools-and-stage-tools)
@@ -61,6 +62,24 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+
+## 2026-11-05: the project files Pi loads are guarded for its file tools
+
+Pi runs a project's settings, extensions, skills, prompts, themes, system files and project packages at its next start,
+outside the sandbox. `bash` locked those paths (`LOCKED_PI_IN_PROJECT`), but Pi's `write` and `edit` tools did not: measured
+in a trusted folder, they could create `.pi/settings.json` (or an extension or package) that Pi loaded at the next start,
+which could turn the sandbox off or run code. `docs/permissions.md` said the code Pi loads was guarded, and it was only true
+for package paths the settings already named.
+
+The list now lives once, in `jig-core`'s kit (`PI_PROJECT_PATHS`): Pi's trust-requiring resources, plus `.pi/git`, `.pi/npm`
+and `.agents`, which hold code Pi runs or loads. The sandbox and the file tools both read it; the sandbox's lock gains the
+paths its copy had missed. It is applied to the working folder and every folder above it below the home folder, by path
+shape and whether or not the path exists, through the same link-following and case-folding the protected paths already use.
+The file tools refuse `write` and `edit` with a plain message saying Pi loads the path at its next start and to ask the
+person; reading stays allowed. This is a default guarded path, so configuration can add more and cannot remove it. There is
+no new in-Pi override: a person runs `pi install -l` or edits the file themselves outside the tools, and `bash` outside the
+sandbox still asks. A team repository that keeps `.pi/skills` in git becomes read-only to the agent, as it already was for
+`bash`.
 
 ## 2026-11-05: project packages load only when Pi would trust the folder
 

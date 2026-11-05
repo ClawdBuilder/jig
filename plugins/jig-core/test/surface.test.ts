@@ -262,6 +262,7 @@ describe("what plugins import", () => {
             "http-error.ts",
             "http.ts",
             "oauth.ts",
+            "pi-project-paths.ts",
             "ports.ts",
             "role-policy.ts",
             "schema.ts",
@@ -289,6 +290,7 @@ describe("what plugins import", () => {
                 "isHttpError",
             ],
             "oauth.ts": ["Login", "REPLACE_EARLY_MS", "Token", "Tokens", "createTokens"],
+            "pi-project-paths.ts": ["PI_PROJECT_PATHS", "projectFoldersBelowHome"],
             "ports.ts": [
                 "FreePortOptions",
                 "PortWaitError",

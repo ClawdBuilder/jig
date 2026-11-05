@@ -36,7 +36,8 @@ Use GitHub's private advisory form:
   working folders, or a process it can reach.
 - **Approval can be forged:** a review approved without a passkey signature, or a second endpoint that approves.
 - **A path is not protected** that should be: Pi's agent folder, the secret stores, or a file that runs code unsandboxed at
-  the next start.
+  the next start, including a project's `.pi` settings, skills, prompts, themes, extensions, packages and system files,
+  guarded by path and refused for `write` and `edit`.
 - **The harness is fooled about what it recorded:** a call missing from the records, or recorded with another decision.
 
 ## What is not in scope

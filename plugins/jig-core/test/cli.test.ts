@@ -139,7 +139,8 @@ describe("jig doctor", () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
         const result = await run(["doctor"]);
         assert.match(result.stdout, /Two copies of Jig/);
-        assert.match(result.stdout, /this command is 0\.3\.0/);
+        const own = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version?: string };
+        assert.match(result.stdout, new RegExp(`this command is ${own.version?.replaceAll(".", "\\.")}`));
         assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
     });
 

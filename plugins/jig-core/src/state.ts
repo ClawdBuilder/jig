@@ -335,6 +335,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
                     defaultProtectedPaths({
                         agentDir,
                         home,
+                        cwd: state.workingDir === "" ? process.cwd() : state.workingDir,
                         stateDir: stateDir(),
                         env,
                         pass: state.personal.config.secrets.pass,

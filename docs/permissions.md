@@ -80,6 +80,7 @@ example:
 | Credentials stay hidden from `bash` | That is the sandbox's job, and configuration does not reach into it. `/jig` says whether `bash` is sandboxed, and with no sandbox it says plainly that it is not |
 | `bash` run outside its sandbox asks | Only a rule naming the tool `bash`, the action `outside` and a command pattern allows it without asking; no wildcard and no default does. With no screen it is refused |
 | Pi's file tools refuse **protected paths** (see below) | A credential the agent can read leaks a login, and a folder it can write could load code or loosen a rule |
+| The files Pi loads from a project at its next start are **guarded** for the file tools, by path and whether they exist yet | Pi runs them outside the sandbox on the next start; writing one would change what Pi does, or turn its sandbox off |
 | A plugin's **gate** can only make a decision stricter | A plugin must not be able to undo what you or the floor decided. `jig-workflow` holds calls this way |
 
 Configuration can always add strictness. For example, it can mask a test
@@ -123,9 +124,14 @@ paths.
       `.pi` for the second. A folder or a single file, there or not yet.
     - **Extension files Pi loaded** from anywhere else, as far as Pi says: it lists the files of the tools and
       commands that extensions registered, so an extension that registered neither is not in the list.
+    - **The project's own files** Pi loads at its next start, in the working folder and every folder above it below the
+      home folder: `.pi/settings.json`, `.pi/mcp.json`, `.pi/extensions`, `.pi/skills`, `.pi/prompts`, `.pi/themes`,
+      `.pi/SYSTEM.md`, `.pi/APPEND_SYSTEM.md`, `.pi/git` and `.pi/npm` (which hold packages Pi runs), and `.agents`.
+      They are guarded by path shape, whether or not they exist yet, so a file made before the next start cannot slip in.
+      `bash` locks the same list from the same table. This is also why a team repository that keeps `.pi/skills` in git is
+      readable to the agent but no longer editable by it.
     - **Not added:** a `git:` or `npm:` package in the user's settings, which lives in the agent folder, and an entry
-      that would protect the home folder or a folder above it. The `.pi/git` and `.pi/npm` folders of a project are not
-      covered.
+      that would protect the home folder or a folder above it.
     - **A package that holds the working folder** makes the whole folder unwritable, for the file tools and for `bash`.
       That is the rule doing its work: change such a package yourself, with `!`.
 - **How a path is matched.** `~` is expanded, a relative path starts from Pi's

@@ -4,6 +4,17 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Fixed
+
+- Pi's `write` and `edit` tools can no longer change what Pi loads from a project at its next start. The settings file,
+  MCP file, extensions, skills, prompts, themes, `SYSTEM.md`, `APPEND_SYSTEM.md`, the project package folders and
+  `.agents` are guarded in the working folder and every folder above it below the home folder, by path and whether or not
+  they exist; the message tells the agent why and to ask the person. Read still works, and normal project files are
+  unaffected. `bash` locks the same list from the same table, which gains `.pi/git`, `.pi/npm`, `SYSTEM.md` and
+  `APPEND_SYSTEM.md`. A person can still run `pi install -l` or edit the files themselves outside Pi; there is no new
+  override, and a team repository that keeps `.pi/skills` in git is now read-only to the agent, as it already was for
+  `bash`.
+
 ## [0.4.0] - 2026-11-05
 
 ### Added

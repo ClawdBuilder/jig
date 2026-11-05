@@ -14,6 +14,7 @@
 // these paths.
 import { lstatSync, readlinkSync } from "node:fs";
 import path from "node:path";
+import { PI_PROJECT_PATHS, projectFoldersBelowHome } from "./kit/pi-project-paths.ts";
 import { fileURLToPath } from "node:url";
 
 export type ProtectedKind = "secret" | "guarded";
@@ -28,6 +29,8 @@ export interface ProtectedPath {
     shown: string;
     kind: ProtectedKind;
     source: ProtectedSource;
+    /** What the model should do instead, when the person can: said after a write refusal. */
+    advice?: string;
 }
 
 /** What differs between systems, so a test can simulate Windows or macOS on Linux. */
@@ -43,6 +46,8 @@ export interface DefaultsInput extends PathContext {
     /** Pi's agent folder (`getAgentDir()`). Empty when not known: the entries inside it are left out. */
     agentDir: string;
     home: string;
+    /** Pi's working folder: the project folder and its parents below the home folder are guarded where Pi loads files. */
+    cwd?: string;
     /** Jig's state folder (`paths.stateDir()`). Empty when not known. Two folders in it are secret: the masking keys, and
      *  the preview pages the browser reads when the local server cannot serve them, both of which can hold text that was
      *  never masked. The rest of it stays readable: a spill file is the rest of a result the model was given. */
@@ -229,6 +234,23 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     if (input.stateDir !== undefined && input.stateDir !== "") {
         out.push(make(pathApi.join(input.stateDir, "mask"), "secret"));
         out.push(make(pathApi.join(input.stateDir, "previews"), "secret"));
+    }
+    // The project files Pi loads at its next start, in the working folder and every folder above it below the home folder.
+    // A path is guarded whether or not it exists yet: a file made there before the next start would be loaded.
+    if (input.cwd !== undefined && input.cwd !== "") {
+        for (const folder of projectFoldersBelowHome(input.cwd, home, input.platform)) {
+            for (const item of PI_PROJECT_PATHS) {
+                out.push({
+                    ...guardedEntry(
+                        pathApi.join(folder, ...item.split("/")),
+                        "Pi loads this at its next start",
+                        home,
+                        input.platform,
+                    ),
+                    advice: "Ask the person to change it themselves, outside Pi, or run pi install -l.",
+                });
+            }
+        }
     }
     // Last, so a message about a file inside it names the more specific secret entry first.
     if (agentDir !== "") out.push(make(agentDir, "guarded"));
@@ -469,7 +491,10 @@ export function checkFileTool(
         if (hit === undefined) return undefined;
         return hit.kind === "secret"
             ? secret(hit)
-            : refuse(hit, `${hit.shown} is guarded: the file tools can read it but not write it`);
+            : refuse(
+                  hit,
+                  `${hit.shown} is guarded: the file tools can read it but not write it${hit.advice === undefined ? "" : `. ${hit.advice}`}`,
+              );
     }
     const inside = find(targetForms, entries, SECRET, "inside", sep);
     if (inside !== undefined) return secret(inside);
