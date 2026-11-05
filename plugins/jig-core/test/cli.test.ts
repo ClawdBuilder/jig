@@ -253,7 +253,7 @@ describe("jig setup", () => {
 
     test("stops before the questions when Pi does not load Jig", async () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
-        const result = await runSetup([{ when: "Jig is not installed in Pi yet", answer: "" }]);
+        const result = await runSetup([]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /Jig is not installed in Pi yet/);
         assert.match(result.stdout, /Install it with: pi install git:github\.com\/Dev-Mriganka\/jig/);
@@ -430,7 +430,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
         assert.doesNotMatch(doctor.stdout, /fail Jig/);
         assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
         assert.equal(existsSync(path.join(cwd, "marker.txt")), false, "the project extension was not imported");
-        const setup = await runSetup([{ when: "not trusted in Pi", answer: "" }], cwd);
+        const setup = await runSetup([], cwd);
         assert.equal(setup.code, 1);
         assert.match(setup.stdout, /Open Pi here and choose Trust, or run jig setup from another folder/);
         assert.doesNotMatch(setup.stdout, /jig doctor again/);
@@ -455,7 +455,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
             JSON.stringify({ packages: ["git:github.com/acme/git-co"] }),
         );
         settingsWith();
-        const setup = await runSetup([{ when: "Pi packages were not loaded", answer: "" }], cwd);
+        const setup = await runSetup([], cwd);
         assert.equal(setup.code, 1);
         assert.match(setup.stdout, /git:github\.com\/acme\/git-co/);
         assert.match(setup.stdout, /run jig setup from another folder/);
