@@ -64,11 +64,11 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## 2026-11-06: Jig is published as a scoped npm package
 
-The `jig` name on npm belongs to an unrelated 2013 package, so the product is published as **`@dev-mriganka/jig`**. The
+The `jig` name on npm belongs to an unrelated 2013 package, so the product is published as **`@clawdbuilder/jig`**. The
 command is still `jig`; npm's `bin` links it. The package is public, has a `files` allowlist (the command, every plugin,
 the review page's built files, docs; no tests or local notes) and is published by the release workflow with provenance
-from the same tag as the GitHub release. Pi installs the same artifact with `pi install npm:@dev-mriganka/jig@<version>`,
-and a global CLI with `npm install -g @dev-mriganka/jig`.
+from the same tag as the GitHub release. Pi installs the same artifact with `pi install npm:@clawdbuilder/jig@<version>`,
+and a global CLI with `npm install -g @clawdbuilder/jig`.
 
 An existing `git:` install keeps working: the CLI recognises a package named `jig` (the pre-scope name) as its own when it
 came from git or a folder, while an `npm:` package must match the scoped name. The doctor and setup now print the npm
@@ -122,7 +122,7 @@ session, a watch, a tunnel or a sign-in. A plugin that fails at load is a failur
 Setup starts with the company question and writes the `profiles`/`profile` entry itself. Without a terminal it refuses
 and writes nothing. Exit codes: doctor 0/1, setup 0/1/130.
 
-The command comes from npm's `bin` (`npm install -g @dev-mriganka/jig`, and before the scoped package
+The command comes from npm's `bin` (`npm install -g @clawdbuilder/jig`, and before the scoped package
 `npm install -g --allow-git=root github:ClawdBuilder/jig`) links it beside `node` on
 Linux, WSL and macOS. `--allow-git=root` is needed because npm 12 turns git and remote installs off by default; a release
 is pinned with `#v0.4.0`. `pi install` does not link programs, so the docs say that plainly instead of editing anyone's

@@ -74,7 +74,7 @@ describe("reinstallFix", () => {
     test("uses the package's repository when there is one", () => {
         assert.equal(
             reinstallFix("git+https://github.com/example/jig.git"),
-            "Reinstall Jig: pi install npm:@dev-mriganka/jig",
+            "Reinstall Jig: pi install npm:@clawdbuilder/jig",
         );
     });
 

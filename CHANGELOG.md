@@ -6,8 +6,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
-- Jig is published as **`@dev-mriganka/jig`**; the command is still `jig`. Install the Pi package with
-  `pi install npm:@dev-mriganka/jig@<version>` and the command with `npm install -g @dev-mriganka/jig`. An existing `git:`
+- Jig is published as **`@clawdbuilder/jig`**; the command is still `jig`. Install the Pi package with
+  `pi install npm:@clawdbuilder/jig@<version>` and the command with `npm install -g @clawdbuilder/jig`. An existing `git:`
   install keeps working: the command recognises the old unscoped package name from git or a folder. The tarball ships the
   command, every plugin, the review page and the docs, without tests.
 

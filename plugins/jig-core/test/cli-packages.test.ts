@@ -155,12 +155,12 @@ describe("the package manifest", () => {
     };
 
     test("it is the scoped npm package, publishable, with a files allowlist", () => {
-        assert.equal(pkg.name, "@dev-mriganka/jig");
+        assert.equal(pkg.name, "@clawdbuilder/jig");
         assert.equal(pkg.private, undefined);
         assert.equal(pkg.publishConfig?.access, "public");
         assert.ok((pkg.files ?? []).includes("bin/"));
         assert.ok((pkg.files ?? []).includes("plugins/*/src/"));
-        assert.equal(npmInstall(pkg.name), "npm:@dev-mriganka/jig");
+        assert.equal(npmInstall(pkg.name), "npm:@clawdbuilder/jig");
     });
 
     test("Pi's four packages are optional peers, and exact dev dependencies", () => {

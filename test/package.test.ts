@@ -34,7 +34,7 @@ function pack(): Promise<{ name: string; version: string; files: string[] }> {
 
 test("the npm tarball has the command and the plugins, and no tests", { timeout: 60_000 }, async () => {
     const result = await pack();
-    assert.equal(result.name, "@dev-mriganka/jig");
+    assert.equal(result.name, "@clawdbuilder/jig");
     assert.match(result.version, /^\d+\.\d+\.\d+$/);
     const has = (pattern: RegExp): boolean => result.files.some((file) => pattern.test(file));
     assert.ok(has(/^bin\/jig\.mjs$/), "the command");

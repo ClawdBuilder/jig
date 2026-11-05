@@ -97,7 +97,7 @@ export function installLocation(repository: string | undefined): string | undefi
 /** The one command that reinstalls Jig, or plain words when the package does not say where its repository is. */
 /** The npm spec a person installs Jig from: the package's own name, as npm and Pi take it. */
 export function npmInstall(name: string | undefined, version?: string): string {
-    const packageName = name === undefined || name === "" ? "@dev-mriganka/jig" : name;
+    const packageName = name === undefined || name === "" ? "@clawdbuilder/jig" : name;
     return `npm:${packageName}${version === undefined || version === "" ? "" : `@${version}`}`;
 }
 
@@ -109,7 +109,7 @@ export function reinstallFix(repository: string | undefined): string {
 }
 
 function npmPackageName(): string {
-    return jigPackage().name ?? "@dev-mriganka/jig";
+    return jigPackage().name ?? "@clawdbuilder/jig";
 }
 
 function cleanLocation(location: string): string {

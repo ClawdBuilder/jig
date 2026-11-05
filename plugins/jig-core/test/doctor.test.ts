@@ -170,7 +170,7 @@ describe("/jig doctor checks", () => {
         );
         assert.equal(
             known.lines.find((line) => line.id === "machine.jig")?.fix,
-            "Reinstall Jig: pi install npm:@dev-mriganka/jig",
+            "Reinstall Jig: pi install npm:@clawdbuilder/jig",
         );
 
         const generic = await runDoctor(context(), options({ jigVersion: null, jigRepository: "" }));
