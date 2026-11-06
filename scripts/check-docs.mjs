@@ -30,7 +30,13 @@ const slug = (text) =>
 
 function anchors(text) {
     const found = new Set();
+    let fence = false;
     for (const line of text.split("\n")) {
+        if (/^\s*```/.test(line)) {
+            fence = !fence;
+            continue;
+        }
+        if (fence) continue;
         const heading = /^(#{1,6})\s+(.+)$/.exec(line);
         if (heading) found.add(slug(heading[2] ?? ""));
     }

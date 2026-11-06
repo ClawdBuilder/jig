@@ -56,3 +56,11 @@ test("same-page anchors are checked against this document's headings", () => {
     assert.ok(failures.some((one: string) => one.includes("anchor does not resolve: #missing")), failures.join("\n"));
     assert.ok(!failures.some((one: string) => one.includes("#title")), failures.join("\n"));
 });
+
+test("a heading-looking line inside a fence is not an anchor", () => {
+    const root = tree({
+        "README.md": "# Real\n\n```text\n# Fake\n```\n\n[bad](#fake)\n",
+    });
+    const failures = checkDocs(root).failures;
+    assert.ok(failures.some((one: string) => one.includes("anchor does not resolve: #fake")), failures.join("\n"));
+});
