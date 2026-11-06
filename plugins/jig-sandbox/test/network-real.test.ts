@@ -38,7 +38,6 @@ async function serve(host: string, name: string): Promise<Listening> {
     };
 }
 
-
 /**
  * A command that fetches a URL with Python. `default` is a program that honours the proxy settings and `no_proxy` as it finds
  * them; `proxy` goes through the sandbox's proxy whatever `no_proxy` says (a program that sends everything there); `direct`

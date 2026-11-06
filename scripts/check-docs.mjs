@@ -76,7 +76,8 @@ export function checkDocs(root) {
                 (/\binstall\b/i.test(line) && /`@\d+\.\d+\.\d+`/.test(line));
             if (installs) {
                 for (const version of DEPRECATED) {
-                    if (line.includes(`@${version}`)) failures.push(`${rel}:${index + 1} install example names ${version}`);
+                    if (line.includes(`@${version}`))
+                        failures.push(`${rel}:${index + 1} install example names ${version}`);
                 }
             }
             if (fence) continue;

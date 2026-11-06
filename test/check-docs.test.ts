@@ -37,7 +37,10 @@ test("a deprecated install inside a fenced block fails", () => {
         "README.md": "```bash\nnpm install -g @clawdbuilder/jig@0.4.1\n```\n",
     });
     const failures = checkDocs(root).failures;
-    assert.ok(failures.some((one: string) => one.includes("names 0.4.1")), failures.join("\n"));
+    assert.ok(
+        failures.some((one: string) => one.includes("names 0.4.1")),
+        failures.join("\n"),
+    );
 });
 
 test("deprecated install advice in prose or a code span fails", () => {
@@ -45,7 +48,10 @@ test("deprecated install advice in prose or a code span fails", () => {
         "docs/setup.md": "Add `@0.4.0` to install a release rather than the latest.\n",
     });
     const failures = checkDocs(root).failures;
-    assert.ok(failures.some((one: string) => one.includes("names 0.4.0")), failures.join("\n"));
+    assert.ok(
+        failures.some((one: string) => one.includes("names 0.4.0")),
+        failures.join("\n"),
+    );
 });
 
 test("same-page anchors are checked against this document's headings", () => {
@@ -53,7 +59,10 @@ test("same-page anchors are checked against this document's headings", () => {
         "README.md": "# Title\n\n[good](#title) and [bad](#missing)\n",
     });
     const failures = checkDocs(root).failures;
-    assert.ok(failures.some((one: string) => one.includes("anchor does not resolve: #missing")), failures.join("\n"));
+    assert.ok(
+        failures.some((one: string) => one.includes("anchor does not resolve: #missing")),
+        failures.join("\n"),
+    );
     assert.ok(!failures.some((one: string) => one.includes("#title")), failures.join("\n"));
 });
 
@@ -62,7 +71,10 @@ test("a heading-looking line inside a fence is not an anchor", () => {
         "README.md": "# Real\n\n```text\n# Fake\n```\n\n[bad](#fake)\n",
     });
     const failures = checkDocs(root).failures;
-    assert.ok(failures.some((one: string) => one.includes("anchor does not resolve: #fake")), failures.join("\n"));
+    assert.ok(
+        failures.some((one: string) => one.includes("anchor does not resolve: #fake")),
+        failures.join("\n"),
+    );
 });
 
 test("a fenced block left open is a failure, not a silent skip of the rest", () => {
@@ -70,5 +82,8 @@ test("a fenced block left open is a failure, not a silent skip of the rest", () 
         "README.md": "# Title\n\n```bash\nnpm install -g @clawdbuilder/jig@0.4.2\n\n[bad](missing.md)\n",
     });
     const failures = checkDocs(root).failures;
-    assert.ok(failures.some((one: string) => one.includes("unclosed code block")), failures.join("\n"));
+    assert.ok(
+        failures.some((one: string) => one.includes("unclosed code block")),
+        failures.join("\n"),
+    );
 });
