@@ -6,6 +6,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- `tool_search` runs without asking: it only loads a tool definition, and the permission gate still decides each real
+  call.
 - Jig tool calls and results in Pi's timeline are one line each, with the full text on Pi's expand key; a tool can give
   its own call line. Masked text stays masked in both views.
 - Long approvals open in a floating window, falling back to the inline screen on a terminal too small for it or when
