@@ -90,7 +90,6 @@ export function installFakeJig(): FakeJig {
         addFacts: (id, added) => void facts.set(id, [...(facts.get(id) ?? []), added]),
         setTicket: () => {},
         secrets: {
-            register: () => {},
             resolve: async (ref) => {
                 secretCalls.push(ref);
                 const value = secrets.get(ref);

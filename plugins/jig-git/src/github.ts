@@ -53,35 +53,15 @@ async function targetFor(
         if (url === undefined || remote === undefined) return undefined;
         const origin = await originHost(url, remote.host, settings);
         const remoteKey = `${origin.real}:${remote.slug}`;
-        const account = accountFor(settings.accounts, remoteKey);
+        const account =
+            accountFor(settings.accounts, remoteKey) ??
+            (origin.alias === origin.real
+                ? undefined
+                : accountFor(settings.accounts, `${origin.alias}:${remote.slug}`));
         return account === undefined ? undefined : { account, host: origin.told, remote: remoteKey };
     } catch {
         return undefined;
     }
-}
-
-/**
- * The token of one account, from the gh that owns the login. It is registered with jig-core's redaction and passed only
- * as GH_TOKEN to that one call; Jig keeps no copy and never switches the active account.
- */
-async function tokenFor(target: { account: string; host: string }): Promise<string> {
-    const result = await jig().exec.run("gh", ["auth", "token", "--hostname", target.host, "--user", target.account], {
-        timeoutMs: 15_000,
-    });
-    if (result.code === 0 && !result.timedOut && result.stdout.trim() !== "") {
-        const token = result.stdout.trim();
-        jig().secrets.register(token);
-        return token;
-    }
-    const said = summaryOf(result.stderr || result.stdout);
-    if (/unknown flag|unknown shorthand|flag provided but not defined|unexpected argument/i.test(result.stderr)) {
-        throw new Error(
-            `gh is too old to choose an account: this gh has no "gh auth token --user". Update gh, or make the account active with "gh auth switch" before this call`,
-        );
-    }
-    throw new Error(
-        `GitHub account "${target.account}" has no token on ${target.host}${said === "" ? "" : ` (${said})`}: sign in as it with "gh auth login --hostname ${target.host}", or change that "git.accounts" entry`,
-    );
 }
 
 export async function gh(args: readonly string[], options: GhOptions = {}): Promise<RunResult> {
@@ -91,17 +71,17 @@ export async function gh(args: readonly string[], options: GhOptions = {}): Prom
             : { account: options.account, host: options.host ?? GITHUB_COM, remote: options.host ?? GITHUB_COM };
     lastTarget = target;
     const host = options.host ?? target?.host;
-    const env: Record<string, string> = {
-        ...(host === undefined || host === GITHUB_COM ? {} : { GH_HOST: host }),
-        ...(target === undefined ? {} : { GH_TOKEN: await tokenFor(target) }),
-    };
     return jig().exec.run("gh", args, {
         cwd: options.cwd,
         timeoutMs: options.timeoutMs ?? T_GH_READ,
         signal: options.signal,
         input: options.input,
         maxOutputBytes: options.maxBytes,
-        ...(Object.keys(env).length === 0 ? {} : { env }),
+        // Jig reads the account's token and attaches it: this plugin names the account and never sees the token.
+        ...(target === undefined
+            ? {}
+            : { credential: { program: "gh" as const, account: target.account, host: target.host } }),
+        ...(host === undefined || host === GITHUB_COM ? {} : { env: { GH_HOST: host } }),
     });
 }
 

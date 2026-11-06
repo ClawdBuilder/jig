@@ -192,6 +192,19 @@ export interface WatchInfo {
     result?: WatchResult;
 }
 
+/**
+ * A credential jig-core attaches to one program call: the token the program that owns the login keeps for an account.
+ * A plugin names the account, never the token.
+ */
+export interface ProgramCredential {
+    /** The program that owns the login. Only `gh` for now. */
+    program: "gh";
+    /** The account name. */
+    account: string;
+    /** The host the token is for: `github.com`, or an enterprise host. */
+    host: string;
+}
+
 export interface RunOptions {
     cwd?: string;
     /** Default 60 000. */
@@ -200,6 +213,8 @@ export interface RunOptions {
     input?: string;
     /** Added to a minimal environment; the parent's environment is not passed whole. */
     env?: Readonly<Record<string, string>>;
+    /** A credential jig-core resolves and attaches to this one call, and registers for redaction. */
+    credential?: ProgramCredential;
     signal?: AbortSignal;
     /** Output beyond this is cut. Default 10 MiB. */
     maxOutputBytes?: number;
@@ -537,10 +552,6 @@ export interface JigApi {
         /** Resolves a reference such as `pass:github/token` through an allowed backend. The value is
          *  redacted from every tool result until Pi exits. */
         resolve(ref: string, signal?: AbortSignal): Promise<string>;
-        /** Registers a value a tool read from the program that owns a login, to authenticate one call with it (a `gh`
-         *  token for an account, say). It is redacted from every tool result until Pi exits, like a resolved reference;
-         *  the tool keeps no copy of it. */
-        register(value: string): void;
     };
 
     /** What jig-core knows about environments, so a tool can refuse an action by kind, such as never in production,
@@ -651,7 +662,11 @@ export interface JigApi {
          *
          *  `union` names lists that add up instead of being replaced, such as the folders a company and the user both
          *  read from: the result is the company's entries first, then the user's, each once. A key is a path, as for
-         *  `replace`. */
+         *  `replace`.
+         *
+         *  `first` names ordered maps whose keys of the user's come before the company's, such as `accounts`: the map is
+         *  read in order, and the user's more specific entry must be tried before a company's broader one. A key is a
+         *  path, as for `replace`. */
         registerSection(
             name: string,
             validate: (raw: unknown) => readonly string[],
@@ -659,6 +674,7 @@ export interface JigApi {
                 replace?: readonly string[];
                 oneOf?: readonly (readonly string[])[];
                 union?: readonly string[];
+                first?: readonly string[];
             },
         ): void;
         /** A company plugin's defaults for a plugin's section, such as its log backend or its service catalog. Your own

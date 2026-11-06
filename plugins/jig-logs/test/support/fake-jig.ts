@@ -84,7 +84,6 @@ export function installFakeJig(): FakeJig {
         addFacts: (id, added) => void facts.set(id, [...(facts.get(id) ?? []), added]),
         setTicket: () => {},
         secrets: {
-            register: () => {},
             async resolve(reference, signal) {
                 resolved.push(reference);
                 if (state.secretDelayMs > 0) await wait(state.secretDelayMs, signal);

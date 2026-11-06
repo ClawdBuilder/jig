@@ -31,26 +31,6 @@ function accounts(): AccountMap | undefined {
     return raw.accounts as AccountMap;
 }
 
-async function tokenFor(account: string, host: string): Promise<string> {
-    const result = await jig().exec.run("gh", ["auth", "token", "--hostname", host, "--user", account], {
-        timeoutMs: 15_000,
-    });
-    if (result.code === 0 && !result.timedOut && result.stdout.trim() !== "") {
-        const token = result.stdout.trim();
-        jig().secrets.register(token);
-        return token;
-    }
-    if (/unknown flag|unknown shorthand|flag provided but not defined|unexpected argument/i.test(result.stderr)) {
-        throw new Error(
-            `gh is too old to choose an account: this gh has no "gh auth token --user". Update gh, or make the account active with "gh auth switch" before this call`,
-        );
-    }
-    const said = summaryOf(result.stderr || result.stdout);
-    throw new Error(
-        `GitHub account "${account}" has no token on ${host}${said === "" ? "" : ` (${said})`}: sign in as it with "gh auth login --hostname ${host}", or change that "git.accounts" entry`,
-    );
-}
-
 /** The repository a gh call names: `-R owner/name`, or the `repos/owner/name` path of `gh api`. */
 export function slugOf(args: readonly string[]): string | undefined {
     for (let i = 0; i < args.length - 1; i++) {
@@ -73,12 +53,12 @@ export async function gh(args: readonly string[], options: GhOptions = {}): Prom
     const remote = slug === undefined ? undefined : `github.com:${slug.toLowerCase()}`;
     const account = remote === undefined ? undefined : accountFor(accounts(), remote);
     lastUse = account === undefined || remote === undefined ? undefined : { account, remote };
-    const token = account === undefined ? undefined : await tokenFor(account, "github.com");
     return jig().exec.run("gh", args, {
         timeoutMs: options.timeoutMs ?? T_GH_READ,
         signal: options.signal,
         maxOutputBytes: options.maxBytes,
-        ...(token === undefined ? {} : { env: { GH_TOKEN: token } }),
+        // Jig reads the account's token and attaches it: this plugin names the account and never sees the token.
+        ...(account === undefined ? {} : { credential: { program: "gh" as const, account, host: "github.com" } }),
     });
 }
 

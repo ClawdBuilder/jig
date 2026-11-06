@@ -9,7 +9,7 @@ import type { ChildProcessByStdio } from "node:child_process";
 import { accessSync, constants, existsSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import type { Readable, Writable } from "node:stream";
-import type { RunOptions, RunResult } from "./contract.ts";
+import type { ProgramCredential, RunOptions, RunResult } from "./contract.ts";
 import { gitConfigRefusal } from "./git-config-guard.ts";
 
 /** Asks the sandbox (when there is one) whether the agent's shell can write a place. Passed in by jig-core's API. */
@@ -385,6 +385,66 @@ async function spawnProgram(
     });
 }
 
+/** Called by jig-core with its redactor, so a token attached to one call is redacted from every result. */
+let registerCredential: ((value: string) => void) | undefined;
+export function setCredentialRegistrar(register: (value: string) => void): void {
+    registerCredential = register;
+}
+
+const CREDENTIAL_ACCOUNT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const CREDENTIAL_HOST = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * The environment a named `gh` account's token makes: `GH_TOKEN` for github.com, `GH_ENTERPRISE_TOKEN` (and the host) for a
+ * GitHub Enterprise host, as gh documents. The token never leaves this module except as environment of the one call, and it
+ * is registered for redaction here.
+ */
+async function ghCredentialEnv(
+    credential: ProgramCredential,
+    options: RunOptions,
+    guard?: ExecGuard,
+): Promise<Record<string, string>> {
+    if (credential.program !== "gh") throw new TypeError('credential.program: only "gh" is supported');
+    if (!CREDENTIAL_ACCOUNT.test(credential.account))
+        throw new TypeError("credential.account: must be a gh account name");
+    if (!CREDENTIAL_HOST.test(credential.host) || credential.host.length > 100)
+        throw new TypeError("credential.host: must be a bare host name");
+    const result = await run(
+        "gh",
+        ["auth", "token", "--hostname", credential.host, "--user", credential.account],
+        {
+            timeoutMs: 15_000,
+            maxOutputBytes: 16 * 1024,
+            // The home folder: reading a token is not a repository operation, and an unsafe repository's config must not block it.
+            cwd: process.env.HOME ?? path.parse(process.cwd()).root,
+            ...(options.signal === undefined ? {} : { signal: options.signal }),
+        },
+        guard,
+    );
+    if (result.code === 0 && !result.timedOut && result.stdout.trim() !== "") {
+        const token = result.stdout.trim();
+        registerCredential?.(token);
+        return credential.host.toLowerCase() === "github.com"
+            ? { GH_TOKEN: token }
+            : { GH_ENTERPRISE_TOKEN: token, GH_HOST: credential.host };
+    }
+    if (/unknown flag|unknown shorthand|flag provided but not defined|unexpected argument/i.test(result.stderr)) {
+        throw new Error(
+            'gh is too old to choose an account: this gh has no "gh auth token --user". Update gh, or make the account active with "gh auth switch" before this call',
+        );
+    }
+    const said = result.stderr.split("\n")[0]?.trim() ?? "";
+    throw new Error(
+        `GitHub account "${credential.account}" has no token on ${credential.host}${said === "" ? "" : ` (${said})`}: sign in as it with "gh auth login --hostname ${credential.host}", or change that "git.accounts" entry`,
+    );
+}
+
+/** A copy of the options without the credential, and its environment added. */
+function withCredential(options: RunOptions, env: Readonly<Record<string, string>>): RunOptions {
+    const { credential: _credential, ...rest } = options;
+    return { ...rest, env: { ...rest.env, ...env } };
+}
+
 /**
  * Runs a program from an argument list, never a shell. The environment is a short allow-list plus `options.env`.
  * `git`, `gh` and `glab` go through the same checks as `git()`, because all of them start git. `guard` is the sandbox, when
@@ -396,6 +456,10 @@ export async function run(
     options: RunOptions = {},
     guard?: ExecGuard,
 ): Promise<RunResult> {
+    if (options.credential !== undefined) {
+        const env = await ghCredentialEnv(options.credential, options, guard);
+        return run(file, args, withCredential(options, env), guard);
+    }
     const name = path.basename(file);
     if (name === "git") return runGit(file, options.cwd ?? process.cwd(), args, options, guard);
     if (name === "gh") {

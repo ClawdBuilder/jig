@@ -268,7 +268,11 @@ export async function githubRepo(repo: Repo, settings: GitSettings, signal?: Abo
     if (!remote || url === undefined) return undefined;
     const origin = await originHost(url, remote.host, settings);
     if (origin.configured === "gitlab") return undefined;
-    const account = accountFor(settings.accounts, `${origin.real}:${remote.slug}`);
+    // The real host first, then the alias itself: when ssh cannot resolve an alias, a mapping written for that alias is
+    // still the one the person meant.
+    const account =
+        accountFor(settings.accounts, `${origin.real}:${remote.slug}`) ??
+        (origin.alias === origin.real ? undefined : accountFor(settings.accounts, `${origin.alias}:${remote.slug}`));
     // The account is a `gh` account name, not a credential: the token is read for one call in github.ts.
     const withAccount = account === undefined ? {} : { account };
     if (origin.configured === "github") return { ...remote, host: origin.told, ...withAccount };

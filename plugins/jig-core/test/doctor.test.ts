@@ -477,18 +477,20 @@ describe("/jig doctor logins and sandbox", () => {
             asked.find((call) => call.includes("acme-work")),
             ["gh", "auth", "token", "--hostname", "github.com", "--user", "acme-work"],
         );
+        let repoCredential: unknown;
         const network = await runDoctor(
             accountContext,
             options({
                 network: true,
                 pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
-                run: async (file, args) => {
-                    if (args[0] === "repo") return { code: 0, stdout: "", stderr: "", timedOut: false };
+                run: async (_file, args, runOptions) => {
+                    if (args[0] === "repo") repoCredential = runOptions?.credential;
                     return { code: 0, stdout: "", stderr: "", timedOut: false };
                 },
             }),
         );
         assert.equal(network.lines.find((entry) => entry.id === "logins.gh-account.acme-work.repo")?.level, "ok");
+        assert.deepEqual(repoCredential, { program: "gh", account: "acme-work", host: "github.com" });
 
         const missing = await runDoctor(
             context({ sections: new Map([["git", { accounts: { "github.com:acme/*": "acme-work" } }]]) }),

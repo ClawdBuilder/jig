@@ -60,6 +60,8 @@ export interface FakeJig {
     /** The approved preview of each call that asked, by tool call id. */
     approved: Map<string, Preview>;
     facts: Map<string, Facts[]>;
+    /** The credentials the plugin asked jig-core to attach, in order. */
+    credentials: Array<{ account: string; host: string }>;
     /** Values a plugin registered with jig-core's redaction, in order. */
     registeredSecrets: string[];
     /**
@@ -123,6 +125,8 @@ export function installFakeJig(): FakeJig {
     const sections = new Map<string, (raw: unknown) => readonly string[]>();
     const values = new Map<string, unknown>();
     const approved = new Map<string, Preview>();
+    /** The credentials the plugin asked jig-core to attach, in order. */
+    const credentials: Array<{ account: string; host: string }> = [];
     const facts = new Map<string, Facts[]>();
     /** Values a plugin registered with jig-core's redaction, in order. */
     const registeredSecrets: string[] = [];
@@ -205,7 +209,26 @@ export function installFakeJig(): FakeJig {
             );
     };
 
-    const run = async (file: string, args: readonly string[], options: RunOptions = {}): Promise<RunResult> => {
+    const run = async (file: string, args: readonly string[], initial: RunOptions = {}): Promise<RunResult> => {
+        let options = initial;
+        // jig-core resolves a named account's token and attaches it; the fake does the same with the fake gh.
+        if (options.credential !== undefined) {
+            const { account, host } = options.credential;
+            const asked = await spawnProcess("gh", ["auth", "token", "--hostname", host, "--user", account], {
+                timeoutMs: 5000,
+            });
+            if (asked.code !== 0 || asked.timedOut || asked.stdout.trim() === "")
+                throw new Error(
+                    `GitHub account "${account}" has no token on ${host}: sign in as it with "gh auth login --hostname ${host}", or change that "git.accounts" entry`,
+                );
+            credentials.push({ account, host });
+            const token = asked.stdout.trim();
+            const env: Record<string, string> =
+                host.toLowerCase() === "github.com"
+                    ? { GH_TOKEN: token }
+                    : { GH_ENTERPRISE_TOKEN: token, GH_HOST: host };
+            options = { ...options, env: { ...options.env, ...env } };
+        }
         // jig-core vets the folder for glab as it does for git; gh is left as this fake always had it.
         if (path.basename(file) === "glab") await vetRepository(options.cwd ?? process.cwd());
         // For glab, `env` is what the program is started with besides the allow-list, jig-core's fixed variables included.
@@ -257,7 +280,6 @@ export function installFakeJig(): FakeJig {
             },
         },
         secrets: {
-            register: (value: string) => void registeredSecrets.push(value),
             resolve: async () => {
                 throw new Error("no secrets in tests");
             },
@@ -332,6 +354,7 @@ export function installFakeJig(): FakeJig {
         sections,
         approved,
         facts,
+        credentials,
         registeredSecrets,
         started_processes: processes,
         setSection: (name, value) => void values.set(name, value),
@@ -345,7 +368,7 @@ export function installFakeJig(): FakeJig {
             forced = ms === undefined ? undefined : { ms, only };
         },
         reset: () => {
-            registeredSecrets.length = 0;
+            credentials.length = 0;
             started.length = 0;
             stopped.length = 0;
             processes.length = 0;

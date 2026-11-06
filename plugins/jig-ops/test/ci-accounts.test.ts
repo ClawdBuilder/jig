@@ -35,7 +35,7 @@ test("a mapped account is used for that ci call only", async () => {
     assert.equal(asked?.token, false, "reading the token carries none");
     assert.deepEqual(h.gh.callsOf("pr checks")[0]?.args.slice(-2), ["-R", SLUG]);
     assert.equal(h.gh.callsOf("pr checks")[0]?.token, true);
-    assert.deepEqual(h.jig.registeredSecrets, [TOKEN]);
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
 });
 
 test("with no mapping, ci runs as it did", async () => {

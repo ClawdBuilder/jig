@@ -142,7 +142,6 @@ export function installFakeJig(): FakeJig {
         addFacts: (id, added) => void facts.set(id, [...(facts.get(id) ?? []), added]),
         setTicket: () => {},
         secrets: {
-            register: () => {},
             async resolve(reference) {
                 resolved.push(reference);
                 const value = secrets.get(reference);
