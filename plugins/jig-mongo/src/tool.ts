@@ -38,7 +38,7 @@ const VERIFY_MAX_TIME_MS = 5000;
 const REMEMBERED = 100;
 
 const DESCRIPTION =
-    "MongoDB in your configured environments. Explore: databases, collections, schema, stats. Indexes and plans: indexes, " +
+    "MongoDB in your configured environments. Access: access lists each environment's allowed or denied names. Explore: databases, collections, schema, stats. Indexes and plans: indexes, " +
     "index_stats, explain. Query: count, find, distinct, sample, aggregate. Write: insert, update, replace, delete, bulk, " +
     "create_index, drop_index. Filters, documents and pipelines are Extended JSON. Writes show a count and ask first; " +
     "production is read-only. Fields that look like credentials are never returned.";

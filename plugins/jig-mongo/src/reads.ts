@@ -531,8 +531,39 @@ export function planAggregateRead(
 }
 
 /** Plans a call that only reads, other than an aggregation. `options.requireIndex` makes the reads that scan a collection refuse. */
+function planAccess(call: Call, access: Access): ReadRun {
+    const label = labelOf(call);
+    const summary = access.summary;
+    return {
+        label,
+        async run() {
+            const lines = [label];
+            if (summary.mode === "allow") {
+                lines.push("allow list: only these collections and fields are readable");
+                for (const entry of summary.allow) {
+                    lines.push(
+                        `${entry.collection}: ${entry.fields.length === 0 ? "(no fields)" : entry.fields.join(", ")}`,
+                    );
+                }
+            } else {
+                lines.push("deny list: everything not named here is allowed");
+                if (summary.databases.length > 0) lines.push(`databases: ${summary.databases.join(", ")}`);
+                if (summary.collections.length > 0) lines.push(`collections: ${summary.collections.join(", ")}`);
+                if (summary.fields.length > 0) lines.push(`fields: ${summary.fields.join(", ")}`);
+            }
+            return {
+                text: lines.join("\n"),
+                details: { mode: summary.mode, collections: summary.mode === "allow" ? summary.collections.length : 0 },
+                facts: { returned: summary.mode === "allow" ? summary.collections.length : 0 },
+            };
+        },
+    };
+}
+
 export function planRead(call: Call, access: Access, options?: PlanOptions): ReadRun {
     switch (call.action) {
+        case "access":
+            return planAccess(call, access);
         case "databases":
             return planDatabases(call, access);
         case "collections":

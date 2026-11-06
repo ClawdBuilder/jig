@@ -19,6 +19,7 @@ to see whether the query used an index, and `update` to fix the test document, a
 
 | Group | Action | Kind | What it does |
 |---|---|---|---|
+| Access | `access` | read | Per environment and cluster: the mode and the configured deny/allow names; a deny list means everything not named is allowed |
 | Explore | `databases`, `collections` | read | What exists, minus everything denied |
 | | `schema` | read | Field names and types, from a sample |
 | | `stats` | read | Sizes and counts of a collection or database |

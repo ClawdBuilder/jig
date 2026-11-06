@@ -218,8 +218,48 @@ export interface View {
     readonly leaves: readonly (readonly string[])[];
 }
 
+/** The configured rules as names, never data. A deny list is open-ended: everything not named is allowed. */
+export interface AccessSummary {
+    mode: "deny" | "allow";
+    databases: string[];
+    collections: string[];
+    fields: string[];
+    allow: Array<{ collection: string; fields: string[] }>;
+}
+
+export function summaryOfRules(rules: AccessRules): AccessSummary {
+    if (rules.mode === "deny") {
+        return {
+            mode: "deny",
+            databases: [...rules.deny.databases].sort(),
+            collections: [...rules.deny.collections].sort(),
+            fields: rules.deny.fields.map((rule) =>
+                [
+                    ...(rule.db === undefined ? [] : [rule.db]),
+                    ...(rule.coll === undefined ? [] : [rule.coll]),
+                    ...rule.path,
+                ].join("."),
+            ),
+            allow: [],
+        };
+    }
+    return {
+        mode: "allow",
+        databases: [],
+        collections: [...rules.allow.keys()].sort(),
+        fields: [],
+        allow: [...rules.allow.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([collection, lists]) => ({
+                collection,
+                fields: lists.map((path) => path.join(".")),
+            })),
+    };
+}
+
 export interface Access {
     readonly mode: "deny" | "allow";
+    readonly summary: AccessSummary;
     /** Whether `$where`, `$function` and `$accumulator` may run (test environments that say so). */
     readonly javascript: boolean;
     /** Throws an InputError naming why a database or collection may not be used. */
@@ -252,6 +292,7 @@ export function createAccess(rules: AccessRules): Access {
 
     const access: Access = {
         mode: rules.mode,
+        summary: summaryOfRules(rules),
         javascript,
         namespaceVisible: visible,
         isReference: (db, coll) => rules.mode === "allow" && rules.reference?.has(`${db}.${coll}`) === true,
