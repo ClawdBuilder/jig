@@ -228,16 +228,18 @@ export function packageIdentity(entry: ListedPackage): string | undefined {
     return undefined;
 }
 
-/** The package name in a folder's package.json, or undefined when the folder has no readable one. */
-export function manifestOf(folder: string): { name?: string; version?: string } | undefined {
+/** The facts of a folder's package.json that Jig reads: its name, version, and the company's Jig range. */
+export function manifestOf(folder: string): { name?: string; version?: string; jig?: { range?: string } } | undefined {
     try {
         const manifest = JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")) as {
             name?: unknown;
             version?: unknown;
+            jig?: { range?: unknown };
         };
         return {
             ...(typeof manifest.name === "string" ? { name: manifest.name } : {}),
             ...(typeof manifest.version === "string" ? { version: manifest.version } : {}),
+            ...(typeof manifest.jig?.range === "string" ? { jig: { range: manifest.jig.range } } : {}),
         };
     } catch {
         return undefined;

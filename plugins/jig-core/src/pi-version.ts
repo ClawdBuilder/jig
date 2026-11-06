@@ -70,9 +70,9 @@ export interface PiRequirement {
 }
 
 /** The Pi requirement a release states in `jig.agents.pi`, or undefined when the package does not say. */
-export function piRequirement(file: string | URL = new URL("../../../package.json", import.meta.url)):
-    | PiRequirement
-    | undefined {
+export function piRequirement(
+    file: string | URL = new URL("../../../package.json", import.meta.url),
+): PiRequirement | undefined {
     const found = readPackage(file);
     const agents = found?.jig?.agents;
     const pi = agents?.pi;

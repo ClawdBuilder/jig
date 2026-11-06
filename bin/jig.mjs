@@ -93,4 +93,4 @@ if (host === undefined) {
 register(new URL(`./jig-host-hooks.mjs?host=${encodeURIComponent(host)}`, import.meta.url), import.meta.url);
 
 const { main } = await import("../plugins/jig-core/src/cli/main.ts");
-process.exitCode = await main(process.argv.slice(2));
+process.exitCode = await main(process.argv.slice(2), host);
