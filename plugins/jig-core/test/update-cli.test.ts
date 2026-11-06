@@ -1,11 +1,15 @@
 // The facts `jig update` reads before changing anything: the installed copies and company ranges, and the exact Pi command
 // for the method Pi was installed by. Registry and command runs are faked in update-plan.test.ts and update-run.test.ts.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { discover, piSelfUpdateCommands, update } from "../src/cli/update.ts";
+import { executeUpdate } from "../src/update-run.ts";
+import type { InstallCommand, UpdateIo } from "../src/update-run.ts";
+import { planUpdate } from "../src/update-plan.ts";
+import type { UpdatePlan } from "../src/update-plan.ts";
 import type { PiConfigModule } from "../src/cli/update.ts";
 
 let home: string;
@@ -85,6 +89,96 @@ describe("the update command's gate", () => {
         } finally {
             process.stderr.write = saved;
         }
+    });
+});
+
+describe("two updates in a row", () => {
+    test("the exact pin Pi leaves is movable, and the filter survives the source replacement", async () => {
+        const name = "@clawdbuilder/jig";
+        const jig = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
+        packageAt(jig, { name, version: "0.4.1" });
+        const settings = path.join(agent, "settings.json");
+        const source = (): string => {
+            const value = JSON.parse(readFileSync(settings, "utf8")) as { packages: Array<{ source: string }> };
+            return value.packages[0]?.source ?? "";
+        };
+        const manifestVersion = (): string =>
+            (JSON.parse(readFileSync(path.join(jig, "package.json"), "utf8")) as { version: string }).version;
+        const writeSource = (value: string): void => {
+            writeFileSync(
+                settings,
+                JSON.stringify({ packages: [{ source: value, extensions: ["!plugins/jig-lens/index.ts"] }] }),
+            );
+        };
+        writeSource(`npm:${name}`);
+
+        const target = (version: string) => ({
+            version,
+            release: { jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } } },
+            newest: version,
+            cappedBy: [],
+        });
+        const planFor = (version: string): UpdatePlan => {
+            const copy = discover(agent, work, name).piCopy;
+            assert.ok(copy);
+            const built = planUpdate({
+                name,
+                current: manifestVersion(),
+                target: target(version),
+                piVersion: "1.5.0",
+                piCopy: copy,
+                globalVersion: version,
+            });
+            if (!("plan" in built)) throw new Error(built.problem);
+            return built.plan;
+        };
+        let expected = "0.5.0";
+        const io: UpdateIo = {
+            async run(command, args) {
+                assert.equal(command, "pi");
+                const spec = args[1] ?? "";
+                const version = spec.slice(spec.lastIndexOf("@") + 1);
+                writeFileSync(path.join(jig, "package.json"), JSON.stringify({ name, version }));
+                // Pi 1.5.0's addSourceToSettings: an object entry is `{ ...existing, source }`, so its filter stays.
+                writeSource(spec);
+                return { code: 0, stdout: "", stderr: "" };
+            },
+            notify() {},
+            async confirm() {
+                return true;
+            },
+            async piInstall(version): Promise<InstallCommand[]> {
+                return [{ command: "pi-self", args: [version], display: `install Pi ${version}` }];
+            },
+            piCopyInstall(version): InstallCommand {
+                return { command: "pi", args: ["install", `npm:${name}@${version}`], display: `install ${version}` };
+            },
+            globalInstall(version): InstallCommand {
+                return { command: "npm", args: ["install", "-g", `@x/y@${version}`], display: `install ${version}` };
+            },
+            async verify() {
+                return { piCopy: manifestVersion(), global: expected };
+            },
+            async doctor() {
+                return { code: 0, output: "" };
+            },
+        };
+
+        const first = planFor("0.5.0");
+        assert.equal(first.piCopy?.pinned, undefined);
+        assert.equal((await executeUpdate(first, io)).code, 0);
+        assert.equal(source(), `npm:${name}@0.5.0`);
+
+        expected = "0.6.0";
+        const second = planFor("0.6.0");
+        assert.equal(second.piCopy?.pinned, true);
+        assert.equal(second.piCopy?.from, "0.5.0");
+        assert.equal((await executeUpdate(second, io)).code, 0);
+        assert.equal(source(), `npm:${name}@0.6.0`);
+        const kept = JSON.parse(readFileSync(settings, "utf8")) as {
+            packages: Array<{ extensions: string[] }>;
+        };
+        assert.deepEqual(kept.packages[0]?.extensions, ["!plugins/jig-lens/index.ts"]);
     });
 });
 

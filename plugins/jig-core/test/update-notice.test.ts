@@ -166,6 +166,17 @@ describe("checkUpdateAtStart", () => {
         assert.equal(notes.filter((message) => message.includes("Pi 1.6.0")).length, 1);
     });
 
+    test("asks the registry npm is configured to use, without starting npm", async () => {
+        let seen = "";
+        await checkUpdateAtStart(state({ check: true }, { npm_config_registry: "https://mirror.example/" }), () => {}, {
+            fetchJson: async (url) => {
+                seen = url;
+                return registry;
+            },
+        });
+        assert.equal(seen, "https://mirror.example/@clawdbuilder%2Fjig");
+    });
+
     test("writes a cache with a schema, never a secret", async () => {
         await checkUpdateAtStart(state(), () => {}, { fetchJson: async () => registry });
         const cache = JSON.parse(readFileSync(path.join(dir, "update-check.json"), "utf8"));

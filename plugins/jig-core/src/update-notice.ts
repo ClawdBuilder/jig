@@ -1,11 +1,13 @@
 // The update notice inside Pi: a background check at most once a day, silent when offline or when the person (or a company
 // default) turned it off. It tells the person only, through the screen; the model's context is never touched.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { companyRanges } from "./update-company.ts";
 import { compareVersions, currentPiRequirement, jigPackage, piVersion } from "./pi-version.ts";
 import { readPackages } from "./cli/packages.ts";
 import { stateDir } from "./paths.ts";
+import { registryFor, registryUrl } from "./registry.ts";
 import type { JigState } from "./state.ts";
 import { selectTarget } from "./update-versions.ts";
 import type { RegistryMetadata } from "./update-versions.ts";
@@ -47,10 +49,6 @@ function writeCache(file: string, cache: Cache): void {
     } catch {
         // A notice must never affect the session; the next start tries again.
     }
-}
-
-function registryUrl(name: string): string {
-    return `https://registry.npmjs.org/${name.startsWith("@") ? `@${encodeURIComponent(name.slice(1))}` : encodeURIComponent(name)}`;
 }
 
 async function defaultFetch(url: string): Promise<unknown> {
@@ -100,7 +98,10 @@ export async function checkUpdateAtStart(
         if (state.env.PI_OFFLINE !== undefined && state.env.PI_OFFLINE !== "") return;
         if (cache.checkedAt !== undefined && now - cache.checkedAt < DAY) return;
 
-        const metadata = (await (options.fetchJson ?? defaultFetch)(registryUrl(name))) as RegistryMetadata;
+        // No program at session start: read the npmrc sources npm reads first. jig update asks npm itself, so a mirror
+        // that only npm can resolve is still used there.
+        const registry = registryFor(state.env, homedir(), state.workingDir);
+        const metadata = (await (options.fetchJson ?? defaultFetch)(registryUrl(registry, name))) as RegistryMetadata;
         const agentDir = state.agentDir();
         const company = agentDir === "" ? [] : companyRanges(readPackages(agentDir, state.workingDir).listed, name);
         const chosen = selectTarget(metadata, company);

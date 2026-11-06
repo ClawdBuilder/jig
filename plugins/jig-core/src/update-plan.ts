@@ -29,7 +29,7 @@ export interface UpdatePlan {
     pi?: { from: string; to: string };
     /** What to tell the person about Pi, including the tested-version warning. */
     piNotes: string[];
-    piCopy?: { from?: string; to: string; needed: boolean };
+    piCopy?: { from?: string; to: string; needed: boolean; pinned?: boolean };
     global?: { from?: string; to: string; needed: boolean };
     cappedBy: CompanyRange[];
     warnings: string[];
@@ -45,7 +45,8 @@ export function statedRequirement(target: SelectedTarget): PiRequirement | undef
     return { minimum: pi.minimum, tested: pi.tested };
 }
 
-/** Whether Pi's Jig entry is a plain npm source with no version pin. */
+/** The exact npm source for this package, pinned or not. Pi's edit keeps an object entry's filter and replaces only
+ *  `source` (`addSourceToSettings`: `{ ...existing, source }`); a string entry has no filter to keep. */
 export function movablePiSource(source: string | undefined, name: string): { version?: string } | undefined {
     if (source === undefined || !source.startsWith("npm:")) return undefined;
     const spec = source.slice(4).trim();
@@ -97,16 +98,11 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
             problem: `Pi's Jig copy is not a plain npm source (${copy.source ?? "no source"}). Install it yourself with: pi install npm:${input.name}@${input.target.version}`,
         };
     }
-    if (source.version !== undefined) {
-        return {
-            problem: `Pi's Jig copy is pinned to ${source.version}. jig update does not move a pinned copy. Install it with: pi install npm:${input.name}@${input.target.version}`,
-        };
-    }
-
     const piCopy = {
         ...(copy.version === undefined ? {} : { from: copy.version }),
         to: input.target.version,
         needed: copy.version !== input.target.version,
+        ...(source.version === undefined ? {} : { pinned: true }),
     };
     const global = {
         ...(input.globalVersion === undefined ? {} : { from: input.globalVersion }),
@@ -143,7 +139,13 @@ export function describePlan(plan: UpdatePlan): string[] {
     }
     for (const note of plan.piNotes) lines.push(note);
     if (plan.piCopy?.needed === true) {
-        lines.push(`Pi's Jig copy ${plan.piCopy.from ?? "(version unknown)"} -> ${plan.piCopy.to}.`);
+        lines.push(
+            plan.piCopy.pinned === true
+                ? `Pi's Jig copy is pinned to ${plan.piCopy.from ?? "(version unknown)"}; moving it to ${plan.piCopy.to}.`
+                : `Pi's Jig copy ${plan.piCopy.from ?? "(version unknown)"} -> ${plan.piCopy.to}.`,
+        );
+    } else if (plan.piCopy?.pinned === true) {
+        lines.push(`Pi's Jig copy is pinned to ${plan.piCopy.from ?? "(version unknown)"}; that is the target.`);
     }
     if (plan.global?.needed === true) {
         lines.push(`The jig command ${plan.global.from ?? "(version unknown)"} -> ${plan.global.to}.`);

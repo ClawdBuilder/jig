@@ -59,7 +59,7 @@ describe("planUpdate", () => {
         assert.equal(statedRequirement(broken), undefined);
     });
 
-    test("refuses a missing or project-scoped Pi copy, a git copy, and a pinned copy", () => {
+    test("refuses a missing or project-scoped Pi copy and a git copy; a pin naming Jig is movable and shown", () => {
         const missing = planUpdate(input({ piCopy: undefined }));
         assert.ok("problem" in missing);
         assert.match(missing.problem, /not installed in Pi/);
@@ -73,8 +73,10 @@ describe("planUpdate", () => {
         assert.match(git.problem, /not a plain npm source/);
 
         const pinned = planUpdate(input({ piCopy: { ...input().piCopy, source: "npm:@clawdbuilder/jig@0.4.1" } }));
-        assert.ok("problem" in pinned);
-        assert.match(pinned.problem, /pinned to 0\.4\.1/);
+        assert.ok("plan" in pinned);
+        assert.equal(pinned.plan.piCopy?.pinned, true);
+        assert.equal(pinned.plan.piCopy?.needed, true);
+        assert.match(describePlan(pinned.plan).join("\n"), /pinned to 0\.4\.1; moving it to 0\.5\.0/);
     });
 
     test("says when both copies are already on the target", () => {

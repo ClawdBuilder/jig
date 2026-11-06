@@ -29,6 +29,7 @@ interface Fake extends UpdateIo {
     versions: { pi: string; piCopy: string; global: string };
     messages: string[];
     failGlobal?: boolean;
+    failUndo?: boolean;
     wrongVerify?: boolean;
 }
 
@@ -52,6 +53,9 @@ function fake(overrides: Partial<Fake> = {}): Fake {
                 if (this.failGlobal === true && args.some((arg) => arg.endsWith("@0.5.0"))) {
                     this.failGlobal = false;
                     return { code: 1, stdout: "", stderr: "EACCES: the global folder is not writable" };
+                }
+                if (this.failUndo === true && args.some((arg) => arg.endsWith("@0.4.1"))) {
+                    return { code: 1, stdout: "", stderr: "EACCES: the old version is not writable either" };
                 }
                 const spec = args.at(-1) ?? "";
                 this.versions.global = spec.slice(spec.lastIndexOf("@") + 1);
@@ -139,6 +143,15 @@ describe("executeUpdate", () => {
         assert.equal(io.versions.global, "0.4.1");
         assert.match(io.messages.join("\n"), /Put Pi's Jig copy 0\.4\.1 back/);
         assert.match(io.messages.join("\n"), /Every copy was put back/);
+    });
+
+    test("a failed undo means something did change, so the result says changed", async () => {
+        const io = fake({ failGlobal: true, failUndo: true });
+        const result = await executeUpdate(plan(true), io);
+        assert.equal(result.code, 1);
+        assert.equal(result.changed, true);
+        assert.match(io.messages.join("\n"), /Could not put the jig command 0\.4\.1 back/);
+        assert.match(io.messages.join("\n"), /Some versions could not be put back/);
     });
 
     test("a version that does not match is a failure and is undone", async () => {

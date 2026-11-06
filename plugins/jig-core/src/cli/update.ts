@@ -8,6 +8,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { errorMessage } from "../errors.ts";
 import { jigPackage, piVersion } from "../pi-version.ts";
+import { normalizeRegistry, registryFor, registryUrl } from "../registry.ts";
 import { selectTarget } from "../update-versions.ts";
 import { companyRanges } from "../update-company.ts";
 import type { CompanyRange, RegistryMetadata } from "../update-versions.ts";
@@ -19,7 +20,6 @@ import { agentDirFor, ownPackage } from "./headless.ts";
 import { manifestOf, packageFolder, parseNpmSource, readPackages } from "./packages.ts";
 
 const PI = "@earendil-works/pi-coding-agent";
-const REGISTRY = "https://registry.npmjs.org";
 const MAX_OUTPUT = 512 * 1024;
 
 export interface PiConfigModule {
@@ -192,10 +192,9 @@ function piSetting(agentDir: string): { selfUpdateCommand?: string[] } {
     }
 }
 
-/** The registry metadata for this package. A scoped name is escaped once, as npm does. */
-async function fetchRegistry(name: string): Promise<RegistryMetadata> {
-    const url = `${REGISTRY}/${name.startsWith("@") ? `@${encodeURIComponent(name.slice(1))}` : encodeURIComponent(name)}`;
-    const response = await fetch(url, {
+/** The registry metadata for this package, from the registry npm itself would use. */
+async function fetchRegistry(name: string, base: string): Promise<RegistryMetadata> {
+    const response = await fetch(registryUrl(base, name), {
         headers: { accept: "application/json" },
         signal: AbortSignal.timeout(10_000),
     });
@@ -278,9 +277,14 @@ export async function update(args: readonly string[], host: string | undefined):
     }
 
     const discovered = discover(agentDir, cwd, name);
+    const registryResult = await run("npm", ["config", "get", "registry"], cwd);
+    const registry =
+        registryResult.code === 0
+            ? (normalizeRegistry(outputOf(registryResult)) ?? registryFor(env, homedir(), cwd))
+            : registryFor(env, homedir(), cwd);
     let metadata: RegistryMetadata;
     try {
-        metadata = await fetchRegistry(name);
+        metadata = await fetchRegistry(name, registry);
     } catch (error) {
         process.stderr.write(
             `jig update could not reach the npm registry: ${errorMessage(error)}. Nothing was changed.\n`,
@@ -365,6 +369,9 @@ export async function update(args: readonly string[], host: string | undefined):
         }
         process.stdout.write("No changes were made.\n");
         return 0;
+    }
+    if (plan.changes) {
+        for (const line of describePlan(plan)) process.stdout.write(`${line}\n`);
     }
     const piFolder = discovered.piCopy?.folder;
     const piAfter = (): string | undefined => {

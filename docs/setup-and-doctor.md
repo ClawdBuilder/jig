@@ -77,8 +77,12 @@ works and is not blocked; if it moves Pi past the tested version, the doctor and
 
 A company package can cap which Jig versions are allowed with `"jig": { "range": ">=0.4.1 <0.5.0" }` in its package.json.
 Update stops at the newest version inside every installed company's range and names the range. If Pi's Jig copy is a
-checkout, a git source, or pinned by a version, update says so and changes nothing. It gives the exact command to run
-instead.
+checkout or a git source, update says so and changes nothing. An exact npm pin that names Jig is moved, and the line before
+the change says `pinned to X, moving to Y`; a company's hold is its `jig.range`, not a pin. The exact pin is written back,
+so Pi leaves the copy alone and only `jig update` moves it.
+
+It asks the registry npm itself is configured to use (`npm config get registry`), so a company mirror and the `npm install`
+that follows agree.
 
 Before the first change it checks the registry, the target's Pi versions, that its settings folder is writable, that `npm`
 and `pi` are on PATH, and how Pi was installed. Pi is installed by its own method with the exact tested version; if that

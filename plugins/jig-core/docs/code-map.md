@@ -123,6 +123,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `update-plan.ts` | What would change: Pi when the release needs a newer one, Pi's copy, the global copy, and the company cap; refuses pinned or non-npm copies | `cli/update.ts`, `update-run.ts` |
 | `update-run.ts` | Runs the plan in order, verifies both copies, runs the doctor, and puts every recorded version back after a failure | `cli/update.ts` |
 | `update-company.ts` | Reads every installed company package's `jig.range` for the cap | `cli/update.ts`, `update-notice.ts` |
+| `registry.ts` | The registry npm uses: `jig update` asks `npm config get registry`; the notice reads env and .npmrc files without starting a program | `cli/update.ts`, `update-notice.ts` |
 | `updates-section.ts` | The `updates.check` section: checked like a plugin's so a company can turn the notice off; the person's file wins | `state.ts`, `update-notice.ts` |
 | `update-notice.ts` | The background notice in Pi: once a day, cached, silent offline or off, company cap, deprecated version, Pi newer than tested; the screen only | `start-jobs.ts` |
 

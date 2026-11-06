@@ -135,6 +135,6 @@ export async function executeUpdate(plan: UpdatePlan, io: UpdateIo): Promise<Upd
                 : "Some versions could not be put back; the messages above name them.",
             restored ? "info" : "error",
         );
-        return { code: 1, changed: false };
+        return { code: 1, changed: !restored };
     }
 }
