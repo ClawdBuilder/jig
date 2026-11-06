@@ -143,6 +143,34 @@ test("an ssh alias ssh cannot resolve still matches a mapping written for the al
     assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
 });
 
+test("an alias ssh cannot resolve matches the host a git.forges entry names", async () => {
+    const r = repo();
+    git(r.dir, "remote", "set-url", "origin", "git@acme-gh:acme/svc-accounts-forge.git");
+    h.ssh.behave("fail");
+    h.jig.setSection("git", {
+        forges: { "acme-gh": { forge: "github", host: "github.com" } },
+        accounts: { "github.com:acme/*": "acme-work" },
+    });
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
+});
+
+test("an unresolved clone-host alias matches github.com", async () => {
+    const r = repo();
+    git(r.dir, "remote", "set-url", "origin", "git@work-gh:acme/svc-accounts-clone.git");
+    h.ssh.behave("fail");
+    h.jig.setSection("git", {
+        cloneHost: "work-gh",
+        accounts: { "github.com:acme/*": "acme-work" },
+    });
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
+});
+
 test("the git section checks the accounts map, and carries it when valid", () => {
     assert.deepEqual(validateGitSection({ accounts: { "github.com:acme/*": "acme-work" } }), []);
     assert.equal(validateGitSection({ accounts: { "acme/*": "acme-work" } }).length, 1);

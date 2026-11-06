@@ -6,7 +6,7 @@ import { jig } from "../../jig-core/src/client.ts";
 import { accountFor } from "../../jig-core/src/kit/accounts.ts";
 import type { GitSettings } from "./config.ts";
 import { gitSettings } from "./config.ts";
-import { originHost } from "./origin-host.ts";
+import { accountHosts, githubHostOf, isGithubOrigin, originHost } from "./origin-host.ts";
 import { GITHUB_COM, githubRepo, originUrl, parseRemote } from "./repo.ts";
 import type { Remote, Repo } from "./repo.ts";
 import { mayHaveLanded, summaryOf } from "./run.ts";
@@ -52,13 +52,16 @@ async function targetFor(
         const remote = parseRemote(url);
         if (url === undefined || remote === undefined) return undefined;
         const origin = await originHost(url, remote.host, settings);
-        const remoteKey = `${origin.real}:${remote.slug}`;
-        const account =
-            accountFor(settings.accounts, remoteKey) ??
-            (origin.alias === origin.real
-                ? undefined
-                : accountFor(settings.accounts, `${origin.alias}:${remote.slug}`));
-        return account === undefined ? undefined : { account, host: origin.told, remote: remoteKey };
+        const account = accountHosts(origin, settings)
+            .map((name) => accountFor(settings.accounts, `${name}:${remote.slug}`))
+            .find((found) => found !== undefined);
+        // The host gh is told: an explicit forge host, or the GitHub host a clone-host alias stands for.
+        const host = origin.explicit
+            ? origin.told
+            : isGithubOrigin(origin, settings)
+              ? githubHostOf(origin)
+              : origin.told;
+        return account === undefined ? undefined : { account, host, remote: `${host}:${remote.slug}` };
     } catch {
         return undefined;
     }
