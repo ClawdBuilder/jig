@@ -189,7 +189,10 @@ test("/ticket recall says so when there is no ticket, no cards, or nothing that 
     const bare = loadPlugin("/work");
     bare.start();
     await bare.command("recall anything");
-    assert.equal(bare.notices.at(-1)?.text, "No earlier tickets are searchable: no card exists, and notes entries are off (memory.recall.notes).");
+    assert.equal(
+        bare.notices.at(-1)?.text,
+        "No earlier tickets are searchable: no card exists, and notes entries are off (memory.recall.notes).",
+    );
 });
 
 test("a note with no card is searchable when recall.notes is on, labelled with its date and the history warning", async (t) => {

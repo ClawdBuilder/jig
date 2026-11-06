@@ -88,8 +88,7 @@ function validateRecall(raw: unknown): string[] {
     if (minScore !== undefined && (typeof minScore !== "number" || !Number.isFinite(minScore) || minScore <= 0)) {
         errors.push("memory.recall.minScore: must be a number above 0");
     }
-    if (notes !== undefined && typeof notes !== "boolean")
-        errors.push("memory.recall.notes: must be true or false");
+    if (notes !== undefined && typeof notes !== "boolean") errors.push("memory.recall.notes: must be true or false");
     if (
         maxNotes !== undefined &&
         (typeof maxNotes !== "number" ||

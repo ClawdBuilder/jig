@@ -232,7 +232,8 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             const cards = loadCards(mem.folder);
             const notes = mem.recall.maxNotes === 0 ? undefined : loadNoteIndex(mem.folder, mem.pattern);
             const cardCount = Object.values(cards).filter((card) => card.valid).length;
-            const noteCount = notes === undefined ? 0 : Object.keys(notes).filter((ticket) => cards[ticket]?.valid !== true).length;
+            const noteCount =
+                notes === undefined ? 0 : Object.keys(notes).filter((ticket) => cards[ticket]?.valid !== true).length;
             const searched = cardCount + noteCount;
             if (searched === 0) {
                 note(

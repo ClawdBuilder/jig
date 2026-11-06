@@ -17,10 +17,20 @@ function writeNote(folder: string, key: string, text: string): void {
 
 test("the script finds an invented linked ticket from notes, and prints no key", (t) => {
     const folder = tempFolder(t);
-    writeNote(folder, "PROJ-1", "# PROJ-1\n\n## Now\nStatus: OrderService throws NullPointerException\n\n## Decisions\nSee PROJ-2 for the mapper fix.\n");
-    writeNote(folder, "PROJ-2", "# PROJ-2\n\n## Now\nStatus: OrderService returns a null customer\n\n## Decisions\nCheck for null.\n");
+    writeNote(
+        folder,
+        "PROJ-1",
+        "# PROJ-1\n\n## Now\nStatus: OrderService throws NullPointerException\n\n## Decisions\nSee PROJ-2 for the mapper fix.\n",
+    );
+    writeNote(
+        folder,
+        "PROJ-2",
+        "# PROJ-2\n\n## Now\nStatus: OrderService returns a null customer\n\n## Decisions\nCheck for null.\n",
+    );
     writeNote(folder, "PROJ-3", "# PROJ-3\n\n## Now\nStatus: a footer is the wrong colour\n\n## Decisions\n");
-    const stdout = execFileSync(process.execPath, [SCRIPT, "--folder", folder, "--mode", "notes"], { encoding: "utf8" });
+    const stdout = execFileSync(process.execPath, [SCRIPT, "--folder", folder, "--mode", "notes"], {
+        encoding: "utf8",
+    });
     const result = JSON.parse(stdout) as Record<string, unknown>;
     assert.equal(result.mode, "notes");
     assert.equal(result.tickets, 3);

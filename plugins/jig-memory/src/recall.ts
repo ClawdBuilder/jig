@@ -139,13 +139,12 @@ const oneLine = (text: string): string => {
  * The entries that score at least `minScore` for the query, best first, at most `max`: written cards, then derived notes
  * entries where no valid card exists for that ticket. A derived entry is capped by `maxNotes` (default 1).
  */
-export function recall(
-    cards: CardIndex,
-    query: RecallQuery,
-    options: RecallOptions,
-    notes?: NoteIndex,
-): Match[] {
-    const cardTickets = new Set(Object.entries(cards).filter(([, entry]) => entry.valid).map(([ticket]) => ticket));
+export function recall(cards: CardIndex, query: RecallQuery, options: RecallOptions, notes?: NoteIndex): Match[] {
+    const cardTickets = new Set(
+        Object.entries(cards)
+            .filter(([, entry]) => entry.valid)
+            .map(([ticket]) => ticket),
+    );
     const docs: SearchDoc[] = Object.entries(cards)
         .filter(([, entry]) => entry.valid)
         .map(([ticket, entry]) => fromCard(ticket, entry));

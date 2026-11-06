@@ -37,7 +37,7 @@ test("the index rebuilds when a note changes, and does not include the ticket's 
     assert.deepEqual(first?.keys, []);
     writeNote(folder, "PROJ-1", "# PROJ-1\n\n## Now\nStatus: second, different text\n\n## Decisions\n");
     const second = loadNoteIndex(folder, PATTERN)["PROJ-1"];
-    assert.notEqual(second?.terms["second"], undefined);
+    assert.notEqual(second?.terms.second, undefined);
 });
 
 test("a written card wins over the note entry for the same ticket", (t) => {
