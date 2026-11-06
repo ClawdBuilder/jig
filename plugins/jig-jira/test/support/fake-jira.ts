@@ -297,6 +297,13 @@ const SCREENS: Record<string, Array<Record<string, unknown>>> = {
             schema: { type: "array", items: "string" },
         },
         {
+            fieldId: "customfield_10018",
+            name: "Array Allowed",
+            required: false,
+            schema: { type: "array", items: "string" },
+            allowedValues: [{ id: "one-id", name: "one" }],
+        },
+        {
             fieldId: "components",
             name: "Components",
             required: false,

@@ -30,7 +30,7 @@ it, and posts it only after you press `y`.
 | `assignable` | read | Users who can take the issue |
 | `find_field` | read | Field ids and names matching a text |
 | `link_types` | read | The link types, with what each end reads, such as `blocks` and `is blocked by` |
-| `create` | external write, asks on the review screen | Creates an issue; the preview shows every field and possible duplicates. A screen field whose schema says array takes one value as a one-item list, and the preview says so |
+| `create` | external write, asks on the review screen | Creates an issue; the preview shows every field and possible duplicates |
 | `comment` | external write, asks on the review screen | Adds a comment |
 | `edit_comment` | external write, asks on the review screen | Replaces a comment's text |
 | `delete_comment` | external write, asks on a dialog | Deletes a comment. This cannot be undone |
@@ -100,6 +100,8 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | `environment` | `external` | The environment name that rules and classification know this Jira by |
 | `me` | none | Your account id (Cloud) or user name (Data Center), for `commented` when `/myself` is unavailable |
 | `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` (see [Commented by](docs/commented.md)) |
+
+A screen field whose schema says `array` takes one value as a one-item list; the preview says when it wrapped one.
 
 The fields in detail are in [Configuration](docs/configuration.md).
 
