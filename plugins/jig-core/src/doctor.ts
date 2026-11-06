@@ -110,6 +110,10 @@ export interface DoctorOptions {
     jigVersion?: string | null;
     /** The package's `repository` field, for the reinstall line. Default: this checkout's package.json. */
     jigRepository?: string;
+    /** The sandbox broker script to start. Default: the one beside this package. Tests pass a missing path. */
+    brokerScript?: string;
+    /** The built-in agent roles folder. Default: the one beside this package. Tests pass a missing path. */
+    rolesFolder?: string;
     /** The home folder, for paths written as `~/...`. Default: the user's. */
     home?: string;
     /** How long one login check may take. Default 5 seconds. */

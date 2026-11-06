@@ -1,7 +1,9 @@
 // The main checks of `/jig doctor`: this machine, the configuration and the protected files. The secret checks are in
 // doctor-secrets.ts and the tool checks in doctor-tools.ts. Every check returns lines and changes no setting.
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
@@ -128,6 +130,23 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                       title: "Two copies of Jig",
                       detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
                       fix: `Install one version: pi install ${npmInstall(pkg.name)}`,
+                  },
+              ]
+            : []),
+        ...(context.sections.has("agents") &&
+        !existsSync(
+            options.rolesFolder ??
+                fileURLToPath(new URL("../../../plugins/jig-agents/agents", import.meta.url)),
+        )
+            ? [
+                  {
+                      id: "machine.roles",
+                      group: "machine" as const,
+                      level: "fail" as const,
+                      title: "Agent roles",
+                      detail:
+                          "the built-in roles folder is missing, so child agents lose reviewer, scout and worker.",
+                      fix: "Reinstall Jig; the built-in roles are part of the package.",
                   },
               ]
             : []),

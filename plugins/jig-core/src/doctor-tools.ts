@@ -1,7 +1,9 @@
 // The tool checks of `/jig doctor`: the login tools, the sandbox and the records folder. Each starts a program only to
 // ask a login tool for its status; none signs in, and none writes.
-import { accessSync, constants, readFileSync, statSync } from "node:fs";
+import { fork } from "node:child_process";
+import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
 import type { DoctorContext, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { findOnPath, sectionTexts } from "./doctor-secrets.ts";
 import { run as runProgram } from "./exec.ts";
@@ -263,6 +265,40 @@ export function recordsChecks(context: DoctorContext, options: DoctorOptions): D
     }
 }
 
+/** Starts the broker for real and waits for its ready event, or says why it could not. */
+async function brokerStart(script: string): Promise<string | undefined> {
+    if (!existsSync(script)) return `the broker script is not there: ${script}`;
+    return await new Promise((resolve) => {
+        const child = fork(script, [], {
+            stdio: ["ignore", "ignore", "pipe", "ipc"],
+            execArgv: [],
+            serialization: "json",
+        });
+        let said = "";
+        child.stderr?.setEncoding("utf8");
+        child.stderr?.on("data", (text: string) => (said += text));
+        const timer = setTimeout(() => {
+            child.kill();
+            resolve(`the broker did not say ready in 5 s${said === "" ? "" : `: ${said.slice(-200)}`}`);
+        }, 5_000);
+        child.on("message", (message: unknown) => {
+            if (typeof message === "object" && message !== null && (message as { event?: unknown }).event === "ready") {
+                clearTimeout(timer);
+                child.kill();
+                resolve(undefined);
+            }
+        });
+        child.on("error", (error) => {
+            clearTimeout(timer);
+            resolve(`the broker could not start: ${error.message}`);
+        });
+        child.on("exit", (code) => {
+            clearTimeout(timer);
+            resolve(`the broker exited at start (${code ?? "signal"})${said === "" ? "" : `: ${said.slice(-200)}`}`);
+        });
+    });
+}
+
 /** What the sandbox needs on this machine, checked for real: programs, then a new user namespace on Linux/WSL. */
 async function sandboxHostChecks(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
     const platform = options.platform ?? process.platform;
@@ -306,8 +342,32 @@ async function sandboxHostChecks(context: DoctorContext, options: DoctorOptions)
             return false;
         }
     };
-    const found = findPrograms("linux", settings, context.env.PATH, writable);
     const lines: DoctorLine[] = [];
+    if (context.sections.has("sandbox")) {
+        const script =
+            options.brokerScript ??
+            fileURLToPath(new URL("../../../plugins/jig-sandbox/broker/broker.mjs", import.meta.url));
+        const problem = await brokerStart(script);
+        lines.push(
+            problem === undefined
+                ? {
+                      id: "sandbox.broker",
+                      group: "sandbox",
+                      level: "ok",
+                      title: "Sandbox broker",
+                      detail: "the broker started and said it was ready.",
+                  }
+                : {
+                      id: "sandbox.broker",
+                      group: "sandbox",
+                      level: "fail",
+                      title: "Sandbox broker",
+                      detail: `${problem}; every bash command would be refused.`,
+                      fix: "Reinstall Jig; the broker is part of the package.",
+                  },
+        );
+    }
+    const found = findPrograms("linux", settings, context.env.PATH, writable);
     for (const missing of found.missing) {
         lines.push({
             id: `sandbox.program.${missing.name}`,

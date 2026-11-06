@@ -493,3 +493,31 @@ describe("/jig doctor logins and sandbox", () => {
         assert.equal(line?.fix, "sudo apt install bubblewrap socat ripgrep");
     });
 });
+
+describe("the doctor sees a broken install", () => {
+    test("a missing sandbox broker is a failure, even though the programs and namespace work", async () => {
+        const report = await runDoctor(
+            context({
+                sections: new Map([["sandbox", {}]]),
+                overrides: { standalone: true, sandbox: { active: false, canWrite: () => false }, env: { PATH: "" } },
+            }),
+            options({ brokerScript: path.join(home, "missing-broker.mjs") }),
+        );
+        const line = report.lines.find((entry) => entry.id === "sandbox.broker");
+        assert.ok(line, text(report));
+        assert.equal(line.level, "fail");
+        assert.match(line.detail ?? "", /broker script is not there/);
+        assert.match(line.fix ?? "", /Reinstall Jig/);
+    });
+
+    test("a missing built-in roles folder is a failure", async () => {
+        const report = await runDoctor(
+            context({ sections: new Map([["agents", {}]]) }),
+            options({ rolesFolder: path.join(home, "missing-roles") }),
+        );
+        const line = report.lines.find((entry) => entry.id === "machine.roles");
+        assert.ok(line, text(report));
+        assert.equal(line.level, "fail");
+        assert.match(line.detail ?? "", /child agents lose reviewer, scout and worker/);
+    });
+});
