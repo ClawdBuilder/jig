@@ -6,6 +6,7 @@ import path from "node:path";
 import type { GitSettings } from "./config.ts";
 import { matchesAny } from "./config.ts";
 import { GITHUB_COM, githubHostOf, isGithubOrigin, originHost } from "./origin-host.ts";
+import { accountFor } from "../../jig-core/src/kit/accounts.ts";
 import { git, gitTry, refExists, scrub, T_NETWORK } from "./run.ts";
 
 export interface Repo {
@@ -196,6 +197,8 @@ export interface Remote {
     name: string;
     /** `owner/name`. */
     slug: string;
+    /** The `gh` account `git.accounts` gives this remote, when one is configured. */
+    account?: string;
 }
 
 /** The host, owner and name in a remote URL: https, ssh, git or scp-style (`git@host:owner/name`). */
@@ -265,8 +268,11 @@ export async function githubRepo(repo: Repo, settings: GitSettings, signal?: Abo
     if (!remote || url === undefined) return undefined;
     const origin = await originHost(url, remote.host, settings);
     if (origin.configured === "gitlab") return undefined;
-    if (origin.configured === "github") return { ...remote, host: origin.told };
-    return isGithubOrigin(origin, settings) ? { ...remote, host: githubHostOf(origin) } : undefined;
+    const account = accountFor(settings.accounts, `${origin.real}:${remote.slug}`);
+    // The account is a `gh` account name, not a credential: the token is read for one call in github.ts.
+    const withAccount = account === undefined ? {} : { account };
+    if (origin.configured === "github") return { ...remote, host: origin.told, ...withAccount };
+    return isGithubOrigin(origin, settings) ? { ...remote, host: githubHostOf(origin), ...withAccount } : undefined;
 }
 
 // ---- branches ------------------------------------------------------------------------------------------------------

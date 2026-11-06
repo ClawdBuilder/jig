@@ -29,14 +29,14 @@ interface Answer<T> {
     value: T | undefined;
 }
 
-export function requester(state: GithubState, signal: AbortSignal) {
+export function requester(state: GithubState, signal: AbortSignal, slug: string) {
     return async function get<T>(
         path: string,
         compact: (body: unknown) => T,
         tolerate: readonly number[] = [404],
     ): Promise<Answer<T>> {
         const held = state.answers[path];
-        const response = await apiGet(path, { etag: held?.etag, signal });
+        const response = await apiGet(path, { etag: held?.etag, signal, slug });
         const wait = Number(response.headers["x-poll-interval"]);
         if (Number.isFinite(wait) && wait > 0) state.pollSeconds = Math.max(state.pollSeconds ?? 0, wait);
         if (response.status === 304 && held !== undefined) return { status: 200, value: held.value as T };
@@ -241,6 +241,7 @@ export async function jobLog(slug: string, jobId: number, options: GhOptions = {
     // log is cleaned of them when the model's text is made (see logs.ts).
     const flags = (await ghAllowsEscapes(options)) ? ["--allow-escape-sequences"] : [];
     const result = await gh(["api", ...flags, `repos/${slug}/actions/jobs/${jobId}/logs`], {
+        slug,
         ...options,
         maxBytes: LOG_BYTES,
     });

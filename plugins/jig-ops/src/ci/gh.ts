@@ -6,6 +6,9 @@
 // repository of ours, so what it reads cannot depend on the folder Pi happens to be in.
 import { jig } from "../../../jig-core/src/client.ts";
 import type { RunResult } from "../../../jig-core/src/contract.ts";
+import { accountFor } from "../../../jig-core/src/kit/accounts.ts";
+import type { AccountMap } from "../../../jig-core/src/kit/accounts.ts";
+import { isObject } from "../../../jig-core/src/kit/values.ts";
 
 const T_GH_READ = 30_000;
 const T_GH_WRITE = 90_000;
@@ -14,13 +17,68 @@ export interface GhOptions {
     signal?: AbortSignal | undefined;
     timeoutMs?: number;
     maxBytes?: number;
+    /** The GitHub repository the call is about, `owner/name`; `git.accounts` then picks the gh account. */
+    slug?: string | undefined;
 }
 
-export function gh(args: readonly string[], options: GhOptions = {}): Promise<RunResult> {
+/** What the last gh call used, so a failure can name the account and the fix. Tool calls run one at a time. */
+let lastUse: { account: string; remote: string } | undefined;
+
+/** `git.accounts` from jig.json, when jig-git's section is loaded and valid; the account names are not secrets. */
+function accounts(): AccountMap | undefined {
+    const raw = jig().config.section("git");
+    if (!isObject(raw) || !isObject(raw.accounts)) return undefined;
+    return raw.accounts as AccountMap;
+}
+
+async function tokenFor(account: string, host: string): Promise<string> {
+    const result = await jig().exec.run("gh", ["auth", "token", "--hostname", host, "--user", account], {
+        timeoutMs: 15_000,
+    });
+    if (result.code === 0 && !result.timedOut && result.stdout.trim() !== "") {
+        const token = result.stdout.trim();
+        jig().secrets.register(token);
+        return token;
+    }
+    if (/unknown flag|unknown shorthand|flag provided but not defined|unexpected argument/i.test(result.stderr)) {
+        throw new Error(
+            `gh is too old to choose an account: this gh has no "gh auth token --user". Update gh, or make the account active with "gh auth switch" before this call`,
+        );
+    }
+    const said = summaryOf(result.stderr || result.stdout);
+    throw new Error(
+        `GitHub account "${account}" has no token on ${host}${said === "" ? "" : ` (${said})`}: sign in as it with "gh auth login --hostname ${host}", or change that "git.accounts" entry`,
+    );
+}
+
+/** The repository a gh call names: `-R owner/name`, or the `repos/owner/name` path of `gh api`. */
+export function slugOf(args: readonly string[]): string | undefined {
+    for (let i = 0; i < args.length - 1; i++) {
+        if (args[i] === "-R" || args[i] === "--repo") {
+            const value = args[i + 1] ?? "";
+            if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value)) return value;
+        }
+    }
+    if (args[0] === "api") {
+        for (const arg of args.slice(1)) {
+            const match = /^repos\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\/|$)/.exec(arg);
+            if (match?.[1] !== undefined) return match[1];
+        }
+    }
+    return undefined;
+}
+
+export async function gh(args: readonly string[], options: GhOptions = {}): Promise<RunResult> {
+    const slug = options.slug ?? slugOf(args);
+    const remote = slug === undefined ? undefined : `github.com:${slug.toLowerCase()}`;
+    const account = remote === undefined ? undefined : accountFor(accounts(), remote);
+    lastUse = account === undefined || remote === undefined ? undefined : { account, remote };
+    const token = account === undefined ? undefined : await tokenFor(account, "github.com");
     return jig().exec.run("gh", args, {
         timeoutMs: options.timeoutMs ?? T_GH_READ,
         signal: options.signal,
         maxOutputBytes: options.maxBytes,
+        ...(token === undefined ? {} : { env: { GH_TOKEN: token } }),
     });
 }
 
@@ -73,7 +131,15 @@ const SIGN_IN = /gh auth login|not logged in|HTTP 401|bad credentials|authentica
 export function ghFailure(what: string, result: RunResult): Error {
     const reason = result.timedOut ? "timed out" : summaryOf(result.stderr || result.stdout) || `exit ${result.code}`;
     const hint = SIGN_IN.test(result.stderr) ? " (gh is not signed in: run gh auth login yourself)" : "";
-    return new Error(`${what} failed: ${reason}${hint}`);
+    const used = lastUse;
+    const missed =
+        used !== undefined &&
+        /could not resolve to a repository|HTTP 404|\bnot found\b/i.test(`${result.stderr}\n${result.stdout}`);
+    const accountHint =
+        missed && used !== undefined
+            ? ` (used gh account "${used.account}" for ${used.remote}; if that account cannot see it, add a "git.accounts" entry for this remote, or run "gh auth login" for that account)`
+            : "";
+    return new Error(`${what} failed: ${reason}${hint}${accountHint}`);
 }
 
 /** The parsed JSON of a successful gh call. Any other outcome is a one-line error naming the call. */

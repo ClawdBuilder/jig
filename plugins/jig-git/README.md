@@ -125,8 +125,11 @@ invalid field, and the defaults apply instead.
 | `watchComments` | `"after-create"` | `"after-create"`: `pr create` starts the comment watch. `"off"`: only `pr watch` does |
 | `watchBots` | `false` | Whether the watch also tells the agent about comments by bots |
 | `forges` | none | Hosts ssh cannot explain, such as `{ "gitlab.example.com": "gitlab" }`; an ssh alias needs none ([GitLab](docs/gitlab.md#an-ssh-alias-for-a-real-host)) |
+| `accounts` | none | Remote patterns and the `gh` account each is used with, such as `{ "github.com:acme/*": "acme-work" }` |
 
-The fields in detail are in [Configuration](docs/configuration.md).
+`git.accounts` is ordered: the first pattern that matches the real remote wins, and that one `gh` call runs with the
+account's token as `GH_TOKEN`. Jig never switches the active account and keeps no token. The fields in detail are in
+[Configuration](docs/configuration.md).
 
 ```json
 {

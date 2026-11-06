@@ -3,8 +3,11 @@
 // GitHub without its answer reaching us is checked once and never sent again.
 import type { RunResult } from "../../jig-core/src/contract.ts";
 import { jig } from "../../jig-core/src/client.ts";
+import { accountFor } from "../../jig-core/src/kit/accounts.ts";
 import type { GitSettings } from "./config.ts";
-import { GITHUB_COM, githubRepo } from "./repo.ts";
+import { gitSettings } from "./config.ts";
+import { originHost } from "./origin-host.ts";
+import { GITHUB_COM, githubRepo, originUrl, parseRemote } from "./repo.ts";
 import type { Remote, Repo } from "./repo.ts";
 import { mayHaveLanded, summaryOf } from "./run.ts";
 import type { Reply } from "./previews.ts";
@@ -26,16 +29,79 @@ export interface GhOptions {
      * for github.com, which is gh's own default. It is the real host, never an ssh alias that only git understands.
      */
     host?: string | undefined;
+    /** The gh account a matched `git.accounts` entry names; resolved from `cwd` when it is left out. */
+    account?: string | undefined;
 }
 
-export function gh(args: readonly string[], options: GhOptions = {}): Promise<RunResult> {
+/** What the last gh call used, so a failure can name the account and the fix. Tool calls run one at a time. */
+let lastTarget: { account: string; host: string; remote: string } | undefined;
+
+/**
+ * The account `git.accounts` gives the repository at `cwd`, matched against its remote after ssh aliases are resolved.
+ * Undefined when there is no map, no remote, or no match: then gh uses the active account, as before.
+ */
+async function targetFor(
+    cwd: string | undefined,
+    signal?: AbortSignal,
+): Promise<{ account: string; host: string; remote: string } | undefined> {
+    if (cwd === undefined) return undefined;
+    const settings = gitSettings();
+    if (settings.accounts === undefined) return undefined;
+    try {
+        const url = await originUrl({ root: cwd, name: cwd }, signal);
+        const remote = parseRemote(url);
+        if (url === undefined || remote === undefined) return undefined;
+        const origin = await originHost(url, remote.host, settings);
+        const remoteKey = `${origin.real}:${remote.slug}`;
+        const account = accountFor(settings.accounts, remoteKey);
+        return account === undefined ? undefined : { account, host: origin.told, remote: remoteKey };
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * The token of one account, from the gh that owns the login. It is registered with jig-core's redaction and passed only
+ * as GH_TOKEN to that one call; Jig keeps no copy and never switches the active account.
+ */
+async function tokenFor(target: { account: string; host: string }): Promise<string> {
+    const result = await jig().exec.run("gh", ["auth", "token", "--hostname", target.host, "--user", target.account], {
+        timeoutMs: 15_000,
+    });
+    if (result.code === 0 && !result.timedOut && result.stdout.trim() !== "") {
+        const token = result.stdout.trim();
+        jig().secrets.register(token);
+        return token;
+    }
+    const said = summaryOf(result.stderr || result.stdout);
+    if (/unknown flag|unknown shorthand|flag provided but not defined|unexpected argument/i.test(result.stderr)) {
+        throw new Error(
+            `gh is too old to choose an account: this gh has no "gh auth token --user". Update gh, or make the account active with "gh auth switch" before this call`,
+        );
+    }
+    throw new Error(
+        `GitHub account "${target.account}" has no token on ${target.host}${said === "" ? "" : ` (${said})`}: sign in as it with "gh auth login --hostname ${target.host}", or change that "git.accounts" entry`,
+    );
+}
+
+export async function gh(args: readonly string[], options: GhOptions = {}): Promise<RunResult> {
+    const target =
+        options.account === undefined
+            ? await targetFor(options.cwd, options.signal)
+            : { account: options.account, host: options.host ?? GITHUB_COM, remote: options.host ?? GITHUB_COM };
+    lastTarget = target;
+    const host = options.host ?? target?.host;
+    const env: Record<string, string> = {
+        ...(host === undefined || host === GITHUB_COM ? {} : { GH_HOST: host }),
+        ...(target === undefined ? {} : { GH_TOKEN: await tokenFor(target) }),
+    };
     return jig().exec.run("gh", args, {
         cwd: options.cwd,
         timeoutMs: options.timeoutMs ?? T_GH_READ,
         signal: options.signal,
         input: options.input,
         maxOutputBytes: options.maxBytes,
-        ...(options.host === undefined || options.host === GITHUB_COM ? {} : { env: { GH_HOST: options.host } }),
+        ...(Object.keys(env).length === 0 ? {} : { env }),
     });
 }
 
@@ -45,7 +111,15 @@ const SIGN_IN = /gh auth login|not logged in|HTTP 401|bad credentials|authentica
 export function ghFailure(what: string, result: RunResult): Error {
     const reason = result.timedOut ? "timed out" : summaryOf(result.stderr || result.stdout) || `exit ${result.code}`;
     const hint = SIGN_IN.test(result.stderr) ? " (gh is not signed in: run gh auth login yourself)" : "";
-    return new Error(`${what} failed: ${reason}${hint}`);
+    const target = lastTarget;
+    const missed =
+        target !== undefined &&
+        /could not resolve to a repository|HTTP 404|\bnot found\b/i.test(`${result.stderr}\n${result.stdout}`);
+    const accountHint =
+        missed && target !== undefined
+            ? ` (used gh account "${target.account}" for ${target.remote}; if that account cannot see it, add a "git.accounts" entry for this remote, or run "gh auth login" for that account)`
+            : "";
+    return new Error(`${what} failed: ${reason}${hint}${accountHint}`);
 }
 
 /** The parsed JSON of a successful gh call. Any other outcome is a one-line error naming the call. */
@@ -92,10 +166,21 @@ export type { ApiResponse } from "./api-output.ts";
  */
 export async function apiGet(
     path: string,
-    options: { etag?: string | undefined; signal?: AbortSignal | undefined; host?: string | undefined } = {},
+    options: {
+        etag?: string | undefined;
+        signal?: AbortSignal | undefined;
+        host?: string | undefined;
+        cwd?: string | undefined;
+        account?: string | undefined;
+    } = {},
 ): Promise<ApiResponse> {
     const args = ["api", "-i", ...(options.etag ? ["-H", `If-None-Match: ${options.etag}`] : []), path];
-    const result = await gh(args, { signal: options.signal, host: options.host });
+    const result = await gh(args, {
+        signal: options.signal,
+        host: options.host,
+        cwd: options.cwd,
+        account: options.account,
+    });
     const response = parseApiOutput(result);
     // No status line and a failure: the request never got an answer. The caller reads status 0 as "try again later".
     if (response.status === 0) return { ...response, body: summaryOf(result.stderr || result.stdout) };

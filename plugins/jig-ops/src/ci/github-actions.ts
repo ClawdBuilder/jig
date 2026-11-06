@@ -155,7 +155,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
     const workflow = service.ci.system === "github-actions" ? service.ci.workflow : undefined;
 
     const defaultBranch = async (): Promise<string> => {
-        const found = (await apiJson<{ default_branch?: string }>(`repos/${slug}`, { signal })).default_branch;
+        const found = (await apiJson<{ default_branch?: string }>(`repos/${slug}`, { signal, slug })).default_branch;
         if (!found) throw new Error(`GitHub did not say which branch is the default of ${slug}`);
         return found;
     };
@@ -182,7 +182,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
                     ...(required ? ["--required"] : []),
                     ...flags,
                 ],
-                { signal },
+                { signal, slug },
             );
             // gh exits non-zero when checks fail or are pending, and still prints the JSON.
             if (result.stdout.trim().startsWith("[")) {
@@ -198,7 +198,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
             const ref = params.sha ?? params.branch ?? (await defaultBranch());
             label = params.sha ? `commit ${params.sha.slice(0, 7)}` : `branch ${ref}`;
             const state: GithubState = { answers: {}, polls: 0 };
-            const get = requester(state, signal ?? new AbortController().signal);
+            const get = requester(state, signal ?? new AbortController().signal, slug);
             checks = await checksOf(get, slug, ref);
             if (required) {
                 const base = (await get(`repos/${slug}`, compactDefaultBranch)).value || (await defaultBranch());
@@ -232,7 +232,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
         const fields =
             "databaseId,name,workflowName,displayTitle,status,conclusion,headBranch,headSha,event,createdAt,url";
         const args = ["run", "list", "--limit", String(limit), "--json", fields, ...filters, ...flags];
-        const rows = ghJson<RunRow[]>("gh run list", await gh(args, { signal }));
+        const rows = ghJson<RunRow[]>("gh run list", await gh(args, { signal, slug }));
         if (rows.length === 0) return { text: `No workflow runs match in ${slug}.`, facts: {}, details: { ids: [] } };
         const lines = rows.map(
             (row) =>
@@ -251,7 +251,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
     async function viewRun(id: number, fields: string): Promise<RunDetail> {
         return ghJson<RunDetail>(
             "gh run view",
-            await gh(["run", "view", String(id), "--json", fields, ...flags], { signal }),
+            await gh(["run", "view", String(id), "--json", fields, ...flags], { signal, slug }),
         );
     }
 
@@ -263,7 +263,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
             const list = await apiJson<{
                 total_count: number;
                 artifacts: { name: string; size_in_bytes: number; expired: boolean; created_at: string }[];
-            }>(`repos/${slug}/actions/runs/${id}/artifacts?per_page=100`, { signal });
+            }>(`repos/${slug}/actions/runs/${id}/artifacts?per_page=100`, { signal, slug });
             if (list.artifacts.length === 0) return ["Artifacts: none"];
             return [
                 `Artifacts: ${plural(list.total_count, "artifact")}`,
@@ -309,7 +309,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
         if (params.number !== undefined) {
             const pr = ghJson<{ headRefOid: string }>(
                 "gh pr view",
-                await gh(["pr", "view", String(params.number), "--json", "headRefOid", ...flags], { signal }),
+                await gh(["pr", "view", String(params.number), "--json", "headRefOid", ...flags], { signal, slug }),
             );
             filters = ["--commit", pr.headRefOid];
         } else if (params.sha !== undefined) {
@@ -352,7 +352,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
                     : `run ${id} has no job called ${wanted}; its jobs: ${names.join(", ")}`,
             );
         }
-        const raw = await jobLog(slug, job.databaseId, { signal });
+        const raw = await jobLog(slug, job.databaseId, { signal, slug });
         const picked = selectLog(raw, { tail: params.tail, grep: params.grep });
         const head = `Run #${id}, job ${job.name} (${outcomeOf(job)}): ${picked.note}`;
         return {
@@ -392,7 +392,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
                 const sent = await ghWrite(
                     "gh run rerun",
                     ["run", "rerun", String(id), ...(failedOnly ? ["--failed"] : []), ...flags],
-                    { signal },
+                    { signal, slug },
                 );
                 if (sent.kind === "sent") return { text: done, facts: { outcome: "started" }, details: { run: id } };
                 return afterLostReply("gh run rerun", sent.why, "GitHub", async () =>
@@ -444,7 +444,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
         if (params.number !== undefined) spec.pr = params.number;
         if (params.run_id !== undefined) spec.runId = params.run_id;
         if (params.sha !== undefined) {
-            spec.sha = (await apiJson<{ sha: string }>(`repos/${slug}/commits/${params.sha}`, { signal })).sha;
+            spec.sha = (await apiJson<{ sha: string }>(`repos/${slug}/commits/${params.sha}`, { signal, slug })).sha;
         } else if (params.number !== undefined && (needsCommit || finish.kind === "pr")) {
             const pr = ghJson<{ headRefOid: string; headRefName: string }>(
                 "gh pr view",
@@ -458,7 +458,7 @@ function githubActions(service: CiService, ctx: CiContext): CiAdapter {
             const branch = params.branch ?? (await defaultBranch());
             spec.branch = branch;
             spec.sha = (
-                await apiJson<{ sha: string }>(`repos/${slug}/commits/${encodeURIComponent(branch)}`, { signal })
+                await apiJson<{ sha: string }>(`repos/${slug}/commits/${encodeURIComponent(branch)}`, { signal, slug })
             ).sha;
         }
         if (params.branch !== undefined && spec.branch === undefined) spec.branch = params.branch;

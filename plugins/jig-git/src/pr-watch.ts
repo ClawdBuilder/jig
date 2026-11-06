@@ -44,6 +44,8 @@ const COMMENT_CHARS = 600;
 // ---- the spec ---------------------------------------------------------------------------------------------------------
 
 const SLUG = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
+/** A `gh` account name in a saved spec; the token is never saved, only this name. */
+const ACCOUNT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 const isGitlab = (spec: PrWatchSpec): boolean => spec.forge === "gitlab";
 
@@ -78,11 +80,17 @@ function specOf(raw: unknown): PrWatchSpec {
         !SLUG.test(spec.slug) ||
         !Number.isInteger(spec.number) ||
         (spec.number as number) < 1 ||
-        (spec.host !== undefined && (typeof spec.host !== "string" || !GITLAB_HOST.test(spec.host)))
+        (spec.host !== undefined && (typeof spec.host !== "string" || !GITLAB_HOST.test(spec.host))) ||
+        (spec.account !== undefined && (typeof spec.account !== "string" || !ACCOUNT.test(spec.account)))
     ) {
         throw new Error("this watch does not name a pull request as owner/name and a number");
     }
-    return { slug: spec.slug, number: spec.number as number, ...(spec.host === undefined ? {} : { host: spec.host }) };
+    return {
+        slug: spec.slug,
+        number: spec.number as number,
+        ...(spec.host === undefined ? {} : { host: spec.host }),
+        ...(spec.account === undefined ? {} : { account: spec.account }),
+    };
 }
 
 // ---- what GitHub holds ------------------------------------------------------------------------------------------------
@@ -250,9 +258,10 @@ async function whoAmI(
     signal: AbortSignal,
     now: number,
     host: string | undefined,
+    account?: string,
 ): Promise<string> {
     if (state.me !== undefined) return state.me;
-    const response = await apiGet("user", { signal, host });
+    const response = await apiGet("user", { signal, host, account });
     const login = (answerOf("user", response, now) as { login?: string } | undefined)?.login;
     if (typeof login !== "string" || login === "") throw new Error("GitHub did not say which user gh is signed in as");
     return login;
@@ -267,8 +276,8 @@ async function collectGithub(
     bots: boolean,
 ): Promise<Comment[]> {
     // Every request goes to the host the spec names, when it is not github.com.
-    const get: Getter = (path, options) => apiGet(path, { ...options, host: spec.host });
-    const me = (await whoAmI(state, signal, now, spec.host)).toLowerCase();
+    const get: Getter = (path, options) => apiGet(path, { ...options, host: spec.host, account: spec.account });
+    const me = (await whoAmI(state, signal, now, spec.host, spec.account)).toLowerCase();
     state.me = me;
 
     const base = `repos/${spec.slug}`;

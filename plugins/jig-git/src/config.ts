@@ -6,6 +6,8 @@
 import { jig } from "../../jig-core/src/client.ts";
 import { isObject } from "../../jig-core/src/kit/values.ts";
 import { checkBranch } from "./names.ts";
+import { validateAccounts } from "../../jig-core/src/kit/accounts.ts";
+import type { AccountMap } from "../../jig-core/src/kit/accounts.ts";
 
 /** The kinds of forge jig-git can talk to: GitHub through `gh`, GitLab through `glab`. */
 export type Forge = "github" | "gitlab";
@@ -31,6 +33,8 @@ export interface GitSettings {
     watchBots: boolean;
     /** Hosts that are not github.com or gitlab.com, and the forge each one is. Left out when none is configured. */
     forges?: Readonly<Record<string, ForgeEntry>>;
+    /** Which `gh` account a remote is used with; the first matching pattern wins. Left out when none is configured. */
+    accounts?: AccountMap;
 }
 
 export type WatchComments = "after-create" | "off";
@@ -48,6 +52,7 @@ const TOP = new Set([
     "watchComments",
     "watchBots",
     "forges",
+    "accounts",
 ]);
 /** Settings that moved with CI to jig-ops, and where they are now. */
 const MOVED: Readonly<Record<string, string>> = { watch: "ops.watch", artifacts: "ops.artifacts" };
@@ -125,6 +130,7 @@ export function validateGitSection(raw: unknown): string[] {
     if (raw.watchBots !== undefined && typeof raw.watchBots !== "boolean") {
         errors.push("git.watchBots must be true or false");
     }
+    if (raw.accounts !== undefined) errors.push(...validateAccounts(raw.accounts));
     if (raw.forges !== undefined && !validForges(raw.forges)) {
         errors.push(
             'git.forges must map host names to "github" or "gitlab", such as { "gitlab.example.com": "gitlab" }, ' +
@@ -133,6 +139,11 @@ export function validateGitSection(raw: unknown): string[] {
         );
     }
     return errors;
+}
+
+/** `git.accounts` as written, when the section is valid; an empty map when it is absent. */
+function accountsFrom(value: unknown): AccountMap | undefined {
+    return isObject(value) && validateAccounts(value).length === 0 ? (value as AccountMap) : undefined;
 }
 
 /** The configured forges with their host names, and the real host of an alias, in lower case, as a remote's host is compared. */
@@ -156,6 +167,7 @@ function forgesFrom(value: unknown): Record<string, ForgeEntry> | undefined {
 export function settingsFrom(raw: unknown): GitSettings {
     const section = isObject(raw) && validateGitSection(raw).length === 0 ? raw : {};
     const forges = forgesFrom(section.forges);
+    const accounts = accountsFrom(section.accounts);
     return {
         base: section.base as string | undefined,
         protected: section.protected as string[] | undefined,
@@ -167,6 +179,7 @@ export function settingsFrom(raw: unknown): GitSettings {
         watchComments: (section.watchComments as WatchComments | undefined) ?? "after-create",
         watchBots: (section.watchBots as boolean | undefined) ?? false,
         ...(forges === undefined ? {} : { forges }),
+        ...(accounts === undefined ? {} : { accounts }),
     };
 }
 

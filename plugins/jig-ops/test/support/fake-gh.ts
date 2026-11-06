@@ -30,6 +30,8 @@ export interface GhCall {
     args: string[];
     /** What was written to standard input, when the call passed `-`. */
     stdin?: string;
+    /** Whether GH_TOKEN was set for the call. The value is never logged. */
+    token: boolean;
 }
 
 export interface FakeGh {
@@ -51,7 +53,7 @@ const path = require("node:path");
 const dir = __dirname;
 const args = process.argv.slice(2);
 const stdin = args.includes("-") ? fs.readFileSync(0, "utf8") : undefined;
-fs.appendFileSync(path.join(dir, "calls.jsonl"), JSON.stringify({ args, stdin }) + "\\n");
+fs.appendFileSync(path.join(dir, "calls.jsonl"), JSON.stringify({ args, stdin, token: process.env.GH_TOKEN !== undefined }) + "\\n");
 const fixtures = JSON.parse(fs.readFileSync(path.join(dir, "fixtures.json"), "utf8"));
 const found = fixtures.findIndex((f) => {
     const words = f.cmd.split(" ");
