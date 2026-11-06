@@ -50,6 +50,7 @@ export const BUILT_IN_TOOLS: Readonly<Record<string, CallClass>> = {
     powershell: LOCAL_WRITE,
     ask_user_question: LOCAL_READ,
     ask_questions: LOCAL_READ,
+    tool_search: LOCAL_READ,
 };
 
 /** The default for a tool nothing else classifies: it may write outside the machine, so it asks. */
