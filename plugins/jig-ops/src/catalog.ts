@@ -287,7 +287,8 @@ export function describeServices(catalog: Catalog): string {
 }
 
 /** The service a call names. A name nobody configured is invalid input, and the message lists the ones there are. */
-function nearestName(name: string, names: readonly string[]): string | undefined {
+export function nearestName(raw: string, names: readonly string[]): string | undefined {
+    const name = raw.slice(0, 80);
     let best: string | undefined;
     let bestScore = Number.POSITIVE_INFINITY;
     for (const candidate of names) {
@@ -372,7 +373,17 @@ export function findCiService(catalog: Catalog, who: string, name: unknown, envi
     const named = withCi.map((service) => `${service.name} (${service.ci.system})`);
     const known = withCi.length === 0 ? "none have one" : shortList(named);
     if (found === undefined) {
-        throw new InputError(`${who}: no service named ${shown(name, 30)}. Services with a ci entry: ${known}`);
+        const near =
+            typeof name === "string"
+                ? nearestName(
+                      name,
+                      withCi.map((service) => service.name),
+                  )
+                : undefined;
+        throw new InputError(
+            `${who}: no service named ${shown(name, 30)}. Services with a ci entry: ${known}` +
+                (near === undefined ? "" : `. Did you mean ${near}?`),
+        );
     }
     const service = ciServiceOf(found);
     if (service === undefined) {

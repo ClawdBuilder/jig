@@ -301,7 +301,12 @@ function rowCheck(
 export function parseCall(input: Readonly<Record<string, unknown>>, catalog: Catalog | undefined): Call {
     if (catalog === undefined) throw notSetUp();
     const action = checkAction(input.action);
-    if (action === "services") return { action, service: undefined as never, info: undefined as never, params: {} };
+    if (action === "services") {
+        const extra = Object.keys(input).filter((key) => key !== "action" && key !== "service");
+        if (extra.length > 0)
+            throw new InputError(`ci services does not use ${extra.join(", ")}. Usage: ci services {action}`);
+        return { action, service: undefined as never, info: undefined as never, params: {} };
+    }
     if (!present(input.service)) {
         const withCi = [...catalog.services.values()].filter((service) => service.ci !== undefined);
         const known = shortList(withCi.map((service) => `${service.name} (${service.ci?.system})`));

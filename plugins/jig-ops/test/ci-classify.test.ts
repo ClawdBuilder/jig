@@ -285,6 +285,11 @@ describe("without a usable catalog", () => {
     });
 });
 
+test("services refuses parameters it does not use", () => {
+    h.configure();
+    assert.match(said({ action: "services", service: undefined, branch: "main" }) as string, /does not use branch/);
+});
+
 test("services is a local read with no service", () => {
     h.configure();
     assert.deepEqual(said({ action: "services", service: undefined }), {

@@ -124,7 +124,7 @@ const EXPECTED: Record<string, Given> = {
     },
     "jig-ops": {
         tools: {
-            ci: ["log", "rerun", "run", "runs", "status", "trigger", "watch"],
+            ci: ["log", "rerun", "run", "runs", "services", "status", "trigger", "watch"],
             deploy: ["plan", "rollback", "run", "status", "watch"],
             runtime: ["events", "health", "logs", "pods", "rollout"],
         },
