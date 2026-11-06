@@ -64,8 +64,6 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                 await gitOut(repo.root, ["switch", "-c", name, "--no-track", shaTarget], { signal });
                 const sha = await revParse(repo.root, "HEAD", signal);
                 if (sha !== shaTarget) {
-                    const old = await revParse(repo.root, "HEAD", signal);
-                    void old;
                     await git(repo.root, ["switch", "--detach", before], { signal });
                     throw new Error(
                         `the branch ${name} did not stay on the checked commit; the previous HEAD was restored`,

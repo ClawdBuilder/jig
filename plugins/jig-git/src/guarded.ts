@@ -18,8 +18,7 @@ export function guardedRelative(path: string): boolean {
     const normalized = path.split("\\").join("/");
     if (normalized === ".git/config" || normalized.startsWith(".git/hooks/")) return false;
     for (const item of PI_PROJECT_PATHS) {
-        const rel = item.startsWith(".pi/") || item === ".agents" ? item : item;
-        if (normalized === rel || normalized.startsWith(`${rel}/`)) return true;
+        if (normalized === item || normalized.startsWith(`${item}/`)) return true;
     }
     return isRepositoryRunsLater(normalized) || normalized === ".envrc" || normalized.startsWith(".envrc/");
 }
