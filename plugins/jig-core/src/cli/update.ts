@@ -247,7 +247,7 @@ export async function update(args: readonly string[], host: string | undefined):
     const cwd = process.cwd();
     if (!writable(existsSync(path.join(agentDir, "settings.json")) ? path.join(agentDir, "settings.json") : agentDir)) {
         process.stderr.write(
-            `Jig cannot write ${path.join(agentDir, "settings.json")} (the folder is read-only). Nothing was changed.\n`,
+            `Jig cannot write ${path.join(agentDir, "settings.json")} because its folder is missing or read-only. Nothing was changed.\n`,
         );
         return 1;
     }
