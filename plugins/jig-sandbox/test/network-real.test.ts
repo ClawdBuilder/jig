@@ -38,14 +38,6 @@ async function serve(host: string, name: string): Promise<Listening> {
     };
 }
 
-async function freePort(): Promise<number> {
-    const server = net.createServer();
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const { port } = server.address() as net.AddressInfo;
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-    return port;
-}
-
 /**
  * A command that fetches a URL with Python. `default` is a program that honours the proxy settings and `no_proxy` as it finds
  * them; `proxy` goes through the sandbox's proxy whatever `no_proxy` says (a program that sends everything there); `direct`
@@ -238,10 +230,11 @@ describe("network.localhost", { skip }, () => {
 
 describe("a background task's server", { skip }, () => {
     test("is reached by a later command and by you on this machine, and goes when the task does", async () => {
-        const port = await freePort();
         const s = await begin(filtered());
         writeFileSync(path.join(s.project, "index.html"), "hello from the task\n");
-        const started = await s.bash(`python3 -u -m http.server ${port} --bind 127.0.0.1`, {
+        // Port 0: the server picks the port and bg_list reports it. A freePort() helper would close its socket before
+        // python3 binds, so another process could take the port in between; nobody else can take this one.
+        const started = await s.bash("python3 -u -m http.server 0 --bind 127.0.0.1", {
             background: true,
             name: "files",
             notifyOn: { ready: ["Serving HTTP"] },
@@ -252,6 +245,15 @@ describe("a background task's server", { skip }, () => {
             () => s.pi.messages.some((item) => String(item.message.content).includes('"files": READY')),
             15_000,
             "ready",
+        );
+        const port = await until(
+            async () => {
+                const text = (await s.call("bg_list", {})).text;
+                const found = /listening on (\d+)/.exec(text)?.[1];
+                return found === undefined ? undefined : Number(found);
+            },
+            5_000,
+            "the port the task listens on",
         );
 
         // From a later command: it has its own network, and the server is at the same port in it.

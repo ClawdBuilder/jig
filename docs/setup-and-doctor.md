@@ -23,7 +23,7 @@ Two copies with different versions are a warning.
 
 **Getting the command.** Pi's `pi install` copies a package but does not link programs. Install Jig with npm, which
 does: `npm install -g @clawdbuilder/jig` puts `jig` on your PATH (the same folder as `node` and `npm`), on Linux, WSL and
-macOS. Add `@0.4.0` to install a release rather than the latest. For a checkout,
+macOS. Add `@0.4.2` to install a release rather than the latest. For a checkout,
 `npm install -g --install-links <checkout>` does the same from the folder, and `npm link` inside it is for development.
 Setup never edits your shell files.
 

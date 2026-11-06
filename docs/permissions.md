@@ -50,6 +50,7 @@ Pi's own tools:
 | `bg_kill` | local | write | allow |
 | `powershell` | local | write | allow |
 | question tools: `ask_user_question`, `ask_questions` | local | read | allow, so a question never asks first |
+| `tool_search` | local | read | allow; it loads a tool definition, and the gate decides each real call |
 
 ## The rules table
 

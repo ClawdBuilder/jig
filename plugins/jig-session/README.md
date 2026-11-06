@@ -1,9 +1,9 @@
-<img src="../../docs/assets/jig.svg" width="48" alt="Jig logo: a set-square">
-
 # jig-session: the live session's state, as a file other programs read
 
 **Status: built.** Tested with a stand-in for Pi, and seen working with Pi 1.4.0 in a real session in WSL, read by the Work
 panel of the [Herdr app files](../../herdr/README.md). Not tried: macOS, Windows without WSL.
+
+<img src="../../docs/assets/jig.svg" width="48" alt="Jig logo: a set-square">
 
 `jig-session` is a Pi extension that publishes what a Pi session is doing as one small JSON file per session: its terminal,
 model, context and what fills it, cost, ticket and workflow stage, the files it created or changed, and its recent tool calls

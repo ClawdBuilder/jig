@@ -41,7 +41,7 @@ and `npm run build` there first; a changed `src/` that was not built fails `chec
 
 | Command | Covers | Needs |
 |---|---|---|
-| `npm run check` | types, Biome, exact dependency versions, allowed imports | Pi installed |
+| `npm run check` | types, Biome, exact dependency versions, allowed imports, docs shape and links | Pi installed |
 | `npm test` | about 8,000 tests in an isolated home and repository | the sandbox's programs, for its tests |
 | `npm run check:install` | a stock Pi installing a copy of this tree as `pi install git:` does | network |
 | `npm run check:web`, `npm run test:web`, `npm run check:dist` | the review page's types, tests and built copy | `npm ci` in its folder |

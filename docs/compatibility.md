@@ -5,6 +5,9 @@ public here is pinned by a test, so it cannot change by accident.
 
 ## Tested with
 
+The Checks job covers both npm majors: Node 24 runs npm 12, and Node 26 keeps its bundled npm. The Release job keeps
+the npm its Node line provides.
+
 | Pi | Node | Checked |
 |---|---|---|
 | 1.5.0 | 24, 26 | 2026-11-02 |

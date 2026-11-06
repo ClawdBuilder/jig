@@ -274,7 +274,7 @@ describe("3. Pi's built-in defaults", () => {
         }
     });
 
-    test("beat a hint, and cover exactly these ten tools", () => {
+    test("beat a hint, and cover exactly these eleven tools", () => {
         assert.equal(classify("read", {}, deps({ hints: { read: { destructiveHint: true } } })).source, "builtin");
         assert.deepEqual(Object.keys(BUILT_IN_TOOLS).sort(), [
             "ask_questions",
@@ -286,6 +286,7 @@ describe("3. Pi's built-in defaults", () => {
             "ls",
             "powershell",
             "read",
+            "tool_search",
             "write",
         ]);
     });
@@ -355,4 +356,11 @@ describe("tool names in rules", () => {
         assert.equal(matchesName("a.b", "axb"), false, "a dot is a dot, not any character");
         assert.equal(matchesName("a+b*", "a+bcd"), true);
     });
+});
+
+test("tool_search is a local read, so loading a definition never asks", () => {
+    const result = classify("tool_search", { query: "jira" }, deps({}));
+    assert.equal(result.environment, "local");
+    assert.equal(result.effect, "read");
+    assert.equal(result.source, "builtin");
 });
