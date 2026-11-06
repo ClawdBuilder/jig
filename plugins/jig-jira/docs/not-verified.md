@@ -3,11 +3,12 @@
 What the tests of `jig-jira` do not cover. Back to the
 [jig-jira overview](../README.md).
 
-Written from Jira's documentation and a fake Jira on this machine. Not tried
-against a real Jira:
-- the exact shape of the answers of both editions: `search/jql` and `search`,
-  the create screen (`createmeta`), users, and comments on long threads;
-- that the sign-in forms work against a real single sign-on gateway or proxy;
+Written from Jira's documentation, a fake Jira on this machine, and real sessions that reached a real Jira through a
+company transport (reads, a create, updates and a link). Still not tried:
+- the four direct sign-in forms (`basic`, `bearer`, `signIn` and `transport`) against a real gateway; the real sessions used
+  one company transport, not these;
+- Jira Cloud: `search/jql` and the Cloud create screen, users and long comment threads; the real sessions used one site;
+- attachments and transitions on a real site;
 - how the rendered page compares with Jira's own rendering of unusual markup;
 - that a real sign-in proxy answers `GET /myself` with 403 or 404, or refuses it
   from its transport, as `comment` expects (the fake Jira and a fake transport do);
