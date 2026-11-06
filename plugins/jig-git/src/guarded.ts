@@ -68,9 +68,33 @@ export async function guardedStashChanges(root: string, stash: string, signal?: 
     return [...files];
 }
 
-/** The default base branch the mirror tools use, from the git section. */
-export function baseOf(settings: GitSettings): string {
-    return settings.base ?? "main";
+/** The default base branch the mirror tools use: the section's, else origin's default, else main. */
+export async function baseOf(root: string, settings: GitSettings, signal?: AbortSignal): Promise<string> {
+    if (settings.base !== undefined && settings.base !== "") return settings.base;
+    const head = await gitOut(root, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], { signal }).catch(
+        () => "",
+    );
+    const name = head.trim().replace(/^origin\//, "");
+    return name === "" ? "main" : name;
+}
+
+/** Split a base against the repository's real remote names, longest first. */
+async function splitBase(
+    root: string,
+    base: string,
+    signal?: AbortSignal,
+): Promise<{ remote: string; branch: string }> {
+    const remotes = (await gitOut(root, ["remote"], { signal }))
+        .split("\n")
+        .map((name) => name.trim())
+        .filter((name) => name !== "")
+        .sort((left, right) => right.length - left.length);
+    for (const remote of remotes) {
+        if (base.startsWith(`${remote}/`) && base.length > remote.length + 1) {
+            return { remote, branch: base.slice(remote.length + 1) };
+        }
+    }
+    return { remote: "origin", branch: base };
 }
 
 /**
@@ -95,12 +119,14 @@ export async function guardedTargets(
             break;
         case "merge": {
             const branch = text(input.branch);
+            const base = text(input.base) ?? (await baseOf(root, settings, signal));
+            const split = await splitBase(root, base, signal);
             wanted.push(
                 ...(branch === undefined
                     ? [
                           {
-                              ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
-                              label: `origin/${text(input.base) ?? baseOf(settings)}`,
+                              ref: `refs/remotes/${split.remote}/${split.branch}`,
+                              label: `${split.remote}/${split.branch}`,
                           },
                       ]
                     : [
@@ -110,12 +136,15 @@ export async function guardedTargets(
             );
             break;
         }
-        case "rebase":
+        case "rebase": {
+            const base = text(input.base) ?? (await baseOf(root, settings, signal));
+            const split = await splitBase(root, base, signal);
             wanted.push({
-                ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
-                label: `origin/${text(input.base) ?? baseOf(settings)}`,
+                ref: `refs/remotes/${split.remote}/${split.branch}`,
+                label: `${split.remote}/${split.branch}`,
             });
             break;
+        }
         case "branch": {
             if (operation === "switch") {
                 const branch = text(input.branch);
@@ -125,9 +154,11 @@ export async function guardedTargets(
                     { ref: `refs/remotes/origin/${branch}`, label: `origin/${branch}` },
                 );
             } else if (operation === "create") {
+                const base = text(input.base) ?? (await baseOf(root, settings, signal));
+                const split = await splitBase(root, base, signal);
                 wanted.push({
-                    ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
-                    label: `origin/${text(input.base) ?? baseOf(settings)}`,
+                    ref: `refs/remotes/${split.remote}/${split.branch}`,
+                    label: `${split.remote}/${split.branch}`,
                 });
             } else return undefined;
             break;

@@ -187,3 +187,18 @@ test("a merge branch that exists only at origin is found", async () => {
     assert.equal(target.targets.length, 1);
     assert.equal(target.targets[0]?.label, "origin/remote-only");
 });
+
+test("the guard follows origin's default branch and a remote-prefixed base", async () => {
+    const r = makeRepo(h.sb, `default${++counter}`);
+    git(r.dir, "switch", "-q", "-c", "develop");
+    writeFile(r.dir, "dev.txt", "dev\n");
+    git(r.dir, "add", "-A");
+    git(r.dir, "commit", "-qm", "develop change");
+    git(r.dir, "push", "-q", "origin", "develop");
+    git(r.dir, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop");
+    const noBase = { ...settings, base: undefined } as unknown as GitSettings;
+    const found = await guardedTargets("merge", {}, r.dir, noBase);
+    assert.ok(found, "develop is found without git.base");
+    const split = await guardedTargets("merge", { base: "origin/develop" }, r.dir, noBase);
+    assert.ok(split, "origin/develop is split");
+});
