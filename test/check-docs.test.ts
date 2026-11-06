@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+// @ts-expect-error the checker is plain JavaScript
 import { checkDocs } from "../scripts/check-docs.mjs";
 
 function tree(files: Record<string, string>): string {
