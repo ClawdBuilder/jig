@@ -9,7 +9,7 @@ import { defaultConfig, emptyAdditions } from "../src/config.ts";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "../src/config.ts";
 import { formatDoctor, runDoctor } from "../src/doctor.ts";
 import type { DoctorContext, DoctorOptions } from "../src/doctor.ts";
-import { countQuickIssues } from "../src/doctor-secrets.ts";
+import { countQuickIssues, findOnPath } from "../src/doctor-secrets.ts";
 
 let home: string;
 let agentDir: string;
@@ -548,4 +548,9 @@ describe("two copies of Jig", () => {
             assert.match(line.detail ?? "", new RegExp(`${versions[1]} \\(npm:`));
         }
     });
+});
+
+test("an absolute program is checked as a path, not looked up on PATH", () => {
+    assert.equal(findOnPath(process.execPath, { PATH: "" }), process.execPath);
+    assert.equal(findOnPath(path.join(home, "missing-program"), { PATH: "" }), undefined);
 });

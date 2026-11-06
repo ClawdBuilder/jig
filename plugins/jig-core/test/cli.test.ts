@@ -698,3 +698,22 @@ describe("a real global install", () => {
         assert.doesNotMatch(doctor.stderr, /ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING/);
     });
 });
+
+test("a package the command's loader cannot strip is not checked, not failed", async () => {
+    const folder = path.join(agent, "npm/node_modules/@acme/param");
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+        path.join(folder, "package.json"),
+        JSON.stringify({ name: "@acme/param", version: "1.0.0", type: "module", pi: { extensions: ["./index.ts"] } }),
+    );
+    writeFileSync(
+        path.join(folder, "index.ts"),
+        "class Holder { constructor(private value: string) {} }\nexport default function () { return Holder; }\n",
+    );
+    writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [ROOT, "npm:@acme/param@1.0.0"] }));
+    const result = await run(["doctor"]);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /skip .*@acme\/param/);
+    assert.match(result.stdout, /not checked: Pi can load this package/);
+    assert.doesNotMatch(result.stdout, /fail .*@acme\/param/);
+});
