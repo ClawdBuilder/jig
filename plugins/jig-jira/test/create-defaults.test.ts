@@ -209,3 +209,11 @@ describe("jira.projects limits where create may make an issue", () => {
         assert.match(ok(await h.call(BUG)), /^Created PROJ-100/);
     });
 });
+
+test("one value for a screen field whose schema says array is wrapped and shown", async () => {
+    configure({ "Array Text": "customfield_10017" });
+    const result = await h.call({ ...BUG, fields: { "Array Text": "one" } });
+    assert.match(ok(result), /^Created PROJ-100: A bug/);
+    assert.match(result.preview?.body ?? "", /^Array Text: one \(one value, sent as a one-item list\)$/m);
+    assert.deepEqual(fieldsSent().customfield_10017, ["one"]);
+});

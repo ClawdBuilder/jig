@@ -113,6 +113,18 @@ export async function planCreate(env: Env, call: CallOf<"create">, preview: bool
             let converted =
                 id === "assignee" ? await assigneeValue(env, { project: call.project }, raw) : convertField(id, raw);
             const field = screen?.fields.get(id);
+            if (
+                field?.type === "array" &&
+                converted.send !== null &&
+                !Array.isArray(converted.send) &&
+                converted.send !== undefined
+            ) {
+                // The screen says this field is an array; Jira wants one value as a one-item list, not a bare value.
+                converted = {
+                    send: [converted.send],
+                    shown: `${converted.shown} (one value, sent as a one-item list)`,
+                };
+            }
             if (field !== undefined) converted = checkAllowed(field, converted);
             // The screen's own name for a field is the clearest label; without a screen, the name the call used.
             given.set(id, { id, name: field?.name ?? name, converted, fromDefaults });

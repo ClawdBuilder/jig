@@ -6,6 +6,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `ci services` lists the ops catalog's services that have a CI entry, one line each with its system; an unknown service
+  name now suggests the nearest configured one.
+- `jira create` sends one value as a one-item list when the create screen's schema says the field is an array, and says so
+  in the preview.
 - `git.accounts` maps a repository's remote to the `gh` account its GitHub calls use, so a work repository and a personal one
   keep working while either account is active. Jig reads that account's token for the one call and never switches the active
   account or stores the token ([jig-git](plugins/jig-git/docs/configuration.md)).
