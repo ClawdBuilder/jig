@@ -59,6 +59,7 @@ export function checkDocs(root) {
         }
         const headingAnchors = anchors(text);
         let fence = false;
+        let fenceStart = 0;
         for (let index = 0; index < lines.length; index++) {
             const line = lines[index] ?? "";
             if (/^\s*```/.test(line)) {
@@ -66,6 +67,7 @@ export function checkDocs(root) {
                     const tag = line.trim().slice(3).trim();
                     if (tag === "") failures.push(`${rel}:${index + 1} code block has no language tag`);
                     fence = true;
+                    fenceStart = index + 1;
                 } else fence = false;
                 continue;
             }
@@ -109,6 +111,7 @@ export function checkDocs(root) {
                 if (line.length > MAX_PARAGRAPH) warnings.push(`${rel}:${index + 1} paragraph is long`);
             }
         }
+        if (fence) failures.push(`${rel}:${fenceStart} unclosed code block`);
     }
     return { failures, warnings };
 }

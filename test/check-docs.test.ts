@@ -64,3 +64,11 @@ test("a heading-looking line inside a fence is not an anchor", () => {
     const failures = checkDocs(root).failures;
     assert.ok(failures.some((one: string) => one.includes("anchor does not resolve: #fake")), failures.join("\n"));
 });
+
+test("a fenced block left open is a failure, not a silent skip of the rest", () => {
+    const root = tree({
+        "README.md": "# Title\n\n```bash\nnpm install -g @clawdbuilder/jig@0.4.2\n\n[bad](missing.md)\n",
+    });
+    const failures = checkDocs(root).failures;
+    assert.ok(failures.some((one: string) => one.includes("unclosed code block")), failures.join("\n"));
+});
