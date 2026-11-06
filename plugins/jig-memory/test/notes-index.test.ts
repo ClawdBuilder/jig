@@ -67,6 +67,38 @@ test("a written card wins over the note entry for the same ticket", (t) => {
     assert.equal(matches[0]?.source, "card");
 });
 
+test("common words alone do not surface a note; a rare word or a name does", (t) => {
+    const folder = tempFolder(t);
+    writeNote(folder, "PROJ-1", "# PROJ-1\n\n## Now\nStatus: review branch plan account\n\n## Decisions\n");
+    writeNote(folder, "PROJ-2", "# PROJ-2\n\n## Now\nStatus: review branch plan account\n\n## Decisions\n");
+    const notes = loadNoteIndex(folder, PATTERN);
+    const query = buildQuery({ ticket: "PROJ-3", text: "review branch plan account", pattern: PATTERN });
+    const noRule = recall({}, query, { max: 3, minScore: 0.5, maxNotes: 1, requireEvidence: false }, notes);
+    assert.equal(noRule.length > 0, true, "without the rule, the shared common words score");
+    const rule = recall({}, query, { max: 3, minScore: 0.5, maxNotes: 1, requireEvidence: true }, notes);
+    assert.equal(rule.length, 0, "common words alone are not evidence");
+
+    for (let n = 0; n < 6; n++) {
+        writeNote(folder, `FILL-${n}`, `# FILL-${n}\n\n## Now\nStatus: filler${n}\n\n## Decisions\n`);
+    }
+    writeNote(folder, "PROJ-4", "# PROJ-4\n\n## Now\nStatus: quartz\n\n## Decisions\n");
+    writeNote(folder, "PROJ-5", "# PROJ-5\n\n## Now\nStatus: quartz\n\n## Decisions\n");
+    const rare = loadNoteIndex(folder, PATTERN);
+    const rareQuery = buildQuery({ ticket: "PROJ-3", text: "quartz", pattern: PATTERN });
+    assert.equal(rare["PROJ-4"]?.terms.quartz !== undefined, true, "quartz is a term");
+    assert.equal(rareQuery.roots.has("quartz"), true, "quartz is in the query");
+    assert.equal(
+        recall({}, rareQuery, { max: 3, minScore: 0.1, maxNotes: 2, requireEvidence: false }, rare).length,
+        2,
+        "without the rule both notes are found",
+    );
+    assert.equal(
+        recall({}, rareQuery, { max: 3, minScore: 0.1, maxNotes: 2, requireEvidence: true }, rare).length,
+        2,
+        "a rare shared word is evidence",
+    );
+});
+
 test("a note entry is labelled as from notes, dated and possibly out of date", (t) => {
     const folder = tempFolder(t);
     writeNote(folder, "PROJ-1", "# PROJ-1\n\n## Now\nStatus: QueueWorker is closed\n\n## Decisions\nOpen it.\n");

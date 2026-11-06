@@ -15,6 +15,33 @@ function writeNote(folder: string, key: string, text: string): void {
     writeFileSync(ticketPaths(folder, key).notes, text);
 }
 
+test("hand labels replace derived links, and top 3 is not capped by the display budget", (t) => {
+    const folder = tempFolder(t);
+    for (const key of ["PROJ-1", "PROJ-2", "PROJ-3"]) {
+        writeNote(folder, key, `# ${key}\n\n## Now\nStatus: OrderService\n\n## Decisions\n`);
+    }
+    const labels = path.join(folder, "labels.json");
+    writeFileSync(
+        labels,
+        JSON.stringify({
+            pairs: [
+                ["PROJ-1", "PROJ-2"],
+                ["PROJ-2", "PROJ-3"],
+            ],
+        }),
+    );
+    const stdout = execFileSync(process.execPath, [SCRIPT, "--folder", folder, "--labels", labels, "--top", "3"], {
+        encoding: "utf8",
+    });
+    const result = JSON.parse(stdout) as Record<string, unknown>;
+    assert.equal(result.labelled, true);
+    assert.equal(result.pairs, 2);
+    assert.equal(result.cases, 3);
+    assert.equal(result.top, 3);
+    assert.equal(result.maxNotes === undefined, true, "the result has no capped maxNotes");
+    assert.equal(stdout.includes("PROJ-1"), false);
+});
+
 test("the script finds an invented linked ticket from notes, and prints no key", (t) => {
     const folder = tempFolder(t);
     writeNote(
@@ -34,7 +61,7 @@ test("the script finds an invented linked ticket from notes, and prints no key",
     const result = JSON.parse(stdout) as Record<string, unknown>;
     assert.equal(result.mode, "notes");
     assert.equal(result.tickets, 3);
-    assert.equal(result.linkedCases, 1);
+    assert.equal(result.cases, 1);
     assert.equal(result.hits, 1);
     assert.equal(result.recallAt3, 1);
     assert.equal(stdout.includes("PROJ-1"), false);
