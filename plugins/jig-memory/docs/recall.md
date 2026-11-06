@@ -54,6 +54,16 @@ wins for its own ticket.
 
 ## The threshold and the budget
 
+A derived entry reaches the agent only with real evidence: a shared ticket key,
+identifier, ID or error line, or a word that is rare in this folder. A word is
+rare when BM25's relative rarity is at least 0.6 — about three of seventeen
+tickets, or six of 1,700 — so the rule does not need a different number for a
+large folder. Common words alone never surface a note, however many of them
+match. Six generic words (`one`, `still`, `branch`, `review`, `plan`, `account`)
+are never evidence even when a small folder makes them look rare. Hyphenated tool
+and script names such as `order-sync` and `run-tests.sh` are extracted as names,
+because a real neighbour can share one instead of sharing a word.
+
 An entry needs `memory.recall.minScore` points, **2** unless you change it. In terms
 of the table above:
 
@@ -129,23 +139,45 @@ found.
 The floors are recall 0.85 and precision 0.88. What stays missed: two paraphrases
 that share few rare words, and the second of two cards in one query.
 
-### Measured on our own tickets
+### The hand-label test
 
 `scripts/recall-eval.mjs --folder <tickets>` is the generic test. It takes the
 first 25 meaningful lines of each note as the query (an approximation of the
-message that starts a ticket), finds the tickets that note names as the real
-links, removes every ticket key from the query and both documents, and prints
-counts only. It has four linked cases in the current folder — too few to tune on —
-and 13 tickets with no link:
+message that starts a ticket), removes every ticket key from the query and both
+documents, and prints counts only.
 
-| Run | Documents | Links found in top 3 | Recall@3 | No-link tickets with a hit | Apparent noise |
-|---|---|---|---|---|---|
-| Cards only | 0 | 0 of 4 | 0 | 0 of 13 | 0 |
-| Notes index | 17 | 1 of 4 | 0.25 | 11 of 13 | 0.846 |
+**Hand labels beat derived links.** A ticket naming another is not proof they are
+related: the name can be a branch in a code pointer or a test account. With
+`--labels <file>`, a JSON file of key pairs replaces the derived links. A person
+who read the hits can say which pairs are topical; the file is read by the
+script and never copied into the repository. Without labels, the script keeps the
+derived links for any company's folder.
 
-This is why `recall.notes` is **false** by default: the notes index adds one
-correct result and a hit for almost every ticket with no recorded link. The
-script's report says "apparent" because a shared service or error can be a real
-relation that no ticket key records; the number is still the noise an agent would
-pay for. Turn it on only after the noise falls; the README's status line and
-`CHANGELOG.md` say the same.
+A label pair is counted both ways, and the test uses `--top 3` for the scoring while
+`recall.maxNotes` remains the display budget. The test therefore sees three
+derived entries even when the display would show one.
+
+### Measured on our own tickets
+
+The current folder has 17 tickets and four label pairs.
+
+| Run | Documents | Links found in top 3 | Recall@3 | Pairs found (any / both) | Tickets with no label, hit | Noise (upper bound) | Hits with a name / word only |
+|---|---|---|---|---|---|---|---|
+| Cards only | 0 | 0 of 8 | 0 | 0 / 0 of 4 | 0 of 11 | 0 | 0 / 0 |
+| Notes, rule off | 17 | 4 of 8 | 0.5 | 3 / 1 of 4 | 9 of 11 | 0.818 | 5 / 4 |
+| Notes, rule on | 17 | 4 of 8 | 0.5 | 3 / 1 of 4 | 9 of 11 | 0.818 | 5 / 4 |
+| Notes with derived links | 17 | 2 of 4 | 0.5 | — | 11 of 13 | 0.846 | 7 / 4 |
+
+- **The rule removed no hit on this folder.** Every hit already had a shared name,
+  ID, error or rare word; the four word-only hits are rare words, not the generic
+  words the hand reading called junk. The noise figure is an **upper bound** because
+  three of the eleven unlabelled tickets do have real neighbours that no label
+  records.
+- **The top-3 cap was real.** With the display budget of one, the derived test found
+  one of four; with `--top 3` it finds two of four. The hand labels then show four of
+  eight directions, three of four pairs in at least one direction, and one pair in
+  both directions.
+- **The labels are only four pairs.** This is a sanity check, not a benchmark; it
+  cannot tune a threshold.
+
+`recall.notes` is **off** in the code until the person decides on these numbers.

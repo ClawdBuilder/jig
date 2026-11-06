@@ -16,8 +16,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - A ticket with notes is searchable before it is closed: `jig-memory` derives a bounded entry from its `## Now` and
   `## Decisions`, searches it with recall, and labels it as from notes with its date and that it may be out of date.
-  `memory.recall.notes` turns it on; it is off by default because the real-ticket test found 1 of 4 explicit links at
-  0.85 apparent noise. `scripts/recall-eval.mjs` measures the folder without printing any content.
+  Derived entries need a shared name, ID, error or rare word, and hyphenated tool names count as names. `memory.recall.notes`
+  turns it on; it is off by default until the person decides on the hand-label numbers. `scripts/recall-eval.mjs` measures
+  a folder without printing content, takes hand labels with `--labels`, and scores top 3 independently of the display cap.
 - `ci services` lists the ops catalog's services that have a CI entry, one line each with its system; an unknown service
   name now suggests the nearest configured one.
 - `jira create` sends one value as a one-item list when the create screen's schema says the field is an array, and says so
