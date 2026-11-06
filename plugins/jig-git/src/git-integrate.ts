@@ -8,7 +8,14 @@ import type { Repo } from "./repo.ts";
 import { git, gitOut, refExists, requireBranch, revParse, summaryOf, upstreamOf } from "./run.ts";
 import { plural } from "./text.ts";
 import { fetchBranch, requireClean, shortHead } from "./git-guards.ts";
-import { guardedChanges, guardedPathsFor, guardedTargets, lateGuardError, newGuarded } from "./guarded.ts";
+import {
+    guardedChanges,
+    guardedPathsFor,
+    guardedSnapshots,
+    guardedTargets,
+    lateGuardError,
+    newGuardedSnapshots,
+} from "./guarded.ts";
 
 // ---- sync ---------------------------------------------------------------------------------------------------------
 
@@ -28,6 +35,10 @@ export async function planSync(params: { repo?: string }, call: Call): Promise<P
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
     const plannedTarget = await guardedTargets("sync", {}, repo.root, call.settings, signal);
     const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "sync", signal);
+    const plannedSnapshots =
+        plannedTarget === undefined
+            ? new Map<string, string>()
+            : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
     return {
         preview: {
             summary: `fetch ${remote} and fast-forward ${branch} to ${upstream} in ${repo.name} (no merge commit)`,
@@ -43,7 +54,15 @@ export async function planSync(params: { repo?: string }, call: Call): Promise<P
             const fetchedTarget = await guardedTargets("sync", {}, repo.root, call.settings, signal);
             if (fetchedTarget === undefined)
                 throw new Error("@{upstream} is not there after the fetch; nothing was applied");
-            const brought = newGuarded(plannedGuarded, await guardedPathsFor(fetchedTarget, "sync", signal));
+            const brought = newGuardedSnapshots(
+                plannedSnapshots,
+                await guardedSnapshots(
+                    repo.root,
+                    plannedTarget?.from ?? before,
+                    fetchedTarget.targets[0]?.sha ?? "",
+                    signal,
+                ),
+            );
             if (brought.length > 0) throw lateGuardError(brought);
             const upstreamSha = fetchedTarget.targets[0]?.sha;
             if (upstreamSha === undefined)
@@ -113,6 +132,10 @@ export async function planMerge(
         signal,
     );
     const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "merge", signal);
+    const plannedSnapshots =
+        plannedTarget === undefined
+            ? new Map<string, string>()
+            : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
     return {
         preview: {
             summary: `merge ${label} into ${current} in ${repo.name}; a conflict aborts the merge`,
@@ -133,7 +156,10 @@ export async function planMerge(
             }
             const fetched = await revParse(repo.root, ref, signal);
             if (fetched === undefined) throw new Error(`branch ${label} not found; nothing was merged`);
-            const brought = newGuarded(plannedGuarded, await guardedChanges(repo.root, before, fetched, signal));
+            const brought = newGuardedSnapshots(
+                plannedSnapshots,
+                await guardedSnapshots(repo.root, plannedTarget?.from ?? before, fetched, signal),
+            );
             if (brought.length > 0) throw lateGuardError(brought);
             if ((await git(repo.root, ["merge-base", "--is-ancestor", fetched, "HEAD"], { signal })).code === 0) {
                 return { text: `${current} already contains ${label} in ${repo.name}.` };
@@ -169,6 +195,10 @@ export async function planRebase(params: { repo?: string; base?: string }, call:
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
     const plannedTarget = await guardedTargets("rebase", { base }, repo.root, call.settings, signal);
     const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "rebase", signal);
+    const plannedSnapshots =
+        plannedTarget === undefined
+            ? new Map<string, string>()
+            : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
     return {
         preview: {
             summary: `rebase ${current} onto the fetched origin/${base} in ${repo.name}; a conflict aborts the rebase`,
@@ -179,7 +209,10 @@ export async function planRebase(params: { repo?: string; base?: string }, call:
             const fetched = await revParse(repo.root, `refs/remotes/origin/${base}`, signal);
             if (fetched === undefined)
                 throw new Error(`origin/${base} is not there after the fetch; nothing was rebased`);
-            const brought = newGuarded(plannedGuarded, await guardedChanges(repo.root, before, fetched, signal));
+            const brought = newGuardedSnapshots(
+                plannedSnapshots,
+                await guardedSnapshots(repo.root, plannedTarget?.from ?? before, fetched, signal),
+            );
             if (brought.length > 0) throw lateGuardError(brought);
             const rebased = await git(repo.root, ["rebase", fetched], { signal });
             if (rebased.code !== 0) {

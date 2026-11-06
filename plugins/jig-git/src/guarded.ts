@@ -210,3 +210,29 @@ export function lateGuardError(paths: readonly string[]): Error {
         `the fetch brought changes to files Pi loads (${paths.slice(0, 5).join(", ")}${paths.length > 5 ? ", …" : ""}); nothing was applied. Run this again and the person will be asked`,
     );
 }
+
+/** The guarded files between two commits with their blob ids: the same path with new content is a change. */
+export async function guardedSnapshots(
+    root: string,
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+): Promise<Map<string, string>> {
+    const found = new Map<string, string>();
+    if (from === "" || to === "" || from === to) return found;
+    const out = await git(root, ["diff", "--raw", "-z", from, to], { signal });
+    if (out.code !== 0) throw new Error(`could not read the change between ${from.slice(0, 7)} and ${to.slice(0, 7)}`);
+    const parts = out.stdout.split("\u0000");
+    for (let index = 0; index + 1 < parts.length; index += 2) {
+        const meta = parts[index] ?? "";
+        const path = parts[index + 1] ?? "";
+        const blob = /^:[0-9]+ [0-9]+ [0-9a-f]+ ([0-9a-f]+) /.exec(meta)?.[1];
+        if (path !== "" && blob !== undefined && guardedRelative(path)) found.set(path, blob);
+    }
+    return found;
+}
+
+/** Paths new or with a different blob after a fetch. */
+export function newGuardedSnapshots(before: ReadonlyMap<string, string>, after: ReadonlyMap<string, string>): string[] {
+    return [...after].filter(([path, blob]) => before.get(path) !== blob).map(([path]) => path);
+}

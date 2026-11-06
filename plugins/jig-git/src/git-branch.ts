@@ -8,7 +8,7 @@ import type { Call, Planned } from "./previews.ts";
 import { baseBranch, DIR_NAME, isProtected, resolveRepo, workspaceRoot } from "./repo.ts";
 import { currentBranch, git, gitOut, refExists, revParse, summaryOf } from "./run.ts";
 import { checkBranchPattern, fetchBranch, operationOf, remoteBranch, requireClean, shortHead } from "./git-guards.ts";
-import { guardedChanges, guardedPathsFor, guardedTargets, lateGuardError, newGuarded } from "./guarded.ts";
+import { guardedPathsFor, guardedSnapshots, guardedTargets, lateGuardError, newGuardedSnapshots } from "./guarded.ts";
 
 // ---- branch -------------------------------------------------------------------------------------------------------
 
@@ -46,6 +46,10 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
         );
         const plannedGuarded =
             plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
+        const plannedSnapshots =
+            plannedTarget === undefined
+                ? new Map<string, string>()
+                : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
         return {
             preview: {
                 summary: `create branch ${name} from the fetched ${base} in ${repo.name}`,
@@ -59,7 +63,10 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
                     throw new Error(
                         `${target.remote}/${target.branch} is not there after the fetch; nothing was created`,
                     );
-                const brought = newGuarded(plannedGuarded, await guardedChanges(repo.root, before, shaTarget, signal));
+                const brought = newGuardedSnapshots(
+                    plannedSnapshots,
+                    await guardedSnapshots(repo.root, plannedTarget?.from ?? before, shaTarget, signal),
+                );
                 if (brought.length > 0) throw lateGuardError(brought);
                 await gitOut(repo.root, ["switch", "-c", name, "--no-track", shaTarget], { signal });
                 const sha = await revParse(repo.root, "HEAD", signal);
@@ -98,6 +105,10 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
         );
         const plannedGuarded =
             plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
+        const plannedSnapshots =
+            plannedTarget === undefined
+                ? new Map<string, string>()
+                : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
         const targetSha = plannedTarget?.targets[0]?.sha;
         return {
             preview: {

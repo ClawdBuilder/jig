@@ -9,6 +9,8 @@ import {
     guardedStashChanges,
     guardedTargets,
     guardedRelative,
+    guardedSnapshots,
+    newGuardedSnapshots,
 } from "../src/guarded.ts";
 import type { GitSettings } from "../src/config.ts";
 import { git, makeRepo, writeFile } from "./support/repos.ts";
@@ -201,4 +203,21 @@ test("the guard follows origin's default branch and a remote-prefixed base", asy
     assert.ok(found, "develop is found without git.base");
     const split = await guardedTargets("merge", { base: "origin/develop" }, r.dir, noBase);
     assert.ok(split, "origin/develop is split");
+});
+
+test("a guarded path whose content changed after the question is new", async () => {
+    const r = makeRepo(h.sb, `blob${++counter}`);
+    const base = rev(r.dir, "HEAD");
+    mkdirSync(path.join(r.dir, ".pi"), { recursive: true });
+    writeFileSync(path.join(r.dir, ".pi/settings.json"), '{"one":1}\n');
+    git(r.dir, "add", "-A");
+    git(r.dir, "commit", "-qm", "one");
+    const first = rev(r.dir, "HEAD");
+    writeFileSync(path.join(r.dir, ".pi/settings.json"), '{"two":2}\n');
+    git(r.dir, "add", "-A");
+    git(r.dir, "commit", "-qm", "two");
+    const second = rev(r.dir, "HEAD");
+    const before = await guardedSnapshots(r.dir, base, first);
+    const after = await guardedSnapshots(r.dir, base, second);
+    assert.deepEqual(newGuardedSnapshots(before, after), [".pi/settings.json"]);
 });
