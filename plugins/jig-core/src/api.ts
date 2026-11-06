@@ -12,6 +12,7 @@ import {
 import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
 import { git, run, setCredentialRegistrar } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
+import { UPDATES_SECTION } from "./updates-section.ts";
 import type { ExecGuard } from "./exec.ts";
 import { checkOnboarding } from "./onboarding.ts";
 import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
@@ -248,7 +249,12 @@ export function buildApi(state: JigState): JigApi {
                         `registerSection: "${name}" is a jig-core field, so a plugin cannot use it for a section`,
                     );
                 }
-                if (name === TOOLS_SECTION || name === PROFILES_SECTION || name === PROFILE_SECTION) {
+                if (
+                    name === TOOLS_SECTION ||
+                    name === UPDATES_SECTION ||
+                    name === PROFILES_SECTION ||
+                    name === PROFILE_SECTION
+                ) {
                     throw new Error(`registerSection: "${name}" is jig-core's section, so a plugin cannot use it`);
                 }
                 state.sectionChecks.set(name, validate);

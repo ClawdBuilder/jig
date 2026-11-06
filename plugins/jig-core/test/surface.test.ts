@@ -184,6 +184,15 @@ describe("the API", () => {
         ]);
     });
 
+    test("updates is a core section a company can default, so it can turn the notice off", async () => {
+        const { UPDATES_SECTION, readUpdates, validateUpdatesSection } = await import("../src/updates-section.ts");
+        assert.equal(UPDATES_SECTION, "updates");
+        assert.deepEqual(readUpdates({ check: false }), { check: false });
+        assert.deepEqual(validateUpdatesSection({ check: false }), []);
+        assert.match(validateUpdatesSection({ check: "no" }).join(" "), /updates\.check must be true or false/);
+        assert.match(validateUpdatesSection({ nope: true }).join(" "), /updates\.nope is not a known field/);
+    });
+
     test("jig-core checks two more sections of its own, which no plugin can register or give defaults for: profiles and profile", async () => {
         const { PROFILES_SECTION, PROFILE_SECTION } = await import("../src/profiles.ts");
         assert.equal(PROFILES_SECTION, "profiles");

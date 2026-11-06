@@ -8,6 +8,7 @@ import { effectiveBackends } from "./config.ts";
 import type { JigState } from "./state.ts";
 import { describeFailure } from "./start-checks.ts";
 import { unlockStoreAtStart } from "./start-unlock.ts";
+import { checkUpdateAtStart } from "./update-notice.ts";
 
 /** Whether this Pi was started by another Pi's `jig-agents`. `PI_SUBAGENT_ID` is the variable it sets, as `jig-agents`,
  *  `jig-theme` and `jig-review` read it; `PI_SUBAGENT_CHILD=1` is the older name of the same marker. */
@@ -45,6 +46,7 @@ export function startJobs(state: JigState): void {
             signal: control.signal,
         });
     }
+    void checkUpdateAtStart(state, notify);
     const { startChecks } = state.personal.config;
     if (startChecks.length > 0) {
         void state.startChecks
