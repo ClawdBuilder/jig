@@ -71,14 +71,14 @@ describe("installLocation", () => {
 });
 
 describe("reinstallFix", () => {
-    test("uses the package's repository when there is one", () => {
+    test("names the npm package, not the repository", () => {
         assert.equal(
             reinstallFix("git+https://github.com/example/jig.git"),
             "Reinstall Jig: pi install npm:@clawdbuilder/jig",
         );
     });
 
-    test("is plain words when the package does not say where its repository is", () => {
+    test("is plain words when there is no repository to name", () => {
         assert.equal(reinstallFix(undefined), "Reinstall Jig the way you installed it.");
         assert.equal(reinstallFix("  "), "Reinstall Jig the way you installed it.");
     });
