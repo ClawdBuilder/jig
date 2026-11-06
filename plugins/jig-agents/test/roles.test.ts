@@ -315,3 +315,18 @@ describe("loadRoles", () => {
         assert.ok(!folders.some((folder) => folder.includes(".pi/agents") && !folder.includes("/agent/")));
     });
 });
+
+describe("a broken install", () => {
+    test("a missing built-in roles folder is named, not silent", () => {
+        const missing = path.join(tmpdir(), "jig-missing-built-in-roles");
+        const loaded = loadRoles([missing], missing);
+        assert.equal(loaded.roles.size, 0);
+        assert.equal(loaded.problems.length, 1);
+        assert.match(loaded.problems[0]?.problem ?? "", /built-in roles folder is missing/);
+    });
+
+    test("a missing optional folder stays quiet", () => {
+        const missing = path.join(tmpdir(), "jig-missing-optional-roles");
+        assert.deepEqual(loadRoles([missing]).problems, []);
+    });
+});

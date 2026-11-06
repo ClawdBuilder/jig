@@ -16,7 +16,7 @@ import type { Host } from "./host.ts";
 import { childEnvironment, flagsFor, StartError } from "./launch.ts";
 import type { ModelChoice } from "./launch.ts";
 import { recordedRunning, sweep, watchParent } from "./orphans.ts";
-import { loadRoles, roleFolders } from "./roles.ts";
+import { loadRoles, roleFolders, shippedFolder } from "./roles.ts";
 import type { LoadedRoles, Role } from "./roles.ts";
 import { agentDir, agentsRoot, listChildren, removeOld, runDirOf, stateDir, writeText } from "./store.ts";
 import { ChildWatches, WATCH_KIND } from "./watch.ts";
@@ -118,7 +118,7 @@ export class Runtime {
             section = undefined;
         }
         this.settings = settingsFrom(section);
-        this.roles = loadRoles(roleFolders(this.settings.folders, agentDir(this.host.env())));
+        this.roles = loadRoles(roleFolders(this.settings.folders, agentDir(this.host.env())), shippedFolder());
         this.started = 0;
 
         const parent = (this.host.env().PI_SUBAGENT_PARENT_PID ?? "").trim();
