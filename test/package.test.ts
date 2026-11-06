@@ -142,7 +142,13 @@ test("the packed tarball runs bash in stock Pi, from a path with a space", { tim
 
     const packed = await run("npm", ["pack", "--json", "--pack-destination", dir], { cwd: ROOT });
     assert.equal(packed.code, 0, packed.stderr);
-    const tarball = path.join(dir, (JSON.parse(packed.stdout) as Array<{ filename: string }>)[0]?.filename ?? "");
+    const packedJson = JSON.parse(packed.stdout) as
+        | Array<{ filename: string }>
+        | Record<string, { filename: string }>;
+    const packedOne = (Array.isArray(packedJson) ? packedJson[0] : Object.values(packedJson)[0]) as
+        | { filename: string }
+        | undefined;
+    const tarball = path.join(dir, packedOne?.filename ?? "");
     assert.ok(existsSync(tarball), "npm pack wrote a tarball");
 
     const installed = await run(
