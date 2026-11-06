@@ -39,3 +39,11 @@ test("a deprecated install inside a fenced block fails", () => {
     const failures = checkDocs(root).failures;
     assert.ok(failures.some((one: string) => one.includes("names 0.4.1")), failures.join("\n"));
 });
+
+test("deprecated install advice in prose or a code span fails", () => {
+    const root = tree({
+        "docs/setup.md": "Add `@0.4.0` to install a release rather than the latest.\n",
+    });
+    const failures = checkDocs(root).failures;
+    assert.ok(failures.some((one: string) => one.includes("names 0.4.0")), failures.join("\n"));
+});

@@ -63,9 +63,12 @@ export function checkDocs(root) {
                 } else fence = false;
                 continue;
             }
-            if (/^\s*(npm install|pi install|npm i )/.test(line)) {
+            const installs =
+                /(?:^|[^\w])(?:npm (?:install|i)\b|pi install\b)/.test(line) ||
+                (/\binstall\b/i.test(line) && /`@\d+\.\d+\.\d+`/.test(line));
+            if (installs) {
                 for (const version of DEPRECATED) {
-                    if (line.includes(version)) failures.push(`${rel}:${index + 1} install example names ${version}`);
+                    if (line.includes(`@${version}`)) failures.push(`${rel}:${index + 1} install example names ${version}`);
                 }
             }
             if (fence) continue;
