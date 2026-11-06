@@ -499,7 +499,7 @@ describeIt(
             await refusedRead(
                 world,
                 { action: "find", ...on("secrets", "production") },
-                `${db}.secrets is not in the allow list; allowed: ${db}.orders, ${db}.customers`,
+                `${db}.secrets is not in the allow list; allowed: ${db}.orders, ${db}.customers. Call mongo access to see the configured rules`,
             );
             await refusedRead(
                 world,
@@ -641,7 +641,7 @@ describeIt(
                 ],
                 [
                     { $unionWith: "secrets" },
-                    `${db}.secrets is not in the allow list; allowed: ${db}.orders, ${db}.customers`,
+                    `${db}.secrets is not in the allow list; allowed: ${db}.orders, ${db}.customers. Call mongo access to see the configured rules`,
                 ],
                 [
                     {
