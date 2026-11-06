@@ -148,6 +148,17 @@ function takeAway(place: string, context: AuditContext): string | undefined {
     }
 }
 
+/** True when a folder holds only git's sample hooks (and nothing that git would run). */
+function onlySamples(folder: string): boolean {
+    try {
+        return readdirSync(folder, { withFileTypes: true }).every(
+            (entry) => entry.isFile() && /\.sample$/.test(entry.name),
+        );
+    } catch {
+        return false;
+    }
+}
+
 /** A path that must never be removed whatever a rule says. */
 function isProtectedPlace(place: string, context: AuditContext): boolean {
     const home = context.home;
@@ -174,6 +185,8 @@ export function audit(snapshot: AuditSnapshot, set: RuleSet, context: AuditConte
     // A locked path that did not exist and does now.
     for (const rule of snapshot.absent) {
         if (!there(rule.path) || isProtectedPlace(rule.path, context)) continue;
+        // A new .git/hooks holding only git's sample hooks is what `git init` leaves: harmless, and removing it is noise.
+        if (rule.path.endsWith("/.git/hooks") && onlySamples(rule.path)) continue;
         const kept = takeAway(rule.path, context);
         say(
             `removed ${rule.shown}: the command created it, and ${rule.reason}.`,

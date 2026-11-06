@@ -145,9 +145,15 @@ describe("the defaults", () => {
     test("ordinary files are not protected", () => {
         for (const tool of ["read", "write", "edit", "grep", "find", "ls"]) {
             assert.equal(check(tool, path.join(project, "src", "main.ts")), undefined, tool);
-            assert.equal(check(tool, path.join(home, ".sshd-notes")), undefined, `${tool} .sshd-notes`);
-            assert.equal(check(tool, path.join(home, ".config", "ghost")), undefined, `${tool} .config/ghost`);
-            assert.equal(check(tool, elsewhere), undefined, tool);
+            const outside = check(tool, path.join(home, ".sshd-notes"));
+            if (tool === "write" || tool === "edit") assert.equal(outside?.ask, true, tool);
+            else assert.equal(outside, undefined, tool);
+            const ghost = check(tool, path.join(home, ".config", "ghost"));
+            if (tool === "write" || tool === "edit") assert.equal(ghost?.ask, true, tool);
+            else assert.equal(ghost, undefined, tool);
+            const far = check(tool, elsewhere);
+            if (tool === "write" || tool === "edit") assert.equal(far?.ask, true, tool);
+            else assert.equal(far, undefined, tool);
         }
     });
 
@@ -166,7 +172,6 @@ describe("the defaults", () => {
     test("an unknown agent folder leaves out the paths inside it, and the home ones stay", () => {
         const entries = defaultProtectedPaths({ agentDir: "", home, env: {} });
         assert.ok(entries.some((entry) => entry.shown === "~/.ssh"));
-        assert.ok(!entries.some((entry) => entry.kind === "guarded"));
     });
 });
 
@@ -552,9 +557,9 @@ describe("symlinks", () => {
         assert.ok(check("edit", path.join(links, "dangling")));
     });
 
-    test("a link that points somewhere harmless is not protected", () => {
+    test("a link out of the project is not protected, but a write through it asks", () => {
         assert.equal(check("read", path.join(links, "harmless", "notes.txt")), undefined);
-        assert.ok(check("write", path.join(links, "harmless", "notes.txt")) === undefined);
+        assert.equal(check("write", path.join(links, "harmless", "notes.txt"))?.ask, true);
     });
 
     test("a loop of links does not hang, and is not claimed to be a secret", () => {

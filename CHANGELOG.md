@@ -17,6 +17,19 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   new user namespace on Linux and WSL2, with the exact install command for the detected system. A missing program is a
   failure that says how to install it, so a setup that would refuse every bash command no longer looks finished. macOS
   says the sandbox is part of the system.
+- Pi's `write` and `edit` tools can no longer change what Pi loads from a project at its next start. The settings file,
+  MCP file, extensions, skills, prompts, themes, `SYSTEM.md`, `APPEND_SYSTEM.md`, the project package folders and
+  `.agents` are guarded in the working folder and every folder above it below the home folder, by path and whether or not
+  they exist; the message tells the agent why and to ask the person. Read still works, and normal project files are
+  unaffected. `bash` locks the same list from the same table, which gains `.pi/git`, `.pi/npm`, `SYSTEM.md` and
+  `APPEND_SYSTEM.md`. A person can still run `pi install -l` or edit the files themselves outside Pi; there is no new
+  override, and a team repository that keeps `.pi/skills` in git is now read-only to the agent, as it already was for
+  `bash`. The same now covers the home shell, session, git, agent and build start-up files, the project editor and agent
+  files, `.envrc`, `~/.local/bin`, and each repository's `.git/config` and `.git/hooks`; toolchain managers ask instead.
+  The bash side now reads the same table, and gains `~/.local/bin` and `.envrc`. A git operation that would change a guarded file (switch, merge, sync, rebase, cherry-pick, stash pop, restore,
+  worktree add, clone) asks the person first, naming the paths and commits; a normal switch does not ask. A file-tool
+  write outside the working folder, or outside a folder the person allowed with `/sandbox allow`, asks the same way;
+  inside it nothing changes, and with no terminal the ask is refused.
 
 ## [0.4.0] - 2026-11-05
 

@@ -90,20 +90,34 @@ export async function resolveRepo(input: string | undefined, signal?: AbortSigna
     if (!byName && input.split("/").includes(".."))
         throw new Error(`repo path must not contain "..": ${input.slice(0, 120)}`);
     const wanted = byName ? path.join(workspace, input) : input;
+    const fallback = byName ? path.join(workingDirectory(), input) : input;
     let real: string;
     try {
         real = fs.realpathSync(wanted);
         if (!fs.statSync(real).isDirectory()) throw new Error("not a directory");
     } catch {
-        throw new Error(
-            byName
-                ? `repo "${input}" not found in ${workspace}`
-                : `repo path ${input.slice(0, 120)} is not an existing directory`,
-        );
+        try {
+            // A repository below the folder Pi runs in, such as work/inner when the workspace is its parent.
+            real = fs.realpathSync(fallback);
+            if (!fs.statSync(real).isDirectory()) throw new Error("not a directory");
+        } catch {
+            throw new Error(
+                byName
+                    ? `repo "${input}" not found in ${workspace} or ${workingDirectory()}`
+                    : `repo path ${input.slice(0, 120)} is not an existing directory`,
+            );
+        }
     }
     const root = await topLevel(real, signal);
     if (root === undefined) throw new Error(`"${input.slice(0, 120)}" is not inside a git work tree`);
-    if (byName && root !== real) throw new Error(`"${input}" in ${workspace} is not the root of a git repository`);
+    if (byName) {
+        // A name is a folder in the workspace or below the folder Pi runs in, and a link must not carry it elsewhere.
+        const inside = (parent: string): boolean =>
+            real === parent || real.startsWith(parent.endsWith(path.sep) ? parent : `${parent}${path.sep}`);
+        if (!inside(workspace) && !inside(workingDirectory()))
+            throw new Error(`repo "${input}" resolves outside ${workspace} and ${workingDirectory()}`);
+        if (root !== real) throw new Error(`"${input}" in ${workspace} is not the root of a git repository`);
+    }
     return { root, name: byName ? input : root };
 }
 
