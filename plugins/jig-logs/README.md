@@ -51,6 +51,9 @@ the hits already fetched (Loki also receives `match` and `exclude` as filters).
 | `chars` | optional | How many characters a hit keeps, 40 to 4000 |
 | `offset` | optional | Which of the fetched hits to start from, for paging |
 
+Start with the narrowest `window` and the smallest `size` that answers the question; a wide window over a busy index is slow,
+and the result names any part it could not search.
+
 The limits and the details of each parameter are in
 [Parameters](docs/parameters.md).
 

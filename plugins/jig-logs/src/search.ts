@@ -21,7 +21,7 @@ export const MAX_REQUESTS = 64;
 /** One request is kept back, so that a search that finds nothing can always check whether the window holds any data. */
 const SEARCH_REQUESTS = MAX_REQUESTS - 1;
 /** No new request starts after this; the windows that are left are reported as missing. */
-const TIME_BUDGET_MS = 150_000;
+const TIME_BUDGET_MS = 80_000;
 
 export type SearchStatus = "complete" | "partial" | "failed";
 
