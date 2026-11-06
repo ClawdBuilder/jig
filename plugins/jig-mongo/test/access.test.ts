@@ -102,6 +102,23 @@ describe("reading an allow list", () => {
     });
 });
 
+describe("the access summary", () => {
+    test("a field rule keeps its scope, and the always-denied names are the ones the access refuses", () => {
+        const access = createAccess({
+            mode: "deny",
+            deny: {
+                databases: new Set(["billing"]),
+                collections: new Set(["orders.orders"]),
+                fields: [{ path: ["notes"] }, { db: "orders", coll: "orders", path: ["notes"] }],
+            },
+            javascript: false,
+        });
+        assert.deepEqual(access.summary.fields, ["*.notes", "orders.orders.notes"]);
+        for (const db of ["admin", "local", "config"]) refused(() => access.namespace(db), /always denied/);
+        refused(() => access.namespace("orders", "system.users"), /always denied/);
+    });
+});
+
 describe("reference data in an allow list", () => {
     const raw = {
         "orders.orders": ["_id", "status"],

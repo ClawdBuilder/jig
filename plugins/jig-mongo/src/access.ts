@@ -16,7 +16,7 @@ export interface Ns {
 /** `yes`: the field is visible. `partial`: part of it is (an allowed `items.sku` makes `items` partial). `no`: it is not. */
 export type Visibility = "yes" | "partial" | "no";
 
-const SYSTEM_DATABASES: ReadonlySet<string> = new Set(["admin", "local", "config"]);
+export const SYSTEM_DATABASES: ReadonlySet<string> = new Set(["admin", "local", "config"]);
 /** Field names that look like credentials, in every environment. */
 const CREDENTIAL_NAME = /password|secret|token|apikey/i;
 
@@ -233,13 +233,17 @@ export function summaryOfRules(rules: AccessRules): AccessSummary {
             mode: "deny",
             databases: [...rules.deny.databases].sort(),
             collections: [...rules.deny.collections].sort(),
-            fields: rules.deny.fields.map((rule) =>
-                [
-                    ...(rule.db === undefined ? [] : [rule.db]),
-                    ...(rule.coll === undefined ? [] : [rule.coll]),
-                    ...rule.path,
-                ].join("."),
-            ),
+            // A rule with no database or collection is a field denied in every collection; its `*` is the scope, not a word
+            // to drop, or `*.notes` would read as a field called "notes" in one place.
+            fields: rules.deny.fields
+                .map((rule) =>
+                    [
+                        ...(rule.db === undefined ? ["*"] : [rule.db]),
+                        ...(rule.db === undefined && rule.coll === undefined ? [] : [rule.coll ?? "*"]),
+                        ...rule.path,
+                    ].join("."),
+                )
+                .sort(),
             allow: [],
         };
     }

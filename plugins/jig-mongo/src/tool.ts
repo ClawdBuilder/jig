@@ -335,6 +335,12 @@ export function createTool(options: MongoOptions = {}): MongoTool {
 
                 if (c.planned.effect === "read") {
                     const run = c.planned.run;
+                    if (c.call.action === "access") {
+                        // The rules come from jig.json: this read opens no connection, so it works with Mongo down.
+                        const rendered = await raceAbort(run.run(undefined as never, until), until);
+                        jig().addFacts(toolCallId, withCluster(c, rendered.facts));
+                        return text(rendered.text, rendered.details);
+                    }
                     const rendered = await withBackend(c, until, (backend) =>
                         raceAbort(run.run(backend, until), until),
                     ).catch((error: unknown) => {
