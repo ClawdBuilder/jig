@@ -18,7 +18,8 @@ The fields of the `jira` section of `jig.json`, in detail. The tables are in the
     anyone is asked or Jira is called, and the message lists the ones allowed.
     With no `projects`, `create` takes any project.
 - **`updateFields`:** up to 100 fields, by name or id. `create` may set any
-  field on the create screen.
+  field on the create screen. A field not listed here is refused by `update`;
+  find its id with `jira find_field`, then add it here.
 - **`fields`:** a name is 1 to 60 characters and cannot be one the tool already
   knows. Friendly names work in `fields`, `include` and `updateFields`.
 - **`createDefaults`:** up to 30 fields, each a name and the value to give it, such
