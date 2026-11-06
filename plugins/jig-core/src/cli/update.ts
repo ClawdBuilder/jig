@@ -399,7 +399,15 @@ export async function update(args: readonly string[], host: string | undefined):
         }),
         globalInstall: (version) => ({
             command: "npm",
-            args: ["install", "-g", "--prefix", prefix, "--ignore-scripts", "--min-release-age=0", `${name}@${version}`],
+            args: [
+                "install",
+                "-g",
+                "--prefix",
+                prefix,
+                "--ignore-scripts",
+                "--min-release-age=0",
+                `${name}@${version}`,
+            ],
             display: `npm install -g --prefix ${prefix} --ignore-scripts --min-release-age=0 ${name}@${version}`,
         }),
         async verify() {
