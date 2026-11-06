@@ -10,7 +10,6 @@ import {
     readFileSync,
     rmdirSync,
     rmSync,
-    statSync,
     unlinkSync,
 } from "node:fs";
 import path from "node:path";
@@ -21,7 +20,6 @@ export const OWNER_FILE = "owner.pid";
 export const MANIFEST_FILE = "manifest.json";
 /** The only names clean-up ever removes from a session's folder. */
 const OURS = /^(bg-\d+\.log(\.1)?|manifest\.json|owner\.pid)$/;
-const DAY_MS = 24 * 60 * 60 * 1_000;
 
 /** A name that is safe as a folder: letters, digits, dots, dashes and underscores. */
 function safeName(name: string): string {
@@ -126,7 +124,9 @@ export function cleanupSessions(options: CleanupOptions): { removed: string[]; k
         }
         if (options.keep !== undefined && path.resolve(folder) === path.resolve(options.keep)) continue;
         const owner = readOwner(folder);
-        if (owner && options.port.alive(owner.pid) && options.port.startTicks(owner.pid) === owner.startTicks) continue;
+        // No owner record means it cannot be proved dead. Time alone must never take a live session's folder.
+        if (owner === undefined) continue;
+        if (options.port.alive(owner.pid) && options.port.startTicks(owner.pid) === owner.startTicks) continue;
         for (const task of readManifest(folder)) {
             if (options.port.startTicks(task.pid) !== task.startTicks) continue;
             // The shell's descendants lead groups of their own under bubblewrap: stop those, then the shell's.
@@ -141,15 +141,6 @@ export function cleanupSessions(options: CleanupOptions): { removed: string[]; k
         } catch {
             continue;
         }
-        let newest = 0;
-        for (const file of files) {
-            try {
-                newest = Math.max(newest, statSync(path.join(folder, file)).mtimeMs);
-            } catch {
-                // Gone.
-            }
-        }
-        if (owner === undefined && options.now - newest < DAY_MS) continue;
         for (const file of files) {
             if (!OURS.test(file)) continue;
             try {
