@@ -101,6 +101,8 @@ export interface RecallOptions {
     requireEvidence?: boolean;
     /** Whether a rare word alone can be the evidence. Default true; automatic recall sets it false. */
     allowRareWords?: boolean;
+    /** Whether written cards are listed before derived entries, whatever their scores. Default false. */
+    cardsFirst?: boolean;
 }
 
 /** One document recall searches: a valid card, or a derived notes entry. */
@@ -254,9 +256,16 @@ export function recall(cards: CardIndex, query: RecallQuery, options: RecallOpti
         });
     }
     const sorted = matches.sort((a, b) => b.score - a.score || a.ticket.localeCompare(b.ticket));
+    const ordered =
+        options.cardsFirst === true
+            ? [
+                  ...sorted.filter((match) => match.source === "card"),
+                  ...sorted.filter((match) => match.source === "notes"),
+              ]
+            : sorted;
     const selected: Match[] = [];
     let usedNotes = 0;
-    for (const match of sorted) {
+    for (const match of ordered) {
         if (match.source === "notes" && usedNotes >= maxNotes) continue;
         selected.push(match);
         if (match.source === "notes") usedNotes++;

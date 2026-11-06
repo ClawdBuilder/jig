@@ -353,10 +353,11 @@ export function buildApi(state: JigState): JigApi {
             git: (repo, args, options) => git(repo, args, options, guard),
         },
         records: {
-            recall: (entries) => {
+            recall: (entries, queries = 1) => {
                 try {
                     const now = new Date();
                     const count = Number.isFinite(entries) ? Math.max(0, Math.floor(entries)) : 0;
+                    const asked = Number.isFinite(queries) ? Math.max(0, Math.floor(queries)) : 1;
                     writeRecord(
                         callRecord(
                             {
@@ -371,7 +372,7 @@ export function buildApi(state: JigState): JigApi {
                                 decisionSource: "tool",
                                 outcome: "ok",
                                 toolCallId: `recall-${randomUUID()}`,
-                                facts: { entries: count },
+                                facts: { entries: count, queries: asked },
                             },
                             now,
                         ),

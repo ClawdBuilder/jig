@@ -117,7 +117,7 @@ test("recall.enabled false stops the automatic run, and /ticket recall still wor
     pi.input("PROJ-130: cancelling fails with a NullPointerException in OrderMapper");
     assert.equal(recalls(pi).length, 0);
     await pi.command("recall NullPointerException in OrderMapper");
-    assert.match(pi.notices.at(-1)?.text ?? "", /^Related earlier tickets \(2 cards searched\):\n\nPROJ-88: shares/);
+    assert.match(pi.notices.at(-1)?.text ?? "", /^Related earlier tickets \(3 entries searched\):\n\nPROJ-88: shares/);
 });
 
 test("recall.max and recall.minScore are honoured", (t) => {
@@ -158,7 +158,7 @@ test("/ticket recall with text shows the result to the user and sends nothing to
     const { pi } = start(t);
     await pi.command("recall the report export stalled behind the warehouse sync again");
     assert.equal(pi.sent.length, 0);
-    assert.match(pi.notices.at(-1)?.text ?? "", /^Related earlier tickets \(2 cards searched\):\n\nPROJ-61: words: /);
+    assert.match(pi.notices.at(-1)?.text ?? "", /^Related earlier tickets \(2 entries searched\):\n\nPROJ-61: words: /);
 });
 
 test("/ticket recall on the active ticket reads its notes and evidence", async (t) => {
@@ -192,8 +192,26 @@ test("/ticket recall says so when there is no ticket, no cards, or nothing that 
     await bare.command("recall anything");
     assert.equal(
         bare.notices.at(-1)?.text,
-        "No earlier tickets are searchable: no card exists, and notes entries are off (memory.recall.notes).",
+        "No earlier tickets yet: a ticket is searchable once its notes.md or card.md exists.",
     );
+});
+
+test("with notes off, /ticket recall still searches notes and lists cards first", async (t) => {
+    const folder = tempFolder(t);
+    writeCard(folder, "PROJ-88", ORDER_CARD, { identifiers: ["OrderService", "NullPointerException"] });
+    mkdirSync(ticketPaths(folder, "PROJ-99").dir, { recursive: true });
+    writeFileSync(
+        ticketPaths(folder, "PROJ-99").notes,
+        "# PROJ-99\n\n## Now\nStatus: OrderService returns a null\n\n## Decisions\nCheck.\n",
+    );
+    useJig(t, { memory: { ticketPattern: PATTERN, folder } });
+    const pi = loadPlugin("/work");
+    pi.start();
+    await pi.command("recall OrderService NullPointerException");
+    const text = pi.notices.at(-1)?.text ?? "";
+    assert.ok(text.indexOf("PROJ-88") >= 0 && text.indexOf("PROJ-99") >= 0, text);
+    assert.ok(text.indexOf("PROJ-88") < text.indexOf("PROJ-99"), "the card is listed first");
+    assert.match(text, /PROJ-99 \(from notes\.md, /);
 });
 
 test("a word alone reaches the agent only when the person asks, not in automatic recall", async (t) => {

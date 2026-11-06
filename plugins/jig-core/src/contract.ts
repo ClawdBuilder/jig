@@ -541,8 +541,8 @@ export interface JigApi {
 
     /** Records a memory event that is not a tool call, in the call shape jig-lens counts. It holds no text. */
     readonly records?: {
-        /** One automatic recall message and how many entries it carried. */
-        recall(entries: number): void;
+        /** One automatic recall message: how many entries it carried, and how many queries it ran. */
+        recall(entries: number, queries?: number): void;
     };
 
     /** The preview the user approved for this call, or undefined when the call did not ask. */
