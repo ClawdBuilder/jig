@@ -537,6 +537,10 @@ export interface JigApi {
         /** Resolves a reference such as `pass:github/token` through an allowed backend. The value is
          *  redacted from every tool result until Pi exits. */
         resolve(ref: string, signal?: AbortSignal): Promise<string>;
+        /** Registers a value a tool read from the program that owns a login, to authenticate one call with it (a `gh`
+         *  token for an account, say). It is redacted from every tool result until Pi exits, like a resolved reference;
+         *  the tool keeps no copy of it. */
+        register(value: string): void;
     };
 
     /** What jig-core knows about environments, so a tool can refuse an action by kind, such as never in production,

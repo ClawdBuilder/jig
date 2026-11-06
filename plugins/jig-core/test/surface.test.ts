@@ -123,6 +123,7 @@ describe("the API", () => {
             "sandbox.canRun",
             "sandbox.register()",
             "sandbox.run()",
+            "secrets.register()",
             "secrets.resolve()",
             "setTicket()",
             "signIn.headers()",
@@ -255,6 +256,7 @@ describe("what plugins import", () => {
         const modules = readdirSync(kit).sort();
         assert.deepEqual(modules, [
             "abort.ts",
+            "accounts.ts",
             "action-names.ts",
             "browser.ts",
             "files.ts",
@@ -274,6 +276,7 @@ describe("what plugins import", () => {
         ]);
         const expected: Record<string, string[]> = {
             "abort.ts": ["untilAborted"],
+            "accounts.ts": ["AccountMap", "accountFor", "accountPattern", "accountRemote", "validateAccounts"],
             "action-names.ts": ["RENAMED_ACTIONS", "canonicalAction", "renamedAction", "renamedInRules"],
             "browser.ts": ["browserCommand"],
             "files.ts": ["createFileDurably", "replaceFileDurably", "syncFolder"],

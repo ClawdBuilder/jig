@@ -69,6 +69,8 @@ export interface FakeJig {
     secrets: Map<string, string>;
     /** Every reference asked for, in order. */
     resolved: string[];
+    /** Values a plugin registered with jig-core's redaction, in order. */
+    registeredSecrets: string[];
     /** The sign-in services plugins asked for, by name; and every request one was asked to sign in. */
     signInServices: Map<string, SignInService>;
     signedIn: SignInRequest[];
@@ -110,6 +112,8 @@ export function installFakeJig(): FakeJig {
     const kinds = new Map<string, WatchKind<never, never>>();
     const watches: StartedWatch[] = [];
     const approved = new Map<string, Preview>();
+    /** Values a plugin registered with jig-core's redaction, in order. */
+    const registeredSecrets: string[] = [];
     let environments: Record<string, EnvironmentKind> = { ...DEFAULT_KINDS };
     const programs = { bin: "", env: {} as Readonly<Record<string, string>> };
     const secrets = new Map<string, string>();
@@ -202,6 +206,7 @@ export function installFakeJig(): FakeJig {
         addFacts: (id, added) => void facts.set(id, [...(facts.get(id) ?? []), added]),
         setTicket: () => {},
         secrets: {
+            register: (value: string) => void registeredSecrets.push(value),
             async resolve(reference) {
                 resolved.push(reference);
                 const value = secrets.get(reference);
@@ -340,6 +345,7 @@ export function installFakeJig(): FakeJig {
         sections,
         sectionReplace,
         facts,
+        registeredSecrets,
         started,
         secrets,
         resolved,

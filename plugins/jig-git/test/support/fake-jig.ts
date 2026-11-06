@@ -60,6 +60,8 @@ export interface FakeJig {
     /** The approved preview of each call that asked, by tool call id. */
     approved: Map<string, Preview>;
     facts: Map<string, Facts[]>;
+    /** Values a plugin registered with jig-core's redaction, in order. */
+    registeredSecrets: string[];
     /**
      * Every program started, in order: the file, the arguments (git's fixed flags left out), the working directory, and the
      * variables the call added to the minimal environment (for glab, all it was started with, as jig-core fixes some).
@@ -122,6 +124,8 @@ export function installFakeJig(): FakeJig {
     const values = new Map<string, unknown>();
     const approved = new Map<string, Preview>();
     const facts = new Map<string, Facts[]>();
+    /** Values a plugin registered with jig-core's redaction, in order. */
+    const registeredSecrets: string[] = [];
     const processes: FakeJig["started_processes"] = [];
     let refusal: string | undefined;
     let forced: { ms: number; only: (file: string, args: readonly string[]) => boolean } | undefined;
@@ -253,6 +257,7 @@ export function installFakeJig(): FakeJig {
             },
         },
         secrets: {
+            register: (value: string) => void registeredSecrets.push(value),
             resolve: async () => {
                 throw new Error("no secrets in tests");
             },
@@ -327,6 +332,7 @@ export function installFakeJig(): FakeJig {
         sections,
         approved,
         facts,
+        registeredSecrets,
         started_processes: processes,
         setSection: (name, value) => void values.set(name, value),
         refuseGit: (message) => {
@@ -339,6 +345,7 @@ export function installFakeJig(): FakeJig {
             forced = ms === undefined ? undefined : { ms, only };
         },
         reset: () => {
+            registeredSecrets.length = 0;
             started.length = 0;
             stopped.length = 0;
             processes.length = 0;

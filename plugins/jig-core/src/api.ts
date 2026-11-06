@@ -133,6 +133,7 @@ export function buildApi(state: JigState): JigApi {
 
         secrets: {
             resolve: (ref, signal) => state.secrets.resolve(ref, signal),
+            register: (value) => state.redactor.register(value),
         },
 
         environments: {
