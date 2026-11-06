@@ -1074,6 +1074,9 @@ test("a nested repository's .git hooks and config are guarded without enumeratio
             path.join(project, ".git/worktrees/wt/config"),
             path.join(project, ".git/worktrees/wt/config.worktree"),
             path.join(project, ".git/info/attributes"),
+            path.join(project, "wt/.git"),
+            path.join(project, ".git/HEAD"),
+            path.join(project, ".git/worktrees/wt/gitdir"),
         ]) {
             const refusal = check(tool, target, ctx);
             assert.ok(refusal, `${tool} ${target}`);
@@ -1081,4 +1084,6 @@ test("a nested repository's .git hooks and config are guarded without enumeratio
         }
     }
     assert.equal(check("read", path.join(project, "apps/service/.git/hooks/pre-commit"), ctx), undefined);
+    assert.equal(check("write", path.join(project, ".gitignore"), ctx), undefined);
+    assert.equal(check("write", path.join(project, "mirrors/service.git/README.md"), ctx), undefined);
 });
