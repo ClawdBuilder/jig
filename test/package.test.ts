@@ -114,7 +114,11 @@ test("every path a runtime module resolves beside itself is in the tarball", { t
     );
 });
 
-function run(command: string, args: string[], options: { cwd: string; env?: NodeJS.ProcessEnv }): Promise<{
+function run(
+    command: string,
+    args: string[],
+    options: { cwd: string; env?: NodeJS.ProcessEnv },
+): Promise<{
     code: number | null;
     stdout: string;
     stderr: string;
@@ -142,9 +146,7 @@ test("the packed tarball runs bash in stock Pi, from a path with a space", { tim
 
     const packed = await run("npm", ["pack", "--json", "--pack-destination", dir], { cwd: ROOT });
     assert.equal(packed.code, 0, packed.stderr);
-    const packedJson = JSON.parse(packed.stdout) as
-        | Array<{ filename: string }>
-        | Record<string, { filename: string }>;
+    const packedJson = JSON.parse(packed.stdout) as Array<{ filename: string }> | Record<string, { filename: string }>;
     const packedOne = (Array.isArray(packedJson) ? packedJson[0] : Object.values(packedJson)[0]) as
         | { filename: string }
         | undefined;
@@ -161,10 +163,7 @@ test("the packed tarball runs bash in stock Pi, from a path with a space", { tim
     assert.ok(existsSync(path.join(pkg, "package.json")), "the tarball installed under the scoped name");
 
     writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
-    writeFileSync(
-        path.join(agent, "settings.json"),
-        JSON.stringify({ packages: [pkg], extensions: [FIXTURE] }),
-    );
+    writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [pkg], extensions: [FIXTURE] }));
 
     const env: NodeJS.ProcessEnv = {
         ...process.env,

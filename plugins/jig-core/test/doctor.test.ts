@@ -524,7 +524,10 @@ describe("the doctor sees a broken install", () => {
 
 describe("two copies of Jig", () => {
     test("every copy is named, even at the same version", async () => {
-        for (const versions of [["0.4.1", "0.4.1"], ["0.4.0", "0.4.1"]]) {
+        for (const versions of [
+            ["0.4.1", "0.4.1"],
+            ["0.4.0", "0.4.1"],
+        ]) {
             const report = await runDoctor(
                 context({
                     overrides: {

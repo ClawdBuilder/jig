@@ -148,8 +148,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
               : []),
         ...(context.sections.has("agents") &&
         !existsSync(
-            options.rolesFolder ??
-                fileURLToPath(new URL("../../../plugins/jig-agents/agents", import.meta.url)),
+            options.rolesFolder ?? fileURLToPath(new URL("../../../plugins/jig-agents/agents", import.meta.url)),
         )
             ? [
                   {
@@ -157,8 +156,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                       group: "machine" as const,
                       level: "fail" as const,
                       title: "Agent roles",
-                      detail:
-                          "the built-in roles folder is missing, so child agents lose reviewer, scout and worker.",
+                      detail: "the built-in roles folder is missing, so child agents lose reviewer, scout and worker.",
                       fix: "Reinstall Jig; the built-in roles are part of the package.",
                   },
               ]
