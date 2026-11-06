@@ -1,3 +1,3 @@
 # One owner reviews every change. GitHub asks them for a review on every pull request, which is how a change to the
 # security-relevant parts (jig-core's gate, masking, secrets and the review page's approval) is never merged unread.
-* @Dev-Mriganka
+* @ClawdBuilder

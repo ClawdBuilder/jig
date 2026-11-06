@@ -207,3 +207,10 @@ test/               rules as data, and the escape and keep-working tests in the 
 - [When a command hits a rule](docs/when-blocked.md): the messages, the prompts, the ways through
 - [Background tasks](docs/background.md): the tools, limits, waking, `/ps`
 - [Design](docs/design.md): how it is built, what the earlier sandbox taught us, the tests
+
+## Session folders in 0.4.2
+
+A session's folder under the system temp folder is removed only when its owner process is gone, never because it is old;
+a folder with no owner record is left alone. A session whose folder disappeared recreates it on the next start, and a
+root that is not private and owned by this user is refused. Toolchain folders such as `~/.nvm` stay ask-first: bash asks,
+and a no-screen run is refused.

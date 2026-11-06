@@ -1,12 +1,14 @@
 // The main checks of `/jig doctor`: this machine, the configuration and the protected files. The secret checks are in
 // doctor-secrets.ts and the tool checks in doctor-tools.ts. Every check returns lines and changes no setting.
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
-import { installLocation, meetsMinimum, minimumVersion, jigPackage, piVersion, reinstallFix } from "./pi-version.ts";
+import { meetsMinimum, minimumVersion, jigPackage, npmInstall, piVersion, reinstallFix } from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
@@ -106,7 +108,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                         context.jigListedButMissing === undefined
                             ? "not installed in Pi yet, so Pi does not load Jig's plugins."
                             : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
-                    fix: `Install it: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                    fix: `Install it: pi install ${npmInstall(pkg.name)}`,
                 }
               : {
                     id: "machine.jig",
@@ -116,18 +118,45 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                     detail: jig ?? "could not be read",
                     ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
                 },
-        ...(context.standalone === true &&
-        jig !== undefined &&
-        context.jigInPiVersion !== undefined &&
-        context.jigInPiVersion !== jig
+        ...(context.standalone === true && (context.jigCopies?.length ?? 0) > 1
             ? [
                   {
                       id: "machine.jig.copies",
                       group: "machine" as const,
                       level: "warn" as const,
                       title: "Two copies of Jig",
-                      detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
-                      fix: `Install one version: pi install git:${installLocation(options.jigRepository ?? pkg.repository) ?? "github.com/Dev-Mriganka/jig"}`,
+                      detail: `Pi loads ${context.jigCopies?.length ?? 0} copies: ${(context.jigCopies ?? [])
+                          .map((copy) => `${copy.version ?? "unknown version"} (${copy.source})`)
+                          .join(", ")}.`,
+                      fix: `Install one version: pi install ${npmInstall(pkg.name)}`,
+                  },
+              ]
+            : context.standalone === true &&
+                jig !== undefined &&
+                context.jigInPiVersion !== undefined &&
+                context.jigInPiVersion !== jig
+              ? [
+                    {
+                        id: "machine.jig.copies",
+                        group: "machine" as const,
+                        level: "warn" as const,
+                        title: "Two copies of Jig",
+                        detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
+                        fix: `Install one version: pi install ${npmInstall(pkg.name)}`,
+                    },
+                ]
+              : []),
+        ...(!existsSync(
+            options.rolesFolder ?? fileURLToPath(new URL("../../../plugins/jig-agents/agents", import.meta.url)),
+        )
+            ? [
+                  {
+                      id: "machine.roles",
+                      group: "machine" as const,
+                      level: "fail" as const,
+                      title: "Agent roles",
+                      detail: "the built-in roles folder is missing, so child agents lose reviewer, scout and worker.",
+                      fix: "Reinstall Jig; the built-in roles are part of the package.",
                   },
               ]
             : []),
@@ -210,6 +239,46 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             detail: "Their state is unknown until the settings file can be read.",
         });
         return [...lines, ...protectedLines(context, options)];
+    }
+
+    if (context.filtered?.core !== undefined) {
+        lines.push({
+            id: "config.filtered.core",
+            group: "config",
+            level: "fail",
+            title: "Jig's core is filtered out",
+            detail: "Pi's settings load Jig but leave out its core, so the rules, approvals and protected paths would not run.",
+            fix: `In ${context.filtered.core.settings}, remove the filter that leaves out plugins/jig-core/index.ts (or make it include that file).`,
+        });
+    }
+    if (context.filtered?.sandbox !== undefined) {
+        lines.push({
+            id: "config.filtered.sandbox",
+            group: "config",
+            level: "fail",
+            title: "Jig's sandbox is filtered out",
+            detail: "Pi's settings load Jig but leave out the sandbox, so bash would run without it.",
+            fix: `In ${context.filtered.sandbox.settings}, remove the filter that leaves out plugins/jig-sandbox/index.ts (or make it include that file).`,
+        });
+    }
+    for (const feature of context.filtered?.alwaysOn ?? []) {
+        lines.push({
+            id: `config.filtered.always.${feature.feature}`,
+            group: "config",
+            level: "warn",
+            title: `Jig's ${feature.feature} tools are off in Pi's settings`,
+            detail: "The tools are not loaded, and their section in jig.json is kept.",
+            fix: `In ${feature.settings}, remove the filter that leaves out plugins/${feature.plugin}/index.ts.`,
+        });
+    }
+    for (const feature of context.filtered?.features ?? []) {
+        lines.push({
+            id: `config.filtered.${feature.feature}`,
+            group: "config",
+            level: "skip",
+            title: `Feature ${feature.feature}`,
+            detail: "off in Pi's settings; its section in jig.json is kept and comes back with it.",
+        });
     }
 
     if (context.projectSkipped !== undefined) {

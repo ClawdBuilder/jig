@@ -180,3 +180,10 @@ jig-git/
 - [Scope](docs/scope.md): what is left out on purpose, and what belongs elsewhere
 - [Background](docs/background.md): the sessions the tool list comes from, and what was ported
 - [Not verified yet](docs/not-verified.md): what the tests do not cover
+
+## Guards in 0.4.2
+
+Guarded names match at any depth (a repository in `packages/app` still guards `packages/app/.pi/settings.json`) and case
+is folded on every platform. After a fetch the guard compares blob ids, so a file whose content changed after the question
+is treated as newly brought. Nested `.git` paths that run code — config, hooks, worktree config and `info/attributes` —
+are refused for the file tools.

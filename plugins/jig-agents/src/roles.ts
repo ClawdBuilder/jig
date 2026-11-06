@@ -288,11 +288,17 @@ export function shippedFolder(): string {
     return fileURLToPath(new URL("../agents", import.meta.url));
 }
 
-function readFolder(folder: string, into: LoadedRoles): void {
+function readFolder(folder: string, into: LoadedRoles, required = false): void {
     let names: string[];
     try {
         names = readdirSync(folder).sort();
     } catch {
+        if (required) {
+            into.problems.push({
+                file: folder,
+                problem: "the built-in roles folder is missing; reinstall Jig so child agents have their roles",
+            });
+        }
         return;
     }
     for (const entry of names) {
@@ -311,9 +317,9 @@ function readFolder(folder: string, into: LoadedRoles): void {
 }
 
 /** Roles from the folders, lowest first: a later file with the same name replaces an earlier one. A bad file is skipped and named. */
-export function loadRoles(folders: readonly string[]): LoadedRoles {
+export function loadRoles(folders: readonly string[], required?: string): LoadedRoles {
     const loaded: LoadedRoles = { roles: new Map(), problems: [] };
-    for (const folder of folders) readFolder(folder, loaded);
+    for (const folder of folders) readFolder(folder, loaded, folder === required);
     return loaded;
 }
 

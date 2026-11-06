@@ -69,10 +69,20 @@ export interface DoctorContext {
     /** In the `jig` command: whether Pi's settings name the Jig package, and the version of the copy Pi loads. */
     jigInPi?: boolean;
     jigInPiVersion?: string;
+    /** Every Jig copy Pi loads, when it names more than one. */
+    jigCopies?: Array<{ source: string; version?: string }>;
     /** Pi lists Jig, but its folder is not there: a different problem from never installing it. */
     jigListedButMissing?: { source: string; problem: string };
     /** Project packages Pi would not load because the folder is not trusted: skipped, never imported. */
     projectSkipped?: { sources: string[]; detail: string; fix?: string; setupLine: string; jigIncluded: boolean };
+    /** Jig plugins Pi's settings filter out: core and sandbox are failures, the rest are calm skips. */
+    filtered?: {
+        core?: { settings: string };
+        sandbox?: { settings: string };
+        features: Array<{ feature: string; section?: string; settings: string }>;
+        alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
+        offSections: string[];
+    };
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;
@@ -102,6 +112,10 @@ export interface DoctorOptions {
     jigVersion?: string | null;
     /** The package's `repository` field, for the reinstall line. Default: this checkout's package.json. */
     jigRepository?: string;
+    /** The sandbox broker script to start. Default: the one beside this package. Tests pass a missing path. */
+    brokerScript?: string;
+    /** The built-in agent roles folder. Default: the one beside this package. Tests pass a missing path. */
+    rolesFolder?: string;
     /** The home folder, for paths written as `~/...`. Default: the user's. */
     home?: string;
     /** How long one login check may take. Default 5 seconds. */

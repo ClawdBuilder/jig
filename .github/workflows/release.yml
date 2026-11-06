@@ -1,7 +1,7 @@
-# A release is a tag. This job checks that the tag names the version in package.json, and writes the GitHub release from the
-# changelog section of that version, so the notes a reader sees are the entries that shipped. Pushing the tag is the only step
-# a person takes; running the workflow by hand publishes the page for a tag that has none, such as one tagged before this
-# workflow existed. docs/releases.md has the rest.
+# A release is a tag. This job checks that the tag names the version in package.json, that ci-ok passed on the tagged commit,
+# and that npm has the same tarball before it writes the GitHub release from the changelog section of that version. Pushing
+# the tag is the only step a person takes; running the workflow by hand publishes the page for an older tag, without npm.
+# docs/releases.md has the rest.
 name: Release
 
 on:
@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: write
+  checks: read
+  id-token: write
 
 jobs:
   release:
@@ -49,6 +51,56 @@ jobs:
           fi
           node scripts/release-notes.mjs "${version}" > /dev/null
 
+      # A tag only releases code CI has already passed on that commit. The branch gate is not enough: this checks the
+      # check-run on the tagged commit, so a tag moved onto an unchecked commit fails here.
+      - name: Require ci-ok on the tagged commit
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?filter=latest" \
+            --jq '[.check_runs[] | select(.name == "ci-ok") | .conclusion] | join(",")')"
+          if [ "${conclusion}" != "success" ]; then
+            echo "::error::ci-ok on ${GITHUB_SHA} is '${conclusion:-not run}'; refusing to publish"
+            exit 1
+          fi
+
+      # The tarball integrity is the honest comparison for "is this version the code we tagged?". A version already on
+      # npm is skipped only when its published tarball hash equals a fresh pack of this tag; a different hash fails.
+      # The GitHub release is written only after the registry confirms the version, so a failed publish leaves no page.
+      - name: Publish to npm, then confirm
+        if: github.event_name == 'push'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          packdir="$(mktemp -d)"
+          npm pack --json --pack-destination "${packdir}" > "${packdir}/pack.json"
+          integrity="$(node -p "Object.values(require('${packdir}/pack.json'))[0].integrity")"
+          published="$(npm view "@clawdbuilder/jig@${version}" dist.integrity 2>/dev/null || true)"
+          if [ -n "${published}" ]; then
+            if [ "${published}" != "${integrity}" ]; then
+              echo "::error::@clawdbuilder/jig@${version} is already on npm with different content"
+              echo "tag integrity: ${integrity}"
+              echo "npm integrity: ${published}"
+              exit 1
+            fi
+            echo "@clawdbuilder/jig@${version} is already published with this content; nothing to publish"
+          else
+            npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
+            npm publish --provenance --access public
+          fi
+          got=""
+          for _ in $(seq 1 30); do
+            got="$(npm view "@clawdbuilder/jig@${version}" version 2>/dev/null || true)"
+            [ "${got}" = "${version}" ] && break
+            sleep 2
+          done
+          if [ "${got}" != "${version}" ]; then
+            echo "::error::npm does not report @clawdbuilder/jig@${version} after publishing"
+            exit 1
+          fi
+
       # Running this again is safe: a tag whose release exists is edited, not refused. A page published by hand for an older
       # tag does not become the latest release, which belongs to the newest tag.
       - name: Write the release
@@ -68,3 +120,4 @@ jobs:
           else
             gh release create "${TAG}" --title "${TAG}" --notes-file "${notes}" "${latest[@]}"
           fi
+

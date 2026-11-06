@@ -285,6 +285,18 @@ export function findOnPath(
     env: NodeJS.ProcessEnv,
     platform: NodeJS.Platform = process.platform,
 ): string | undefined {
+    // A program may already be a path (a company declares process.execPath): check it as one, never as a PATH name.
+    if (path.isAbsolute(program)) {
+        try {
+            if (statSync(program).isFile()) {
+                accessSync(program, constants.X_OK);
+                return program;
+            }
+        } catch {
+            // Not there, or not executable.
+        }
+        return undefined;
+    }
     const folders = (env.PATH ?? env.Path ?? "").split(path.delimiter).filter((folder) => folder !== "");
     const extensions = platform === "win32" ? (env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean) : [""];
     for (const folder of folders) {

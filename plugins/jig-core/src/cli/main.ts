@@ -10,7 +10,7 @@ import { doctorContext } from "../doctor-checks.ts";
 import { formatDoctor, runDoctor } from "../doctor.ts";
 import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
-import { installLocation, piVersion, jigPackage } from "../pi-version.ts";
+import { npmInstall, piVersion, jigPackage } from "../pi-version.ts";
 import { loadPersonalConfig } from "../state.ts";
 import type { JigState } from "../state.ts";
 import { agentDirFor, loadHeadless, ownPackage } from "./headless.ts";
@@ -25,15 +25,32 @@ const USAGE = `Usage: jig doctor [--json] [--network] [--quiet]
 jig doctor checks this machine, the settings and the secret stores, and changes nothing.
 jig setup asks only what is missing, then writes your settings file once, with a backup.`;
 
+/** A package whose syntax this Node cannot strip is not a broken package: Pi's loader reads it, the command's does not. */
+function unreadableByThisLoader(reason: string): boolean {
+    return /not supported in strip-only mode|ERR_UNSUPPORTED_(NODE_MODULES_)?TYPE_STRIPPING|TypeScript parameter property/i.test(
+        reason,
+    );
+}
+
 function failureLines(failures: readonly LoadFailure[]): DoctorLine[] {
-    return failures.map((failure, index) => ({
-        id: `plugins.${index}`,
-        group: "config",
-        level: "fail",
-        title: failure.package,
-        detail: `could not be loaded: ${failure.reason}`,
-        fix: "Reinstall that package, or remove it from the packages in Pi's settings.",
-    }));
+    return failures.map((failure, index) =>
+        unreadableByThisLoader(failure.reason)
+            ? {
+                  id: `plugins.${index}`,
+                  group: "config",
+                  level: "skip",
+                  title: failure.package,
+                  detail: `not checked: Pi can load this package, but the command's TypeScript loader cannot (${failure.reason.slice(0, 160)}).`,
+              }
+            : {
+                  id: `plugins.${index}`,
+                  group: "config",
+                  level: "fail",
+                  title: failure.package,
+                  detail: `could not be loaded: ${failure.reason}`,
+                  fix: "Reinstall that package, or remove it from the packages in Pi's settings.",
+              },
+    );
 }
 
 /** Runs the doctor and returns its exit code: 0 with no failures, 1 with a failure, 2 for bad arguments. */
@@ -73,10 +90,12 @@ async function doctor(args: readonly string[]): Promise<number> {
                 standalone: true,
                 jigInPi: loaded.jigInPi,
                 ...(loaded.jigInPiVersion === undefined ? {} : { jigInPiVersion: loaded.jigInPiVersion }),
+                ...(loaded.jigCopies === undefined ? {} : { jigCopies: loaded.jigCopies }),
                 ...(loaded.jigListedButMissing === undefined
                     ? {}
                     : { jigListedButMissing: loaded.jigListedButMissing }),
                 ...(loaded.projectSkipped === undefined ? {} : { projectSkipped: loaded.projectSkipped }),
+                ...(loaded.filtered === undefined ? {} : { filtered: loaded.filtered }),
             },
             {
                 network: flags.has("--network"),
@@ -219,10 +238,10 @@ async function setup(): Promise<number> {
                 ? skipped.setupLine
                 : (() => {
                       const pkg = ownPackage();
-                      const where = installLocation(pkg.repository) ?? "github.com/Dev-Mriganka/jig";
+                      const where = npmInstall(pkg.name);
                       return skipped === undefined && loaded.jigListedButMissing !== undefined
-                          ? `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}\nInstall it with: pi install git:${where}\nThen run jig setup again.`
-                          : `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install git:${where}\nThen run jig setup again.`;
+                          ? `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}\nInstall it with: pi install ${where}\nThen run jig setup again.`
+                          : `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install ${where}\nThen run jig setup again.`;
                   })();
         ui.notify(message, "error");
         ui.close();

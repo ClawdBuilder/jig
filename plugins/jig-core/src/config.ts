@@ -122,6 +122,8 @@ export interface SectionLayers {
     oneOf?: ReadonlyMap<string, readonly (readonly string[])[]>;
     /** Per section, the paths of lists that add up: the company's entries first, then yours. */
     union?: ReadonlyMap<string, readonly string[]>;
+    /** Sections whose plugin Pi's settings filter out: kept in the file, not checked, and not a problem. */
+    off?: ReadonlySet<string>;
 }
 
 const NO_LAYERS: SectionLayers = { defaults: new Map(), replace: new Map() };
@@ -214,6 +216,8 @@ export function parseConfig(
         if (OWN_SECTIONS.includes(key)) continue;
         const check = checks.get(key);
         if (check === undefined) {
+            // A feature Pi's settings filter out is off, not unknown: its section stays in the file and comes back with it.
+            if (layers.off?.has(key) === true) continue;
             fail(printable(key), "is not a known field");
             continue;
         }

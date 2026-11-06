@@ -9,7 +9,7 @@ import { defaultConfig, emptyAdditions } from "../src/config.ts";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "../src/config.ts";
 import { formatDoctor, runDoctor } from "../src/doctor.ts";
 import type { DoctorContext, DoctorOptions } from "../src/doctor.ts";
-import { countQuickIssues } from "../src/doctor-secrets.ts";
+import { countQuickIssues, findOnPath } from "../src/doctor-secrets.ts";
 
 let home: string;
 let agentDir: string;
@@ -170,7 +170,7 @@ describe("/jig doctor checks", () => {
         );
         assert.equal(
             known.lines.find((line) => line.id === "machine.jig")?.fix,
-            "Reinstall Jig: pi install git:github.com/example/jig",
+            "Reinstall Jig: pi install npm:@clawdbuilder/jig",
         );
 
         const generic = await runDoctor(context(), options({ jigVersion: null, jigRepository: "" }));
@@ -492,4 +492,65 @@ describe("/jig doctor logins and sandbox", () => {
         assert.equal(line?.level, "fail");
         assert.equal(line?.fix, "sudo apt install bubblewrap socat ripgrep");
     });
+});
+
+describe("the doctor sees a broken install", () => {
+    test("a missing sandbox broker is a failure, even though the programs and namespace work", async () => {
+        const report = await runDoctor(
+            context({
+                sections: new Map([["sandbox", {}]]),
+                overrides: { standalone: true, sandbox: { active: false, canWrite: () => false }, env: { PATH: "" } },
+            }),
+            options({ brokerScript: path.join(home, "missing-broker.mjs") }),
+        );
+        const line = report.lines.find((entry) => entry.id === "sandbox.broker");
+        assert.ok(line, text(report));
+        assert.equal(line.level, "fail");
+        assert.match(line.detail ?? "", /broker script is not there/);
+        assert.match(line.fix ?? "", /Reinstall Jig/);
+    });
+
+    test("a missing built-in roles folder is a failure", async () => {
+        const report = await runDoctor(
+            context({ sections: new Map([["agents", {}]]) }),
+            options({ rolesFolder: path.join(home, "missing-roles") }),
+        );
+        const line = report.lines.find((entry) => entry.id === "machine.roles");
+        assert.ok(line, text(report));
+        assert.equal(line.level, "fail");
+        assert.match(line.detail ?? "", /child agents lose reviewer, scout and worker/);
+    });
+});
+
+describe("two copies of Jig", () => {
+    test("every copy is named, even at the same version", async () => {
+        for (const versions of [
+            ["0.4.1", "0.4.1"],
+            ["0.4.0", "0.4.1"],
+        ]) {
+            const report = await runDoctor(
+                context({
+                    overrides: {
+                        standalone: true,
+                        jigCopies: [
+                            { source: "git:github.com/example/jig", version: versions[0] },
+                            { source: "npm:@clawdbuilder/jig@0.4.1", version: versions[1] },
+                        ],
+                        jigInPiVersion: versions[1],
+                    },
+                }),
+                options(),
+            );
+            const line = report.lines.find((entry) => entry.id === "machine.jig.copies");
+            assert.ok(line, text(report));
+            assert.equal(line.level, "warn");
+            assert.match(line.detail ?? "", new RegExp(`${versions[0]} \\(git:`));
+            assert.match(line.detail ?? "", new RegExp(`${versions[1]} \\(npm:`));
+        }
+    });
+});
+
+test("an absolute program is checked as a path, not looked up on PATH", () => {
+    assert.equal(findOnPath(process.execPath, { PATH: "" }), process.execPath);
+    assert.equal(findOnPath(path.join(home, "missing-program"), { PATH: "" }), undefined);
 });

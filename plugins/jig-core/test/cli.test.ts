@@ -1,7 +1,7 @@
 // The `jig` command end to end, in a temporary home: a real child process, its own agent folder and settings, no Pi.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -82,6 +82,58 @@ function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = w
 const settingsWith = (...packages: string[]): void =>
     writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [ROOT, ...packages] }));
 
+/** The command names stock Pi loads, from a real Pi process; the same filters the doctor reads decide them. */
+function piCommands(cwd: string = work): Promise<string[]> {
+    const cli = path.join(ROOT, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
+    return new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [cli, "--mode", "rpc"], { cwd, env: env() });
+        let buffer = "";
+        const finish = (names: string[]): void => {
+            child.kill();
+            resolve(names);
+        };
+        child.stdout.on("data", (chunk: Buffer) => {
+            buffer += chunk.toString();
+            let index: number;
+            while ((index = buffer.indexOf("\n")) >= 0) {
+                const line = buffer.slice(0, index).trim();
+                buffer = buffer.slice(index + 1);
+                if (line === "") continue;
+                try {
+                    const record = JSON.parse(line) as {
+                        type?: string;
+                        command?: string;
+                        data?: { commands?: Array<{ name?: string }> };
+                    };
+                    if (record.type === "response" && record.command === "get_commands") {
+                        finish(
+                            (record.data?.commands ?? []).flatMap((one) => (one.name === undefined ? [] : [one.name])),
+                        );
+                        return;
+                    }
+                } catch {
+                    // Pi's other output is not a command answer.
+                }
+            }
+        });
+        child.on("error", reject);
+        const timeout = setTimeout(() => {
+            child.kill();
+            reject(new Error("Pi did not answer get_commands"));
+        }, 30_000);
+        child.on("close", () => clearTimeout(timeout));
+        child.stdin.write(`${JSON.stringify({ id: "1", type: "get_commands" })}\n`);
+    });
+}
+
+/** Settings with the Jig package this test runs from, filtered by an object entry. */
+function settingsFiltered(extensions: string[], skills?: string[]): void {
+    writeFileSync(
+        path.join(agent, "settings.json"),
+        JSON.stringify({ packages: [{ source: ROOT, extensions, ...(skills === undefined ? {} : { skills }) }] }),
+    );
+}
+
 describe("jig doctor", () => {
     test("runs without a Pi session and exits 0 when nothing failed", async () => {
         settingsWith();
@@ -89,6 +141,127 @@ describe("jig doctor", () => {
         assert.equal(result.code, 0, result.stdout + result.stderr);
         assert.match(result.stdout, /Jig doctor/);
         assert.match(result.stdout, /All checks passed|Nothing is blocked/);
+    });
+
+    test("a filter that leaves out Jig's core is a failure, not an all-clear", async () => {
+        settingsFiltered(["!plugins/jig-core/index.ts"]);
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /fail Jig's core is filtered out/);
+        assert.match(result.stdout, /rules, approvals and protected paths would not run/);
+        assert.match(result.stdout, /plugins\/jig-core\/index\.ts/);
+    });
+
+    test("a filter that leaves out the sandbox is a failure, not an all-clear", async () => {
+        settingsFiltered(["!plugins/jig-sandbox/index.ts"]);
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /fail Jig's sandbox is filtered out/);
+        assert.match(result.stdout, /bash would run without it/);
+    });
+
+    test("extensions: [] leaves out core too, and says so", async () => {
+        settingsFiltered([]);
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /Jig's core is filtered out/);
+        assert.match(result.stdout, /Jig's sandbox is filtered out/);
+    });
+
+    test("the sandbox is checked for real, not skipped", async () => {
+        settingsWith();
+        const empty = path.join(work, "no-programs");
+        mkdirSync(empty);
+        const result = await run(["doctor"], { env: { PATH: empty } });
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /fail Sandbox program bwrap/);
+        assert.match(result.stdout, /fix: sudo (apt|dnf|pacman|zypper) install /);
+        assert.doesNotMatch(result.stdout, /the sandbox starts with Pi/);
+    });
+
+    test("an always-on plugin that is off is one plain warning, and its section is kept", async () => {
+        settingsFiltered(["!plugins/jig-git/index.ts"]);
+        writeFileSync(path.join(agent, "jig.json"), JSON.stringify({ git: { base: "develop" } }));
+        const result = await run(["doctor"]);
+        assert.equal(result.code, 0, result.stdout);
+        assert.match(result.stdout, /warn Jig's git tools are off in Pi's settings/);
+        assert.match(result.stdout, /remove the filter that leaves out plugins\/jig-git\/index\.ts/);
+        assert.doesNotMatch(result.stdout, /is not a known field/);
+    });
+
+    test("a choosable plugin that is off is a calm skip, and its section is not a problem", async () => {
+        settingsFiltered(["!plugins/jig-jira/index.ts"]);
+        writeFileSync(
+            path.join(agent, "jig.json"),
+            JSON.stringify({ jira: { site: "https://example.atlassian.net" } }),
+        );
+        const result = await run(["doctor"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /skip Feature jira — off in Pi's settings; its section in jig\.json is kept/);
+        assert.doesNotMatch(result.stdout, /is not a known field/);
+        assert.doesNotMatch(result.stdout, /warn .*jira/i);
+    });
+
+    test("stock Pi and the doctor agree on the effective entry: plain, project, delta, untrusted, and two refs", async () => {
+        const settings = (file: string, packages: unknown[]): void => writeFileSync(file, JSON.stringify({ packages }));
+        const agentSettings = path.join(agent, "settings.json");
+        const projectSettings = path.join(work, ".pi", "settings.json");
+        mkdirSync(path.join(work, ".pi"), { recursive: true });
+
+        // Plain: the user entry, no project entry.
+        settings(agentSettings, [ROOT]);
+        let commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), true);
+        let doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 0, doctor.stdout);
+
+        // Project replace: Pi keeps the project entry, so the sandbox command goes, and the doctor must fail.
+        settings(agentSettings, [ROOT]);
+        settings(projectSettings, [{ source: ROOT, extensions: ["!plugins/jig-sandbox/index.ts"] }]);
+        writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
+        commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
+        doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 1, doctor.stdout);
+        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
+        assert.match(doctor.stdout, new RegExp(`In ${projectSettings.replaceAll(".", "\\.")}`));
+
+        // Project delta: autoload:false subtracts the same file, and the doctor must fail the same way.
+        settings(projectSettings, [{ source: ROOT, autoload: false, extensions: ["-plugins/jig-sandbox/index.ts"] }]);
+        commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
+        doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 1, doctor.stdout);
+        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
+
+        // Untrusted project: Pi ignores the project entry, so the same filter must not change the result.
+        rmSync(path.join(agent, "trust.json"), { force: true });
+        commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), true, `Pi loaded: ${commands.join(", ")}`);
+        doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 0, doctor.stdout);
+        assert.doesNotMatch(doctor.stdout, /sandbox is filtered out/);
+
+        // Same git identity, different refs: the project ref wins, and the doctor names the project file.
+        const userGit = path.join(agent, "git", "github.com", "example", "jig");
+        const projectGit = path.join(work, ".pi", "git", "github.com", "example", "jig");
+        mkdirSync(path.dirname(userGit), { recursive: true });
+        mkdirSync(path.dirname(projectGit), { recursive: true });
+        rmSync(userGit, { force: true });
+        rmSync(projectGit, { force: true });
+        symlinkSync(ROOT, userGit);
+        symlinkSync(ROOT, projectGit);
+        settings(agentSettings, ["git:github.com/example/jig@v1"]);
+        settings(projectSettings, [
+            { source: "git:github.com/example/jig@v2", extensions: ["!plugins/jig-sandbox/index.ts"] },
+        ]);
+        writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
+        commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
+        doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 1, doctor.stdout);
+        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
+        assert.match(doctor.stdout, new RegExp(`In ${projectSettings.replaceAll(".", "\\.")}`));
     });
 
     test("an invalid jig.json is a FAIL line in a report, not a crash", async () => {
@@ -125,7 +298,7 @@ describe("jig doctor", () => {
         assert.equal(result.code, 1);
         assert.match(result.stdout, /fail Jig/);
         assert.match(result.stdout, /not installed in Pi yet/);
-        assert.match(result.stdout, /Install it: pi install git:github\.com\/Dev-Mriganka\/jig/);
+        assert.match(result.stdout, /Install it: pi install npm:@clawdbuilder\/jig/);
     });
 
     test("two copies of Jig with different versions are a warning", async () => {
@@ -139,7 +312,8 @@ describe("jig doctor", () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
         const result = await run(["doctor"]);
         assert.match(result.stdout, /Two copies of Jig/);
-        assert.match(result.stdout, /this command is 0\.3\.0/);
+        const own = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version?: string };
+        assert.match(result.stdout, new RegExp(`this command is ${own.version?.replaceAll(".", "\\.")}`));
         assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
     });
 
@@ -220,12 +394,12 @@ describe("a package installed from git", () => {
     test("a listed clone whose folder is gone is a failure naming the folder, not an all-clear", async () => {
         writeFileSync(
             path.join(agent, "settings.json"),
-            JSON.stringify({ packages: ["git:github.com/Dev-Mriganka/jig"] }),
+            JSON.stringify({ packages: ["git:github.com/ClawdBuilder/jig"] }),
         );
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /Pi lists it, but its files are not there/);
-        assert.match(result.stdout, /git\/github\.com\/Dev-Mriganka\/jig/);
+        assert.match(result.stdout, /git\/github\.com\/ClawdBuilder\/jig/);
     });
 
     test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", async () => {
@@ -268,7 +442,7 @@ describe("jig setup", () => {
         const result = await runSetup([]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /Jig is not installed in Pi yet/);
-        assert.match(result.stdout, /Install it with: pi install git:github\.com\/Dev-Mriganka\/jig/);
+        assert.match(result.stdout, /Install it with: pi install npm:@clawdbuilder\/jig/);
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
@@ -508,7 +682,7 @@ describe("a real global install", () => {
         const jig = path.join(prefix, "bin", "jig");
         assert.ok(existsSync(jig), "the install links the command");
         // The copy npm installed is what Pi would load, so settings name it.
-        const installedPackage = path.join(prefix, "lib/node_modules/jig");
+        const installedPackage = path.join(prefix, "lib/node_modules/@clawdbuilder/jig");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [installedPackage] }));
         const doctor = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
             const child = spawn(jig, ["doctor", "--quiet"], { env: env(), cwd: work });
@@ -523,4 +697,23 @@ describe("a real global install", () => {
         assert.match(doctor.stdout, /Jig doctor/);
         assert.doesNotMatch(doctor.stderr, /ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING/);
     });
+});
+
+test("a package the command's loader cannot strip is not checked, not failed", async () => {
+    const folder = path.join(agent, "npm/node_modules/@acme/param");
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+        path.join(folder, "package.json"),
+        JSON.stringify({ name: "@acme/param", version: "1.0.0", type: "module", pi: { extensions: ["./index.ts"] } }),
+    );
+    writeFileSync(
+        path.join(folder, "index.ts"),
+        "class Holder { constructor(private value: string) {} }\nexport default function () { return Holder; }\n",
+    );
+    writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [ROOT, "npm:@acme/param@1.0.0"] }));
+    const result = await run(["doctor"]);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /skip .*@acme\/param/);
+    assert.match(result.stdout, /not checked: Pi can load this package/);
+    assert.doesNotMatch(result.stdout, /fail .*@acme\/param/);
 });

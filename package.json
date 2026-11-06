@@ -1,9 +1,8 @@
 {
-    "name": "jig",
-    "version": "0.4.0",
-    "private": true,
+    "name": "@clawdbuilder/jig",
+    "version": "0.4.2",
     "description": "One tool manager and a set of plugins for the Pi coding agent: permissions per tool and environment, approvals, secrets and records.",
-    "repository": "git+https://github.com/Dev-Mriganka/jig.git",
+    "repository": "git+https://github.com/ClawdBuilder/jig.git",
     "type": "module",
     "license": "MIT",
     "engines": {
@@ -87,5 +86,25 @@
         "typebox": {
             "optional": true
         }
-    }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "bin/**",
+        "plugins/*/index.ts",
+        "plugins/*/src/**",
+        "plugins/*/package.json",
+        "plugins/*/skills/**",
+        "plugins/*/themes/**",
+        "plugins/jig-sandbox/broker/**",
+        "plugins/jig-agents/agents/**",
+        "plugins/jig-lens/viewer/**",
+        "plugins/jig-review/web/dist/**",
+        "plugins/jig-lens/web/**",
+        "docs/**",
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE"
+    ]
 }

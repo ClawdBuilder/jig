@@ -1,6 +1,7 @@
 // This module's only contact with processes: signals and `/proc`. Everything above it (the stop, the grace period, the
 // kill, the clean-up of a crashed session) runs against the `ProcessPort` interface, so a test can fake it. The group-kill
 // idea and the errno handling come from gvanderclay/pi-bg-bash (MIT, see docs/background.md, "Credit").
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import type { StopOutcome } from "./types.ts";
 
@@ -108,7 +109,17 @@ export const realPort: ProcessPort = {
             return (error as NodeJS.ErrnoException).code === "EPERM";
         }
     },
-    startTicks: (pid) => readStat(pid)?.startTicks,
+    startTicks: (pid) => {
+        const ticks = readStat(pid)?.startTicks;
+        if (ticks !== undefined) return ticks;
+        // macOS has no /proc: `lstart` is a stable start timestamp, so a reused pid still differs.
+        try {
+            const text = execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" }).trim();
+            return text === "" ? undefined : text;
+        } catch {
+            return undefined;
+        }
+    },
 };
 
 /** How long a task gets after the polite stop before the hard one. */

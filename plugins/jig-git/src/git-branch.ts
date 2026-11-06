@@ -7,7 +7,8 @@ import { digest } from "./previews.ts";
 import type { Call, Planned } from "./previews.ts";
 import { baseBranch, DIR_NAME, isProtected, resolveRepo, workspaceRoot } from "./repo.ts";
 import { currentBranch, git, gitOut, refExists, revParse, summaryOf } from "./run.ts";
-import { checkBranchPattern, fetchBranch, operationOf, requireClean, shortHead } from "./git-guards.ts";
+import { checkBranchPattern, fetchBranch, operationOf, remoteBranch, requireClean, shortHead } from "./git-guards.ts";
+import { guardedPathsFor, guardedSnapshots, guardedTargets, lateGuardError, newGuardedSnapshots } from "./guarded.ts";
 
 // ---- branch -------------------------------------------------------------------------------------------------------
 
@@ -34,21 +35,50 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
             params.base === undefined
                 ? await baseBranch(repo, call.settings, signal)
                 : checkBranch(params.base, "base");
+        const target = await remoteBranch(repo, base, signal);
+        const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
+        const plannedTarget = await guardedTargets(
+            "branch",
+            { operation: "create", base: target.branch },
+            repo.root,
+            call.settings,
+            signal,
+        );
+        const plannedGuarded =
+            plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
+        const plannedSnapshots =
+            plannedTarget === undefined
+                ? new Map<string, string>()
+                : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
         return {
             preview: {
                 summary: `create branch ${name} from the fetched ${base} in ${repo.name}`,
-                fingerprint: digest("branch", repo.root, "create", name, base),
+                fingerprint: digest("branch", repo.root, "create", name, base, ...plannedGuarded),
             },
             run: async () => {
                 // Always cut from the freshly fetched remote base, never from a possibly stale local copy.
-                await fetchBranch(repo, "origin", base, signal);
-                await gitOut(repo.root, ["switch", "-c", name, "--no-track", `refs/remotes/origin/${base}`], {
-                    signal,
-                });
-                const sha = await shortHead(repo, signal);
+                await fetchBranch(repo, target.remote, target.branch, signal);
+                const shaTarget = await revParse(repo.root, `refs/remotes/${target.remote}/${target.branch}`, signal);
+                if (shaTarget === undefined)
+                    throw new Error(
+                        `${target.remote}/${target.branch} is not there after the fetch; nothing was created`,
+                    );
+                const brought = newGuardedSnapshots(
+                    plannedSnapshots,
+                    await guardedSnapshots(repo.root, plannedTarget?.from ?? before, shaTarget, signal),
+                );
+                if (brought.length > 0) throw lateGuardError(brought);
+                await gitOut(repo.root, ["switch", "-c", name, "--no-track", shaTarget], { signal });
+                const sha = await revParse(repo.root, "HEAD", signal);
+                if (sha !== shaTarget) {
+                    await git(repo.root, ["switch", "--detach", before], { signal });
+                    throw new Error(
+                        `the branch ${name} did not stay on the checked commit; the previous HEAD was restored`,
+                    );
+                }
                 return {
-                    text: `Created ${name} from origin/${base} (${sha}) in ${repo.name}.`,
-                    details: { branch: name, base: `origin/${base}`, head: sha },
+                    text: `Created ${name} from origin/${base} (${(sha ?? "").slice(0, 7)}) in ${repo.name}.`,
+                    details: { branch: name, base: `origin/${base}`, head: (sha ?? "").slice(0, 7) },
                 };
             },
         };
@@ -65,17 +95,48 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
         const remote = !local && (await refExists(repo.root, `refs/remotes/origin/${name}`, signal));
         if (!local && !remote)
             throw new Error(`branch ${name} not found locally or at origin; use operation create for a new branch`);
+        const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
+        const plannedTarget = await guardedTargets(
+            "branch",
+            { operation: "switch", branch: name },
+            repo.root,
+            call.settings,
+            signal,
+        );
+        const plannedGuarded =
+            plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
+        const plannedSnapshots =
+            plannedTarget === undefined
+                ? new Map<string, string>()
+                : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
+        const targetSha = plannedTarget?.targets[0]?.sha;
         return {
             preview: {
                 summary: `switch ${repo.name} to ${local ? "the local branch" : "a new local branch tracking origin/"}${name}`,
-                fingerprint: digest("branch", repo.root, "switch", name, local),
+                fingerprint: digest("branch", repo.root, "switch", name, local, ...plannedGuarded),
             },
             run: async () => {
+                const now = await revParse(
+                    repo.root,
+                    local ? `refs/heads/${name}` : `refs/remotes/origin/${name}`,
+                    signal,
+                );
+                if (targetSha === undefined || now !== targetSha)
+                    throw new Error(
+                        `the branch ${name} moved after the question; nothing was applied. Run this again and the person will be asked`,
+                    );
                 await gitOut(
                     repo.root,
                     local ? ["switch", name] : ["switch", "-c", name, "--track", `origin/${name}`],
                     { signal },
                 );
+                const head = await revParse(repo.root, "HEAD", signal);
+                if (head !== targetSha) {
+                    await git(repo.root, ["switch", "--detach", before], { signal });
+                    throw new Error(
+                        `HEAD was not the checked commit after switching to ${name}; the previous HEAD was restored`,
+                    );
+                }
                 return { text: `Switched to ${name} (${await shortHead(repo, signal)}) in ${repo.name}.` };
             },
         };
@@ -176,16 +237,25 @@ export async function planWorktree(params: WorktreeParams, call: Call): Promise<
                     ? await baseBranch(repo, call.settings, signal)
                     : checkBranch(params.base, "base");
         }
+        const target = base === undefined ? undefined : await remoteBranch(repo, base, signal);
         return {
             preview: {
-                summary: `add a work tree ${destination} for ${exists ? "the existing branch" : `a new branch cut from the fetched ${base}:`} ${name}`,
+                summary: `add a work tree ${destination} for ${exists ? "the existing branch" : `a new branch cut from the fetched ${target?.remote}/${target?.branch}:`} ${name}`,
                 fingerprint: digest("worktree", repo.root, "add", destination, name, base ?? ""),
             },
             run: async () => {
-                if (base !== undefined) await fetchBranch(repo, "origin", base, signal);
+                if (target !== undefined) await fetchBranch(repo, target.remote, target.branch, signal);
                 const args = exists
                     ? ["worktree", "add", destination, name]
-                    : ["worktree", "add", "--no-track", "-b", name, destination, `refs/remotes/origin/${base}`];
+                    : [
+                          "worktree",
+                          "add",
+                          "--no-track",
+                          "-b",
+                          name,
+                          destination,
+                          `refs/remotes/${target?.remote}/${target?.branch}`,
+                      ];
                 await gitOut(repo.root, args, { signal });
                 return {
                     text: `Added the work tree ${destination} on ${name}.`,

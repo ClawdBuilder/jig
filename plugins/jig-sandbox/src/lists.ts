@@ -2,6 +2,8 @@
 // docs/rules.md, which says why each group is there. Paths start with `~/` (the home folder) or are absolute.
 // Everything not listed is writable, because an allow-only sandbox breaks every tool that keeps state somewhere
 // nobody thought of.
+import { PI_PROJECT_PATHS } from "../../jig-core/src/kit/pi-project-paths.ts";
+import { RUNS_LATER } from "../../jig-core/src/kit/runs-later.ts";
 
 /** A group of paths that share a reason and a way through, as a message says them. */
 export interface Group {
@@ -164,78 +166,27 @@ export const PROJECT_SECRET_TEMPLATES: ReadonlySet<string> = new Set([
     ".env.dist",
 ]);
 
-/** Locked, in the home folder: it runs later outside the sandbox. */
-export const LOCKED_IN_HOME: readonly Listed[] = [
-    ...at(
-        "shell",
-        "~/.bashrc",
-        "~/.bash_profile",
-        "~/.bash_login",
-        "~/.bash_logout",
-        "~/.bash_aliases",
-        "~/.profile",
-        "~/.zshrc",
-        "~/.zshenv",
-        "~/.zprofile",
-        "~/.zlogin",
-        "~/.zlogout",
-        "~/.config/fish",
-    ),
-    ...at(
-        "session",
-        "~/.config/systemd/user",
-        "~/.config/autostart",
-        "~/.config/environment.d",
-        "~/.xprofile",
-        "~/.xinitrc",
-        "~/.xsessionrc",
-        "~/.tmux.conf",
-        "~/.config/tmux",
-    ),
-    ...at("git", "~/.gitconfig", "~/.config/git"),
-    ...at("agents", "~/.agents", "~/.claude/settings.json", "~/.claude/settings.local.json"),
-    ...at("build", "~/.gradle/init.gradle", "~/.gradle/init.gradle.kts", "~/.gradle/init.d", "~/.m2/extensions.xml"),
-    ...at("build", "~/.cargo/config.toml", "~/.cargo/config", "~/.config/pip/pip.conf", "~/.pip/pip.conf"),
-    ...at("path", "~/.npm-global/bin"),
-];
+/** The one table in jig-core's kit: the file tools read the same paths, and ask for the same toolchains. */
+const fromTable = (scope: "home" | "project" | "repository", ask: boolean): Listed[] =>
+    RUNS_LATER.filter((item) => item.scope === scope && (item.ask === true) === ask).map((item) => ({
+        path: item.path,
+        group: item.group as GroupName,
+    }));
 
-/** Locked on a Mac only. */
-export const LOCKED_ON_MAC: readonly Listed[] = at("session", "~/Library/LaunchAgents");
-
-/** Locked, in the project and every folder above it below the home folder: what Pi loads. */
-export const LOCKED_PI_IN_PROJECT: readonly string[] = [
-    ".pi/settings.json",
-    ".pi/extensions",
-    ".pi/skills",
-    ".pi/prompts",
-    ".pi/themes",
-    ".pi/mcp.json",
-    ".agents",
-];
-
-/** Locked, in the project and in each repository one and two levels below it. */
-export const LOCKED_IN_PROJECT: readonly Listed[] = [
-    ...at("agents", ".claude/settings.json", ".claude/settings.local.json"),
-    ...at("build", ".mvn/extensions.xml", ".mvn/jvm.config"),
-    ...at("ide", ".vscode/tasks.json", ".vscode/settings.json", ".idea/workspace.xml", ".idea/runConfigurations"),
-];
-
-/** The toolchain managers: a write there puts a program on PATH, so it asks. */
-export const ASK_FIRST: readonly Listed[] = at(
-    "toolchain",
-    "~/.sdkman",
-    "~/.nvm",
-    "~/.pyenv",
-    "~/.rbenv",
-    "~/.rustup",
-    "~/.cargo/bin",
-    "~/.asdf",
-    "~/.local/share/mise",
-    "~/.volta",
-    "~/.bun",
-    "~/.deno",
-    "~/go/bin",
+export const LOCKED_IN_HOME: readonly Listed[] = fromTable("home", false).filter(
+    (item) => !item.path.startsWith("~/Library/"),
 );
+export const LOCKED_ON_MAC: readonly Listed[] = fromTable("home", false).filter((item) =>
+    item.path.startsWith("~/Library/"),
+);
+/** `.git/config` is not locked for bash: git has to write it, and the sandbox's after-command clean-up and the git guard
+ *  cover it. The file tools guard it. */
+export const LOCKED_IN_PROJECT: readonly Listed[] = fromTable("repository", false).filter(
+    (item) => item.path !== ".git/config",
+);
+export const ASK_FIRST: readonly Listed[] = fromTable("home", true);
+/** What Pi loads, plus the direnv file a shell runs. */
+export const LOCKED_PI_IN_PROJECT: readonly string[] = [...PI_PROJECT_PATHS, ".envrc"];
 
 /**
  * Where a manager keeps its files when its own variable says so, with the folder to ask about (relative to the value).

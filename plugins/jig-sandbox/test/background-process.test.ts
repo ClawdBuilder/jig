@@ -1,7 +1,7 @@
 // Stopping a task (the polite signal, the wait, the hard one) against a fake process table, and what a session that crashed
 // leaves behind, found and cleaned at the next session start.
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -177,15 +177,14 @@ describe("what a crashed session leaves", () => {
         assert.equal(existsSync(folder), false);
     });
 
-    test("a folder with no owner file stays for a day, then goes", () => {
+    test("a folder with no owner file stays, however old", () => {
         const folder = leftBehind("ownerless", undefined, []);
         const { port } = fakePort();
-        cleanupSessions({ agentDir, port, now: Date.now() });
+        const old = Date.now() - 30 * 24 * 3_600_000;
+        cleanupSessions({ agentDir, port, now: old });
         assert.ok(existsSync(folder));
-        const old = new Date(Date.now() - 2 * 24 * 3_600_000);
-        for (const file of readdirSync(folder)) utimesSync(path.join(folder, file), old, old);
         cleanupSessions({ agentDir, port, now: Date.now() });
-        assert.equal(existsSync(folder), false);
+        assert.ok(existsSync(folder), "no owner record cannot be proved dead");
     });
 
     test("only files of its own are removed: a folder with a stranger's file in it stays", () => {

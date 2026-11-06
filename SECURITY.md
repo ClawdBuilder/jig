@@ -7,17 +7,17 @@ production results are masked. A report that breaks one of those promises is the
 
 | Version | Supported |
 |---|---|
-| the latest tag, `v0.3.0` today | yes, with fixes in a patch release |
+| the latest release on the Releases page | yes, with fixes in a patch release |
 | an older tag | no: move to the latest, or open an issue that names why you cannot |
 | a branch or a commit | no: it is not a release, and it changes |
 
-The current release is the one on the [Releases](https://github.com/Dev-Mriganka/jig/releases) page. [Compatibility](docs/compatibility.md)
+The current release is the one on the [Releases](https://github.com/ClawdBuilder/jig/releases) page. [Compatibility](docs/compatibility.md)
 says what this repository promises to keep stable.
 
 ## Report a vulnerability privately
 
 Use GitHub's private advisory form:
-[Report a vulnerability](https://github.com/Dev-Mriganka/jig/security/advisories/new).
+[Report a vulnerability](https://github.com/ClawdBuilder/jig/security/advisories/new).
 
 - **Do not open a public issue** for a vulnerability, and do not post it in a discussion.
 - **Do not paste a real credential**, even to prove the point. A reference such as `pass:example` and the command that
@@ -36,7 +36,8 @@ Use GitHub's private advisory form:
   working folders, or a process it can reach.
 - **Approval can be forged:** a review approved without a passkey signature, or a second endpoint that approves.
 - **A path is not protected** that should be: Pi's agent folder, the secret stores, or a file that runs code unsandboxed at
-  the next start.
+  the next start, including a project's `.pi` settings, skills, prompts, themes, extensions, packages and system files,
+  guarded by path and refused for `write` and `edit`.
 - **The harness is fooled about what it recorded:** a call missing from the records, or recorded with another decision.
 
 ## What is not in scope

@@ -410,3 +410,6 @@ Each step ships with its escape and keep-working tests.
 | Entering a task's network from the host | `nsenter` fails: no process is in the user namespace that owns it. A `python3` helper joins that one, then the network |
 | `Once` allows the connection | It allows that host and port for 15 seconds, since a command opens several connections |
 | `allow` and `deny` go to the runtime | They are read by the callback, so a listed address is still checked for a private range |
+
+Since 0.4.2, session folders are removed only when their owner is gone; a missing folder is recreated on restart, and an
+unsafe root is refused. Toolchain folders remain ask-first.

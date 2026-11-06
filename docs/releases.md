@@ -10,7 +10,12 @@ newer than the version they had, once, after an update, so every entry is writte
    `## [Unreleased]` into `## [0.3.0] - <today>`, gathering repeated `### Added`, `### Changed` and `### Fixed` headings.
 3. **Read the diff.** The script writes files and nothing else; the entries are what a user will read.
 4. **Commit** it as `Release 0.3.0`.
-5. **Tag and push both.** The tag is the release:
+5. **Publish the package.** The tag's workflow requires a successful `ci-ok` check on the tagged commit, packs the tag and
+   compares its tarball integrity with npm (a version already there is skipped only on an exact match, and a mismatch fails),
+   publishes `@clawdbuilder/jig` with provenance, confirms the registry has the version, and only then writes the GitHub
+   release. So `npm install -g @clawdbuilder/jig@<version>` and `pi install npm:@clawdbuilder/jig@<version>` get the same
+   release. The repository secret `NPM_TOKEN` supplies npm authentication; Trusted Publishing is a later step.
+6. **Tag and push both.** The tag is the release:
 
 ```bash
 git tag -a v0.3.0 -m "Jig 0.3.0"
@@ -45,7 +50,7 @@ depend on the number.
 A branch moves; a tag and a commit do not. Pi takes a ref in the install source:
 
 ```bash
-pi install git:github.com/Dev-Mriganka/jig@v0.3.0
+pi install npm:@clawdbuilder/jig@0.3.0
 ```
 
 - **A tag or a commit is pinned.** Pi reconciles the checkout to it and does not move it, so an update happens when you

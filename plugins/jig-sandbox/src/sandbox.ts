@@ -21,7 +21,7 @@ import { inside } from "./pathing.ts";
 import { canWritePath, computeRules, runtimeFilesystem } from "./rules.ts";
 import { wireNetwork } from "./network/wiring.ts";
 import { firstLine, messageOf, refusal, userNamespaceHint } from "./sandbox-messages.ts";
-import { makeSessionFolders, runtimeConfig } from "./sandbox-setup.ts";
+import { ensureSessionFolders, makeSessionFolders, runtimeConfig } from "./sandbox-setup.ts";
 import type { Captured, Prepared, SandboxDeps, SandboxState } from "./sandbox-types.ts";
 import type { RuleSet, RuntimeFilesystem } from "./rules.ts";
 
@@ -188,7 +188,10 @@ export class Sandbox {
     /** Starts the broker and gives the runtime its base configuration. */
     private async launch(): Promise<void> {
         const { deps } = this;
-        const session = this.sessionDir as string;
+        // A previous session's clean-up, or a tmp reaper, may have removed this folder. Recreate it before the broker
+        // starts with it as its working folder, so one missing folder cannot end bash for the rest of the session.
+        const session = ensureSessionFolders(this.sessionDir as string, deps);
+        this.sessionDir = session;
         const settings = deps.settings();
         const tmp = path.join(session, "tmp");
         const broker = await deps.startBroker({

@@ -109,6 +109,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `cli/main.ts` | The `jig` command: arguments, the doctor's exit code and report, setup's company step and exit codes | `bin/jig.mjs` |
 | `cli/headless.ts` | The packages Pi would load, their extension files loaded into a host that only records, and the person's settings read against their sections and defaults | `cli/main.ts` |
 | `cli/packages.ts` | Where Pi puts a package: local, npm and git layouts for user and project scope, and the entries listed but not found | `cli/headless.ts` |
+| `cli/package-filter.ts` | Pi's package filter read as Pi reads it: per-type patterns, `!`, `+`, `-`, empty lists and `autoload:false` | `cli/packages.ts`, `cli/headless.ts` |
 | `cli/trust.ts` | Pi's project trust read without importing Pi: the closest saved decision in trust.json, then only the agent folder's defaultProjectTrust; fails closed | `cli/headless.ts` |
 | `cli/terminal.ts` | The setup questions on node:readline: numbered choices, plain input, a yes/no confirm | `cli/main.ts` |
 | `plain-label.ts` | Plain names for configuration paths, shared by the doctor and setup: "Jira auth token", not `jira.auth.token` | `doctor-secrets.ts`, `setup-fields.ts` |
@@ -157,10 +158,13 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/browser.ts` | The program and arguments that open an address, from `$BROWSER` or the platform's opener | `preview-html.ts`, `jig-review`'s `open.ts` |
 | `kit/files.ts` | Writing a file so it survives a crash: synced, renamed into place, its folder synced | `paths.ts`, `mask/key.ts`, plugins' stores |
 | `kit/git-settings.ts` | The git settings that make git run a program or redirect a remote: one table for the guard and the sandbox | `git-config-guard.ts`, `jig-sandbox`'s `gitconfig.ts` |
+| `kit/runs-later.ts` | Everything that runs later outside the sandbox: home, project and repository paths, with the ones a person may allow as an ask | `protected-paths.ts`, `jig-git` |
+| `kit/pi-project-paths.ts` | The project files Pi loads at its next start, and the project folders below home, shared by the file tools' guard and the sandbox's lock | `protected-paths.ts`, `jig-sandbox/src/lists.ts` |
 | `kit/role-policy.ts` | The policy a role gives its child agent in `JIG_ROLE_POLICY`: written, read, and checked | `jig-agents`, `jig-sandbox`; no file here |
 | `kit/schema.ts` | `stringEnum`: a tool parameter that is one of some strings, as TypeBox and every provider read it | every plugin's tool parameters |
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |
 | `kit/ports.ts` | For a tunnel that starts a program: a really free port, a test that it answers, a wait | a company plugin keeps a copy; no file here |
+| `kit/sandbox-programs.ts` | The programs the sandbox needs, where they are found, the install command per system, and the AppArmor sysctl | `jig-sandbox/src/programs.ts`, `doctor-tools.ts` |
 | `kit/tools.ts` | `registerJigTool`: registers a plugin's tool, and again as `deferred` at session start when `tools.deferred` names it | every plugin's entry, `watch/tool.ts`, `tool-exposure.ts` |
 | `kit/values.ts` | Small stateless helpers that plugins share, such as the invalid-input error | `config.ts`, `kit/http.ts`, `kit/oauth.ts`, the watch files |
 

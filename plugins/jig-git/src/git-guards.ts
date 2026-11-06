@@ -19,6 +19,26 @@ export async function shortHead(repo: Repo, signal?: AbortSignal): Promise<strin
     return (await gitOut(repo.root, ["rev-parse", "--short", "HEAD"], { signal })).trim();
 }
 
+/** A base as `{ remote, branch }`: `develop` is origin/develop, `origin/develop` keeps its remote, and a remote whose
+ *  name has a slash is matched by the longest real remote name. A branch with slashes stays whole. */
+export async function remoteBranch(
+    repo: Repo,
+    base: string,
+    signal?: AbortSignal,
+): Promise<{ remote: string; branch: string }> {
+    const remotes = (await gitOut(repo.root, ["remote"], { signal }))
+        .split("\n")
+        .map((name) => name.trim())
+        .filter((name) => name !== "")
+        .sort((left, right) => right.length - left.length);
+    for (const remote of remotes) {
+        if (base.startsWith(`${remote}/`) && base.length > remote.length + 1) {
+            return { remote, branch: base.slice(remote.length + 1) };
+        }
+    }
+    return { remote: "origin", branch: base };
+}
+
 export async function fetchBranch(repo: Repo, remote: string, branch: string, signal?: AbortSignal): Promise<void> {
     const fetched = await git(repo.root, ["fetch", "--no-tags", remote, branch], { signal, network: true });
     if (fetched.code !== 0 || fetched.timedOut)

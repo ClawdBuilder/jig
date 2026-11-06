@@ -38,7 +38,7 @@ export function agents(options: AgentsOptions = {}): ExtensionFactory {
         }
         // The tool's description lists the roles. It starts with the ones that ship, and is registered again at session start when
         // the user's or a company's files change the list.
-        let described = describeTool(loadRoles([shippedFolder()]).roles.values());
+        let described = describeTool(loadRoles([shippedFolder()], shippedFolder()).roles.values());
         const tool = createTool(rt, described);
         // jig-core may load after this plugin; withJig waits for it.
         withJig((api) => {

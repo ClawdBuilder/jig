@@ -38,7 +38,7 @@ so this table cannot drift from the code.
 | `sandbox-setup.ts` | The session's private folders and the base configuration given to the runtime | `sandbox.ts` |
 | `sandbox-messages.ts` | The words of a refusal, an error and a hint, as plain functions | `sandbox.ts` |
 | `broker-client.ts` | Pi's side of the broker: starts it, sends requests over its pipe, stops it | `index.ts`, `sandbox-types.ts`, `sandbox.ts` |
-| `programs.ts` | Finds bubblewrap, socat and ripgrep, or says what to install | `doctor.ts`, `network/wiring.ts` and 2 more |
+| `programs.ts` | Re-exports jig-core kit's program lookup (bubblewrap, socat, ripgrep) and install wording | `doctor.ts`, `network/wiring.ts` and 2 more |
 | `config.ts` | The `sandbox` section of `jig.json`, and whether a child's role may not write (`readOnlyRole`) | `background/tasks-deps.ts`, `background/tasks.ts` and 9 more |
 
 ### The rules

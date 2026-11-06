@@ -50,6 +50,8 @@ export interface DecideInput {
     /** Set when the call is to one of Pi's file tools and touches a protected path (see protected-paths.ts): the line
      *  that says so. The floor denies the call, whatever the rules say. */
     protectedRefusal?: string | undefined;
+    /** A write to a path that runs later outside the sandbox: ask, or refuse with no screen. */
+    protectedAsk?: string | undefined;
 }
 
 export interface Verdict {
@@ -132,6 +134,7 @@ export function decide(input: DecideInput): Verdict {
 
     // 1. The table. A call nothing classified is a write outside the machine: it asks.
     let decision: Decision = call.unknown ? "ask" : TABLE[call.environmentKind][call.effect];
+    let reason: string | undefined;
     let source: DecisionSource = call.unknown ? "unknown" : "table";
     let approval = call.approval;
     let decidingRule: Rule | undefined;
@@ -188,6 +191,12 @@ export function decide(input: DecideInput): Verdict {
         decision = "deny";
         source = "floor";
         floor = "no-screen";
+    }
+    if (input.protectedAsk !== undefined && decision !== "deny") {
+        decision = input.hasUI ? "ask" : "deny";
+        source = "floor";
+        floor = "protected-path";
+        if (!input.hasUI) reason = input.protectedAsk;
     }
     // Last: a protected path is refused whatever else was decided, and its reason is the one the model reads.
     if (input.protectedRefusal !== undefined) {

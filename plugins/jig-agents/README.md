@@ -116,6 +116,8 @@ names a company's model: they come from [configuration](#configure).
   configuration's keeps the actions both list, so configuration cannot add `push`. Its `ask` adds to the file's.
 - **A file of your own replaces a shipped role of the same name.** That is your file, in a place the model cannot
   write; it is not configuration, and it is what you use to change `writes` or `tools`.
+- **A missing shipped folder is a broken install:** `jig doctor` fails and `loadRoles` names it. A missing folder of your
+  own is fine.
 
 ### The roles that ship
 

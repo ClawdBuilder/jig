@@ -8,6 +8,14 @@ import type { Repo } from "./repo.ts";
 import { git, gitOut, refExists, requireBranch, revParse, summaryOf, upstreamOf } from "./run.ts";
 import { plural } from "./text.ts";
 import { fetchBranch, requireClean, shortHead } from "./git-guards.ts";
+import {
+    guardedChanges,
+    guardedPathsFor,
+    guardedSnapshots,
+    guardedTargets,
+    lateGuardError,
+    newGuardedSnapshots,
+} from "./guarded.ts";
 
 // ---- sync ---------------------------------------------------------------------------------------------------------
 
@@ -25,10 +33,16 @@ export async function planSync(params: { repo?: string }, call: Call): Promise<P
     if (!upstream) throw new Error(`${branch} has no upstream; push it first`);
     const remote = await remoteOf(repo, branch, signal);
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
+    const plannedTarget = await guardedTargets("sync", {}, repo.root, call.settings, signal);
+    const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "sync", signal);
+    const plannedSnapshots =
+        plannedTarget === undefined
+            ? new Map<string, string>()
+            : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
     return {
         preview: {
             summary: `fetch ${remote} and fast-forward ${branch} to ${upstream} in ${repo.name} (no merge commit)`,
-            fingerprint: digest("sync", repo.root, branch, before, upstream),
+            fingerprint: digest("sync", repo.root, branch, before, upstream, ...plannedGuarded),
         },
         run: async () => {
             const fetched = await git(repo.root, ["fetch", "--no-tags", remote], { signal, network: true });
@@ -36,7 +50,24 @@ export async function planSync(params: { repo?: string }, call: Call): Promise<P
                 throw new Error(
                     `fetch failed: ${fetched.timedOut ? "timed out" : summaryOf(fetched.stderr) || "unknown error"}`,
                 );
-            const merged = await git(repo.root, ["merge", "--ff-only", "@{upstream}"], { signal });
+            // The fetch happened after the question: check the target it brought, then apply that sha, not the name.
+            const fetchedTarget = await guardedTargets("sync", {}, repo.root, call.settings, signal);
+            if (fetchedTarget === undefined)
+                throw new Error("@{upstream} is not there after the fetch; nothing was applied");
+            const brought = newGuardedSnapshots(
+                plannedSnapshots,
+                await guardedSnapshots(
+                    repo.root,
+                    plannedTarget?.from ?? before,
+                    fetchedTarget.targets[0]?.sha ?? "",
+                    signal,
+                ),
+            );
+            if (brought.length > 0) throw lateGuardError(brought);
+            const upstreamSha = fetchedTarget.targets[0]?.sha;
+            if (upstreamSha === undefined)
+                throw new Error("@{upstream} is not there after the fetch; nothing was applied");
+            const merged = await git(repo.root, ["merge", "--ff-only", upstreamSha], { signal });
             if (merged.code !== 0) {
                 const counts = (
                     await gitOut(repo.root, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"], { signal })
@@ -93,10 +124,22 @@ export async function planMerge(
     await requireClean(repo, `merging into ${current}`, signal);
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
     const label = other ?? `origin/${base}`;
+    const plannedTarget = await guardedTargets(
+        "merge",
+        { ...(other === undefined ? { base } : { branch: other }) },
+        repo.root,
+        call.settings,
+        signal,
+    );
+    const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "merge", signal);
+    const plannedSnapshots =
+        plannedTarget === undefined
+            ? new Map<string, string>()
+            : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
     return {
         preview: {
             summary: `merge ${label} into ${current} in ${repo.name}; a conflict aborts the merge`,
-            fingerprint: digest("merge", repo.root, current, before, label),
+            fingerprint: digest("merge", repo.root, current, before, label, ...plannedGuarded),
         },
         run: async () => {
             let ref: string;
@@ -111,10 +154,17 @@ export async function planMerge(
                 if (!(await refExists(repo.root, ref, signal)))
                     throw new Error(`branch ${name} not found locally or at origin`);
             }
-            if ((await git(repo.root, ["merge-base", "--is-ancestor", ref, "HEAD"], { signal })).code === 0) {
+            const fetched = await revParse(repo.root, ref, signal);
+            if (fetched === undefined) throw new Error(`branch ${label} not found; nothing was merged`);
+            const brought = newGuardedSnapshots(
+                plannedSnapshots,
+                await guardedSnapshots(repo.root, plannedTarget?.from ?? before, fetched, signal),
+            );
+            if (brought.length > 0) throw lateGuardError(brought);
+            if ((await git(repo.root, ["merge-base", "--is-ancestor", fetched, "HEAD"], { signal })).code === 0) {
                 return { text: `${current} already contains ${label} in ${repo.name}.` };
             }
-            const merged = await git(repo.root, ["merge", "--no-edit", ref], { signal });
+            const merged = await git(repo.root, ["merge", "--no-edit", fetched], { signal });
             if (merged.code !== 0) {
                 const files = await conflicts(repo, signal);
                 // Abort so the tree is exactly as it was; resolving is a human decision.
@@ -143,14 +193,28 @@ export async function planRebase(params: { repo?: string; base?: string }, call:
     if (base === current) throw new Error(`${current} is the base; there is nothing to rebase onto`);
     await requireClean(repo, `rebasing onto ${base}`, signal);
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
+    const plannedTarget = await guardedTargets("rebase", { base }, repo.root, call.settings, signal);
+    const plannedGuarded = plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "rebase", signal);
+    const plannedSnapshots =
+        plannedTarget === undefined
+            ? new Map<string, string>()
+            : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
     return {
         preview: {
             summary: `rebase ${current} onto the fetched origin/${base} in ${repo.name}; a conflict aborts the rebase`,
-            fingerprint: digest("rebase", repo.root, current, before, base),
+            fingerprint: digest("rebase", repo.root, current, before, base, ...plannedGuarded),
         },
         run: async () => {
             await fetchBranch(repo, "origin", base, signal);
-            const rebased = await git(repo.root, ["rebase", `refs/remotes/origin/${base}`], { signal });
+            const fetched = await revParse(repo.root, `refs/remotes/origin/${base}`, signal);
+            if (fetched === undefined)
+                throw new Error(`origin/${base} is not there after the fetch; nothing was rebased`);
+            const brought = newGuardedSnapshots(
+                plannedSnapshots,
+                await guardedSnapshots(repo.root, plannedTarget?.from ?? before, fetched, signal),
+            );
+            if (brought.length > 0) throw lateGuardError(brought);
+            const rebased = await git(repo.root, ["rebase", fetched], { signal });
             if (rebased.code !== 0) {
                 const files = await conflicts(repo, signal);
                 await git(repo.root, ["rebase", "--abort"], { signal });
@@ -191,14 +255,27 @@ export async function planCherryPick(params: { repo?: string; revs?: string[] },
         shas.push(sha);
     }
     const before = (await revParse(repo.root, "HEAD", signal)) ?? "";
+    const plannedTarget = await guardedTargets("cherry_pick", { revs }, repo.root, call.settings, signal);
+    const plannedGuarded =
+        plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "cherry_pick", signal);
     return {
         preview: {
             summary: `cherry-pick ${plural(revs.length, "commit")} onto ${current} in ${repo.name}; a conflict aborts it`,
             body: revs.join("\n"),
             format: "text",
-            fingerprint: digest("cherry_pick", repo.root, current, before, shas),
+            fingerprint: digest("cherry_pick", repo.root, current, before, shas, ...plannedGuarded),
         },
         run: async () => {
+            const brought: string[] = [];
+            for (const sha of shas) {
+                for (const path of await guardedChanges(repo.root, before, sha, signal)) {
+                    if (!plannedGuarded.includes(path)) brought.push(path);
+                }
+            }
+            if (brought.length > 0)
+                throw new Error(
+                    `cherry-picking would change files Pi loads (${brought.slice(0, 5).join(", ")}); nothing was applied. Run this again and the person will be asked`,
+                );
             const picked = await git(repo.root, ["cherry-pick", ...shas], { signal });
             if (picked.code !== 0) {
                 const files = await conflicts(repo, signal);

@@ -145,9 +145,15 @@ describe("the defaults", () => {
     test("ordinary files are not protected", () => {
         for (const tool of ["read", "write", "edit", "grep", "find", "ls"]) {
             assert.equal(check(tool, path.join(project, "src", "main.ts")), undefined, tool);
-            assert.equal(check(tool, path.join(home, ".sshd-notes")), undefined, `${tool} .sshd-notes`);
-            assert.equal(check(tool, path.join(home, ".config", "ghost")), undefined, `${tool} .config/ghost`);
-            assert.equal(check(tool, elsewhere), undefined, tool);
+            const outside = check(tool, path.join(home, ".sshd-notes"));
+            if (tool === "write" || tool === "edit") assert.equal(outside?.ask, true, tool);
+            else assert.equal(outside, undefined, tool);
+            const ghost = check(tool, path.join(home, ".config", "ghost"));
+            if (tool === "write" || tool === "edit") assert.equal(ghost?.ask, true, tool);
+            else assert.equal(ghost, undefined, tool);
+            const far = check(tool, elsewhere);
+            if (tool === "write" || tool === "edit") assert.equal(far?.ask, true, tool);
+            else assert.equal(far, undefined, tool);
         }
     });
 
@@ -166,7 +172,6 @@ describe("the defaults", () => {
     test("an unknown agent folder leaves out the paths inside it, and the home ones stay", () => {
         const entries = defaultProtectedPaths({ agentDir: "", home, env: {} });
         assert.ok(entries.some((entry) => entry.shown === "~/.ssh"));
-        assert.ok(!entries.some((entry) => entry.kind === "guarded"));
     });
 });
 
@@ -552,9 +557,9 @@ describe("symlinks", () => {
         assert.ok(check("edit", path.join(links, "dangling")));
     });
 
-    test("a link that points somewhere harmless is not protected", () => {
+    test("a link out of the project is not protected, but a write through it asks", () => {
         assert.equal(check("read", path.join(links, "harmless", "notes.txt")), undefined);
-        assert.ok(check("write", path.join(links, "harmless", "notes.txt")) === undefined);
+        assert.equal(check("write", path.join(links, "harmless", "notes.txt"))?.ask, true);
     });
 
     test("a loop of links does not hang, and is not claimed to be a secret", () => {
@@ -1056,4 +1061,29 @@ describe("the tool_call hook", () => {
         assert.match(shown, /~\/company-etc {2}\(a company plugin\)/);
         assert.ok(shown.includes(`${harness.agentDir}  (default)`), "the agent folder, as Pi has it");
     });
+});
+
+test("a nested repository's .git hooks and config are guarded without enumeration", () => {
+    const ctx = context({ entries: [] });
+    for (const tool of ["write", "edit"]) {
+        for (const target of [
+            path.join(project, "apps/service/.git/hooks/pre-commit"),
+            path.join(project, "worktrees/service/.git/config"),
+            path.join(project, ".GIT/HOOKS/pre-commit"),
+            path.join(project, ".git/config.worktree"),
+            path.join(project, ".git/worktrees/wt/config"),
+            path.join(project, ".git/worktrees/wt/config.worktree"),
+            path.join(project, ".git/info/attributes"),
+            path.join(project, "wt/.git"),
+            path.join(project, ".git/HEAD"),
+            path.join(project, ".git/worktrees/wt/gitdir"),
+        ]) {
+            const refusal = check(tool, target, ctx);
+            assert.ok(refusal, `${tool} ${target}`);
+            assert.match(refusal.reason, /runs later outside the sandbox/);
+        }
+    }
+    assert.equal(check("read", path.join(project, "apps/service/.git/hooks/pre-commit"), ctx), undefined);
+    assert.equal(check("write", path.join(project, ".gitignore"), ctx), undefined);
+    assert.equal(check("write", path.join(project, "mirrors/service.git/README.md"), ctx), undefined);
 });

@@ -4,12 +4,69 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-06
+
+### Changed
+
+- Jig is published as **`@clawdbuilder/jig`**; the command is still `jig`. Install the Pi package with
+  `pi install npm:@clawdbuilder/jig@<version>` and the command with `npm install -g @clawdbuilder/jig`. An existing `git:`
+  install keeps working: the command recognises the old unscoped package name from git or a folder. The tarball ships the
+  command, every plugin, the review page and the docs, without tests.
+
+### Fixed
+
+- **Nothing under a `.git` path can be written with the file tools,** at any depth. This includes a linked worktree's `.git`
+  pointer file, which could otherwise send plain git to hooks the agent wrote. The sandbox locks that file for `bash` too.
+
+- Qodo's review findings on the package and guards are fixed: nested `.git` and project paths are guarded by shape and at any
+  depth, case is folded, the guard resolves the default base and remote names, blob ids are compared after a fetch, a
+  remote-only merge branch is found, toolchain folders ask instead of locking, an unsafe session root is refused, and the
+  doctor's absolute-program and loader-incompatible-package false failures are gone. Finding 2 is included; its blob check
+  is in this release.
+- A sandbox session open for more than a day no longer loses its folder to the next Pi or child agent: a folder is removed
+  only when the process that owns it is gone, and a session whose folder vanished recreates it on restart. Background task
+  cleanup follows the same owner rule.
+- `workflow bind` with `base: "origin/develop"` no longer asks git for `origin/origin/develop`; `develop`, `origin/develop`,
+  `release/1.2` and a remote whose name has a slash all resolve once.
+- `jig doctor` checks a company-declared absolute program such as `process.execPath` as a path, not a PATH name, and treats
+  a package only its TypeScript loader cannot read as “not checked” rather than a failure.
+- **The npm packages of 0.4.0 and 0.4.1 could not run bash.** The `files` allowlist omitted
+  `plugins/jig-sandbox/broker/broker.mjs`, so every sandboxed command failed with “Cannot find module … broker.mjs”; it
+  also omitted the three built-in agent roles and the lens viewer. The tarball now ships all three runtime folders, a test
+  derives those paths from the code, and the doctor fails when the broker or roles are missing. `npm install -g
+  @clawdbuilder/jig` and `pi install npm:@clawdbuilder/jig` need 0.4.2 or later.
+
+- `jig doctor` reads the package filter in Pi's settings, as Pi does. A filter that leaves out Jig's core or its sandbox is
+  a failure naming the file to change, not an all-clear; a filter that turns off a choosable plugin is a calm skip, and a
+  section that plugin left in `jig.json` is kept and comes back with it. Pi's effective entry is what is read: a project
+  entry replaces the user's, and an `autoload:false` project entry adjusts it, so a repository that turns the sandbox off
+  is a failure naming that repository's `.pi/settings.json`. An always-on tool that is off (git, memory, session, theme) is
+  one warning with how to turn it on, and its section is kept rather than called unknown. Before this, a filter that left
+  out the core still showed "0 failures" while Pi loaded Jig without its rules, approvals and protected paths.
+- `jig doctor` checks the sandbox for real instead of skipping it: the programs the sandbox needs, and a real command in a
+  new user namespace on Linux and WSL2, with the exact install command for the detected system. A missing program is a
+  failure that says how to install it, so a setup that would refuse every bash command no longer looks finished. macOS
+  says the sandbox is part of the system.
+- Pi's `write` and `edit` tools can no longer change what Pi loads from a project at its next start. The settings file,
+  MCP file, extensions, skills, prompts, themes, `SYSTEM.md`, `APPEND_SYSTEM.md`, the project package folders and
+  `.agents` are guarded in the working folder and every folder above it below the home folder, by path and whether or not
+  they exist; the message tells the agent why and to ask the person. Read still works, and normal project files are
+  unaffected. `bash` locks the same list from the same table, which gains `.pi/git`, `.pi/npm`, `SYSTEM.md` and
+  `APPEND_SYSTEM.md`. A person can still run `pi install -l` or edit the files themselves outside Pi; there is no new
+  override, and a team repository that keeps `.pi/skills` in git is now read-only to the agent, as it already was for
+  `bash`. The same now covers the home shell, session, git, agent and build start-up files, the project editor and agent
+  files, `.envrc`, `~/.local/bin`, and each repository's `.git/config` and `.git/hooks`; toolchain managers ask instead.
+  The bash side now reads the same table, and gains `~/.local/bin` and `.envrc`. A git operation that would change a guarded file (switch, merge, sync, rebase, cherry-pick, stash pop, restore,
+  worktree add, clone) asks the person first, naming the paths and commits; a normal switch does not ask. A file-tool
+  write outside the working folder, or outside a folder the person allowed with `/sandbox allow`, asks the same way;
+  inside it nothing changes, and with no terminal the ask is refused.
+
 ## [0.4.0] - 2026-11-05
 
 ### Added
 
 - `jig doctor` and `jig setup` run in a terminal, with no Pi session, model or provider login. Install the command with
-  `npm install -g --allow-git=root github:Dev-Mriganka/jig` (npm 12 turns git installs off by default; `#v0.4.0` pins a
+  `npm install -g --allow-git=root github:ClawdBuilder/jig` (npm 12 turns git installs off by default; `#v0.4.0` pins a
   release). `jig doctor` prints the same report as `/jig doctor`, with `ok`, `warn`, `fail` and `skip` levels, and exits 0
   with no failures, 1 with one; `--json` prints the report on stdout, `--network` tests the configured hosts and the latest
   release, and `--quiet` keeps warnings and failures. `jig setup` starts with which company setup you use and where, asks
@@ -34,7 +91,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   scope under `<cwd>/.pi/git/<host>/<path>`, with `.git` and the `@ref` stripped, and project packages read from
   `<cwd>/.pi/settings.json` too. npm packages are looked for at the folder Pi manages, with its global fallback. A package
   Pi lists but whose files are gone is a failure naming the folder, not "not installed"; the doctor's fix line is
-  `pi install git:github.com/Dev-Mriganka/jig`.
+  `pi install git:github.com/ClawdBuilder/jig`.
 - Pi's four packages are optional peers now, so a global install carries no copy of Pi: it is 51 MB instead of 215 MB,
   and the command stops with "jig needs Pi installed" when Pi is absent. The repository's tests pin them as dev
   dependencies, so `npm ci` and CI still have them.

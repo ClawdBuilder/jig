@@ -406,6 +406,13 @@ describe("locked paths", () => {
         });
         const set = rules(files);
         assert.ok(of(set, "locked").includes("/repos/main/.git/hooks"));
+        // Rewriting the pointer would send plain git to a folder of the agent's.
+        assert.ok(of(set, "locked").includes(`${CWD}/.git`));
+    });
+
+    test("a repository's .git folder stays writable: git has to write it", () => {
+        const set = rules(linux({ dirs: [`${CWD}/.git/hooks`] }));
+        assert.ok(!of(set, "locked").includes(`${CWD}/.git`));
     });
 
     test("the folder core.hooksPath names is locked", () => {
@@ -875,4 +882,19 @@ describe("a child agent whose role may not write", () => {
             false,
         );
     });
+});
+
+test("a core toolchain path with ask stays ask-first in the sandbox", () => {
+    const set = rules(linux({ dirs: [`${HOME}/.nvm`] }), {
+        protectedPaths: [
+            {
+                path: `${HOME}/.nvm`,
+                shown: "~/.nvm",
+                kind: "guarded",
+                source: "default",
+                ask: true,
+            },
+        ],
+    });
+    assert.equal(ruleFor(set, `${HOME}/.nvm/versions`)?.kind, "ask-first");
 });

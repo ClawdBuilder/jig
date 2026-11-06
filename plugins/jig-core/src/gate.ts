@@ -89,6 +89,26 @@ async function decideCall(
 
     const command = typeof input.command === "string" ? input.command : undefined;
     const cwd = ctx.cwd ?? process.cwd();
+    const fileDecision = checkFileTool(event.toolName, input, {
+        entries: policy.protectedPaths,
+        cwd,
+        home: homedir(),
+        canWrite: (absolute: string) => {
+            const fold = process.platform === "darwin" || process.platform === "win32";
+            const normalized = (value: string): string => {
+                const slashed = value.split("\\").join("/").replace(/\/+$/, "");
+                return fold ? slashed.toLowerCase() : slashed;
+            };
+            const inside = (folder: string): boolean => {
+                const path = normalized(folder);
+                const target = normalized(absolute);
+                return target === path || target.startsWith(`${path}/`);
+            };
+            if (inside(cwd)) return true;
+            if (state.sandbox?.active !== true) return false;
+            return (state.sandbox.allowedFolders?.() ?? []).some(inside);
+        },
+    });
     let verdict = decide({
         call: {
             tool: event.toolName,
@@ -104,11 +124,14 @@ async function decideCall(
         rules: policy.rules,
         sessionAllows: state.sessionAllows,
         hasUI: ctx.hasUI,
-        protectedRefusal: checkFileTool(event.toolName, input, {
-            entries: policy.protectedPaths,
-            cwd,
-            home: homedir(),
-        })?.reason,
+        // An ask needs a real terminal; RPC and child agents have no terminal of their own, so they are refused, as the floor says.
+        protectedRefusal:
+            fileDecision?.ask === true && process.stdin.isTTY !== true
+                ? fileDecision.reason
+                : fileDecision?.ask === true
+                  ? undefined
+                  : fileDecision?.reason,
+        protectedAsk: fileDecision?.ask === true && process.stdin.isTTY === true ? fileDecision.reason : undefined,
     });
 
     // The gates other plugins registered see the call once the rules have decided. They can only make it stricter, and a

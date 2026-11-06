@@ -125,6 +125,8 @@ export interface JigState {
     /** The sections of jig.json that plugins registered, with their checks. Registered when plugins load, before
      *  the file is read at session start. */
     sectionChecks: Map<string, SectionCheck>;
+    /** Sections of plugins Pi's settings filter out: a section kept in jig.json is off, not an unknown field. */
+    offSections?: ReadonlySet<string>;
     /** Defaults of plugins that never registered with `profiles.register`, per plugin section, laid under the personal section.
      *  The active company's defaults come on top of them (`effectiveDefaults`). */
     sectionDefaults: Map<string, unknown>;
@@ -335,6 +337,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
                     defaultProtectedPaths({
                         agentDir,
                         home,
+                        cwd: state.workingDir === "" ? process.cwd() : state.workingDir,
                         stateDir: stateDir(),
                         env,
                         pass: state.personal.config.secrets.pass,
@@ -399,6 +402,7 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
             replace: state.sectionReplace,
             oneOf: state.sectionOneOf,
             union: state.sectionUnion,
+            ...(state.offSections === undefined ? {} : { off: state.offSections }),
         });
     state.personal = read();
     state.configLoaded = true;

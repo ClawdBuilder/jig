@@ -59,6 +59,8 @@ export interface ProtectedEntry {
     shown: string;
     kind: "secret" | "guarded";
     source: "default" | "personal" | "company";
+    /** The write asks the person instead of being refused: a toolchain folder that runs later. */
+    ask?: boolean;
 }
 
 export interface RulesInput {
@@ -234,7 +236,10 @@ export function computeRules(input: RulesInput): RuleSet {
     // Hidden and locked: what jig-core keeps from Pi's file tools, company additions included. One list, so the file
     // tools and bash cannot disagree.
     for (const entry of input.protectedPaths) {
+        // .git/config is the file-tools-only exception: git has to write it, and the after-command audit keeps it clean.
+        if (entry.source === "default" && /(^|\/)\.git\/config$/.test(entry.path)) continue;
         if (entry.kind === "secret") add("hidden", entry.path, "credentials", CORE_SOURCE[entry.source]);
+        else if (entry.ask === true) add("ask-first", entry.path, "toolchain", CORE_SOURCE[entry.source]);
         else add("locked", entry.path, "pi", CORE_SOURCE[entry.source]);
     }
     // Hidden: the doors to other systems.
@@ -270,6 +275,9 @@ export function computeRules(input: RulesInput): RuleSet {
     }
     for (const repo of repos) {
         add("locked", path.posix.join(repo.commonDir, "hooks"), "hooks", "project repositories");
+        // A linked worktree's .git is a pointer file, and plain git follows it to wherever it says, hooks and config included.
+        const pointer = path.posix.join(repo.root, ".git");
+        if (files.type(pointer) === "file") add("locked", pointer, "hooks", "project repositories");
         const named = hooksPathOf(files, repo);
         if (named !== undefined) add("locked", named, "hooks", "project repositories (core.hooksPath)");
     }
