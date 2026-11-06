@@ -17,8 +17,8 @@ function tree(files: Record<string, string>): string {
 
 test("a plugin README needs its title and status line in order", () => {
     const root = tree({ "plugins/x/README.md": "<img>\n\n# jig-x: one\n" });
-    assert.ok(checkDocs(root).failures.some((one) => one.includes("title must be")));
-    assert.ok(checkDocs(root).failures.some((one) => one.includes("status line")));
+    assert.ok(checkDocs(root).failures.some((one: string) => one.includes("title must be")));
+    assert.ok(checkDocs(root).failures.some((one: string) => one.includes("status line")));
 });
 
 test("an unresolved link, an untagged block and a deprecated install all fail", () => {
@@ -26,7 +26,7 @@ test("an unresolved link, an untagged block and a deprecated install all fail", 
         "README.md": "[x](missing.md)\n\n```\ncode\n```\n\nnpm install -g @clawdbuilder/jig@0.4.1\n",
     });
     const failures = checkDocs(root).failures;
-    assert.ok(failures.some((one) => one.includes("link does not resolve")));
-    assert.ok(failures.some((one) => one.includes("no language tag")));
-    assert.ok(failures.some((one) => one.includes("names 0.4.1")));
+    assert.ok(failures.some((one: string) => one.includes("link does not resolve")));
+    assert.ok(failures.some((one: string) => one.includes("no language tag")));
+    assert.ok(failures.some((one: string) => one.includes("names 0.4.1")));
 });
