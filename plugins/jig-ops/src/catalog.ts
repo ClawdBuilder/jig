@@ -287,11 +287,39 @@ export function describeServices(catalog: Catalog): string {
 }
 
 /** The service a call names. A name nobody configured is invalid input, and the message lists the ones there are. */
+export function nearestName(raw: string, names: readonly string[]): string | undefined {
+    const name = raw.slice(0, 80);
+    let best: string | undefined;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const candidate of names) {
+        let previous = Array.from({ length: name.length + 1 }, (_unused, index) => index);
+        for (let right = 1; right <= candidate.length; right++) {
+            const next = [right];
+            for (let left = 1; left <= name.length; left++) {
+                next[left] = Math.min(
+                    (previous[left] ?? 0) + 1,
+                    (next[left - 1] ?? 0) + 1,
+                    (previous[left - 1] ?? 0) + (name[left - 1] === candidate[right - 1] ? 0 : 1),
+                );
+            }
+            previous = next;
+        }
+        const score = previous[name.length] ?? Infinity;
+        if (score < bestScore && score <= Math.max(2, Math.floor(name.length / 3))) {
+            best = candidate;
+            bestScore = score;
+        }
+    }
+    return best;
+}
+
 export function findService(catalog: Catalog, who: string, service: unknown): Service {
     const found = typeof service === "string" ? catalog.services.get(service) : undefined;
     if (found === undefined) {
+        const near = typeof service === "string" ? nearestName(service, [...catalog.services.keys()]) : undefined;
         throw new InputError(
-            `${who}: no service named ${shown(service, 30)}. Known services: ${describeServices(catalog)}`,
+            `${who}: no service named ${shown(service, 30)}. Known services: ${describeServices(catalog)}` +
+                (near === undefined ? "" : `. Did you mean ${near}?`),
         );
     }
     return found;
@@ -345,7 +373,17 @@ export function findCiService(catalog: Catalog, who: string, name: unknown, envi
     const named = withCi.map((service) => `${service.name} (${service.ci.system})`);
     const known = withCi.length === 0 ? "none have one" : shortList(named);
     if (found === undefined) {
-        throw new InputError(`${who}: no service named ${shown(name, 30)}. Services with a ci entry: ${known}`);
+        const near =
+            typeof name === "string"
+                ? nearestName(
+                      name,
+                      withCi.map((service) => service.name),
+                  )
+                : undefined;
+        throw new InputError(
+            `${who}: no service named ${shown(name, 30)}. Services with a ci entry: ${known}` +
+                (near === undefined ? "" : `. Did you mean ${near}?`),
+        );
     }
     const service = ciServiceOf(found);
     if (service === undefined) {

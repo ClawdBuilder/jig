@@ -101,6 +101,8 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | `me` | none | Your account id (Cloud) or user name (Data Center), for `commented` when `/myself` is unavailable |
 | `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` (see [Commented by](docs/commented.md)) |
 
+A screen field whose schema says `array` takes one value as a one-item list; the preview says when it wrapped one.
+
 The fields in detail are in [Configuration](docs/configuration.md).
 
 | `auth` | Signs in with | For |

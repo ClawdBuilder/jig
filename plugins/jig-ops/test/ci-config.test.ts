@@ -337,6 +337,13 @@ describe("finding the service of a ci call", () => {
         assert.throws(() => findCiService(read, "ci", 5), /no service named 5/);
     });
 
+    test("a near name is suggested, and a huge name does not stall the check", () => {
+        assert.throws(() => findCiService(read, "ci", "orders-ap"), /Did you mean orders-api\?/);
+        const started = performance.now();
+        assert.throws(() => findCiService(read, "ci", "x".repeat(100_000)), /no service named/);
+        assert.ok(performance.now() - started < 2_000, "the nearest-name check is capped");
+    });
+
     test("services of a repository are found whatever the case of its name, and only those with a ci entry", () => {
         const raw = section();
         (raw.services as Record<string, Raw>).billing = {

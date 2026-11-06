@@ -204,11 +204,11 @@ describe("a call with the wrong shape is refused with the usage line", () => {
     test("a missing or unknown action", () => {
         assert.match(
             said({}) as string,
-            /^ci needs action: status, runs, run, log, rerun, trigger, watch\. Usage: ci \{action, service, \.\.\.\}/,
+            /^ci needs action: services, status, runs, run, log, rerun, trigger, watch\. Usage: ci \{action, service\?, \.\.\.\}/,
         );
         assert.match(
             said({ action: "delete" }) as string,
-            /^ci: action must be one of status, runs, run, log, rerun, trigger, watch \(got "delete"\)/,
+            /^ci: action must be one of services, status, runs, run, log, rerun, trigger, watch \(got "delete"\)/,
         );
     });
 
@@ -282,5 +282,19 @@ describe("without a usable catalog", () => {
     test("the tool says ops is not set up and does nothing", () => {
         h.configure({ nonsense: 1 });
         assert.match(said({ action: "status" }) as string, /^ops is not set up/);
+    });
+});
+
+test("services refuses parameters it does not use", () => {
+    h.configure();
+    assert.match(said({ action: "services", service: undefined, branch: "main" }) as string, /does not use branch/);
+});
+
+test("services is a local read with no service", () => {
+    h.configure();
+    assert.deepEqual(said({ action: "services", service: undefined }), {
+        action: "services",
+        environment: "local",
+        effect: "read",
     });
 });

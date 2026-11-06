@@ -21,11 +21,16 @@ export const MAX_PARAMETERS = 20;
 
 export const parameters = Type.Object(
     {
-        action: stringEnum(CI_ACTIONS, { description: "status, runs, run, log, rerun, trigger or watch" }),
-        service: Type.String({
+        action: stringEnum(CI_ACTIONS, {
             description:
-                "A service from the ops catalog that has a ci entry. An unknown name is refused with the known ones",
+                "services lists the catalog's CI services; status, runs, run, log, rerun, trigger or watch act on one",
         }),
+        service: Type.Optional(
+            Type.String({
+                description:
+                    "A service from the ops catalog that has a ci entry. Not needed for services. An unknown name is refused with the known ones",
+            }),
+        ),
         environment: Type.Optional(
             Type.String({
                 minLength: 1,
@@ -160,7 +165,8 @@ function fail(action: CiAction, message: string): never {
 }
 
 function checkAction(value: unknown): CiAction {
-    const USAGE = "Usage: ci {action, service, ...} with action status, runs, run, log, rerun, trigger or watch";
+    const USAGE =
+        "Usage: ci {action, service?, ...} with action services, status, runs, run, log, rerun, trigger or watch";
     if (!present(value)) throw new InputError(`ci needs action: ${CI_ACTIONS.join(", ")}. ${USAGE}`);
     if (typeof value === "string" && (CI_ACTIONS as readonly string[]).includes(value)) return value as CiAction;
     throw new InputError(`ci: action must be one of ${CI_ACTIONS.join(", ")} (got ${shown(value)}). ${USAGE}`);
@@ -295,6 +301,12 @@ function rowCheck(
 export function parseCall(input: Readonly<Record<string, unknown>>, catalog: Catalog | undefined): Call {
     if (catalog === undefined) throw notSetUp();
     const action = checkAction(input.action);
+    if (action === "services") {
+        const extra = Object.keys(input).filter((key) => key !== "action" && key !== "service");
+        if (extra.length > 0)
+            throw new InputError(`ci services does not use ${extra.join(", ")}. Usage: ci services {action}`);
+        return { action, service: undefined as never, info: undefined as never, params: {} };
+    }
     if (!present(input.service)) {
         const withCi = [...catalog.services.values()].filter((service) => service.ci !== undefined);
         const known = shortList(withCi.map((service) => `${service.name} (${service.ci?.system})`));
