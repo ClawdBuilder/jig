@@ -25,6 +25,7 @@ import { startCommentWatch, watchingText } from "./pr-watch.ts";
 import { afterwards, readTemplate, ruledTitle } from "./pr-write.ts";
 import type { Call, Planned } from "./previews.ts";
 import { digest, reviewPreview } from "./previews.ts";
+import { InputError } from "../../jig-core/src/kit/values.ts";
 import { baseBranch, resolveRepo } from "./repo.ts";
 import { currentBranch, revParse } from "./run.ts";
 import { lines } from "./text.ts";
@@ -71,16 +72,16 @@ export async function planCreate(params: CreateParams, call: Call, home: GitlabH
     }
     const body = checkBody(params.body);
     const branch = params.branch === undefined ? await currentBranch(repo.root, signal) : checkBranch(params.branch);
-    if (!branch) throw new Error(`HEAD is detached in ${repo.name}; pass branch`);
+    if (!branch) throw new InputError(`HEAD is detached in ${repo.name}; pass branch`);
     const base =
         params.base === undefined ? await baseBranch(repo, settings, signal) : checkBranch(params.base, "base");
     if (base === branch)
-        throw new Error(`head and base are both ${branch}; open the merge request from another branch`);
+        throw new InputError(`head and base are both ${branch}; open the merge request from another branch`);
     const local = await revParse(repo.root, `refs/heads/${branch}`, signal);
     const remote = await revParse(repo.root, `refs/remotes/origin/${branch}`, signal);
-    if (!local) throw new Error(`branch ${branch} does not exist locally`);
+    if (!local) throw new InputError(`branch ${branch} does not exist locally`);
     if (remote !== local)
-        throw new Error(
+        throw new InputError(
             `${branch} is not pushed to origin at its local tip; run git push first (this tool does not push)`,
         );
     const gl: Gl = { home, repo, call };

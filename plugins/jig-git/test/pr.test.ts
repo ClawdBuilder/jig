@@ -526,7 +526,7 @@ test("create, the reply was lost and the pull request exists: one pr list says s
     const order = h.gh.calls().map((call) => call.args.slice(0, 2).join(" "));
     assert.deepEqual(
         order,
-        ["pr list", "pr list", "pr create", "pr list"],
+        ["pr list", "repo view", "pr list", "repo view", "pr create", "pr list"],
         "the reads of the two plans, the write, then exactly one read",
     );
     const events = h.announced.filter((entry) => entry.event === "jig-git:pushed").map((entry) => entry.payload);
@@ -560,7 +560,7 @@ test("a definite refusal is a failure with gh's reason, and nothing is checked",
     assert.match(result.error?.message ?? "", /^gh pr create failed: GraphQL: A pull request already exists/);
     assert.deepEqual(
         h.gh.calls().map((call) => call.args.slice(0, 2).join(" ")),
-        ["pr list", "pr list", "pr create"],
+        ["pr list", "repo view", "pr list", "repo view", "pr create"],
         "nothing is read after a refusal that is not a lost reply",
     );
 });
@@ -959,4 +959,28 @@ test("a call the action does not take, or lacks what it needs, is refused with t
         /^pr: unknown action "approve"; use one of view, list, comments, create, edit, ready, comment, reply, resolve, review, merge, watch$/,
     );
     assert.equal(h.gh.calls().length, 0, "no gh call was made");
+});
+
+test("create: no body is refused before any approval or gh write", async () => {
+    const r = featureRepo();
+    const before = h.gh.calls().length;
+    const result = await h.call("pr", { action: "create", repo: r.name, title: "T" });
+    assert.match(result.error?.message ?? "", /^pr create needs body/);
+    assert.equal(
+        h.gh
+            .calls()
+            .slice(before)
+            .filter((call) => call.args[0] === "pr" && call.args[1] === "create").length,
+        0,
+    );
+    assert.equal(writes("create").length, 0);
+});
+
+test("create: an account that cannot see the repo is refused before approval", async () => {
+    const r = featureRepo();
+    h.gh.on("repo view", { code: 1, stderr: "Could not resolve to a Repository with the name 'acme/svc'." });
+    h.gh.on("pr list", { json: [] });
+    const result = await h.call("pr", { action: "create", repo: r.name, title: "T", body: BODY });
+    assert.match(result.error?.message ?? "", /gh account cannot see/);
+    assert.equal(writes("create").length, 0);
 });

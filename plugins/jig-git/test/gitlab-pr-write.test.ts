@@ -897,3 +897,18 @@ test("a call the action does not take, or lacks what it needs, is refused with t
     );
     assert.equal(h.glab.calls().length, 0);
 });
+
+test("create: no body is refused before any glab write", async () => {
+    const p = project();
+    h.glab.on("api", { json: [] }, ["merge_requests?source_branch="]);
+    const before = h.glab.calls().length;
+    const result = await h.call("pr", { action: "create", repo: p.r.name, title: "T" });
+    assert.match(result.error?.message ?? "", /^pr create needs body/);
+    assert.equal(
+        h.glab
+            .calls()
+            .slice(before)
+            .filter((call) => call.args[0] === "pr" && call.args[1] === "create").length,
+        0,
+    );
+});

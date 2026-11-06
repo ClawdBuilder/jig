@@ -219,6 +219,7 @@ interface LogParams {
     since?: string;
     until?: string;
     grep?: string;
+    pickaxe?: string;
     n?: number;
     format?: string;
 }
@@ -242,6 +243,7 @@ export function planLog(params: LogParams, call: Call): Planned {
     if (params.since !== undefined) args.push(`--since=${checkLine(params.since, "since")}`);
     if (params.until !== undefined) args.push(`--until=${checkLine(params.until, "until")}`);
     if (params.grep !== undefined) args.push(`--grep=${checkLine(params.grep, "grep")}`, "--regexp-ignore-case");
+    if (params.pickaxe !== undefined) args.push(`-S${checkLine(params.pickaxe, "pickaxe")}`);
     if (params.range !== undefined) args.push(checkRange(params.range));
     const paths = params.paths === undefined || params.paths.length === 0 ? [] : checkPaths(params.paths);
     return readOnly(`git log in ${params.repo ?? "here"}`, async () => {

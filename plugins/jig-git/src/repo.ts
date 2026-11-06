@@ -84,8 +84,35 @@ export async function resolveRepo(input: string | undefined, signal?: AbortSigna
     const workspace = await workspaceRoot(signal);
     const byName = !path.isAbsolute(input);
     if (byName && !DIR_NAME.test(input)) {
+        if (/^[^/\s]+\/[^/\s]+$/.test(input)) {
+            const matches: string[] = [];
+            try {
+                for (const name of fs.readdirSync(workspace)) {
+                    if (name.startsWith(".")) continue;
+                    const candidate = path.join(workspace, name);
+                    try {
+                        if (!fs.statSync(candidate).isDirectory()) continue;
+                        const root = await topLevel(candidate, signal);
+                        if (root === undefined) continue;
+                        const remote = parseRemote(await originUrl({ root, name }, signal));
+                        if (remote?.slug === input) matches.push(name);
+                    } catch {
+                        // Not a repository.
+                    }
+                }
+            } catch {
+                // The workspace itself could not be listed.
+            }
+            if (matches.length === 1)
+                return { root: path.join(workspace, matches[0] as string), name: matches[0] as string };
+            throw new Error(
+                matches.length === 0
+                    ? `repo "${input.slice(0, 80)}": no folder in ${workspace} has that origin`
+                    : `repo "${input.slice(0, 80)}" matches several folders: ${matches.slice(0, 10).join(", ")}; use one name`,
+            );
+        }
         throw new Error(
-            `repo "${input.slice(0, 80)}" must be a folder name in ${workspace} or an absolute path inside a git work tree`,
+            `repo "${input.slice(0, 80)}" must be a folder name in ${workspace}, an owner/name whose origin matches one folder, or an absolute path inside a git work tree`,
         );
     }
     if (!byName && input.split("/").includes(".."))
