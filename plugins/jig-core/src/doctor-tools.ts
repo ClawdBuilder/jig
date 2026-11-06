@@ -465,6 +465,7 @@ async function accountChecks(
                     "gh",
                     ["repo", "view", `${host}/${repo}`, "--json", "name"],
                     {
+                        credential: { program: "gh", account, host },
                         timeoutMs: options.timeoutMs ?? 5000,
                         maxOutputBytes: 8192,
                         ...(context.workingDir === "" ? {} : { cwd: context.workingDir }),
