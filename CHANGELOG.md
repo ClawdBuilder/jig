@@ -6,6 +6,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- `logs` stops a search at 80 seconds and returns what it found, with the windows it could not search named, instead of the
+  bare “This operation was aborted”; two real searches took 108 and 120 seconds, so they now return a partial result with a
+  line saying to narrow the window or the environment.
+
 - `pr create` fails on a missing body or a repository the configured `gh` account cannot see before it asks, so an approval
   is not spent on a call that cannot work; `repo` accepts `owner/name` when one workspace folder has that origin; `git log`
   accepts `pickaxe` (`-S`) and the prompt names `log`, `show` and `blame`.
