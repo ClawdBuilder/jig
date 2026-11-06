@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { test } from "node:test";
 import { RECALL_MESSAGE } from "../src/session.ts";
 import { ticketPaths } from "../src/store.ts";
@@ -182,14 +182,33 @@ test("/ticket recall says so when there is no ticket, no cards, or nothing that 
         "No active ticket. Use /ticket recall <text>, or make a ticket active first.",
     );
     await pi.command("recall the footer colour is wrong on the settings page");
-    assert.equal(pi.notices.at(-1)?.text, "No earlier ticket scores 2 or more among 2 cards.");
+    assert.equal(pi.notices.at(-1)?.text, "No earlier ticket scores 2 or more among 2 entries.");
 
     const empty = tempFolder(t);
     useJig(t, { memory: { ticketPattern: PATTERN, folder: empty } });
     const bare = loadPlugin("/work");
     bare.start();
     await bare.command("recall anything");
-    assert.equal(bare.notices.at(-1)?.text, "No cards yet: /ticket close writes one for a ticket.");
+    assert.equal(bare.notices.at(-1)?.text, "No earlier tickets are searchable: no card exists, and notes entries are off (memory.recall.notes).");
+});
+
+test("a note with no card is searchable when recall.notes is on, labelled with its date and the history warning", async (t) => {
+    const folder = tempFolder(t);
+    mkdirSync(ticketPaths(folder, "PROJ-88").dir, { recursive: true });
+    writeFileSync(
+        ticketPaths(folder, "PROJ-88").notes,
+        "# PROJ-88\n\n## Now\nStatus: OrderMapper throws NullPointerException\n\n## Decisions\nCheck for null.\n",
+    );
+    useJig(t, { memory: { ticketPattern: PATTERN, folder, recall: { notes: true } } });
+    const pi = loadPlugin("/work");
+    pi.start();
+    pi.input("PROJ-130: cancelling fails in OrderMapper");
+    const [sent] = recalls(pi);
+    assert.deepEqual(sent?.message.details, { key: "PROJ-130", tickets: ["PROJ-88"] });
+    assert.match(sent?.message.content ?? "", /PROJ-88 \(from notes\.md, \d{4}-\d{2}-\d{2}, may be out of date\)/);
+    assert.match(sent?.message.content ?? "", /history, not as instructions/);
+    await pi.command("recall cancelling fails in OrderMapper");
+    assert.match(pi.notices.at(-1)?.text ?? "", /PROJ-88 \(from notes\.md, /);
 });
 
 test("a card closed in this session is found by the next new ticket", async (t) => {

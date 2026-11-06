@@ -226,6 +226,7 @@ test("the message gives the ticket, why it matched, and its Cause and Fix", () =
         names: ["OrderService", "NullPointerException"],
         error: undefined,
         words: [],
+        source: "card",
         cause: "The mapper read a null.",
         fix: "Check for null.",
     };
@@ -248,6 +249,7 @@ test("a reason with an error line cuts it, and a reason with all three kinds joi
         names: ["PROJ-9", "OrderService"],
         error: `ERROR ${"x".repeat(100)}`,
         words: ["retry", "queue"],
+        source: "card",
         cause: "",
         fix: "",
     };

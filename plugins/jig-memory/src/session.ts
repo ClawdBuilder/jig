@@ -26,6 +26,7 @@ import {
     verifyCard,
 } from "./close.ts";
 import { loadCards } from "./cards.ts";
+import { loadNoteIndex } from "./notes-index.ts";
 import { CheckError, openChecks, openChecksText } from "./checks.ts";
 import { folderOf, recallOf, ticketRegex } from "./config.ts";
 import type { MemorySettings, RecallSettings } from "./config.ts";
@@ -154,6 +155,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
                 loadCards(mem.folder),
                 buildQuery({ ticket: key, text, pattern: mem.pattern }),
                 mem.recall,
+                mem.recall.maxNotes === 0 ? undefined : loadNoteIndex(mem.folder, mem.pattern),
             );
             if (matches.length === 0) return;
             pi.sendMessage(
@@ -228,16 +230,24 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
                 });
             }
             const cards = loadCards(mem.folder);
-            const searched = Object.values(cards).filter((card) => card.valid).length;
+            const notes = mem.recall.maxNotes === 0 ? undefined : loadNoteIndex(mem.folder, mem.pattern);
+            const cardCount = Object.values(cards).filter((card) => card.valid).length;
+            const noteCount = notes === undefined ? 0 : Object.keys(notes).filter((ticket) => cards[ticket]?.valid !== true).length;
+            const searched = cardCount + noteCount;
             if (searched === 0) {
-                note(ctx, "No cards yet: /ticket close writes one for a ticket.");
+                note(
+                    ctx,
+                    mem.recall.maxNotes === 0
+                        ? "No earlier tickets are searchable: no card exists, and notes entries are off (memory.recall.notes)."
+                        : "No earlier tickets yet: a ticket is searchable once its notes.md exists, and /ticket close writes a card.",
+                );
                 return;
             }
-            const matches = recall(cards, query, mem.recall);
+            const matches = recall(cards, query, mem.recall, notes);
             note(
                 ctx,
                 matches.length === 0
-                    ? `No earlier ticket scores ${mem.recall.minScore} or more among ${searched} card${searched === 1 ? "" : "s"}.`
+                    ? `No earlier ticket scores ${mem.recall.minScore} or more among ${searched} entr${searched === 1 ? "y" : "ies"}.`
                     : `Related earlier tickets (${searched} card${searched === 1 ? "" : "s"} searched):\n\n${formatMatches(matches)}`,
             );
         } catch (error) {
