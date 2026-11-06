@@ -1,13 +1,16 @@
 # jig-memory: ticket folders, notes and recall
 
-**Status: ticket folders, cards and recall built.** Tested against a fake `jig-core`
-and a fake Pi, not yet in a real Pi session. The memory keeper is design (see
-[Later](docs/later.md)).
+**Status: ticket folders, cards, derived notes entries and recall built.** Tested
+against a fake `jig-core`, a fake Pi, and a stock Pi 1.5.0 loaded from this
+checkout through `pi install` (invented tickets only). The memory keeper is design (see [Later](docs/later.md)). The derived notes
+entries are off by default: the real-ticket test found too much noise and little
+recall (see [Recall](docs/recall.md#measured-on-our-own-tickets)).
 
 `jig-memory` keeps what the agent learns about a [ticket](../../docs/glossary.md#tickets-and-workflows)
 in files that outlive the session, sums a closed ticket up in a short
-[card](../../docs/glossary.md#tickets-and-workflows), and hands the agent the
-cards of related earlier tickets when a new ticket starts.
+[card](../../docs/glossary.md#tickets-and-workflows), and hands the agent related
+earlier tickets when a new ticket starts: their cards, or entries derived from
+their notes when no card exists.
 
 For example, naming `PROJ-123` in a message creates that ticket's folder with a
 notes file, and after a compaction the notes come back to the agent as a
@@ -16,7 +19,7 @@ error starts with that card in front of the agent.
 
 ![Three kinds of memory: ticket memory today, organizational and personal memory later, and the paths between them](../../docs/img/memory-kinds.svg)
 
-*Three kinds of memory and the paths between them. Pi writes ticket memory as it works, and a card at close; recall hands Pi related cards when a new ticket starts. The organizational and personal memory, and the memory keeper that proposes it, are still design.*
+*Three kinds of memory and the paths between them. Pi writes ticket memory as it works, and a card at close; recall hands Pi related cards, or entries derived from notes, when a new ticket starts. The organizational and personal memory, and the memory keeper that proposes it, are still design.*
 
 ## The ticket folder
 
@@ -79,8 +82,9 @@ the agent said it would do before the next step ([Handoff](docs/handoff.md)).
   rejects a card that lacks one or has one too long (see [Cards](docs/cards.md)).
 - **Recall.** When a new ticket becomes active, other tickets' cards are scored by
   shared keys, identifiers and error lines, then by keyword search, and the best
-  few arrive as one message (see [Recall](docs/recall.md)). Nothing arrives when
-  nothing scores enough.
+  few arrive as one message. If `memory.recall.notes` is on, entries derived from
+  earlier notes are searched too, labelled with their date and that they may be out
+  of date (see [Recall](docs/recall.md)). Nothing arrives when nothing scores enough.
 
 ## Configure
 
@@ -93,7 +97,9 @@ plugin's rules. An error names the key, and the plugin then uses its defaults.
 | `folder` | `~/.local/share/jig/tickets` | Where ticket folders live: an absolute path, or one that starts with `~/` |
 | `recall.enabled` | `true` | Run recall when a new ticket becomes active |
 | `recall.max` | `3` | Most cards in one recall message, from 1 to 10 |
-| `recall.minScore` | `2` | The score a card needs; see [Recall](docs/recall.md#the-threshold) |
+| `recall.minScore` | `2` | The score an entry needs; see [Recall](docs/recall.md#the-threshold-and-the-budget) |
+| `recall.notes` | `false` | Search entries derived from notes for tickets with no valid card; off because the real-ticket test was noisy |
+| `recall.maxNotes` | `1` | Most derived notes entries in one result, from 0 to `max`; 0 turns them off |
 
 Field notes and an example: [Configure](docs/configure.md).
 
@@ -113,8 +119,9 @@ jig-memory/
             message.ts (the notes message and the reminder), clip.ts, config.ts,
             extract.ts (keys, identifiers, error lines), card.ts (the card file),
             material.ts (what a ticket holds), cards.ts (the .cards.json index),
-            bm25.ts (keyword search), recall.ts (scoring and its message), close.ts
+            bm25.ts (keyword search), notes-index.ts (derived entries), recall.ts (scoring and its message), close.ts
   skills/   ticket-memory/SKILL.md: dating notes, keeping ## Now current, pasted evidence, open checks
+  scripts/  recall-eval.mjs (recall on a tickets folder, aggregates only)
   test/     one file per module, support.ts (a fake jig-core and a fake Pi), and
             recall-eval/ (invented cards and queries, and the recall measure)
   docs/     the detail pages below
