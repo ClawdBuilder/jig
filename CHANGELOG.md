@@ -15,6 +15,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Fixed
 
+- Qodo's review findings on the package and guards are fixed: nested `.git` and project paths are guarded by shape and at any
+  depth, case is folded, the guard resolves the default base and remote names, blob ids are compared after a fetch, a
+  remote-only merge branch is found, toolchain folders ask instead of locking, an unsafe session root is refused, and the
+  doctor's absolute-program and loader-incompatible-package false failures are gone. Finding 2 is included; its blob check
+  is in this release.
 - A sandbox session open for more than a day no longer loses its folder to the next Pi or child agent: a folder is removed
   only when the process that owns it is gone, and a session whose folder vanished recreates it on restart. Background task
   cleanup follows the same owner rule.

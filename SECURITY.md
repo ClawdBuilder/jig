@@ -7,7 +7,7 @@ production results are masked. A report that breaks one of those promises is the
 
 | Version | Supported |
 |---|---|
-| the latest tag, `v0.3.0` today | yes, with fixes in a patch release |
+| the latest release on the Releases page | yes, with fixes in a patch release |
 | an older tag | no: move to the latest, or open an issue that names why you cannot |
 | a branch or a commit | no: it is not a release, and it changes |
 

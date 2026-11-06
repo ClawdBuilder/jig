@@ -64,7 +64,7 @@ says what that covers and which names Jig keeps stable for company plugins.
 pi install npm:@clawdbuilder/jig
 ```
 
-To pin a release, name it: `pi install npm:@clawdbuilder/jig@0.4.0`. From an unreleased checkout the `git:` form still
+To pin a release, name it: `pi install npm:@clawdbuilder/jig@0.4.2`. From an unreleased checkout the `git:` form still
 works: `pi install git:github.com/ClawdBuilder/jig`.
 Pi keeps a tag or a commit pinned and never moves it. [Releases](docs/releases.md) says what a version means
 and how one is cut.
@@ -76,7 +76,7 @@ and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
 For the setup questions themselves, run `jig setup` in a terminal, outside Pi: no Pi session, model or provider login
 is needed. `jig doctor` there prints the same report as `/jig doctor` and exits non-zero when something failed.
 `pi install` copies a package but does not link programs, so get the command with
-`npm install -g @clawdbuilder/jig`. Add `@0.4.0` to pin a release; from a checkout,
+`npm install -g @clawdbuilder/jig`. Add `@0.4.2` to pin a release; from a checkout,
 `npm install -g --install-links .` does the same.
 [Setup and doctor](docs/setup-and-doctor.md) has the exit codes and the PATH notes.
 

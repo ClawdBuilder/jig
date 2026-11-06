@@ -162,3 +162,8 @@ jig-core/
 - [Plugin contract](docs/plugin-contract.md): what a plugin gets from `jig-core`
 - [Reuse](../../docs/reuse.md#tool-manager): what `jig-core` borrows from
   `@gotgenes/pi-permission-system`, and why it is not a dependency
+
+## The doctor in 0.4.2
+
+The doctor starts the sandbox broker for real, reports a missing broker or built-in roles folder, and names every Jig copy
+Pi loads with its version. The command's npm package uses the `/**` file patterns that npm 10 and 11 read correctly.

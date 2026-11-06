@@ -138,3 +138,6 @@ the paging helpers, the layout of the log and the order of the group stop are ad
 
 Waking on a pattern, limiting repeats and holding a message while one is on its way are
 behaviours described in aliou/pi-processes's README. No code was taken from it.
+
+Since 0.4.2 a session folder is removed by owner liveness (pid plus start token), not age, and an ownerless folder is left;
+the background cleanup follows the same rule.

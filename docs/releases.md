@@ -14,7 +14,7 @@ newer than the version they had, once, after an update, so every entry is writte
    compares its tarball integrity with npm (a version already there is skipped only on an exact match, and a mismatch fails),
    publishes `@clawdbuilder/jig` with provenance, confirms the registry has the version, and only then writes the GitHub
    release. So `npm install -g @clawdbuilder/jig@<version>` and `pi install npm:@clawdbuilder/jig@<version>` get the same
-   release. The repository needs an `NPM_TOKEN` secret.
+   release. The repository secret `NPM_TOKEN` supplies npm authentication; Trusted Publishing is a later step.
 6. **Tag and push both.** The tag is the release:
 
 ```bash

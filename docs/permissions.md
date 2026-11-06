@@ -194,3 +194,9 @@ example below is illustrative:
 One line per tool, with its environment, effect, effective decision and the
 source of each, including tools Jig did not write. A tool still on the unknown
 default is flagged, so you can classify it.
+
+## Nested repositories and worktrees
+
+The file tools refuse writes to `.git/config`, `.git/hooks/`, `.git/config.worktree`, `.git/worktrees/<name>/config`
+(and its `.worktree` form) and `.git/info/attributes` at any depth, by path shape, including a linked worktree whose
+`.git` is a file. Toolchain folders ask rather than refuse; a no-screen run is refused. This is the 0.4.2 floor.

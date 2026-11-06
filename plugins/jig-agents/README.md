@@ -274,3 +274,8 @@ jig-agents/
 - [Options](docs/options.md): the Pi store's packages compared, how others specialise a subagent, and what the earlier harness taught
 - [Design](docs/design.md): launch, the role's policy, approvals, limits, results, configuration, tests
 - [Not verified](docs/not-verified.md): what only a real model run can show
+
+## A missing roles folder
+
+If `plugins/jig-agents/agents` is missing, the install is broken: `jig doctor` fails and `loadRoles` names the missing
+built-in folder. A person's own optional roles folder may be absent without a problem.
