@@ -107,6 +107,7 @@ export function piSelfUpdateCommands(
     settings: { selfUpdateCommand?: string[] },
     version: string,
 ): InstallCommand[] | { problem: string } {
+    const method = config.detectInstallMethod();
     const fromEnv = process.env.PI_SELF_UPDATE_COMMAND?.trim();
     const configured = config.getConfiguredSelfUpdateArgv(settings.selfUpdateCommand);
     if (configured !== undefined) {
@@ -126,7 +127,7 @@ export function piSelfUpdateCommands(
     });
     if (command === undefined) {
         return {
-            problem: `${config.getSelfUpdateUnavailableInstruction(PI, undefined, {
+            problem: `Pi was installed by ${method}. ${config.getSelfUpdateUnavailableInstruction(PI, undefined, {
                 packageName: PI,
                 installSpec: `${PI}@${version}`,
             })} Nothing was changed.`,
