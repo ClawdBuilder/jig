@@ -26,6 +26,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   system collections and credential-like fields.
 
 ### Changed
+- `logs` stops a search at 80 seconds and returns what it found, with the windows it could not search named, instead of the
+  bare “This operation was aborted”; two real searches took 108 and 120 seconds, so they now return a partial result with a
+  line saying to narrow the window or the environment.
 
 - `tool_search` runs without asking: it only loads a tool definition, and the permission gate still decides each real
   call.
