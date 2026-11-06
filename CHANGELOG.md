@@ -4,21 +4,35 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- A ticket with notes is searchable before it is closed: `jig-memory` derives a bounded entry from its `## Now` and
+  `## Decisions`, searches it with recall, and labels it as from notes with its date and that it may be out of date.
+  Automatic recall needs a shared name, ID or error; `/ticket recall` also takes a rare word, and hyphenated tool names
+  count as names. `memory.recall.notes` turns it on; it is off by default until the hand-label numbers clear the bar.
+  `scripts/recall-eval.mjs` measures a folder without printing content, takes hand labels with `--labels`, and scores
+  top 3 independently of the display cap. An automatic recall message is recorded for `jig-lens` with its entry count
+  and no text.
+
 ### Changed
 
 - `pr create` fails on a missing body or a repository the configured `gh` account cannot see before it asks, so an approval
   is not spent on a call that cannot work; `repo` accepts `owner/name` when one workspace folder has that origin; `git log`
   accepts `pickaxe` (`-S`) and the prompt names `log`, `show` and `blame`.
+### Added
+
+- A ticket with notes is searchable before it is closed: `jig-memory` derives a bounded entry from its `## Now` and
+  `## Decisions`, searches it with recall, and labels it as from notes with its date and that it may be out of date.
+  Automatic recall needs a shared name, ID or error; `/ticket recall` also takes a rare word, and hyphenated tool names
+  count as names. `memory.recall.notes` turns it on; it is off by default until the hand-label numbers clear the bar.
+  `scripts/recall-eval.mjs` measures a folder without printing content, takes hand labels with `--labels`, and scores
+  top 3 independently of the display cap. An automatic recall message is recorded for `jig-lens` with its entry count
+  and no text.
 
 ## [0.4.3] - 2026-11-06
 
 ### Added
 
-- A ticket with notes is searchable before it is closed: `jig-memory` derives a bounded entry from its `## Now` and
-  `## Decisions`, searches it with recall, and labels it as from notes with its date and that it may be out of date.
-  Derived entries need a shared name, ID, error or rare word, and hyphenated tool names count as names. `memory.recall.notes`
-  turns it on; it is off by default until the person decides on the hand-label numbers. `scripts/recall-eval.mjs` measures
-  a folder without printing content, takes hand labels with `--labels`, and scores top 3 independently of the display cap.
 - `ci services` lists the ops catalog's services that have a CI entry, one line each with its system; an unknown service
   name now suggests the nearest configured one.
 - `jira create` sends one value as a one-item list when the create screen's schema says the field is an array, and says so

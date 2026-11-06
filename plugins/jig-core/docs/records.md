@@ -19,7 +19,12 @@ it once.
 
 **Facts** are a few named numbers or short codes that a Jig tool adds to its
 own record, as declared in its contract: for example, tests passed and failed,
-or a CI run's conclusion. They are never free text. The limits:
+or a CI run's conclusion. They are never free text.
+
+`jig-memory` writes one line for an automatic recall message that is not a tool
+call: tool `memory`, action `recall`, plugin `jig-memory`, outcome `ok`, and
+`facts.entries`, the number of entries in the message. It carries no message text
+or note text; `jig-lens` counts it like any other call. The limits:
 - a string over 64 characters is dropped, and so is anything that is not a
   number, a flag or a string;
 - a fact whose name is over 64 characters is dropped too;

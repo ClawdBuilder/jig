@@ -54,15 +54,20 @@ wins for its own ticket.
 
 ## The threshold and the budget
 
-A derived entry reaches the agent only with real evidence: a shared ticket key,
-identifier, ID or error line, or a word that is rare in this folder. A word is
-rare when BM25's relative rarity is at least 0.6 — about three of seventeen
-tickets, or six of 1,700 — so the rule does not need a different number for a
-large folder. Common words alone never surface a note, however many of them
-match. Six generic words (`one`, `still`, `branch`, `review`, `plan`, `account`)
-are never evidence even when a small folder makes them look rare. Hyphenated tool
-and script names such as `order-sync` and `run-tests.sh` are extracted as names,
-because a real neighbour can share one instead of sharing a word.
+How a derived entry may reach the agent depends on who asked:
+
+- **Automatic recall** (a new ticket) needs a shared ticket key, identifier, ID or
+  error line. A word alone, however rare, never arrives unasked, and at most one
+  derived entry does.
+- **`/ticket recall`** (a person asked) also accepts a word that is rare in this
+  folder. A word is rare when BM25's relative rarity is at least 0.6 — about three
+  of 17 tickets, or six of 1,700 — so the rule needs no different number for a
+  large folder. There is no hand-written stop list; the two levels are the guard.
+
+Hyphenated tool and script names such as `order-sync` and `run-tests.sh` are
+extracted as names, because a real neighbour can share one instead of sharing a
+word. An automatic recall message writes one record line (`tool: memory`,
+`action: recall`, `facts: { entries }`, no text), which `jig-lens` can count.
 
 An entry needs `memory.recall.minScore` points, **2** unless you change it. In terms
 of the table above:
@@ -161,23 +166,23 @@ derived entries even when the display would show one.
 
 The current folder has 17 tickets and four label pairs.
 
-| Run | Documents | Links found in top 3 | Recall@3 | Pairs found (any / both) | Tickets with no label, hit | Noise (upper bound) | Hits with a name / word only |
+| Run | Documents | Links found in top 3 | Pairs any / both | No-label tickets hit | Noise (upper bound) | Named / word-only hits | Automatic message bytes (mean / max) |
 |---|---|---|---|---|---|---|---|
-| Cards only | 0 | 0 of 8 | 0 | 0 / 0 of 4 | 0 of 11 | 0 | 0 / 0 |
-| Notes, rule off | 17 | 4 of 8 | 0.5 | 3 / 1 of 4 | 9 of 11 | 0.818 | 5 / 4 |
-| Notes, rule on | 17 | 4 of 8 | 0.5 | 3 / 1 of 4 | 9 of 11 | 0.818 | 5 / 4 |
-| Notes with derived links | 17 | 2 of 4 | 0.5 | — | 11 of 13 | 0.846 | 7 / 4 |
+| Cards only | 0 | 0 of 8 | 0 / 0 of 4 | 0 of 11 | 0 | 0 / 0 | — |
+| Automatic, one entry | 17 | 3 of 8 | 3 / 0 of 4 | 5 of 11 | 0.455 | 5 / 0 | 1,216.9 / 1,903 |
+| Automatic, top 3 retrieval | 17 | 4 of 8 | 3 / 1 of 4 | 5 of 11 | 0.455 | 5 / 0 | 1,216.9 / 1,903 |
+| Manual (`/ticket recall`) | 17 | 4 of 8 | 3 / 1 of 4 | 9 of 11 | 0.818 | 5 / 4 | — |
+| Derived links, top 3 | 17 | 2 of 4 | — | 11 of 13 | 0.846 | 7 / 4 | — |
 
-- **The rule removed no hit on this folder.** Every hit already had a shared name,
-  ID, error or rare word; the four word-only hits are rare words, not the generic
-  words the hand reading called junk. The noise figure is an **upper bound** because
-  three of the eleven unlabelled tickets do have real neighbours that no label
-  records.
-- **The top-3 cap was real.** With the display budget of one, the derived test found
-  one of four; with `--top 3` it finds two of four. The hand labels then show four of
-  eight directions, three of four pairs in at least one direction, and one pair in
-  both directions.
-- **The labels are only four pairs.** This is a sanity check, not a benchmark; it
-  cannot tune a threshold.
-
-`recall.notes` is **off** in the code until the person decides on these numbers.
+- **The automatic gate drops the four word-only hits** (manual 9 to automatic 5),
+  and loses one labelled direction (4 to 3). It still finds three of four pairs in
+  at least one direction, none in both.
+- **The bar was not met.** The automatic no-label rate is 0.455, down from 0.818:
+  a 44% fall, not the half the bar asked for. So `recall.notes` stays **off**.
+- **Automatic cost is small:** across the 11 tickets where automatic recall would
+  send a message, the mean is 1,216.9 bytes and the largest 1,903 bytes, about
+  0.3–0.5k tokens. A false hit is a small one.
+- **The labels are only four pairs; the noise is an upper bound** because three of
+  the eleven unlabelled tickets have real neighbours no label records.
+- The top-3 cap was real: the old display budget of one found one of four
+  directions, the retrieval run with top 3 finds four of eight.

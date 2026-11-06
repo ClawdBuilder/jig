@@ -84,7 +84,9 @@ the agent said it would do before the next step ([Handoff](docs/handoff.md)).
   shared keys, identifiers and error lines, then by keyword search, and the best
   few arrive as one message. If `memory.recall.notes` is on, entries derived from
   earlier notes are searched too, labelled with their date and that they may be out
-  of date (see [Recall](docs/recall.md)). Nothing arrives when nothing scores enough.
+  of date. Automatic recall takes only a shared name, ID or error; `/ticket recall`
+  also takes a rare word. Each automatic message is recorded for `jig-lens` with
+  its entry count and no text. Nothing arrives when nothing scores enough.
 
 ## Configure
 
