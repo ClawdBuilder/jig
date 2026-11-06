@@ -12,6 +12,7 @@
 // `tool_search` to find it: the model could not reach it at all. jig-core activates `tool_search` at session start when a
 // Jig tool is deferred (src/tool-exposure.ts).
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { Text, TruncatedText } from "@earendil-works/pi-tui";
 import type { TSchema } from "typebox";
 import { jig } from "../client.ts";
 
@@ -115,6 +116,147 @@ function toDefer(pi: ExtensionAPI, slot: Slot): string[] {
     return [...slot.tools.keys()].filter((name) => deferred.has(name));
 }
 
+/** A tool's own one-line summary for the timeline, from the arguments only. It never sees a body or a query. */
+export interface JigToolOptions {
+    summary?: (args: Readonly<Record<string, unknown>>) => string | undefined;
+}
+
+type JigToolDefinition = ToolDefinition & {
+    summary?: (args: Readonly<Record<string, unknown>>) => string | undefined;
+};
+
+/** Values that name a call: a branch, a ticket, a service, an environment. Never a body, a query or a description. */
+const CALL_KEYS = [
+    "ticket",
+    "key",
+    "issue",
+    "number",
+    "request",
+    "collection",
+    "database",
+    "cluster",
+    "environment",
+    "service",
+    "status",
+    "ref",
+    "rev",
+    "path",
+    "paths",
+    "repo",
+    "remote",
+    "folder",
+    "host",
+    "since",
+    "window",
+    "version",
+] as const;
+
+const MAX_ARG = 80;
+
+function words(value: unknown): string | undefined {
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (typeof value !== "string") return undefined;
+    const text = value.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+    if (text === "" || text.length > MAX_ARG) return undefined;
+    return text;
+}
+
+/** The few arguments that identify a call, with an arrow where the call has a from and a to. */
+function callArguments(args: Readonly<Record<string, unknown>>): string[] {
+    const action = words(args.action);
+    const arrowAction = action !== undefined && ["create", "merge", "rebase", "sync", "view"].includes(action);
+    const head = words(args.head) ?? words(args.branch);
+    const base = words(args.base);
+    if (arrowAction && head !== undefined && base !== undefined) return [`${head} -> ${base}`];
+    const parts: string[] = [];
+    for (const key of CALL_KEYS) {
+        const value = words(args[key]);
+        if (value === undefined || parts.includes(value)) continue;
+        parts.push(value);
+        if (parts.length === 3) break;
+    }
+    return parts;
+}
+
+/** The one-line call: `jira get  PROJ-123`, or `pr create  feature/X -> develop`. */
+function callLine(
+    tool: string,
+    args: Readonly<Record<string, unknown>>,
+    summary?: (args: Readonly<Record<string, unknown>>) => string | undefined,
+): string {
+    const own = summary?.(args)
+        ?.replace(/[\u0000-\u001f\u007f]+/g, " ")
+        .trim();
+    if (own !== undefined && own !== "") return own;
+    const action = words(args.action) ?? words(args.operation);
+    const parts = callArguments(args);
+    const head = action === undefined ? tool : `${tool} ${action}`;
+    return parts.length === 0 ? head : `${head}  ${parts.join("  ")}`;
+}
+
+/** The text of a result, without changing it: the model already has this, this is only its display. */
+function resultText(result: { content?: readonly { type?: string; text?: string }[] }): string {
+    return (result.content ?? [])
+        .flatMap((item) => (item.type === "text" && typeof item.text === "string" ? [item.text] : []))
+        .join("\n");
+}
+
+/** The one-line result; the full text is shown when Pi expands the row. */
+function resultLine(
+    result: { content?: readonly { type?: string; text?: string }[]; isError?: boolean },
+    expanded: boolean,
+    isError: boolean,
+): string {
+    const text = resultText(result);
+    if (expanded) return text;
+    const first =
+        text
+            .split("\n")
+            .find((line) => line.trim() !== "")
+            ?.trim() ?? "(no output)";
+    return `${isError || result.isError === true ? "✗" : "✓"} ${first}`;
+}
+
+function withDefaultRenderers(tool: JigToolDefinition, options: JigToolOptions): ToolDefinition {
+    const summary = options.summary ?? tool.summary;
+    const renderCall = tool.renderCall;
+    const renderResult = tool.renderResult;
+    return {
+        ...tool,
+        renderCall:
+            renderCall ??
+            ((
+                args: Readonly<Record<string, unknown>>,
+                theme: { fg: (color: string, text: string) => string; bold: (text: string) => string },
+            ) => {
+                const line = callLine(tool.name, args, summary);
+                return new TruncatedText(
+                    theme.fg("toolTitle", theme.bold(tool.name)) + theme.fg("muted", line.slice(tool.name.length)),
+                    0,
+                    0,
+                );
+            }),
+        renderResult:
+            renderResult ??
+            ((
+                result: { content?: readonly { type?: string; text?: string }[]; isError?: boolean },
+                opts: { expanded?: boolean },
+                theme: { fg: (color: string, text: string) => string },
+                context: { isError?: boolean; args?: Readonly<Record<string, unknown>> },
+            ) =>
+                opts.expanded === true
+                    ? new Text(theme.fg("toolOutput", resultLine(result, true, context.isError === true)), 0, 0)
+                    : new TruncatedText(
+                          theme.fg(
+                              result.isError === true || context.isError === true ? "error" : "success",
+                              resultLine(result, false, context.isError === true),
+                          ),
+                          0,
+                          0,
+                      )),
+    } as ToolDefinition;
+}
+
 /**
  * Registers a Jig tool with Pi: a drop-in for `pi.registerTool(tool)`. The tool is registered as given; when the session
  * starts, a tool named in `jig.json`'s `tools.deferred` is registered again with `exposure: "deferred"` (see the top of
@@ -123,7 +265,9 @@ function toDefer(pi: ExtensionAPI, slot: Slot): string[] {
 export function registerJigTool<TParams extends TSchema = TSchema, TDetails = unknown, TState = unknown>(
     pi: ExtensionAPI,
     tool: ToolDefinition<TParams, TDetails, TState>,
+    options: JigToolOptions = {},
 ): void {
+    const definition = withDefaultRenderers(tool as JigToolDefinition, options);
     let slot = slots.get(pi);
     if (slot === undefined) {
         const created: Slot = { tools: new Map(), started: false };
@@ -131,7 +275,7 @@ export function registerJigTool<TParams extends TSchema = TSchema, TDetails = un
         slots.set(pi, created);
         // A stand-in for Pi with no events (a test that only collects tools) gets the plain registration.
         if (typeof pi.on !== "function") {
-            pi.registerTool(tool);
+            pi.registerTool(definition);
             return;
         }
         pi.on("session_start", (_event, ctx) => {
@@ -143,11 +287,11 @@ export function registerJigTool<TParams extends TSchema = TSchema, TDetails = un
             }
         });
     }
-    slot.tools.set(tool.name, tool as unknown as ToolDefinition);
+    slot.tools.set(tool.name, definition);
     if (slot.started && !NOT_DEFERRABLE.has(tool.name) && toDefer(pi, slot).includes(tool.name)) {
         // Registered again mid-session: it stays deferred, and stays active if `tool_search` loaded it.
-        pi.registerTool({ ...tool, exposure: "deferred" });
+        pi.registerTool({ ...definition, exposure: "deferred" });
         return;
     }
-    pi.registerTool(tool);
+    pi.registerTool(definition);
 }

@@ -4,6 +4,15 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Changed
+
+- Jig tool calls and results in Pi's timeline are one line each, with the full text on Pi's expand key; a tool can give
+  its own call line. Masked text stays masked in both views.
+- Long approvals open in a floating window, falling back to the inline screen on a terminal too small for it or when
+  the overlay cannot open.
+- A browser code review keeps one line and a `review: waiting for you` or `review: agent working` status in Pi; the diff
+  stays in the browser.
+
 ## [0.4.2] - 2026-11-06
 
 ### Changed

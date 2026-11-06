@@ -328,6 +328,7 @@ describe("what plugins import", () => {
             "schema.ts": ["stringEnum"],
             "text.ts": ["oneLine", "printable", "shortList", "stringOf"],
             "tools.ts": [
+                "JigToolOptions",
                 "NOT_DEFERRABLE",
                 "TOOLS_SECTION",
                 "TOOL_SEARCH",

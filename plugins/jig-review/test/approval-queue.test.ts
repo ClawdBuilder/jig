@@ -69,7 +69,7 @@ test("the review's own tool call does not hold the slot: it runs while the page'
 
         // Mid-call for the same turn: the tool finishes while the page's question is open, so neither waits on the other.
         const opened = await session.host.tool("start_interactive_code_review", {}, session.session.ctx);
-        assert.match(opened.content[0]?.text ?? "", /Review opened/);
+        assert.match(opened.content[0]?.text ?? "", /Code review open/);
 
         answer(true);
         const body = JSON.parse((await approval).body) as { ok: boolean; method?: string };

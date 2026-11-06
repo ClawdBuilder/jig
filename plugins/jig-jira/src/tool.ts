@@ -37,6 +37,8 @@ export interface JiraTool {
     definition: ToolDefinition<typeof parameters>;
     classify(input: Readonly<Record<string, unknown>>): CallClass | undefined;
     preview(input: Readonly<Record<string, unknown>>, signal: AbortSignal): Promise<Preview>;
+    /** The same line the preview gives a read, for Pi's timeline. Undefined when the input is not a valid call. */
+    summary(input: Readonly<Record<string, unknown>>): string | undefined;
 }
 
 export function createTool(options: JiraOptions = {}): JiraTool {
@@ -63,6 +65,14 @@ export function createTool(options: JiraOptions = {}): JiraTool {
 
     return {
         classify: (input) => classifyCall(input, settingsOf(jig().config.section("jira"))),
+
+        summary(input) {
+            try {
+                return describeCall(parseCall(input, parsing()));
+            } catch {
+                return undefined;
+            }
+        },
 
         async preview(input, signal) {
             try {
