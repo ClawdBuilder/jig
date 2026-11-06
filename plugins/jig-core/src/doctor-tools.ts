@@ -343,7 +343,7 @@ async function sandboxHostChecks(context: DoctorContext, options: DoctorOptions)
         }
     };
     const lines: DoctorLine[] = [];
-    if (context.sections.has("sandbox")) {
+    {
         const script =
             options.brokerScript ??
             fileURLToPath(new URL("../../../plugins/jig-sandbox/broker/broker.mjs", import.meta.url));

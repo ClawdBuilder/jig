@@ -146,8 +146,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                     },
                 ]
               : []),
-        ...(context.sections.has("agents") &&
-        !existsSync(
+        ...(!existsSync(
             options.rolesFolder ?? fileURLToPath(new URL("../../../plugins/jig-agents/agents", import.meta.url)),
         )
             ? [
