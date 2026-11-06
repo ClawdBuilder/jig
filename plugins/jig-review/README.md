@@ -1,7 +1,8 @@
 # jig-review: reviewing code in the browser
 
-**Status: built.** Tested against a fake `jig-core`, a fake Pi and a fake authenticator on this
-machine; the page is not yet tried with Windows Hello or Touch ID ([Not verified yet](docs/not-verified.md)).
+**Status: built.** Tested against a fake `jig-core`, a fake Pi and a fake authenticator, and used in real sessions with a
+real browser and real approved pushes. Which approval path those used is not recorded; Windows Hello and Touch ID are not
+verified ([Not verified yet](docs/not-verified.md)).
 
 `jig-review` opens a private, GitHub-style review of the agent's changes in your browser, before
 anything is shared:
@@ -55,6 +56,17 @@ After an agent run that changed files, Pi offers to review them. The files come 
 run starts and ends, so a change counts whatever tool made it. What came in from other commits (a merge, a
 pull, a rebase) is not the agent's, so it is left out; when nothing else changed, Pi says so in one line
 ([What counts as the agent's](docs/run-changes.md)). The other scopes show everything in them.
+
+## While a review is open
+
+When the **agent** opens a review, `jig-review` holds the agent's writes through `jig-core`'s gate: edits, commits and other
+non-read calls are refused with one line saying the review is open in the browser and to wait for the person's message. The
+hold is off for `record_interactive_review_resolution` and for read-only calls. A person's next message in Pi releases it;
+approval or submitted comments release it too. A session restart holds nothing. Set `holdAgent` to `false` in the review
+settings to turn it off; it is `true` by default and a company may set it.
+
+A review a person starts with `/code-review` holds nothing while the agent is idle; if the agent then acts, the same rule
+applies once it is the agent's open review.
 
 ## Approving
 

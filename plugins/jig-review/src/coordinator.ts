@@ -51,6 +51,8 @@ export class ReviewCoordinator {
     private currentReview?: ReviewRecord;
     /** The review the agent opened with start_interactive_code_review: the only one it is waiting on. */
     private agentRequestedReviewId?: string;
+    /** False while a review the agent opened is open and the person has not answered. */
+    private holdReleased = true;
     private lastSubmissionMode: CommentSubmissionMode = "review";
     private server?: ReviewServer;
     private settings?: ReviewSettings;
@@ -85,6 +87,21 @@ export class ReviewCoordinator {
      * Resolves when the git state taken at the start of the current run is done. Pi does not wait for it, since the model
      * starts at once and the agent's first change comes much later; a test that changes a file at once must.
      */
+    /** Whether the agent's writes are held by an open review it started. */
+    public holdsAgent(): boolean {
+        return (
+            this.holdReleased === false &&
+            this.currentReview?.status === "awaiting-review" &&
+            this.currentReview.id === this.agentRequestedReviewId &&
+            (this.settings?.holdAgent ?? true)
+        );
+    }
+
+    /** The person approved, commented, or typed in Pi: the hold is over. */
+    public releaseHold(): void {
+        this.holdReleased = true;
+    }
+
     public async runStartTaken(): Promise<void> {
         await this.tracker.startTaken();
     }
@@ -93,7 +110,12 @@ export class ReviewCoordinator {
     public register(): void {
         this.pi.on("session_start", async (_event, ctx): Promise<void> => {
             this.ctx = ctx;
+            this.holdReleased = true;
             await this.cleanupStaleReviews(ctx);
+        });
+
+        this.pi.on("input", (): void => {
+            this.releaseHold();
         });
 
         this.pi.on("tool_call", (event, ctx): void => {
@@ -235,6 +257,7 @@ export class ReviewCoordinator {
     private async finishApproval(review: ReviewRecord, method: ApprovalMethod, fingerprint?: string): Promise<void> {
         const approvedHeads = await headsToRecord(this.workspace, review);
         const approval = { method, ...(fingerprint === undefined ? {} : { fingerprint }) };
+        this.releaseHold();
         this.currentReview = await this.reviewStore.approve(review, approval, approvedHeads);
         this.syncReviewStatus();
         const approved = this.currentReview;
@@ -313,7 +336,10 @@ export class ReviewCoordinator {
     private async startReviewForAgent(ctx: ExtensionContext): Promise<ReviewStart | undefined> {
         this.ctx = ctx;
         const started = await this.handleCodeReviewCommand("", ctx);
-        if (started !== undefined && "url" in started) this.agentRequestedReviewId = this.currentReview?.id;
+        if (started !== undefined && "url" in started) {
+            this.agentRequestedReviewId = this.currentReview?.id;
+            this.holdReleased = false;
+        }
         return started;
     }
 
@@ -486,6 +512,7 @@ export class ReviewCoordinator {
     private async submitComments(comments: SubmittedCommentInput[], mode: CommentSubmissionMode): Promise<void> {
         if (this.currentReview === undefined || comments.length === 0) return;
         this.lastSubmissionMode = mode;
+        this.releaseHold();
         this.currentReview = await this.reviewStore.addSubmittedComments(this.currentReview, comments);
         const submittedIds = new Set(this.currentReview.iterations.at(-1)?.submittedCommentIds ?? []);
         const submitted = this.currentReview.comments.filter((comment) => submittedIds.has(comment.id));

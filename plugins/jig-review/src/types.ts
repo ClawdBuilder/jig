@@ -10,6 +10,8 @@ export type ReviewSettings = {
     autoAskReview: boolean;
     autoOpenBrowser: boolean;
     diffView: "split" | "unified";
+    /** Hold the agent's writes while a review it started is open. Default true. */
+    holdAgent: boolean;
 };
 
 export type ReviewComment = {
