@@ -97,6 +97,16 @@ test("common words alone do not surface a note; a rare word or a name does", (t)
         2,
         "a rare shared word is evidence",
     );
+    assert.equal(
+        recall(
+            {},
+            rareQuery,
+            { max: 3, minScore: 0.1, maxNotes: 2, requireEvidence: true, allowRareWords: false },
+            rare,
+        ).length,
+        0,
+        "automatic recall does not take a word alone",
+    );
 });
 
 test("a note entry is labelled as from notes, dated and possibly out of date", (t) => {

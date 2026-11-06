@@ -30,15 +30,17 @@ test("hand labels replace derived links, and top 3 is not capped by the display 
             ],
         }),
     );
-    const stdout = execFileSync(process.execPath, [SCRIPT, "--folder", folder, "--labels", labels, "--top", "3"], {
-        encoding: "utf8",
-    });
+    const stdout = execFileSync(
+        process.execPath,
+        [SCRIPT, "--folder", folder, "--labels", labels, "--top", "3", "--max-notes", "3"],
+        { encoding: "utf8" },
+    );
     const result = JSON.parse(stdout) as Record<string, unknown>;
     assert.equal(result.labelled, true);
     assert.equal(result.pairs, 2);
     assert.equal(result.cases, 3);
     assert.equal(result.top, 3);
-    assert.equal(result.maxNotes === undefined, true, "the result has no capped maxNotes");
+    assert.equal(result.maxNotes, 3, "the top-3 retrieval is not capped by the display default");
     assert.equal(stdout.includes("PROJ-1"), false);
 });
 

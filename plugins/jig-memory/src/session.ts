@@ -154,7 +154,11 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             const matches = recall(
                 loadCards(mem.folder),
                 buildQuery({ ticket: key, text, pattern: mem.pattern }),
-                mem.recall,
+                {
+                    ...mem.recall,
+                    maxNotes: Math.min(mem.recall.maxNotes, 1),
+                    allowRareWords: false,
+                },
                 mem.recall.maxNotes === 0 ? undefined : loadNoteIndex(mem.folder, mem.pattern),
             );
             if (matches.length === 0) return;
@@ -167,6 +171,8 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
                 },
                 { triggerTurn: false },
             );
+            // Countable by jig-lens without any text: tool memory, action recall, facts.entries.
+            jig().records?.recall(matches.length);
         } catch (error) {
             note(ctx, `Recall for ${key} failed: ${reason(error)}`, "warning");
         }
@@ -244,7 +250,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
                 );
                 return;
             }
-            const matches = recall(cards, query, mem.recall, notes);
+            const matches = recall(cards, query, { ...mem.recall, allowRareWords: true }, notes);
             note(
                 ctx,
                 matches.length === 0

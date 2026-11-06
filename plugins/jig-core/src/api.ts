@@ -20,7 +20,9 @@ import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";
+import { callRecord, writeRecord } from "./records.ts";
 import { isAbsolute } from "node:path";
+import { randomUUID } from "node:crypto";
 
 /** Refuses a section option that must be a list of non-empty paths, such as `first` or `union`. */
 function checkPathList(value: unknown, section: string, option: string, example: string): void {
@@ -349,6 +351,36 @@ export function buildApi(state: JigState): JigApi {
         exec: {
             run: (file, args, options) => run(file, args, options, guard),
             git: (repo, args, options) => git(repo, args, options, guard),
+        },
+        records: {
+            recall: (entries) => {
+                try {
+                    const now = new Date();
+                    const count = Number.isFinite(entries) ? Math.max(0, Math.floor(entries)) : 0;
+                    writeRecord(
+                        callRecord(
+                            {
+                                session: state.sessionId ?? "unknown",
+                                tool: "memory",
+                                action: "recall",
+                                plugin: "jig-memory",
+                                environment: "local",
+                                environmentKind: "local",
+                                effect: "read",
+                                decision: "allow",
+                                decisionSource: "tool",
+                                outcome: "ok",
+                                toolCallId: `recall-${randomUUID()}`,
+                                facts: { entries: count },
+                            },
+                            now,
+                        ),
+                        now,
+                    );
+                } catch {
+                    // A recall that cannot be recorded must not break the message.
+                }
+            },
         },
     };
 

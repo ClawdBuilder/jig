@@ -48,6 +48,8 @@ export interface FakeJig {
     api: JigApi;
     /** Every setTicket call, in order. */
     tickets: Array<string | undefined>;
+    /** The entry counts passed to records.recall, in order. */
+    recalls: number[];
     /** Every section name the plugin asked for, in order. */
     reads: string[];
     /** The check each plugin registered for its section, by section name. */
@@ -61,6 +63,7 @@ export interface FakeJig {
 /** `sections` is what jig.json holds, by section name: a section that is absent is undefined here. */
 export function fakeJig(sections: Record<string, unknown>): FakeJig {
     const tickets: Array<string | undefined> = [];
+    const recalls: number[] = [];
     const reads: string[] = [];
     const checks = new Map<string, (raw: unknown) => readonly string[]>();
     const declared = new Map<string, ToolDeclaration>();
@@ -79,6 +82,11 @@ export function fakeJig(sections: Record<string, unknown>): FakeJig {
         setTicket: (key: string | undefined) => {
             tickets.push(key);
         },
+        records: {
+            recall: (entries: number) => {
+                recalls.push(entries);
+            },
+        },
         config: {
             registerSection: (name: string, check: (raw: unknown) => readonly string[]) => {
                 checks.set(name, check);
@@ -89,7 +97,7 @@ export function fakeJig(sections: Record<string, unknown>): FakeJig {
             },
         },
     };
-    return { api: api as unknown as JigApi, tickets, reads, checks, declared, masked };
+    return { api: api as unknown as JigApi, tickets, recalls, reads, checks, declared, masked };
 }
 
 /** Publishes a fake jig-core for the rest of the test, the way jig-core itself does at start-up. */

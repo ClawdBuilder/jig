@@ -13,7 +13,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { entryOf } from "../src/cards.ts";
 import { RECALL_DEFAULTS } from "../src/config.ts";
 import { noteEntryOf } from "../src/notes-index.ts";
-import { buildQuery, recall } from "../src/recall.ts";
+import { buildQuery, recall, recallMessage } from "../src/recall.ts";
 import { isSafeKey, readText, ticketPaths } from "../src/store.ts";
 
 function args(argv) {
@@ -24,6 +24,8 @@ function args(argv) {
         minScore: RECALL_DEFAULTS.minScore,
         max: RECALL_DEFAULTS.max,
         top: 3,
+        maxNotes: undefined,
+        gate: "auto",
         lines: 25,
         rule: "on",
     };
@@ -36,6 +38,8 @@ function args(argv) {
         else if (name === "--min-score") out.minScore = Number(value);
         else if (name === "--max") out.max = Number(value);
         else if (name === "--top") out.top = Number(value);
+        else if (name === "--max-notes") out.maxNotes = Number(value);
+        else if (name === "--gate") out.gate = value;
         else if (name === "--lines") out.lines = Number(value);
         else if (name === "--rule") out.rule = value;
         else continue;
@@ -110,6 +114,7 @@ function main() {
     if (typeof a.folder !== "string" || a.folder === "") throw new Error("no folder");
     if (!Number.isInteger(a.top) || a.top < 1) throw new Error("bad top");
     if (a.rule !== "on" && a.rule !== "off") throw new Error("bad rule");
+    if (a.gate !== "auto" && a.gate !== "manual") throw new Error("bad gate");
     const folders = readdirSync(a.folder, { withFileTypes: true }).filter(
         (entry) => entry.isDirectory() && isSafeKey(entry.name),
     );
@@ -160,6 +165,8 @@ function main() {
     const results = [];
     for (const mode of modes) {
         if (mode !== "cards" && mode !== "notes") throw new Error("bad mode");
+        const maxNotes = a.maxNotes ?? (a.gate === "auto" ? 1 : a.top);
+        const allowRareWords = a.gate === "manual";
         let expected = 0;
         let hits = 0;
         let cases = 0;
@@ -189,8 +196,9 @@ function main() {
                           {
                               max: Math.max(a.max, a.top),
                               minScore: a.minScore,
-                              maxNotes: a.top,
+                              maxNotes,
                               requireEvidence: a.rule === "on",
+                              allowRareWords,
                           },
                           noteIndex,
                       );
@@ -219,10 +227,11 @@ function main() {
                           {},
                           query,
                           {
-                              max: a.top,
+                              max: Math.max(a.max, a.top),
                               minScore: a.minScore,
-                              maxNotes: a.top,
+                              maxNotes,
                               requireEvidence: a.rule === "on",
+                              allowRareWords,
                           },
                           noteIndex,
                       );
@@ -244,6 +253,29 @@ function main() {
             if (a1 || b1) pairsFoundAny++;
             if (a1 && b1) pairsFoundBoth++;
         }
+        let autoMessages = 0;
+        let autoBytes = 0;
+        let autoBytesMax = 0;
+        if (mode === "notes") {
+            for (const [key, note] of notes) {
+                const query = buildQuery({
+                    ticket: key,
+                    text: redact(start(note.text, a.lines), keys),
+                    pattern: undefined,
+                });
+                const matches = recall(
+                    {},
+                    query,
+                    { max: a.top, minScore: a.minScore, maxNotes: 1, requireEvidence: true, allowRareWords: false },
+                    noteIndex,
+                );
+                if (matches.length === 0) continue;
+                const bytes = Buffer.byteLength(recallMessage(key, a.folder, matches));
+                autoMessages++;
+                autoBytes += bytes;
+                autoBytesMax = Math.max(autoBytesMax, bytes);
+            }
+        }
         results.push({
             mode,
             tickets: keys.length,
@@ -263,9 +295,14 @@ function main() {
             noLinkHitsWordOnly,
             noise: noLinkCases === 0 ? null : Math.round((noLinkHits / noLinkCases) * 1000) / 1000,
             top: a.top,
+            maxNotes,
+            gate: a.gate,
             rule: a.rule,
             minScore: a.minScore,
             queryLines: a.lines,
+            autoMessages,
+            autoMessageBytesMean: autoMessages === 0 ? null : Math.round((autoBytes / autoMessages) * 10) / 10,
+            autoMessageBytesMax: autoMessages === 0 ? null : autoBytesMax,
         });
     }
     return a.mode === "both" ? { modes: results } : results[0];

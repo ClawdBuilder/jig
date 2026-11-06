@@ -41,7 +41,7 @@ const ticketsOf = (sent: { message: { details?: unknown } } | undefined): string
     (sent?.message.details as { tickets?: string[] } | undefined)?.tickets ?? [];
 
 test("a new ticket that shares a name with a card gets one recall message, after the notes, that starts no turn", (t) => {
-    const { pi } = start(t);
+    const { pi, jig } = start(t);
     pi.input("PROJ-130: cancelling fails with a NullPointerException in OrderMapper");
     assert.equal(pi.sent.length, 2);
     assert.equal(pi.sent[0]?.message.customType, "jig-memory-notes");
@@ -57,6 +57,7 @@ test("a new ticket that shares a name with a card gets one recall message, after
         sent?.message.content ?? "",
         /\n {2}Cause: OrderMapper\.toDto read the customer's name without a null check\.\n {2}Fix: The mapper returns an empty name/,
     );
+    assert.deepEqual(jig.recalls, [1], "jig-lens can count the recall and its entry count");
     for (const result of pi.fire("before_agent_start", { messageType: "user", prompt: "go on" }))
         assert.equal(
             (result as { systemPrompt?: unknown } | undefined)?.systemPrompt,
@@ -193,6 +194,20 @@ test("/ticket recall says so when there is no ticket, no cards, or nothing that 
         bare.notices.at(-1)?.text,
         "No earlier tickets are searchable: no card exists, and notes entries are off (memory.recall.notes).",
     );
+});
+
+test("a word alone reaches the agent only when the person asks, not in automatic recall", async (t) => {
+    const folder = tempFolder(t);
+    mkdirSync(ticketPaths(folder, "PROJ-88").dir, { recursive: true });
+    writeFileSync(ticketPaths(folder, "PROJ-88").notes, "# PROJ-88\n\n## Now\nStatus: quartz\n\n## Decisions\n");
+    useJig(t, { memory: { ticketPattern: PATTERN, folder, recall: { notes: true, minScore: 0.1 } } });
+    const pi = loadPlugin("/work");
+    pi.start();
+    pi.input("PROJ-130: the quartz job is late");
+    assert.equal(recalls(pi).length, 0, "automatic recall needs a name");
+    await pi.command("recall quartz");
+    assert.match(pi.notices.at(-1)?.text ?? "", /PROJ-88 \(from notes\.md, /);
+    assert.equal(recalls(pi).length, 0, "the manual command sends nothing to the agent");
 });
 
 test("a note with no card is searchable when recall.notes is on, labelled with its date and the history warning", async (t) => {

@@ -4,7 +4,7 @@
 // `minScore` to be returned, and the best `max` are. A written card wins over a derived entry for the same ticket; a derived
 // entry is labelled with its date and that it may be out of date. Nothing here reads a file: recall.ts is given the indexes
 // and the query, and gives back matches.
-import { bm25, corpusOf, rarity, stem, words } from "./bm25.ts";
+import { bm25, corpusOf, rarity, words } from "./bm25.ts";
 import type { CardEntry, CardIndex } from "./cards.ts";
 import { extractErrors, extractIdentifiers, extractKeys, normalizeError } from "./extract.ts";
 import type { NoteIndex } from "./notes-index.ts";
@@ -23,8 +23,6 @@ const QUERY_ERRORS = 20;
 const SHOWN_EXCERPT = 700;
 /** A word is rare when BM25's relative rarity is at least this: about three of seventeen tickets, or six of 1,700. */
 const RARE_WORD = 0.6;
-/** Words too generic to be evidence on their own, even when a small folder makes them look rare. Their stems are the keys. */
-const COMMON_EVIDENCE = new Set(["one", "still", "branch", "review", "plan", "account"].map((word) => stem(word)));
 
 export interface RecallQuery {
     /** The ticket asking. Its own card or entry is never returned, and it counts as a key the query names. */
@@ -101,6 +99,8 @@ export interface RecallOptions {
     maxNotes?: number;
     /** Whether a derived entry needs a shared name, ID, error or rare word. Default true; the evaluator can turn it off. */
     requireEvidence?: boolean;
+    /** Whether a rare word alone can be the evidence. Default true; automatic recall sets it false. */
+    allowRareWords?: boolean;
 }
 
 /** One document recall searches: a valid card, or a derived notes entry. */
@@ -208,10 +208,16 @@ export function recall(cards: CardIndex, query: RecallQuery, options: RecallOpti
         // A derived entry needs a real reason to reach the agent. A shared name, ID, key or error is one; a word is one only
         // when it is rare in this folder, so common words alone (however many) cannot surface a note.
         const rareWords = [...search.shares.keys()].filter(
-            (term) => !COMMON_EVIDENCE.has(term) && rarity(corpus.frequency.get(term) ?? 0, size) >= RARE_WORD,
+            (term) => rarity(corpus.frequency.get(term) ?? 0, size) >= RARE_WORD,
         );
         const named = keys.length > 0 || errors.length > 0 || identifiers.length > 0;
-        if (options.requireEvidence !== false && doc.source === "notes" && !named && rareWords.length === 0) continue;
+        if (
+            options.requireEvidence !== false &&
+            doc.source === "notes" &&
+            !named &&
+            (options.allowRareWords === false || rareWords.length === 0)
+        )
+            continue;
         const score =
             POINTS.key * Math.min(keys.length, COUNTED.keys) +
             best(
