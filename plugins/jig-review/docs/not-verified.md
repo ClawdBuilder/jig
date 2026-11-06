@@ -3,8 +3,9 @@
 What is built and tested here, and what needs a real browser and a real device. Back to the
 [jig-review overview](../README.md).
 
-The plugin is tested against a fake `jig-core`, a fake Pi, real git repositories, a real local server
-and a **fake authenticator**: test keys made with `node:crypto` (P-256 and RSA) sign the challenges as a
+The plugin has been used in real sessions with a real browser and approved pushes; which approval path those used is not
+recorded, so this file still lists what a real device must prove. It is tested against a fake `jig-core`, a fake Pi, real
+git repositories, a real local server and a **fake authenticator**: test keys made with `node:crypto` (P-256 and RSA) sign the challenges as a
 device would. That proves the server's checks. It does not prove a real browser and device agree with them.
 
 - **Windows Hello through WSL's localhost forwarding.** The page is opened in a Windows browser, and reaches the server in WSL as `localhost:<port>`
@@ -17,6 +18,8 @@ device would. That proves the server's checks. It does not prove a real browser 
   - *What to try:* If the page does not open, a browser that does not fall back from `::1` to `127.0.0.1` needs the server to listen on both
 - **A security key** (FIDO2) with a PIN
   - *What to try:* Register and approve with it
+- **The hold while an agent review waits:** that a real turn stops calling tools, that a person's next message releases it,
+  and that a closed tab cannot leave an agent stuck. The gate is unit-tested only so far.
 - **Pi's dialog slot** while an agent turn is running
   - *What to try:* Approve in the page during a turn, with the fallback, and see that Pi's question appears
 - **The page's look** at narrow widths and in a dark theme
