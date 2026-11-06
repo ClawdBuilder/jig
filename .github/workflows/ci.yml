@@ -35,6 +35,11 @@ jobs:
             package-lock.json
             plugins/jig-review/web/package-lock.json
 
+      # The two Node lines also cover the two npm majors users have: Node 24 uses npm 12, Node 26 keeps its bundled npm.
+      - name: Use npm 12 on Node 24
+        if: matrix.node == 24
+        run: npm install -g npm@12.2.1
+
       - name: Show the versions
         run: |
           node --version
