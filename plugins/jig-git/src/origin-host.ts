@@ -121,7 +121,7 @@ export async function originHost(url: string, host: string, settings: GitSetting
  */
 export function accountHosts(host: OriginHost, settings: GitSettings): string[] {
     const hosts = [host.told];
-    if (host.configured === "github" || isGithubOrigin(host, settings)) hosts.push(githubHostOf(host));
+    if (isGithubOrigin(host, settings)) hosts.push(githubHostOf(host));
     hosts.push(host.real, host.alias);
     return [...new Set(hosts.map((name) => name.toLowerCase()))];
 }
