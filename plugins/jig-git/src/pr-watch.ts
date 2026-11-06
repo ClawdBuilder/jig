@@ -164,7 +164,7 @@ async function threadsOf(spec: PrWatchSpec, signal: AbortSignal): Promise<Map<nu
         const data = await graphql<ThreadData>(
             THREADS,
             { owner, name, number: spec.number },
-            { signal, host: spec.host },
+            { signal, host: spec.host, account: spec.account },
         );
         for (const thread of data.repository.pullRequest?.reviewThreads.nodes ?? []) {
             for (const comment of thread.comments.nodes) {

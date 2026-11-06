@@ -238,7 +238,12 @@ async function watchComments(
     try {
         const remote = await githubRepo(repo, call.settings, call.signal);
         if (!remote) return undefined;
-        const spec = { slug: remote.slug, number, ...(remote.host === GITHUB_COM ? {} : { host: remote.host }) };
+        const spec = {
+            slug: remote.slug,
+            number,
+            ...(remote.host === GITHUB_COM ? {} : { host: remote.host }),
+            ...(remote.account === undefined ? {} : { account: remote.account }),
+        };
         const { id, already } = startCommentWatch(spec);
         return { id, text: watchingText(spec, id, already) };
     } catch (error) {
