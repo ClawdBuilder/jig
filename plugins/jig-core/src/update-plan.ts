@@ -80,6 +80,11 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
     if (copy === undefined) {
         return { problem: "Jig is not installed in Pi, so there is no Pi copy to update. Nothing was changed." };
     }
+    if (copy.folder === undefined || copy.version === undefined) {
+        return {
+            problem: `Pi's Jig copy is not installed cleanly (${copy.source ?? "no source"}). Reinstall it with: pi install npm:${input.name}; then run jig update. Nothing was changed.`,
+        };
+    }
     if (copy.scope === "project") {
         return {
             problem:

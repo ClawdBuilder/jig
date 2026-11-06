@@ -17,7 +17,7 @@ function plan(withPi: boolean): UpdatePlan {
             cappedBy: [],
         },
         piVersion: withPi ? "1.3.0" : "1.5.0",
-        piCopy: { version: "0.4.1", source: "npm:@clawdbuilder/jig", scope: "user" },
+        piCopy: { version: "0.4.1", source: "npm:@clawdbuilder/jig", scope: "user", folder: "/tmp/jig" },
         globalVersion: "0.4.1",
     });
     if (!("plan" in built)) throw new Error(built.problem);
@@ -162,7 +162,7 @@ describe("executeUpdate", () => {
                 cappedBy: [],
             },
             piVersion: "1.5.0",
-            piCopy: { version: "0.5.0", source: "npm:@clawdbuilder/jig", scope: "user" },
+            piCopy: { version: "0.5.0", source: "npm:@clawdbuilder/jig", scope: "user", folder: "/tmp/jig" },
             globalVersion: "0.5.0",
         });
         assert.ok("plan" in built);
