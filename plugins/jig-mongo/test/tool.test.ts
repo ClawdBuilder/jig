@@ -288,7 +288,10 @@ describe("an environment with several connections", () => {
     test("needs `cluster`, and a call without it is refused before anyone is asked, naming the choices", async () => {
         const result = await h.call(find("staging"));
         // A read is allowed by the table and does not ask, so its refusal is the tool's own error, not a block.
-        assert.equal(result.error?.message, "staging has several connections: add cluster, one of orders, billing");
+        assert.equal(
+            result.error?.message,
+            "staging has several connections: add cluster, one of orders, billing; call mongo access to see each one's rules",
+        );
         assert.equal(h.connects.length, 0);
         // The refusal is the preview's now: classification is from the input alone.
         await assert.rejects(

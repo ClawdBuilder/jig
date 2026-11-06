@@ -84,7 +84,7 @@ function connectionOf(settings: MongoSettings, call: Call): Connection {
         const connection = settings.connections.get(call.environment);
         if (connection === undefined) {
             throw new InputError(
-                `unknown environment ${shown(call.environment, 30)}; configured: ${shortList(environmentsOf(settings))}`,
+                `unknown environment ${shown(call.environment, 30)}; configured: ${shortList(environmentsOf(settings))}. Call mongo access with a configured environment to see its rules`,
             );
         }
         if (call.cluster !== undefined) {
@@ -93,7 +93,9 @@ function connectionOf(settings: MongoSettings, call: Call): Connection {
         return connection;
     }
     if (call.cluster === undefined) {
-        throw new InputError(`${call.environment} has several connections: add cluster, one of ${shortList(clusters)}`);
+        throw new InputError(
+            `${call.environment} has several connections: add cluster, one of ${shortList(clusters)}; call mongo access to see each one's rules`,
+        );
     }
     const connection = CLUSTER_NAME.test(call.cluster)
         ? settings.connections.get(connectionKey(call.environment, call.cluster))

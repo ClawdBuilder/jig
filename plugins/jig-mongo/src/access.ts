@@ -318,7 +318,9 @@ export function createAccess(rules: AccessRules): Access {
                 throw new InputError(
                     `${name} is not in the allow list: nothing is allowed yet, so add it to the allow list of this environment`,
                 );
-            throw new InputError(`${name} is not in the allow list; allowed: ${shortList(names, ", ", 90)}`);
+            throw new InputError(
+                `${name} is not in the allow list; allowed: ${shortList(names, ", ", 90)}. Call mongo access to see the configured rules`,
+            );
         },
 
         view(namespaces) {
