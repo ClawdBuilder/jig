@@ -43,7 +43,7 @@ the hits already fetched (Loki also receives `match` and `exclude` as filters).
 | `phrase` or `query` | one of the two | `phrase`: an exact phrase in the message. `query`: a query in the backend's language |
 | `environment` | required | Where to search: one of the configured environments |
 | `window` | optional | A relative window that ends now, such as `30m`, `2h` or `1d`. Default `2h` |
-| `from`, `to` | optional, together | Exact times: ISO 8601 with a timezone, `to` exclusive |
+| `from`, `to` | optional | Exact times: ISO 8601 with a timezone, `to` exclusive. `from` alone searches through now; at most 7 days |
 | `size` | optional | How many hits to fetch, 1 to 200. Default 50 |
 | `order` | optional | `asc` (default) fetches the oldest hits of the window, `desc` the newest |
 | `match`, `exclude` | optional | Plain texts that a hit's message must, or must not, contain |

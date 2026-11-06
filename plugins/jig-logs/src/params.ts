@@ -65,7 +65,11 @@ export const logsParameters = Type.Object(
                 description: "Window ending now: 30m, 2h, 1d; at most 7d. Default 2h. Not with from and to.",
             }),
         ),
-        from: Type.Optional(Type.String({ description: "Start, ISO 8601 with a timezone. Give with to." })),
+        from: Type.Optional(
+            Type.String({
+                description: "Start, ISO 8601 with a timezone. Omit to to end now; within 7 days of now.",
+            }),
+        ),
         to: Type.Optional(
             Type.String({ description: "End (exclusive), ISO 8601 with a timezone; within 7 days of from." }),
         ),

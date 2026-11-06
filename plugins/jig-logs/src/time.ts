@@ -80,6 +80,9 @@ export function resolveRange(input: RangeInput, defaultWindow: string, now: numb
         if (input.window !== undefined) return refuse("logs: give either window or from and to, not both");
         const from = parseInstant(input.from, "from");
         if (now <= from) return refuse("logs: from must be before now when to is not given");
+        if (now - from > MAX_RANGE_MS) {
+            return refuse("logs: from must be within 7 days of now; search older logs in slices of at most 7 days");
+        }
         return { from, to: now };
     }
     if (input.to !== undefined && input.from === undefined)
