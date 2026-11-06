@@ -74,6 +74,8 @@ changes, the other changes in the same commit. Tests read the tool tables of
 - **Checks:** `npm run check` (types, Biome, and the two dependency checks below), `npm test`, `npm run check:install`
   and the review page's checks (`npm run check:web`, `npm run test:web`, `npm run check:dist`) must
   pass before a commit; CI runs all of them on every push and pull request, and `ci-ok` is the one job to require.
+  Package `files` patterns use the `dir/**` form and are tested through CI's npm versions: a local `npm pack` proves
+  only this machine's npm.
   Run `npm run format` before committing. The page's checks need `npm ci` in
   `plugins/jig-review/web` first, and a change under its `src/` needs a rebuild
   (`npm run build` there) or `check:dist` fails. `check:install` needs network: it lets the stock Pi install a copy of this
