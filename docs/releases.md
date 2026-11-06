@@ -50,7 +50,7 @@ depend on the number.
 A branch moves; a tag and a commit do not. Pi takes a ref in the install source:
 
 ```bash
-pi install npm:@clawdbuilder/jig@0.3.0
+pi install npm:@clawdbuilder/jig@0.4.3
 ```
 
 - **A tag or a commit is pinned.** Pi reconciles the checkout to it and does not move it, so an update happens when you

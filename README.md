@@ -150,10 +150,10 @@ directly. Otherwise:
 - **What an earlier terminal left behind.** A variable the tmux server holds from the terminal that started it, and this one does not
   set, is removed from the session. Values travel through tmux's socket, never on a command line.
 
-Two things a launcher is often asked to do are settings of `jig.json` instead, and run inside Pi however it was started. They are
-built on another branch and are not part of this version:
-- **Checks before the first prompt,** such as reaching a VPN-only host: `startChecks`, run by `jig-core`.
-- **Unlocking a password store at start:** `secrets.pass.unlockAtStart`, run by `jig-core`.
+Two things a launcher is often asked to do are settings of `jig.json` instead, and `jig-core` runs them inside Pi however it
+was started:
+- **Checks before the first prompt,** such as reaching a VPN-only host: `startChecks` (up to 16 TCP checks), run by `jig-core`.
+- **Unlocking a password store at start:** `secrets.pass.unlockAtStart`, run by `jig-core` when `pass` is an enabled backend.
 
 Why the launcher is this small: [Decisions](docs/decisions.md#2026-11-02-an-optional-launcher-with-nothing-a-company-decides).
 
