@@ -117,9 +117,11 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
             _keybindings: unknown,
             done: (answer: Answer | undefined) => void,
         ) => {
-            // A run that is aborted while the screen is open closes it.
+            // A run that is aborted while the screen is open closes it. If it was aborted before this screen
+            // existed (the overlay opened late, or failed after a cancel), the listener would never fire: close it now.
             const onAbort = () => done(undefined);
-            ctx.signal?.addEventListener("abort", onAbort, { once: true });
+            if (ctx.signal?.aborted === true) queueMicrotask(onAbort);
+            else ctx.signal?.addEventListener("abort", onAbort, { once: true });
             const finish = (answer: Answer) => {
                 ctx.signal?.removeEventListener("abort", onAbort);
                 done(answer);
@@ -148,7 +150,9 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
                     overlayOptions: { width: "90%", maxHeight: "85%", anchor: "center", margin: 1 },
                 });
             } catch {
-                // Pi calls overlay mode experimental: if it fails to open, the inline screen still answers the call.
+                // Pi calls overlay mode experimental: if it fails to open, the inline screen still answers the call,
+                // unless the call was cancelled in the meantime, in which case no screen should open at all.
+                if (ctx.signal?.aborted === true) return undefined;
             }
         }
         return ctx.ui.custom<Answer | undefined>(screen, { blocked });

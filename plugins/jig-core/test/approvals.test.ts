@@ -178,6 +178,29 @@ describe("the review screen", () => {
         assert.deepEqual(second, { blocked: { kind: "permission", message: HEADER } });
     });
 
+    test("an overlay failure after the run is cancelled does not open or wait for the inline screen", async () => {
+        const controller = new AbortController();
+        let calls = 0;
+        const { ctx } = context(
+            {
+                custom: () => {
+                    calls++;
+                    controller.abort();
+                    return Promise.reject(new Error("overlay failed"));
+                },
+            },
+            "tui",
+            controller.signal,
+        );
+        const result = await Promise.race([
+            createApprovals().ask(ctx, review),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("stuck")), 1_000)),
+        ]);
+        assert.equal(result.answer, "decline");
+        assert.equal(result.dismissed, true);
+        assert.equal(calls, 1, "no inline retry after the cancel");
+    });
+
     test("s allows for the session", async () => {
         const { ctx } = context({ custom: pressing("s") }, "tui");
         assert.equal((await createApprovals().ask(ctx, review)).answer, "allow-session");
