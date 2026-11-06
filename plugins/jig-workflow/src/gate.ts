@@ -80,9 +80,10 @@ async function held(rt: Runtime, call: GateCall): Promise<string | undefined> {
         if (result.ok) continue;
         const what = hold.calls.find((entry) => holdMatches(entry, call));
         const missing = result.lines.slice(0, 2).join("; ");
+        const next = hold.until === "tests-pass-at-head" ? "workflow test" : "workflow advance";
         return (
             `held by workflow ${state.workflow} on ${ticket}: ${what === undefined ? call.tool : callText(what)} waits for ` +
-            `${hold.until}, which is not met: ${missing}`
+            `${hold.until}, which is not met: ${missing}. Next: ${next}.`
         );
     }
     return undefined;
