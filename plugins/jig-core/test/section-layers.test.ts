@@ -545,3 +545,20 @@ describe("lists that add up (union)", () => {
         assert.deepEqual((api.config.section("jira") as { hosts: string[] }).hosts, ["mine.example.com"]);
     });
 });
+
+describe("an ordered map", () => {
+    test("tries the person's keys before the company's", () => {
+        const company = { accounts: { "github.com:acme/*": "company", "github.com:other/*": "company" } };
+        const mine = { accounts: { "github.com:acme/orders-*": "mine" } };
+        const out = layered(company, mine, [], [], [], ["accounts"]) as {
+            accounts: Record<string, string>;
+        };
+        assert.deepEqual(Object.keys(out.accounts), [
+            "github.com:acme/orders-*",
+            "github.com:acme/*",
+            "github.com:other/*",
+        ]);
+        assert.equal(out.accounts["github.com:acme/orders-*"], "mine");
+        assert.equal(out.accounts["github.com:acme/*"], "company");
+    });
+});

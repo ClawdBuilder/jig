@@ -29,7 +29,7 @@ export default function (pi: ExtensionAPI) {
     // jig-core may load after this plugin; withJig waits for it. What the tools declare is how jig-core classifies them.
     withJig((api) => {
         for (const tool of tools) api.declareTool(tool.declaration);
-        api.config.registerSection("git", validateGitSection);
+        api.config.registerSection("git", validateGitSection, { first: ["accounts"] });
         api.gates.register(fetchGuard.gate);
         api.gates.register(runsLaterGate);
         // The comments of a pull request are watched in the background, and the agent is told in one message per poll.

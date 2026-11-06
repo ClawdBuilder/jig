@@ -136,6 +136,8 @@ export interface JigState {
     sectionOneOf: Map<string, readonly (readonly string[])[]>;
     /** The paths of lists that add up (the company's entries, then yours) instead of being replaced, per plugin section. */
     sectionUnion: Map<string, readonly string[]>;
+    /** Per section, the paths of ordered maps whose keys of yours come before the company's. */
+    sectionFirst: Map<string, readonly string[]>;
     /** Where jig.json is. The extension sets it, because only it knows Pi's agent folder. Empty until then. */
     configPath: () => string;
     /** Pi's agent folder, which holds jig.json and is protected from Pi's file tools. The extension sets it. Empty until
@@ -249,6 +251,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         sectionReplace: new Map(),
         sectionOneOf: new Map(),
         sectionUnion: new Map(),
+        sectionFirst: new Map(),
         configPath: () => "",
         agentDir: () => "",
         workingDir: "",
@@ -402,6 +405,7 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
             replace: state.sectionReplace,
             oneOf: state.sectionOneOf,
             union: state.sectionUnion,
+            first: state.sectionFirst,
             ...(state.offSections === undefined ? {} : { off: state.offSections }),
         });
     state.personal = read();

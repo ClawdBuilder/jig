@@ -122,6 +122,8 @@ export interface SectionLayers {
     oneOf?: ReadonlyMap<string, readonly (readonly string[])[]>;
     /** Per section, the paths of lists that add up: the company's entries first, then yours. */
     union?: ReadonlyMap<string, readonly string[]>;
+    /** Per section, the paths of ordered maps whose keys of yours come before the company's. */
+    first?: ReadonlyMap<string, readonly string[]>;
     /** Sections whose plugin Pi's settings filter out: kept in the file, not checked, and not a problem. */
     off?: ReadonlySet<string>;
 }
@@ -294,6 +296,7 @@ function readSection(name: string, raw: unknown, check: SectionCheck, layers: Se
         layers.replace.get(name),
         layers.oneOf?.get(name),
         layers.union?.get(name),
+        layers.first?.get(name),
     );
     const messages = runSectionCheck(check, merged);
     if (messages.length === 0) return { value: merged, use: true, messages };
