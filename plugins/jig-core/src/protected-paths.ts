@@ -545,6 +545,20 @@ export function checkFileTool(
         refuse(item, `${item.shown} holds credentials, so the file tools neither read nor write it`);
 
     if (tool === "write" || tool === "edit") {
+        // A repository can be nested below the folder Pi runs in, and a worktree's .git is a file. The path is the fact,
+        // not whether the repository was found by enumerating folders.
+        const slashed = target.folded.split("\\").join("/").toLowerCase();
+        if (/(^|\/)\.git\/(config$|hooks(\/|$))/.test(slashed)) {
+            return {
+                reason: `${tool} is refused: ${abbreviate(target.folded, context.home, flavour(context.platform))} runs later outside the sandbox: git hooks and configuration are guarded. Ask the person to change it themselves, outside Pi.`,
+                entry: {
+                    path: target.folded,
+                    shown: abbreviate(target.folded, context.home, flavour(context.platform)),
+                    kind: "guarded",
+                    source: "default",
+                },
+            };
+        }
         const hit = find(targetForms, entries, ANY, "inside", sep);
         if (hit === undefined) {
             const api = flavour(context.platform);

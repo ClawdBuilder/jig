@@ -417,6 +417,8 @@ export interface ProtectedPathInfo {
     kind: "secret" | "guarded";
     /** Where the entry came from: the built-in list, your `jig.json`, or a company plugin. */
     source: "default" | "personal" | "company";
+    /** A write asks the person instead of being refused: a toolchain folder that runs later. */
+    ask?: boolean;
 }
 
 /** The network a sandboxed `bash` has. */

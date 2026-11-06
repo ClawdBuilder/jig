@@ -96,12 +96,17 @@ export async function guardedTargets(
         case "merge": {
             const branch = text(input.branch);
             wanted.push(
-                branch === undefined
-                    ? {
-                          ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
-                          label: `origin/${text(input.base) ?? baseOf(settings)}`,
-                      }
-                    : { ref: `refs/heads/${branch}`, label: branch },
+                ...(branch === undefined
+                    ? [
+                          {
+                              ref: `refs/remotes/origin/${text(input.base) ?? baseOf(settings)}`,
+                              label: `origin/${text(input.base) ?? baseOf(settings)}`,
+                          },
+                      ]
+                    : [
+                          { ref: `refs/heads/${branch}`, label: branch },
+                          { ref: `refs/remotes/origin/${branch}`, label: `origin/${branch}` },
+                      ]),
             );
             break;
         }

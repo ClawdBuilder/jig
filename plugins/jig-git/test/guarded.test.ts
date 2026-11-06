@@ -171,3 +171,19 @@ test("a repo name cannot reach outside the workspace through a symlink or ..", a
     symlinkSync(outside, path.join(r.dir, `link${counter}`));
     await assert.rejects(() => resolveRepo(`link${counter}`, undefined), /outside|not the root/);
 });
+
+test("a merge branch that exists only at origin is found", async () => {
+    const r = makeRepo(h.sb, `remote${++counter}`);
+    git(r.dir, "switch", "-q", "-c", "remote-only");
+    writeFile(r.dir, "remote.txt", "remote\n");
+    git(r.dir, "add", "-A");
+    git(r.dir, "commit", "-qm", "remote change");
+    git(r.dir, "push", "-q", "origin", "remote-only");
+    git(r.dir, "switch", "-q", "main");
+    git(r.dir, "branch", "-D", "remote-only");
+    git(r.dir, "fetch", "-q", "origin");
+    const target = await guardedTargets("merge", { branch: "remote-only" }, r.dir, settings);
+    assert.ok(target, "the remote branch is a target");
+    assert.equal(target.targets.length, 1);
+    assert.equal(target.targets[0]?.label, "origin/remote-only");
+});

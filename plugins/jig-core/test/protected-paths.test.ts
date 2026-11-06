@@ -1062,3 +1062,19 @@ describe("the tool_call hook", () => {
         assert.ok(shown.includes(`${harness.agentDir}  (default)`), "the agent folder, as Pi has it");
     });
 });
+
+test("a nested repository's .git hooks and config are guarded without enumeration", () => {
+    const ctx = context({ entries: [] });
+    for (const tool of ["write", "edit"]) {
+        for (const target of [
+            path.join(project, "apps/service/.git/hooks/pre-commit"),
+            path.join(project, "worktrees/service/.git/config"),
+            path.join(project, ".GIT/HOOKS/pre-commit"),
+        ]) {
+            const refusal = check(tool, target, ctx);
+            assert.ok(refusal, `${tool} ${target}`);
+            assert.match(refusal.reason, /runs later outside the sandbox/);
+        }
+    }
+    assert.equal(check("read", path.join(project, "apps/service/.git/hooks/pre-commit"), ctx), undefined);
+});
