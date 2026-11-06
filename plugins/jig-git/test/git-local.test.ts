@@ -593,3 +593,21 @@ test("worktree: a remote-qualified base is split once, including a remote with a
         assert.ok(fs.existsSync(path.join(h.sb.workspace, `${r.name}-${dir}`, "README.md")));
     }
 });
+
+test("log: pickaxe searches the diff and a range is still accepted", async () => {
+    const r = fresh();
+    writeFile(r.dir, "pick.txt", "needle\n");
+    git(r.dir, "add", "-A");
+    git(r.dir, "commit", "-qm", "add needle");
+    const text = ok(await h.call("git", { action: "log", repo: r.name, pickaxe: "needle" }));
+    assert.match(text, /1 commit[\s\S]*add needle/);
+    const none = ok(await h.call("git", { action: "log", repo: r.name, pickaxe: "absent" }));
+    assert.match(none, /No commits match/);
+});
+
+test("repo: owner/name resolves when exactly one workspace folder has that origin", async () => {
+    const name = `acme${++counter}`;
+    const r = makeRepo(h.sb, name, "acme");
+    const text = ok(await h.call("git", { action: "status", repo: `acme/${name}` }));
+    assert.match(text, new RegExp(name));
+});

@@ -6,7 +6,17 @@ import os from "node:os";
 import path from "node:path";
 import { count, describeCounts } from "./ci.ts";
 import { announcePushed } from "./events.ts";
-import { afterLostReply, gh, ghJson, ghWrite, graphql, lastLine, prNumberFromUrl, repoFlags } from "./github.ts";
+import {
+    afterLostReply,
+    gh,
+    ghJson,
+    ghWrite,
+    graphql,
+    lastLine,
+    prNumberFromUrl,
+    repoArgument,
+    repoFlags,
+} from "./github.ts";
 import type { GhOptions } from "./github.ts";
 import { checkBody, checkBranch, checkNumber, checkTitle, checkWords } from "./names.ts";
 import { checksOfPr, viewPr } from "./pr-read.ts";
@@ -16,6 +26,7 @@ import type { GitSettings } from "./config.ts";
 import type { Call, Planned } from "./previews.ts";
 import { digest, reviewPreview } from "./previews.ts";
 import { baseBranch, GITHUB_COM, githubRepo, resolveRepo } from "./repo.ts";
+import { InputError } from "../../jig-core/src/kit/values.ts";
 import type { Repo } from "./repo.ts";
 import { currentBranch, revParse } from "./run.ts";
 import { lines } from "./text.ts";
@@ -97,7 +108,15 @@ export async function openPrFor(repo: Repo, branch: string, call: Call): Promise
 
 /** What a write passes to gh: the repository to run in, the pull request's repository flags, and the abort signal. */
 async function options(repo: Repo, call: Call): Promise<{ flags: string[]; run: GhOptions }> {
-    return { flags: await repoFlags(repo, call.settings, call.signal), run: { cwd: repo.root, signal: call.signal } };
+    const remote = await githubRepo(repo, call.settings, call.signal);
+    return {
+        flags: remote === undefined ? [] : ["-R", repoArgument(remote)],
+        run: {
+            cwd: repo.root,
+            signal: call.signal,
+            ...(remote?.account === undefined ? {} : { account: remote.account }),
+        },
+    };
 }
 
 /**
@@ -125,25 +144,36 @@ export async function planCreate(params: CreateParams, call: Call): Promise<Plan
     const title = ruledTitle(params.title, settings);
     if (params.body === undefined || params.body.trim() === "") {
         const template = readTemplate(repo, settings.prTemplate);
-        throw new Error(
+        throw new InputError(
             `pr create needs body: write the description.${template === undefined ? "" : `\nFill in this template:\n---\n${template.trimEnd()}\n---`}`,
         );
     }
     const body = checkBody(params.body);
     const branch = params.branch === undefined ? await currentBranch(repo.root, signal) : checkBranch(params.branch);
-    if (!branch) throw new Error(`HEAD is detached in ${repo.name}; pass branch`);
+    if (!branch) throw new InputError(`HEAD is detached in ${repo.name}; pass branch`);
     const base =
         params.base === undefined ? await baseBranch(repo, settings, signal) : checkBranch(params.base, "base");
-    if (base === branch) throw new Error(`head and base are both ${branch}; open the pull request from another branch`);
+    if (base === branch)
+        throw new InputError(`head and base are both ${branch}; open the pull request from another branch`);
     const local = await revParse(repo.root, `refs/heads/${branch}`, signal);
     const remote = await revParse(repo.root, `refs/remotes/origin/${branch}`, signal);
-    if (!local) throw new Error(`branch ${branch} does not exist locally`);
+    if (!local) throw new InputError(`branch ${branch} does not exist locally`);
     if (remote !== local)
-        throw new Error(
+        throw new InputError(
             `${branch} is not pushed to origin at its local tip; run git push first (this tool does not push)`,
         );
     const existing = await openPrFor(repo, branch, call);
-    const slug = (await githubRepo(repo, settings, signal))?.slug ?? repo.name;
+    const github = await githubRepo(repo, settings, signal);
+    const slug = github?.slug ?? repo.name;
+    if (github !== undefined) {
+        const { run: ghRun } = await options(repo, call);
+        const seen = await gh(["repo", "view", repoArgument(github), "--json", "name"], { ...ghRun, signal });
+        if (seen.code !== 0) {
+            throw new InputError(
+                `pr create: the gh account cannot see ${slug}; set git.accounts for this remote, or sign in to that account with gh auth login`,
+            );
+        }
+    }
     const draft = params.draft === true;
     const summary = existing
         ? `pull request ${existing.number} is already open for ${branch}; nothing will be created`

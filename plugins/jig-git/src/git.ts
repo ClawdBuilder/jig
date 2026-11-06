@@ -23,7 +23,7 @@ export const GIT_ACTIONS = {
     },
     log: {
         summary: "commits, filtered by range, paths, author, date or message",
-        optional: ["repo", "range", "paths", "author", "since", "until", "grep", "n", "format"],
+        optional: ["repo", "range", "paths", "author", "since", "until", "grep", "pickaxe", "n", "format"],
     },
     show: { summary: "a commit, or a file at a revision", optional: ["repo", "rev", "path", "format"] },
     blame: { summary: "who last changed each line", required: ["path"], optional: ["repo", "rev", "lines"] },
@@ -103,6 +103,7 @@ const GitParams = Type.Object(
         since: string("log: only commits after this date."),
         until: string("log: only commits before this date."),
         grep: string("log: only commits whose message matches this."),
+        pickaxe: string("log: only commits whose diff adds or removes this text (git log -S)."),
         lines: string('blame: a line range such as "10,20".'),
         contains: string("branches: only branches that contain this commit."),
         remotes: flag("branches: include remote branches."),
@@ -206,7 +207,7 @@ export const gitTool: JigTool = buildTool({
     label: "Git",
     description:
         "The local git repository: status, diff, log, show, blame, branches, fetch, clone, branch, worktree, commit, stash, sync, merge, rebase, cherry_pick, restore, and push. Commits take exact paths. Push and restore ask the user first.",
-    promptSnippet: "Local git: status, diff, commit, branch, push",
+    promptSnippet: "Local git: status, diff, log, show, blame, branches, commit, branch, push",
     promptGuidelines: [
         "Use the git tool for git, not bash: the shell has no GitHub credentials. Check status before you commit, and read the jig-git skill for the order of work.",
         "A promise to report on CI later needs a watch, because nothing else wakes you: the last line of a push result says how you will hear, and with no watch the user has to ask.",

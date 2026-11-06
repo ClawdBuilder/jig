@@ -63,6 +63,10 @@ const found = fixtures.findIndex((f) => {
     return f.has.every((needle) => (needle.startsWith("=") ? rest.includes(needle.slice(1)) : haystack.includes(needle)));
 });
 if (found < 0) {
+    if (args[0] === "repo" && args[1] === "view") {
+        process.stdout.write(JSON.stringify({ name: "repo" }));
+        process.exit(0);
+    }
     process.stderr.write("fake __NAME__: no reply for " + args.join(" ") + "\\n");
     process.exit(2);
 }
