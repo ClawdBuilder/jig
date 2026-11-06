@@ -4,6 +4,8 @@ import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSyn
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { jig } from "../src/client.ts";
+import { markRefused } from "../src/kit/tools.ts";
+import { RefusedError } from "../src/kit/values.ts";
 import type { CallClass, JigApi } from "../src/contract.ts";
 import { brokenMasker } from "./support/fakes.ts";
 import { start, text, textOf } from "./support/harness.ts";
@@ -408,6 +410,23 @@ describe("the record of a call", () => {
         assert.equal(outcome.final.isError, true);
         const [record] = harness.records();
         assert.deepEqual([record?.outcome, record?.errorKind, record?.error], ["error", "tool", "connection refused"]);
+    });
+
+    test("a tool's own refusal is blocked/refused, with the same text", async () => {
+        const harness = await begin({ plugins: (api) => declare(api) });
+        const outcome = await harness.call({
+            tool: "fake",
+            id: "call-refused",
+            input: { env: "local" },
+            run: () => {
+                markRefused("call-refused");
+                throw new RefusedError("mongo find: refused, it would scan");
+            },
+        });
+        assert.equal(textOf(outcome.final), "mongo find: refused, it would scan");
+        const [record] = harness.records();
+        assert.deepEqual([record?.outcome, record?.errorKind], ["blocked", "refused"]);
+        assert.equal(record?.error, "mongo find: refused, it would scan");
     });
 
     test("the error line is redacted, masked in production, and at most 200 characters", async () => {
