@@ -118,21 +118,34 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                     detail: jig ?? "could not be read",
                     ...(jig === undefined ? { fix: reinstallFix(options.jigRepository ?? pkg.repository) } : {}),
                 },
-        ...(context.standalone === true &&
-        jig !== undefined &&
-        context.jigInPiVersion !== undefined &&
-        context.jigInPiVersion !== jig
+        ...(context.standalone === true && (context.jigCopies?.length ?? 0) > 1
             ? [
                   {
                       id: "machine.jig.copies",
                       group: "machine" as const,
                       level: "warn" as const,
                       title: "Two copies of Jig",
-                      detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
+                      detail: `Pi loads ${context.jigCopies?.length ?? 0} copies: ${(context.jigCopies ?? [])
+                          .map((copy) => `${copy.version ?? "unknown version"} (${copy.source})`)
+                          .join(", ")}.`,
                       fix: `Install one version: pi install ${npmInstall(pkg.name)}`,
                   },
               ]
-            : []),
+            : context.standalone === true &&
+                jig !== undefined &&
+                context.jigInPiVersion !== undefined &&
+                context.jigInPiVersion !== jig
+              ? [
+                    {
+                        id: "machine.jig.copies",
+                        group: "machine" as const,
+                        level: "warn" as const,
+                        title: "Two copies of Jig",
+                        detail: `this command is ${jig}, and the copy Pi loads is ${context.jigInPiVersion}.`,
+                        fix: `Install one version: pi install ${npmInstall(pkg.name)}`,
+                    },
+                ]
+              : []),
         ...(context.sections.has("agents") &&
         !existsSync(
             options.rolesFolder ??

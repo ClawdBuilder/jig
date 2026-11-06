@@ -69,6 +69,8 @@ export interface DoctorContext {
     /** In the `jig` command: whether Pi's settings name the Jig package, and the version of the copy Pi loads. */
     jigInPi?: boolean;
     jigInPiVersion?: string;
+    /** Every Jig copy Pi loads, when it names more than one. */
+    jigCopies?: Array<{ source: string; version?: string }>;
     /** Pi lists Jig, but its folder is not there: a different problem from never installing it. */
     jigListedButMissing?: { source: string; problem: string };
     /** Project packages Pi would not load because the folder is not trusted: skipped, never imported. */

@@ -521,3 +521,28 @@ describe("the doctor sees a broken install", () => {
         assert.match(line.detail ?? "", /child agents lose reviewer, scout and worker/);
     });
 });
+
+describe("two copies of Jig", () => {
+    test("every copy is named, even at the same version", async () => {
+        for (const versions of [["0.4.1", "0.4.1"], ["0.4.0", "0.4.1"]]) {
+            const report = await runDoctor(
+                context({
+                    overrides: {
+                        standalone: true,
+                        jigCopies: [
+                            { source: "git:github.com/example/jig", version: versions[0] },
+                            { source: "npm:@clawdbuilder/jig@0.4.1", version: versions[1] },
+                        ],
+                        jigInPiVersion: versions[1],
+                    },
+                }),
+                options(),
+            );
+            const line = report.lines.find((entry) => entry.id === "machine.jig.copies");
+            assert.ok(line, text(report));
+            assert.equal(line.level, "warn");
+            assert.match(line.detail ?? "", new RegExp(`${versions[0]} \\(git:`));
+            assert.match(line.detail ?? "", new RegExp(`${versions[1]} \\(npm:`));
+        }
+    });
+});

@@ -73,6 +73,7 @@ async function doctor(args: readonly string[]): Promise<number> {
                 standalone: true,
                 jigInPi: loaded.jigInPi,
                 ...(loaded.jigInPiVersion === undefined ? {} : { jigInPiVersion: loaded.jigInPiVersion }),
+                ...(loaded.jigCopies === undefined ? {} : { jigCopies: loaded.jigCopies }),
                 ...(loaded.jigListedButMissing === undefined
                     ? {}
                     : { jigListedButMissing: loaded.jigListedButMissing }),

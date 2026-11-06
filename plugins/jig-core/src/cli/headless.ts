@@ -172,6 +172,8 @@ export interface Headless {
     jigInPi: boolean;
     /** The version of the Jig copy Pi loads, when it is installed. */
     jigInPiVersion?: string;
+    /** Every Jig copy Pi loads, in the order it lists them, for the two-copy warning. */
+    jigCopies?: Array<{ source: string; version?: string }>;
     /** Set when Pi lists Jig but its folder is not there: not the same as Jig never installed. */
     jigListedButMissing?: { source: string; problem: string };
     /** Packages Pi lists whose files are not there, or whose source cannot be read. */
@@ -250,6 +252,7 @@ export async function loadHeadless(
     const jigSkippedUntrusted = skippedProject.some((entry) => looksLikeJig(entry));
     let jigInPi = false;
     let jigInPiVersion: string | undefined;
+    const jigCopies: Array<{ source: string; version?: string }> = [];
     const jigPlugins = new Set<string>();
     const enabledPlugins = new Set<string>();
     const offCandidates = new Map<string, ListedPackage>();
@@ -287,6 +290,10 @@ export async function loadHeadless(
         if (isJig) {
             jigInPi = true;
             if (manifest?.version !== undefined) jigInPiVersion = manifest.version;
+            jigCopies.push({
+                source: chosen.source,
+                ...(manifest?.version === undefined ? {} : { version: manifest.version }),
+            });
             for (const file of group.files) {
                 const plugin = pluginOf(path.relative(group.folder, file).split(path.sep).join("/"));
                 if (plugin !== undefined) jigPlugins.add(plugin);
@@ -380,6 +387,7 @@ export async function loadHeadless(
         loaded,
         jigInPi,
         ...(jigInPiVersion === undefined ? {} : { jigInPiVersion }),
+        ...(jigCopies.length === 0 ? {} : { jigCopies }),
         ...(jigListedButMissing === undefined
             ? {}
             : {
