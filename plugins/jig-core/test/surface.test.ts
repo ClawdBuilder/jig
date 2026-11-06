@@ -76,6 +76,15 @@ describe("the global handle", () => {
     });
 });
 
+describe("the package", () => {
+    test("states the Pi minimum and tested version as public version data", () => {
+        const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
+            jig?: unknown;
+        };
+        assert.deepEqual(manifest.jig, { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } });
+    });
+});
+
 describe("the API", () => {
     test("has exactly these members: a name with () is a function, a name without is a value, nested namespaces included", () => {
         jigCore()(fakePi().pi);

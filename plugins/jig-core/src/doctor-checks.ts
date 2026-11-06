@@ -8,7 +8,16 @@ import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
-import { meetsMinimum, minimumVersion, jigPackage, npmInstall, piVersion, reinstallFix } from "./pi-version.ts";
+import {
+    compareVersions,
+    currentPiRequirement,
+    jigPackage,
+    meetsMinimum,
+    minimumVersion,
+    npmInstall,
+    piVersion,
+    reinstallFix,
+} from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
@@ -54,6 +63,7 @@ export function doctorContext(state: JigState): DoctorContext {
 }
 
 function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
+    const requirement = currentPiRequirement();
     const platform = options.platform ?? process.platform;
     const home = options.home ?? homedir();
     const node = options.nodeVersion ?? process.versions.node;
@@ -79,15 +89,24 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
             group: "machine",
             // The command itself stops when Pi is absent; here, an unreadable version says nothing about the session, so
             // it is a skip, not a problem to fix, inside Pi and outside it.
-            level: pi === undefined ? "skip" : meetsMinimum(pi, "1.4.0") ? "ok" : "warn",
+            level:
+                pi === undefined
+                    ? "skip"
+                    : !meetsMinimum(pi, requirement.minimum) || compareVersions(pi, requirement.tested) > 0
+                      ? "warn"
+                      : "ok",
             title: "Pi",
             detail:
                 pi === undefined
                     ? "version unknown"
-                    : meetsMinimum(pi, "1.4.0")
-                      ? pi
-                      : `${pi} (Jig needs 1.4 or later)`,
-            ...(pi !== undefined && !meetsMinimum(pi, "1.4.0") ? { fix: "Update Pi: pi update." } : {}),
+                    : !meetsMinimum(pi, requirement.minimum)
+                      ? `${pi} (Jig needs ${requirement.minimum} or later)`
+                      : compareVersions(pi, requirement.tested) > 0
+                        ? `${pi} (newer than ${requirement.tested}, the version Jig is tested with)`
+                        : pi,
+            ...(pi !== undefined && !meetsMinimum(pi, requirement.minimum)
+                ? { fix: "Run jig update in a terminal; it installs the tested Pi." }
+                : {}),
         },
         context.standalone === true && context.jigInPi === false && context.projectSkipped?.jigIncluded === true
             ? {

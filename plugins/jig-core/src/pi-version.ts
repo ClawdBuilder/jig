@@ -63,6 +63,29 @@ export function jigPackage(file: string | URL = new URL("../../../package.json",
     };
 }
 
+/** The agent versions a Jig release states: the oldest Pi it runs with, and the one it is tested with. */
+export interface PiRequirement {
+    minimum: string;
+    tested: string;
+}
+
+/** The Pi requirement a release states in `jig.agents.pi`, or undefined when the package does not say. */
+export function piRequirement(file: string | URL = new URL("../../../package.json", import.meta.url)):
+    | PiRequirement
+    | undefined {
+    const found = readPackage(file);
+    const agents = found?.jig?.agents;
+    const pi = agents?.pi;
+    if (typeof pi?.minimum !== "string" || typeof pi?.tested !== "string") return undefined;
+    if (!/^\d+\.\d+\.\d+$/.test(pi.minimum) || !/^\d+\.\d+\.\d+$/.test(pi.tested)) return undefined;
+    return { minimum: pi.minimum, tested: pi.tested };
+}
+
+/** The requirement this Jig runs with; a package that does not state one is treated as the old floor. */
+export function currentPiRequirement(file?: string | URL): PiRequirement {
+    return piRequirement(file) ?? { minimum: "1.4.0", tested: "1.5.0" };
+}
+
 /** Where `pi install git:` should fetch Jig from, from its `repository` field: `host/path`, without a scheme or `.git`.
  *  Undefined when the field is missing or is not a location this can read, so a fork can correct it in one place. */
 export function installLocation(repository: string | undefined): string | undefined {
@@ -161,6 +184,7 @@ interface PackageJson {
     version?: unknown;
     engines?: { node?: unknown };
     repository?: unknown;
+    jig?: { agents?: { pi?: { minimum?: unknown; tested?: unknown } } };
 }
 
 function readPackage(file: string | URL): PackageJson | undefined {

@@ -11,6 +11,8 @@ import {
     jigPackage,
     meetsMinimum,
     minimumVersion,
+    piRequirement,
+    currentPiRequirement,
     reinstallFix,
 } from "../src/pi-version.ts";
 
@@ -51,6 +53,21 @@ describe("jigPackage", () => {
         );
         assert.deepEqual(jigPackage(packageFile({ version: "1.0.0" })), { version: "1.0.0" });
         assert.deepEqual(jigPackage(packageFile("not an object")), {});
+    });
+});
+
+describe("piRequirement", () => {
+    test("reads the package's stated Pi minimum and tested version", () => {
+        const file = packageFile({
+            jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } },
+        });
+        assert.deepEqual(piRequirement(file), { minimum: "1.4.0", tested: "1.5.0" });
+    });
+
+    test("is undefined when the release does not state a usable pair", () => {
+        assert.equal(piRequirement(packageFile({})), undefined);
+        assert.equal(piRequirement(packageFile({ jig: { agents: { pi: { minimum: "next" } } } })), undefined);
+        assert.deepEqual(currentPiRequirement(packageFile({})), { minimum: "1.4.0", tested: "1.5.0" });
     });
 });
 
