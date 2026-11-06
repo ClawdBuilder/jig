@@ -182,6 +182,24 @@ describe("two updates in a row", () => {
     });
 });
 
+describe("Pi's settings writer", () => {
+    test("keeps an object entry's filter when it replaces the source", () => {
+        const file = path.resolve(
+            import.meta.dirname,
+            "../../../node_modules/@earendil-works/pi-coding-agent/dist/core/package-manager.js",
+        );
+        const source = readFileSync(file, "utf8");
+        const start = source.indexOf("addSourceToSettings(source, options) {");
+        assert.ok(start >= 0, "Pi's addSourceToSettings is in the installed package");
+        const block = source.slice(start, start + 1200);
+        assert.match(
+            block,
+            /typeof existing === "string" \? normalizedSource : \{ \.\.\.existing, source: normalizedSource \}/,
+            "an object entry keeps its filter; a string entry has no filter to keep",
+        );
+    });
+});
+
 describe("piSelfUpdateCommands", () => {
     const saved = process.env.PI_SELF_UPDATE_COMMAND;
     afterEach(() => {
