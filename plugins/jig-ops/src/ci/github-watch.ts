@@ -416,7 +416,7 @@ export async function pollGithub(
     const signal = ctx.signal ?? new AbortController().signal;
     const state: GithubState = previous ?? { answers: {}, polls: 0 };
     state.polls++;
-    const done = await evaluate({ spec, slug, ctx, state, get: requester(state, signal), signal });
+    const done = await evaluate({ spec, slug, ctx, state, get: requester(state, signal, slug), signal });
     const wait = Math.max(ctx.pollSeconds, state.pollSeconds ?? 0) * 1000;
     // The engine saves the state as JSON. Passing it through JSON here makes sure that is exactly what it will hold.
     const saved = JSON.parse(JSON.stringify(state)) as GithubState;

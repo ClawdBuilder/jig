@@ -299,6 +299,18 @@ describe("review threads", () => {
         assert.deepEqual(JSON.parse(graphql[0]?.stdin ?? "{}").variables, { owner: "acme", name: "svc", number: 42 });
     });
 
+    test("the thread lookup uses the watch's account, so a mapped repository works while another account is active", async () => {
+        const token = ["ghs", "watch", "account"].join("_");
+        h.gh.on("auth token", { stdout: token }, ["--user", "acme-work"]);
+        serve({ lines: [lineComment(7001, "alice", "Here")] });
+        serveThreads([{ id: "PRRT_kwDOA1", ids: [7001] }]);
+        const outcome = await pollComments({ ...SPEC, account: "acme-work" }, undefined, signal(), () => NOW);
+        assert.equal(outcome.done, undefined);
+        const graphql = h.gh.callsOf("api").filter((call) => call.args.includes("graphql"));
+        assert.equal(graphql.length, 1);
+        assert.equal(graphql[0]?.token, true, "the GraphQL thread lookup carries the mapped account's token");
+    });
+
     test("when GitHub cannot say which thread, the comment is still told, with the way to find it", async () => {
         serve({ lines: [lineComment(7001, "alice", "Here")] });
         h.gh.on("api", { code: 1, stderr: "gh: Something went wrong" }, ["reviewThreads"]);

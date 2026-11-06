@@ -42,7 +42,12 @@ export async function planWatch(
         preview: { summary: `watch pull request ${number} in ${slug} for new comments, in the background` },
         run: async () => {
             // On github.com the spec is what it always was; on another host, the watch is told which.
-            const spec = { slug, number, ...(remote.host === GITHUB_COM ? {} : { host: remote.host }) };
+            const spec = {
+                slug,
+                number,
+                ...(remote.host === GITHUB_COM ? {} : { host: remote.host }),
+                ...(remote.account === undefined ? {} : { account: remote.account }),
+            };
             const { id, already } = startCommentWatch(spec);
             return {
                 text: watchingText(spec, id, already),

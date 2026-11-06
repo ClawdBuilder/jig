@@ -5,7 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type { GitSettings } from "./config.ts";
 import { matchesAny } from "./config.ts";
-import { GITHUB_COM, githubHostOf, isGithubOrigin, originHost } from "./origin-host.ts";
+import { GITHUB_COM, accountHosts, githubHostOf, isGithubOrigin, originHost } from "./origin-host.ts";
+import { accountFor } from "../../jig-core/src/kit/accounts.ts";
 import { git, gitTry, refExists, scrub, T_NETWORK } from "./run.ts";
 
 export interface Repo {
@@ -196,6 +197,8 @@ export interface Remote {
     name: string;
     /** `owner/name`. */
     slug: string;
+    /** The `gh` account `git.accounts` gives this remote, when one is configured. */
+    account?: string;
 }
 
 /** The host, owner and name in a remote URL: https, ssh, git or scp-style (`git@host:owner/name`). */
@@ -265,8 +268,15 @@ export async function githubRepo(repo: Repo, settings: GitSettings, signal?: Abo
     if (!remote || url === undefined) return undefined;
     const origin = await originHost(url, remote.host, settings);
     if (origin.configured === "gitlab") return undefined;
-    if (origin.configured === "github") return { ...remote, host: origin.told };
-    return isGithubOrigin(origin, settings) ? { ...remote, host: githubHostOf(origin) } : undefined;
+    // Every host the origin can be known by: an alias ssh cannot resolve is matched by the host the forge configuration or
+    // the clone host names, and a mapping written for the alias itself still works.
+    const account = accountHosts(origin, settings)
+        .map((name) => accountFor(settings.accounts, `${name}:${remote.slug}`))
+        .find((found) => found !== undefined);
+    // The account is a `gh` account name, not a credential: the token is read for one call in github.ts.
+    const withAccount = account === undefined ? {} : { account };
+    if (origin.configured === "github") return { ...remote, host: origin.told, ...withAccount };
+    return isGithubOrigin(origin, settings) ? { ...remote, host: githubHostOf(origin), ...withAccount } : undefined;
 }
 
 // ---- branches ------------------------------------------------------------------------------------------------------

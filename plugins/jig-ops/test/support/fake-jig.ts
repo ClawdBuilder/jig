@@ -69,6 +69,8 @@ export interface FakeJig {
     secrets: Map<string, string>;
     /** Every reference asked for, in order. */
     resolved: string[];
+    /** The credentials the plugin asked jig-core to attach, in order. */
+    credentials: Array<{ account: string; host: string }>;
     /** The sign-in services plugins asked for, by name; and every request one was asked to sign in. */
     signInServices: Map<string, SignInService>;
     signedIn: SignInRequest[];
@@ -110,6 +112,8 @@ export function installFakeJig(): FakeJig {
     const kinds = new Map<string, WatchKind<never, never>>();
     const watches: StartedWatch[] = [];
     const approved = new Map<string, Preview>();
+    /** Values a plugin registered with jig-core's redaction, in order. */
+    const credentials: Array<{ account: string; host: string }> = [];
     let environments: Record<string, EnvironmentKind> = { ...DEFAULT_KINDS };
     const programs = { bin: "", env: {} as Readonly<Record<string, string>> };
     const secrets = new Map<string, string>();
@@ -309,7 +313,25 @@ export function installFakeJig(): FakeJig {
         gates: { register: () => undefined },
         approvals: { inTurn: (job) => job() },
         exec: {
-            run: async (file, args, options = {}) => {
+            run: async (file, args, initial = {}) => {
+                let options = initial;
+                if (options.credential !== undefined) {
+                    const { account, host } = options.credential;
+                    const asked = await spawnProgram("gh", ["auth", "token", "--hostname", host, "--user", account], {
+                        timeoutMs: 5000,
+                    });
+                    if (asked.code !== 0 || asked.timedOut || asked.stdout.trim() === "")
+                        throw new Error(
+                            `GitHub account "${account}" has no token on ${host}: sign in as it with "gh auth login --hostname ${host}", or change that "git.accounts" entry`,
+                        );
+                    credentials.push({ account, host });
+                    const token = asked.stdout.trim();
+                    const env: Record<string, string> =
+                        host.toLowerCase() === "github.com"
+                            ? { GH_TOKEN: token }
+                            : { GH_ENTERPRISE_TOKEN: token, GH_HOST: host };
+                    options = { ...options, env: { ...options.env, ...env } };
+                }
                 started.push({ file, args: [...args], options });
                 const scripted = fake.script?.(file, args, options);
                 if (scripted instanceof Error) throw scripted;
@@ -340,6 +362,7 @@ export function installFakeJig(): FakeJig {
         sections,
         sectionReplace,
         facts,
+        credentials,
         started,
         secrets,
         resolved,

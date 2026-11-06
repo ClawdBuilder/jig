@@ -453,6 +453,55 @@ describe("/jig doctor logins and sandbox", () => {
         assert.equal(line?.detail, "signed in.");
     });
 
+    test("each git.accounts account is checked as signed in, and --network checks one repository", async () => {
+        const accountContext = context({
+            sections: new Map([
+                ["git", { accounts: { "github.com:acme/orders-api": "acme-work", "github.com:acme/*": "acme-home" } }],
+            ]),
+        });
+        const asked: string[][] = [];
+        const signedIn = await runDoctor(
+            accountContext,
+            options({
+                pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
+                run: async (file, args) => {
+                    asked.push([file, ...args]);
+                    return { code: 0, stdout: "", stderr: "", timedOut: false };
+                },
+            }),
+        );
+        const line = signedIn.lines.find((entry) => entry.id === "logins.gh-account.acme-work");
+        assert.equal(line?.level, "ok");
+        assert.equal(line?.detail, "Signed in, for github.com:acme/orders-api.");
+        assert.deepEqual(
+            asked.find((call) => call.includes("acme-work")),
+            ["gh", "auth", "token", "--hostname", "github.com", "--user", "acme-work"],
+        );
+        let repoCredential: unknown;
+        const network = await runDoctor(
+            accountContext,
+            options({
+                network: true,
+                pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
+                run: async (_file, args, runOptions) => {
+                    if (args[0] === "repo") repoCredential = runOptions?.credential;
+                    return { code: 0, stdout: "", stderr: "", timedOut: false };
+                },
+            }),
+        );
+        assert.equal(network.lines.find((entry) => entry.id === "logins.gh-account.acme-work.repo")?.level, "ok");
+        assert.deepEqual(repoCredential, { program: "gh", account: "acme-work", host: "github.com" });
+
+        const missing = await runDoctor(
+            context({ sections: new Map([["git", { accounts: { "github.com:acme/*": "acme-work" } }]]) }),
+            options({
+                pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
+                run: async () => ({ code: 1, stdout: "", stderr: "", timedOut: false }),
+            }),
+        );
+        assert.equal(missing.lines.find((entry) => entry.id === "logins.gh-account.acme-work")?.level, "fail");
+    });
+
     test("a login tool that is not signed in warns with the login command", async () => {
         const report = await runDoctor(
             context({

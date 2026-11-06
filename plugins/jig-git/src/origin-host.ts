@@ -114,6 +114,18 @@ export async function originHost(url: string, host: string, settings: GitSetting
     };
 }
 
+/**
+ * Every host `git.accounts` may be keyed to for this origin, in the order to try: the host `gh` is told (an explicit forge
+ * host or the real host), the GitHub host a clone-host alias stands for, then the real host and the alias as origin wrote it.
+ * An alias ssh cannot resolve is therefore still matchable by the host the forge configuration or the clone host names.
+ */
+export function accountHosts(host: OriginHost, settings: GitSettings): string[] {
+    const hosts = [host.told];
+    if (isGithubOrigin(host, settings)) hosts.push(githubHostOf(host));
+    hosts.push(host.real, host.alias);
+    return [...new Set(hosts.map((name) => name.toLowerCase()))];
+}
+
 /** Whether a host that no `git.forges` entry names is GitHub: github.com, or the configured clone host (an ssh alias for it). */
 export function isGithubOrigin(host: OriginHost, settings: GitSettings): boolean {
     return host.real === GITHUB_COM || host.alias === settings.cloneHost.toLowerCase();

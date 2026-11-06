@@ -10,7 +10,7 @@ import {
     OWN_SECTIONS,
 } from "./config.ts";
 import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
-import { git, run } from "./exec.ts";
+import { git, run, setCredentialRegistrar } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import type { ExecGuard } from "./exec.ts";
 import { checkOnboarding } from "./onboarding.ts";
@@ -21,6 +21,14 @@ import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";
 import { isAbsolute } from "node:path";
+
+/** Refuses a section option that must be a list of non-empty paths, such as `first` or `union`. */
+function checkPathList(value: unknown, section: string, option: string, example: string): void {
+    if (value === undefined) return;
+    if (!Array.isArray(value) || value.some((path) => typeof path !== "string" || path === "")) {
+        throw new TypeError(`registerSection(${section}): ${option} must be a list of paths such as ${example}`);
+    }
+}
 
 /** The longest a command run in the sandbox for a plugin may take. */
 const MAX_SANDBOX_RUN_MS = 2 * 60 * 60 * 1000;
@@ -37,6 +45,8 @@ function sandboxCanRun(state: JigState): boolean {
 }
 
 export function buildApi(state: JigState): JigApi {
+    // A token jig-core attaches to one call is redacted from every result, like a resolved secret.
+    setCredentialRegistrar((value) => state.redactor.register(value));
     // Asked at each use: the sandbox registers after this API is built, and can be switched off and on.
     const guard: ExecGuard = {
         writable(real) {
@@ -220,6 +230,8 @@ export function buildApi(state: JigState): JigApi {
                         `registerSection(${name}): union must be a list of paths such as "folders" or "services.*.hosts"`,
                     );
                 }
+                const first = options?.first;
+                checkPathList(first, name, "first", '"accounts" or "services.*.hosts"');
                 const oneOf = options?.oneOf;
                 if (oneOf !== undefined) {
                     if (!Array.isArray(oneOf)) throw new TypeError(`registerSection(${name}): oneOf must be a list`);
@@ -249,6 +261,8 @@ export function buildApi(state: JigState): JigApi {
                 else state.sectionReplace.set(name, [...replace]);
                 if (union === undefined || union.length === 0) state.sectionUnion.delete(name);
                 else state.sectionUnion.set(name, [...union]);
+                if (first === undefined || first.length === 0) state.sectionFirst.delete(name);
+                else state.sectionFirst.set(name, [...first]);
                 // A section registered after the file was read is checked now, so the order plugins load in does not matter.
                 if (state.configLoaded) loadPersonalConfig(state, state.personal.file);
             },

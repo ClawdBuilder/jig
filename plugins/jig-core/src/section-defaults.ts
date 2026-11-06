@@ -12,6 +12,9 @@
 //
 // And it may name lists that add up (`union`), such as the `folders` a company and you both read from: the result is the
 // company's entries first, then yours, each once, instead of yours alone. A key is a path, as for `replace`.
+//
+// A map read in order (`first`) keeps your keys before the company's: an ordered map such as `git.accounts` must try the
+// person's specific pattern before a company's broader one.
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -69,6 +72,7 @@ function lay(
     patterns: readonly (readonly string[])[],
     groups: readonly Rivals[],
     unions: readonly (readonly string[])[],
+    firsts: readonly (readonly string[])[],
 ): unknown {
     if (mine === undefined) return theirs;
     if (Array.isArray(theirs) && Array.isArray(mine) && replaces(unions, path)) return united(theirs, mine);
@@ -82,8 +86,24 @@ function lay(
         put(
             out,
             key,
-            lay(Object.hasOwn(theirs, key) ? theirs[key] : undefined, value, [...path, key], patterns, groups, unions),
+            lay(
+                Object.hasOwn(theirs, key) ? theirs[key] : undefined,
+                value,
+                [...path, key],
+                patterns,
+                groups,
+                unions,
+                firsts,
+            ),
         );
+    }
+    // The person's keys first, then the company's remaining ones: an ordered map is read in that order, and the person's
+    // more specific entry must be seen before the company's.
+    if (firsts.some((pattern) => matches(pattern, path))) {
+        const ordered: Record<string, unknown> = {};
+        for (const key of Object.keys(mine)) if (Object.hasOwn(out, key)) put(ordered, key, out[key]);
+        for (const key of Object.keys(out)) if (!Object.hasOwn(ordered, key)) put(ordered, key, out[key]);
+        return ordered;
     }
     return out;
 }
@@ -97,6 +117,7 @@ export function layered(
     replace: readonly string[] = [],
     oneOf: readonly (readonly string[])[] = [],
     union: readonly string[] = [],
+    first: readonly string[] = [],
 ): unknown {
     const groups = oneOf.map((paths) => {
         const split = paths.map((path) => path.split("."));
@@ -109,6 +130,7 @@ export function layered(
         replace.map((path) => path.split(".")),
         groups,
         union.map((path) => path.split(".")),
+        first.map((path) => path.split(".")),
     );
 }
 

@@ -9,6 +9,7 @@ import { findOnPath, sectionTexts } from "./doctor-secrets.ts";
 import { run as runProgram } from "./exec.ts";
 import { shorten } from "./secret-status.ts";
 import { APPARMOR_SYSCTL, distroOf, findPrograms, installCommand } from "./kit/sandbox-programs.ts";
+import { isObject } from "./kit/values.ts";
 import type { ProgramPaths } from "./kit/sandbox-programs.ts";
 
 export async function loginChecks(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
@@ -116,6 +117,8 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
             });
         }
     }
+
+    lines.push(...(await accountChecks(context, options, lookup)));
     return lines;
 }
 
@@ -411,5 +414,84 @@ async function sandboxHostChecks(context: DoctorContext, options: DoctorOptions)
         detail: `bwrap could not make a user namespace${said === "" ? "." : `: ${said.slice(0, 200)}`}`,
         fix: sysctl ? APPARMOR_SYSCTL : "Run /sandbox doctor in Pi for the full check.",
     });
+    return lines;
+}
+
+/** `git.accounts` checks: each mapped account is signed in, and with `--network` it can see one repository of its remote. */
+async function accountChecks(
+    context: DoctorContext,
+    options: DoctorOptions,
+    lookup: (program: string, env: NodeJS.ProcessEnv) => string | undefined,
+): Promise<DoctorLine[]> {
+    const lines: DoctorLine[] = [];
+    // `git.accounts`: each mapped account is logged in, and with --network can see one repository of its remote.
+    const git = context.sections.get("git");
+    const accounts = isObject(git) && isObject(git.accounts) ? (git.accounts as Record<string, string>) : {};
+    const ghFound = lookup("gh", context.env) !== undefined;
+    if (ghFound) {
+        for (const [pattern, account] of Object.entries(accounts)) {
+            const host = pattern.split(":")[0] ?? "github.com";
+            const id = `logins.gh-account.${account}`;
+            const result = await (options.run ?? runProgram)(
+                "gh",
+                ["auth", "token", "--hostname", host, "--user", account],
+                {
+                    timeoutMs: options.timeoutMs ?? 5000,
+                    maxOutputBytes: 8192,
+                    ...(context.workingDir === "" ? {} : { cwd: context.workingDir }),
+                },
+            );
+            if (result.code !== 0 || result.timedOut) {
+                lines.push({
+                    id,
+                    group: "logins",
+                    level: "fail",
+                    title: `GitHub account ${account}`,
+                    detail: `The account mapped to ${pattern} is not signed in.`,
+                    fix: `Sign in as that account: gh auth login --hostname ${host}.`,
+                });
+                continue;
+            }
+            lines.push({
+                id,
+                group: "logins",
+                level: "ok",
+                title: `GitHub account ${account}`,
+                detail: `Signed in, for ${pattern}.`,
+            });
+            if (options.network === true && !pattern.includes("*")) {
+                const repo = pattern.slice(pattern.indexOf(":") + 1);
+                const seen = await (options.run ?? runProgram)(
+                    "gh",
+                    ["repo", "view", `${host}/${repo}`, "--json", "name"],
+                    {
+                        credential: { program: "gh", account, host },
+                        timeoutMs: options.timeoutMs ?? 5000,
+                        maxOutputBytes: 8192,
+                        ...(context.workingDir === "" ? {} : { cwd: context.workingDir }),
+                    },
+                );
+                lines.push({
+                    id: `${id}.repo`,
+                    group: "network",
+                    level: seen.code === 0 && !seen.timedOut ? "ok" : "fail",
+                    title: `GitHub account ${account} and ${repo}`,
+                    detail:
+                        seen.code === 0 && !seen.timedOut
+                            ? `The account can see ${host}/${repo}.`
+                            : `The account cannot see ${host}/${repo}.`,
+                });
+            }
+        }
+        if (Object.keys(accounts).length === 0)
+            lines.push({
+                id: "logins.gh-accounts",
+                group: "logins",
+                level: "skip",
+                title: "GitHub accounts per repository",
+                detail: "No git.accounts are set; gh uses the active account everywhere.",
+                fix: 'Map a remote to an account, such as "git": { "accounts": { "github.com:acme/*": "acme-work" } }.',
+            });
+    }
     return lines;
 }

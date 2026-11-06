@@ -1,0 +1,181 @@
+// `git.accounts`: a matched account is used for gh through GH_TOKEN, read from the gh that owns the login, for that one
+// call. No account is switched, and no token is stored or printed. The controls: no mapping, an account with no token, a
+// gh too old for --user, and the repository-not-found error that names the account and the fix.
+import assert from "node:assert/strict";
+import { after, before, beforeEach, test } from "node:test";
+import { settingsFrom, validateGitSection } from "../src/config.ts";
+import { ok, setupHarness } from "./support/harness.ts";
+import type { Harness } from "./support/harness.ts";
+import { git, makeRepo } from "./support/repos.ts";
+
+let h: Harness;
+let counter = 0;
+
+before(() => {
+    h = setupHarness();
+});
+beforeEach(() => h.reset());
+after(() => h.cleanup());
+
+/** A token that never looks like a literal: the fake prints it, and the test checks it is registered, never shown. */
+const TOKEN = ["ghs", "fixture", "account"].join("_");
+
+function repo(): { dir: string; name: string } {
+    const made = makeRepo(h.sb, `svc-accounts-${++counter}`, "acme");
+    return { dir: made.dir, name: made.name };
+}
+
+function mapTo(account: string): void {
+    h.jig.setSection("git", { accounts: { "github.com:acme/svc-accounts-*": account } });
+}
+
+/** What `pr view --json` answers; enough fields for the plan, not one more. */
+function prJson(): Record<string, unknown> {
+    return {
+        number: 1,
+        title: "One",
+        state: "OPEN",
+        isDraft: false,
+        author: { login: "someone" },
+        baseRefName: "main",
+        headRefName: "feature/one",
+        headRefOid: "1".repeat(40),
+        mergeable: "MERGEABLE",
+        reviewDecision: "",
+        statusCheckRollup: [],
+        url: "https://github.com/acme/svc/pull/1",
+        body: "",
+        labels: [],
+        reviewRequests: [],
+        autoMergeRequest: null,
+    };
+}
+
+function authToken(): void {
+    h.gh.on("auth token", { stdout: TOKEN }, ["--hostname", "github.com", "--user", "acme-work"]);
+}
+
+test("a mapped account is used for that call only: its token is read, registered, never switched", async () => {
+    const r = repo();
+    mapTo("acme-work");
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    const result = await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir });
+    ok(result);
+
+    const [asked] = h.gh.callsOf("auth token");
+    assert.deepEqual(asked?.args, ["auth", "token", "--hostname", "github.com", "--user", "acme-work"]);
+    assert.equal(asked?.token, false, "reading the token passes no token of its own");
+    assert.equal(h.gh.callsOf("pr view")[0]?.token, true, "the one gh call carries GH_TOKEN");
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }], "the plugin names the account");
+    assert.equal(
+        h.gh.calls().some((call) => call.args.includes("switch")),
+        false,
+        "the active account is never switched",
+    );
+});
+
+test("two repositories, two accounts: each call gets its own token, and neither becomes active", async () => {
+    const work = makeRepo(h.sb, "svc-accounts-a", "acme");
+    const home = makeRepo(h.sb, "svc-accounts-b", "acme");
+    const workToken = ["ghs", "work"].join("_");
+    const homeToken = ["ghs", "home"].join("_");
+    h.jig.setSection("git", {
+        accounts: {
+            "github.com:acme/svc-accounts-a": "acme-work",
+            "github.com:acme/svc-accounts-b": "personal",
+        },
+    });
+    h.gh.on("auth token", { stdout: workToken }, ["--user", "acme-work"]);
+    h.gh.on("auth token", { stdout: homeToken }, ["--user", "personal"]);
+    h.gh.on("pr view", { json: prJson() });
+
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: work.dir }));
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: home.dir }));
+
+    const tokens = h.gh.callsOf("auth token");
+    assert.deepEqual(
+        tokens.map((call) => call.args.at(-1)),
+        ["acme-work", "personal"],
+    );
+    assert.deepEqual(
+        h.gh.callsOf("pr view").map((call) => call.token),
+        [true, true],
+    );
+    assert.deepEqual(
+        h.jig.credentials.map((credential) => credential.account),
+        ["acme-work", "personal"],
+        "each call names its own account",
+    );
+    assert.equal(
+        h.gh.calls().some((call) => call.args.includes("switch")),
+        false,
+    );
+});
+
+test("with no mapping, gh runs as it did: the active account and no token of ours", async () => {
+    const r = repo();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    assert.equal(h.gh.callsOf("auth token").length, 0);
+    assert.equal(h.gh.callsOf("pr view")[0]?.token, false);
+});
+
+test("Could not resolve to a Repository names the account used and the fix", async () => {
+    const r = repo();
+    mapTo("acme-work");
+    authToken();
+    h.gh.on("pr view", { code: 1, stderr: "Could not resolve to a Repository with the name 'acme/svc-accounts-1'." });
+    const result = await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir });
+    assert.match(result.error?.message ?? "", /used gh account "acme-work"/);
+    assert.match(result.error?.message ?? "", /git\.accounts/);
+    assert.match(result.error?.message ?? "", /gh auth login/);
+});
+
+test("an ssh alias ssh cannot resolve still matches a mapping written for the alias", async () => {
+    const r = repo();
+    git(r.dir, "remote", "set-url", "origin", "git@github.com-work:acme/svc-accounts-alias.git");
+    h.ssh.behave("fail");
+    h.jig.setSection("git", { accounts: { "github.com-work:acme/*": "acme-work" } });
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
+});
+
+test("an alias ssh cannot resolve matches the host a git.forges entry names", async () => {
+    const r = repo();
+    git(r.dir, "remote", "set-url", "origin", "git@acme-gh:acme/svc-accounts-forge.git");
+    h.ssh.behave("fail");
+    h.jig.setSection("git", {
+        forges: { "acme-gh": { forge: "github", host: "github.com" } },
+        accounts: { "github.com:acme/*": "acme-work" },
+    });
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
+});
+
+test("an unresolved clone-host alias matches github.com", async () => {
+    const r = repo();
+    git(r.dir, "remote", "set-url", "origin", "git@work-gh:acme/svc-accounts-clone.git");
+    h.ssh.behave("fail");
+    h.jig.setSection("git", {
+        cloneHost: "work-gh",
+        accounts: { "github.com:acme/*": "acme-work" },
+    });
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
+});
+
+test("the git section checks the accounts map, and carries it when valid", () => {
+    assert.deepEqual(validateGitSection({ accounts: { "github.com:acme/*": "acme-work" } }), []);
+    assert.equal(validateGitSection({ accounts: { "acme/*": "acme-work" } }).length, 1);
+    assert.equal(validateGitSection({ accounts: { "github.com:acme/*": "" } }).length, 1);
+    assert.deepEqual(settingsFrom({ accounts: { "github.com:acme/*": "acme-work" } }).accounts, {
+        "github.com:acme/*": "acme-work",
+    });
+});

@@ -11,6 +11,8 @@ export interface PrWatchSpec {
     forge?: "gitlab";
     /** The host `glab` talks to on GitLab. On GitHub: the host `gh` talks to, left out for github.com, so the specs that were saved before it are read as they were. */
     host?: string;
+    /** The `gh` account `git.accounts` gives the repository; a name, never a token. */
+    account?: string;
 }
 
 export type Kind = "review" | "conversation" | "summary";

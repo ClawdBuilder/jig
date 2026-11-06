@@ -4,6 +4,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- `git.accounts` maps a repository's remote to the `gh` account its GitHub calls use, so a work repository and a personal one
+  keep working while either account is active. Jig reads that account's token for the one call and never switches the active
+  account or stores the token ([jig-git](plugins/jig-git/docs/configuration.md)).
+
 ### Changed
 
 - `tool_search` runs without asking: it only loads a tool definition, and the permission gate still decides each real

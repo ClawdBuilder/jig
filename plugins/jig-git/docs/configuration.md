@@ -26,6 +26,14 @@ The fields of the `git` section of `jig.json`, in detail. The table is in the
 - **`watchBots`:** `true` or `false` (the default). Whether the comment watch also
   tells the agent about comments made by bots. It is read at each poll, so a
   change applies to a watch that is already running.
+- **`accounts`:** an ordered map from a remote pattern to a `gh` account, such as
+  `{ "github.com:acme/*": "acme-work" }`. The pattern is `host:owner/name`, where `*` matches any characters, and it is matched
+  against the real remote after an ssh alias is resolved. The first match wins. For a matching repository, `jig-git` and
+  `jig-ops` read the account's token with `gh auth token --hostname <host> --user <account>` and pass it as `GH_TOKEN` to that
+  one call; they never run `gh auth switch`, never store the token, and register it for redaction. No match means today's
+  behaviour: the active `gh` account. An account whose token cannot be read, or a gh too old for `--user`, is a one-line error
+  that says which account and what to do. Your entries merge with a company's by pattern; your account name wins for the same
+  pattern.
 - **`forges`:** an object of host names. It names the hosts that `ssh -G` cannot explain and that are not `github.com` or `gitlab.com`,
   such as a self-hosted GitLab. Each entry is a forge, `"github"` or `"gitlab"`, as in `{ "gitlab.example.com": "gitlab" }`, or an
   object `{ "forge": "github", "host": "ghe.example.com" }`. Host names are compared without regard to case, and carry no port. An

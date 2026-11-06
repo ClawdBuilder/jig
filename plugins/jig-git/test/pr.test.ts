@@ -54,6 +54,21 @@ function prJson(overrides: Record<string, unknown> = {}): Record<string, unknown
 
 const writes = (verb: string) => h.gh.callsOf(`pr ${verb}`);
 
+test("the comment watch started by pr create carries the mapped account", async () => {
+    const token = ["ghs", "after", "create"].join("_");
+    h.gh.on("auth token", { stdout: token }, ["--user", "acme-work"]);
+    h.gh.on("pr list", { json: [] });
+    h.gh.on("pr create", { stdout: "https://github.com/acme/svc/pull/77\n" });
+    h.jig.setSection("git", {
+        watchComments: "after-create",
+        accounts: { "github.com:acme/*": "acme-work" },
+    });
+    const r = featureRepo();
+    ok(await h.call("pr", { action: "create", repo: r.name, title: "Add x", body: BODY }));
+    const watch = h.jig.started.find((entry) => entry.kind === "pr-comments");
+    assert.equal((watch?.spec as { account?: string } | undefined)?.account, "acme-work");
+});
+
 // ---- view and list ------------------------------------------------------------------------------------------------
 
 test("view: title, state, branches, mergeability, review, checks, labels and the URL; gh is pinned with -R", async () => {
