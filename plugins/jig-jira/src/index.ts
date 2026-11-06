@@ -19,7 +19,7 @@ export function jigJira(options: JiraOptions = {}): ExtensionFactory {
             api.config.registerSection("jira", validateJira, { replace: ["auth"], union: ["privateNames"] });
             api.declareTool({ tool: "jira", plugin: "jig-jira", classify: tool.classify, preview: tool.preview });
         });
-        registerJigTool(pi, tool.definition);
+        registerJigTool(pi, tool.definition, { summary: tool.summary });
     };
 }
 
