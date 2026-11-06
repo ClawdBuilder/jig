@@ -273,9 +273,12 @@ export async function githubRepo(repo: Repo, settings: GitSettings, signal?: Abo
     const account = accountHosts(origin, settings)
         .map((name) => accountFor(settings.accounts, `${name}:${remote.slug}`))
         .find((found) => found !== undefined);
+    // The host gh is told: an explicit forge host, or the GitHub host an alias stands for. An alias ssh could not resolve
+    // must never be put in a gh command.
+    const host = origin.explicit ? origin.told : githubHostOf(origin);
     // The account is a `gh` account name, not a credential: the token is read for one call in github.ts.
     const withAccount = account === undefined ? {} : { account };
-    if (origin.configured === "github") return { ...remote, host: origin.told, ...withAccount };
+    if (origin.configured === "github") return { ...remote, host, ...withAccount };
     return isGithubOrigin(origin, settings) ? { ...remote, host: githubHostOf(origin), ...withAccount } : undefined;
 }
 

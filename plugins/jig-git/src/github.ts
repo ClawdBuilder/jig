@@ -6,7 +6,7 @@ import { jig } from "../../jig-core/src/client.ts";
 import { accountFor } from "../../jig-core/src/kit/accounts.ts";
 import type { GitSettings } from "./config.ts";
 import { gitSettings } from "./config.ts";
-import { accountHosts, githubHostOf, isGithubOrigin, originHost } from "./origin-host.ts";
+import { accountHosts, githubHostOf, originHost } from "./origin-host.ts";
 import { GITHUB_COM, githubRepo, originUrl, parseRemote } from "./repo.ts";
 import type { Remote, Repo } from "./repo.ts";
 import { mayHaveLanded, summaryOf } from "./run.ts";
@@ -55,12 +55,9 @@ async function targetFor(
         const account = accountHosts(origin, settings)
             .map((name) => accountFor(settings.accounts, `${name}:${remote.slug}`))
             .find((found) => found !== undefined);
-        // The host gh is told: an explicit forge host, or the GitHub host a clone-host alias stands for.
-        const host = origin.explicit
-            ? origin.told
-            : isGithubOrigin(origin, settings)
-              ? githubHostOf(origin)
-              : origin.told;
+        // The host gh is told: an explicit forge host, or the GitHub host an alias stands for. An alias ssh could not
+        // resolve is never put in a gh command.
+        const host = origin.explicit ? origin.told : githubHostOf(origin);
         return account === undefined ? undefined : { account, host, remote: `${host}:${remote.slug}` };
     } catch {
         return undefined;

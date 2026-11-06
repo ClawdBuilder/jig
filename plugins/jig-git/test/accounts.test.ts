@@ -171,6 +171,30 @@ test("an unresolved clone-host alias matches github.com", async () => {
     assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
 });
 
+test("a forge named github, with an ssh alias it cannot resolve, tells gh the real host", async () => {
+    const r = repo();
+    git(r.dir, "remote", "set-url", "origin", `git@work-gh:acme/${r.name}.git`);
+    h.ssh.behave("fail");
+    h.jig.setSection("git", {
+        forges: { "work-gh": "github" },
+        accounts: { "github.com:acme/*": "acme-work" },
+    });
+    authToken();
+    h.gh.on("pr view", { json: prJson() });
+    ok(await h.call("pr", { action: "view", number: 1 }, { cwd: r.dir }));
+    const args = h.gh.callsOf("pr view")[0]?.args ?? [];
+    assert.equal(
+        args.some((arg) => arg.includes("work-gh")),
+        false,
+        "the alias is never put in a gh command",
+    );
+    assert.ok(
+        args.includes(`acme/${r.name}`) || args.includes(`github.com/acme/${r.name}`),
+        `gh gets the real host, or github.com by default: ${args.join(" ")}`,
+    );
+    assert.deepEqual(h.jig.credentials, [{ account: "acme-work", host: "github.com" }]);
+});
+
 test("the git section checks the accounts map, and carries it when valid", () => {
     assert.deepEqual(validateGitSection({ accounts: { "github.com:acme/*": "acme-work" } }), []);
     assert.equal(validateGitSection({ accounts: { "acme/*": "acme-work" } }).length, 1);
