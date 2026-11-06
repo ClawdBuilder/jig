@@ -548,7 +548,11 @@ export function checkFileTool(
         // A repository can be nested below the folder Pi runs in, and a worktree's .git is a file. The path is the fact,
         // not whether the repository was found by enumerating folders.
         const slashed = target.folded.split("\\").join("/").toLowerCase();
-        if (/(^|\/)\.git\/(config$|hooks(\/|$))/.test(slashed)) {
+        if (
+            /(^|\/)\.git\/(config(\.worktree)?$|hooks(\/|$)|worktrees\/[^/]+\/config(\.worktree)?$|info\/attributes$)/.test(
+                slashed,
+            )
+        ) {
             return {
                 reason: `${tool} is refused: ${abbreviate(target.folded, context.home, flavour(context.platform))} runs later outside the sandbox: git hooks and configuration are guarded. Ask the person to change it themselves, outside Pi.`,
                 entry: {
