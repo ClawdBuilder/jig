@@ -14,7 +14,15 @@ indexes and the tests that measure it. Back to the
 - **By hand.** `/ticket recall` scores the cards and derived notes entries against
   the active ticket. `/ticket recall some text` scores them against that text. The
   result is shown to you and not sent to the agent.
-- **Not automatically** when `recall.enabled` is false. By hand still works.
+- **The agent asks.** The `ticket` tool's `recall` action searches earlier tickets
+  by an error, class name or behaviour. It is a local read, so it never asks for
+  approval, and its result goes to the agent with the same labels and history
+  warning. This is a pull: a weak result costs only the agent's own turn.
+- **Not automatically** when `recall.enabled` is false. By hand and the tool action
+  still work.
+- `recall.notes` controls **automatic** recall only. When it is off, `/ticket
+  recall` and `ticket recall` still search notes, and listed cards come before
+  derived entries. A person who asked should see the written cards first.
 
 ## What is known about the new ticket
 
@@ -67,7 +75,9 @@ How a derived entry may reach the agent depends on who asked:
 Hyphenated tool and script names such as `order-sync` and `run-tests.sh` are
 extracted as names, because a real neighbour can share one instead of sharing a
 word. An automatic recall message writes one record line (`tool: memory`,
-`action: recall`, `facts: { entries }`, no text), which `jig-lens` can count.
+`action: recall`, `facts: { entries, queries }`, no text), which `jig-lens` can
+count. The `ticket` tool's recall adds `facts: { entries, queries: 1 }` to its own
+call record; neither record holds the query or a note's text.
 
 An entry needs `memory.recall.minScore` points, **2** unless you change it. In terms
 of the table above:

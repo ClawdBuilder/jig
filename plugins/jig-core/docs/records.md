@@ -23,8 +23,10 @@ or a CI run's conclusion. They are never free text.
 
 `jig-memory` writes one line for an automatic recall message that is not a tool
 call: tool `memory`, action `recall`, plugin `jig-memory`, outcome `ok`, and
-`facts.entries`, the number of entries in the message. It carries no message text
-or note text; `jig-lens` counts it like any other call. The limits:
+`facts.entries` and `facts.queries`, the numbers of entries and queries in the
+message. It carries no message text, note text or query text; `jig-lens` counts it
+like any other call. The `ticket` tool's `recall` action adds the same two facts to
+its own call record. The limits:
 - a string over 64 characters is dropped, and so is anything that is not a
   number, a flag or a string;
 - a fact whose name is over 64 characters is dropped too;

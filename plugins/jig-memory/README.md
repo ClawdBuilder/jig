@@ -43,8 +43,9 @@ leaves one empty.
 
 ## Tool: `ticket`
 
-The handoff record of the active ticket: what the user ran and pasted, and what
-the agent said it would do before the next step ([Handoff](docs/handoff.md)).
+The handoff record of the active ticket: what the user ran and pasted, what the
+agent said it would do before the next step, and a read-only search of earlier
+tickets ([Handoff](docs/handoff.md)).
 
 | Action | Kind | What it does |
 |---|---|---|
@@ -52,6 +53,7 @@ the agent said it would do before the next step ([Handoff](docs/handoff.md)).
 | `add_check` | local write | Adds an open check: something to do before the next step |
 | `list_checks` | read | The open checks, and how many are closed |
 | `close_check` | local write | Closes a check by its number, with what was found or done |
+| `recall` | local read | Searches earlier tickets' cards and notes by an error, class name or behaviour; the active ticket is left out |
 
 ## Commands
 
@@ -100,7 +102,7 @@ plugin's rules. An error names the key, and the plugin then uses its defaults.
 | `recall.enabled` | `true` | Run recall when a new ticket becomes active |
 | `recall.max` | `3` | Most cards in one recall message, from 1 to 10 |
 | `recall.minScore` | `2` | The score an entry needs; see [Recall](docs/recall.md#the-threshold-and-the-budget) |
-| `recall.notes` | `false` | Search entries derived from notes for tickets with no valid card; off because automatic recall missed the half-noise bar (0.818 to 0.455) |
+| `recall.notes` | `false` | Search entries derived from notes in **automatic** recall; off because it missed the half-noise bar (0.818 to 0.455). `/ticket recall` and `ticket recall` always search notes |
 | `recall.maxNotes` | `1` | Most derived notes entries in one result, from 0 to `max`; 0 turns them off |
 
 Field notes and an example: [Configure](docs/configure.md).
