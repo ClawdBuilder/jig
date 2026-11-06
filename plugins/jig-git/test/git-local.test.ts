@@ -569,3 +569,27 @@ test("restore needs paths that are exact files", async () => {
     for (const paths of [["."], ["/etc"], ["../x"]])
         assert.ok((await h.call("git", { action: "restore", repo: r.name, paths })).error, JSON.stringify(paths));
 });
+
+test("worktree: a remote-qualified base is split once, including a remote with a slash", async () => {
+    const r = fresh();
+    git(r.dir, "push", "-q", "origin", "main:release/1.2");
+    git(r.dir, "remote", "add", "team/origin", r.origin);
+    for (const [dir, base] of [
+        ["wt-main", "origin/main"],
+        ["wt-release", "origin/release/1.2"],
+        ["wt-team", "team/origin/release/1.2"],
+    ] as const) {
+        const text = ok(
+            await h.call("git", {
+                action: "worktree",
+                repo: r.name,
+                operation: "add",
+                dir: `${r.name}-${dir}`,
+                branch: `feature/${dir}`,
+                base,
+            }),
+        );
+        assert.match(text, new RegExp(`Added the work tree .*${dir} on feature/${dir}`));
+        assert.ok(fs.existsSync(path.join(h.sb.workspace, `${r.name}-${dir}`, "README.md")));
+    }
+});
