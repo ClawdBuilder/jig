@@ -13,7 +13,8 @@ this machine, and the agent's shell shares the network with it. An earlier
 code-review page had exactly that weakness: its link reached the agent.
 
 So the browser can render long text for you to read, and you approve with `y`
-in Pi.
+in Pi. A code review is the exception below: its page waits in the browser, and Pi shows one line and a waiting
+status, not the diff.
 
 ### The one exception: a review approved in its page with a passkey
 
@@ -43,11 +44,17 @@ supply, not because its address is secret.
 | Kind | When | What you see | How you answer |
 |---|---|---|---|
 | Dialog | short, one-line confirmations | the action in one line | `y` or `n` |
-| Review screen | long previews: diffs, Jira text, PR descriptions | a scrollable, coloured preview; `o` opens it rendered in the browser (a page on `localhost`; `approvals.openInBrowser: "always"` opens it at once) | `y` approves, `n` or Esc declines |
+| Review screen | long previews: diffs, Jira text, PR descriptions | a floating window with a scrollable, coloured preview; `o` opens it rendered in the browser (a page on `localhost`; `approvals.openInBrowser: "always"` opens it at once) | `y` approves, `n` or Esc declines |
 | Form | decisions with more than yes or no, such as choosing an option or filling a field | several questions on one screen, with options and free text | submit or cancel |
 
 A rule can choose which kind its calls use. For example, Jira comments use
 the review screen with a rendered preview.
+
+The review screen opens as a floating window (90% of the width, at most 85% of the height, centred). On a terminal
+smaller than 60 columns or 16 rows, or if the overlay fails to open, the same screen stays inline, because an overlay
+that loses focus or misdraws is worse than a full screen. A host without the terminal interface uses the selector, as
+before. The terminal's status line says `review: waiting for you` while the question is open, and the transcript gets
+one line naming how to reopen it; the diff or body is only in the window and the browser, never in the timeline.
 
 The rendered page comes from a small server on this machine (`127.0.0.1`, a random port, an unguessable address per
 page, closed with the session). It shows the preview and takes nothing back: it has no route that answers a question. The

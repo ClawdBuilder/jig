@@ -31,8 +31,10 @@ before it gave:
 - **Dialog:** Pi's selector with the header and the summary. Allow, Allow for
   this session, or Decline.
 - **Review screen:** for a preview with a body, or when a rule or the tool asks
-  for it, in the terminal interface. A scrollable preview (up and down, PgUp
-  and PgDn, Home and End).
+  for it, in the terminal interface. It opens as a floating window (90% wide,
+  at most 85% high, centred). On a terminal smaller than 60 columns or 16 rows,
+  or when the overlay cannot open, it stays inline. A scrollable preview (up and
+  down, PgUp and PgDn, Home and End).
   - `y` allows, `s` allows for the session, `n` or Esc declines, `o` opens the
     rendered preview in the browser. With `approvals.openInBrowser` set to `"always"` in `jig.json`, it also opens
     once, as the screen appears.
@@ -54,6 +56,9 @@ before it gave:
   reads it. It is not recorded.
 - **One question at a time.** Calls from one message can run together, so
   questions wait in a queue.
+- **One line and one status.** The transcript gets one line for the question;
+  the status line says `review: waiting for you` while it is open. The preview
+  body is not copied into the transcript.
 - **A preview** that a tool builds gets 15 seconds. If it fails you see
   "preview unavailable: <reason>" and can still decide. A tool without a
   preview gets a summary made from the call, with its arguments cut to 200

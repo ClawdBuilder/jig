@@ -16,6 +16,8 @@ closed instead of running ungoverned.
   secret, a sign-in service a company provides, a transport, or a token
   endpoint;
 - how it gives a preview for the review screen;
+- how it draws one line in Pi's timeline, and can give its own line with
+  `registerJigTool`'s optional `summary`;
 - how it adds facts to its record.
 
 ## For every plugin
@@ -30,6 +32,13 @@ closed instead of running ungoverned.
 
 ## The calls
 
+- **`registerJigTool(pi, tool, options?)`** registers the tool and gives it
+  default `renderCall` and `renderResult` slots: one line for the call (tool,
+  action and the few identifying arguments) and one for the result, with the
+  full text on Pi's expand key. `options.summary(args)` may return the whole
+  one-line call, such as `jira get  PROJ-123`; it must use arguments only and
+  never a body, a description or a query. A tool that defines its own renderer
+  keeps it. Nothing the model receives changes.
 - **`declareTool(declaration)`** says how the tool's calls are classified.
   - `classify` is pure and fast, because it runs before every call. A
     `TypeError` from it means invalid input.
@@ -155,6 +164,9 @@ closed instead of running ungoverned.
 they do `client.ts`, so that copies stop drifting. Nothing in it holds state or
 talks to Pi.
 
+- **`kit/tools.ts`:** `registerJigTool(pi, tool, options?)` registers a tool
+  and its one-line timeline renderers. `JigToolOptions.summary` is the
+  optional full-line callback described above.
 - **`kit/values.ts`:** `isObject(value)`, `InputError`: a `TypeError` named
   `InputError`, which `jig-core` reads as "invalid input" when a tool's classify
   or preview throws it, and `NotConfiguredError`, an `InputError` for a section
