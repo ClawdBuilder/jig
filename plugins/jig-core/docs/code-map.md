@@ -154,6 +154,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/oauth.ts` | OAuth 2.0 without a browser: client credentials or a password, token kept in memory | `kit/http.ts` |
 | `kit/http-error.ts` | The one error a request throws | `kit/http.ts`, `kit/oauth.ts` |
 | `kit/abort.ts` | Waiting for work that may ignore its signal | `kit/http.ts` |
+| `kit/accounts.ts` | The `git.accounts` map: the `host:owner/name` pattern, its check, and the first match | `jig-git`, `jig-ops` |
 | `kit/action-names.ts` | The actions renamed to snake_case in 0.4.0, the current name for an old one, and the rules that still name one | `decide.ts`, `classify.ts`, `jig-agents`' policy, `jig-workflow`'s definitions |
 | `kit/browser.ts` | The program and arguments that open an address, from `$BROWSER` or the platform's opener | `preview-html.ts`, `jig-review`'s `open.ts` |
 | `kit/files.ts` | Writing a file so it survives a crash: synced, renamed into place, its folder synced | `paths.ts`, `mask/key.ts`, plugins' stores |
