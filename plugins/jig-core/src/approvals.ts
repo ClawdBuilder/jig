@@ -65,11 +65,15 @@ export interface ApprovalsOptions {
     openPreview?: (preview: Preview, header: string) => Promise<string>;
     /** Whether a review screen opens its preview as soon as it appears ("always") or on the `o` key. Read for each question. */
     openInBrowser?: () => OpenInBrowser;
+    /** The terminal size, for the overlay fallback. Default: the size of this process's terminal, or 80x24. */
+    terminalSize?: () => { columns: number; rows: number };
 }
 
 export function createApprovals(options: ApprovalsOptions = {}): Approvals {
     const now = options.now ?? Date.now;
     const openPreview = options.openPreview ?? (async () => "the browser is not available");
+    const terminalSize =
+        options.terminalSize ?? (() => ({ columns: process.stdout.columns ?? 80, rows: process.stdout.rows ?? 24 }));
 
     // One question at a time. A failed question does not stop the ones behind it.
     let tail: Promise<unknown> = Promise.resolve();
@@ -107,29 +111,47 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
         // `blocked` tells the terminal (OSC 7501) that Pi waits for an approval, as Pi's own dialogs do, so a terminal app
         // that lists agents shows this one as waiting for the user.
         const blocked = { kind: "permission" as const, message: request.header };
-        return ctx.ui.custom<Answer | undefined>(
-            (tui, theme, _keybindings, done) => {
-                // A run that is aborted while the screen is open closes it.
-                const onAbort = () => done(undefined);
-                ctx.signal?.addEventListener("abort", onAbort, { once: true });
-                const finish = (answer: Answer) => {
-                    ctx.signal?.removeEventListener("abort", onAbort);
-                    done(answer);
-                };
-                return createReviewScreen(
-                    {
-                        header: request.header,
-                        preview: request.preview,
-                        openInBrowser: () => openPreview(request.preview, request.header),
-                        openAtStart: options.openInBrowser?.() === "always",
-                    },
-                    tui,
-                    theme,
-                    finish,
-                );
-            },
-            { blocked },
-        );
+        const screen = (
+            tui: unknown,
+            theme: unknown,
+            _keybindings: unknown,
+            done: (answer: Answer | undefined) => void,
+        ) => {
+            // A run that is aborted while the screen is open closes it.
+            const onAbort = () => done(undefined);
+            ctx.signal?.addEventListener("abort", onAbort, { once: true });
+            const finish = (answer: Answer) => {
+                ctx.signal?.removeEventListener("abort", onAbort);
+                done(answer);
+            };
+            return createReviewScreen(
+                {
+                    header: request.header,
+                    preview: request.preview,
+                    openInBrowser: () => openPreview(request.preview, request.header),
+                    openAtStart: options.openInBrowser?.() === "always",
+                },
+                tui as never,
+                theme as never,
+                finish,
+            );
+        };
+        // A floating window is the point on a normal terminal. On a very small one it would cover the conversation and
+        // misdraw, so the same component stays inline, as before.
+        const size = terminalSize();
+        const overlay = size.columns >= 60 && size.rows >= 16;
+        if (overlay) {
+            try {
+                return await ctx.ui.custom<Answer | undefined>(screen, {
+                    blocked,
+                    overlay: true,
+                    overlayOptions: { width: "90%", maxHeight: "85%", anchor: "center", margin: 1 },
+                });
+            } catch {
+                // Pi calls overlay mode experimental: if it fails to open, the inline screen still answers the call.
+            }
+        }
+        return ctx.ui.custom<Answer | undefined>(screen, { blocked });
     }
 
     async function askReason(ctx: AskContext): Promise<string | undefined> {

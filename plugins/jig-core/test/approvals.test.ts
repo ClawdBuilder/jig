@@ -135,7 +135,47 @@ describe("the review screen", () => {
             "tui",
         );
         await createApprovals().ask(ctx, review);
+        assert.deepEqual(seen, {
+            blocked: { kind: "permission", message: HEADER },
+            overlay: true,
+            overlayOptions: { width: "90%", maxHeight: "85%", anchor: "center", margin: 1 },
+        });
+    });
+
+    test("a terminal too small for the overlay uses the same screen inline", async () => {
+        let seen: unknown;
+        const answer = pressing("y");
+        const { ctx } = context(
+            {
+                custom: (factory, options) => {
+                    seen = options;
+                    return answer(factory, options);
+                },
+            },
+            "tui",
+        );
+        await createApprovals({ terminalSize: () => ({ columns: 40, rows: 10 }) }).ask(ctx, review);
         assert.deepEqual(seen, { blocked: { kind: "permission", message: HEADER } });
+    });
+
+    test("if the overlay cannot open, the inline screen still answers", async () => {
+        let calls = 0;
+        let second: unknown;
+        const answer = pressing("y");
+        const { ctx } = context(
+            {
+                custom: (factory, options) => {
+                    calls++;
+                    if (calls === 1) return Promise.reject(new Error("overlay failed"));
+                    second = options;
+                    return answer(factory, options);
+                },
+            },
+            "tui",
+        );
+        assert.equal((await createApprovals().ask(ctx, review)).answer, "allow");
+        assert.equal(calls, 2);
+        assert.deepEqual(second, { blocked: { kind: "permission", message: HEADER } });
     });
 
     test("s allows for the session", async () => {
