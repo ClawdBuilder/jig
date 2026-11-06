@@ -115,7 +115,7 @@ export class ReviewCoordinator {
 
         this.pi.on("session_shutdown", (): void => {
             this.asking?.abort();
-            this.clearWaiting();
+            this.clearReviewStatus();
             this.server?.stop();
             this.ctx = undefined;
         });
@@ -140,14 +140,35 @@ export class ReviewCoordinator {
 
     // ---- approval ---------------------------------------------------------------------------------------------------
 
-    /** One line in the transcript when a review starts, and a status line while it waits; no diff and no repeated notice. */
-    private showWaiting(ctx: ExtensionContext, url: string): void {
-        ctx.ui.setStatus?.("jig-review", "review: waiting for you");
-        ctx.ui.notify(`Code review open; waiting for you. Reopen: ${url}`, "info");
+    /** Whose turn it is, from the one review record. A review the person has not answered says so; comments with the
+     *  agent say that instead; approved or abandoned says nothing. */
+    private reviewStatus(): string | undefined {
+        switch (this.currentReview?.status) {
+            case "awaiting-review":
+                return "review: waiting for you";
+            case "awaiting-agent":
+                return "review: agent working";
+            default:
+                return undefined;
+        }
     }
 
-    private clearWaiting(ctx: ExtensionContext | undefined = this.ctx): void {
+    private syncReviewStatus(ctx: ExtensionContext | undefined = this.ctx): void {
+        ctx?.ui.setStatus?.("jig-review", this.reviewStatus());
+    }
+
+    private clearReviewStatus(ctx: ExtensionContext | undefined = this.ctx): void {
         ctx?.ui.setStatus?.("jig-review", undefined);
+    }
+
+    /** One line in the transcript when a review opens; no diff and no second line on every reopen. */
+    private showWaiting(ctx: ExtensionContext, url: string): void {
+        this.syncReviewStatus(ctx);
+        if (this.currentReview?.status === "awaiting-agent") {
+            ctx.ui.notify("Code review is with the agent; it will return to you.", "info");
+            return;
+        }
+        ctx.ui.notify(`Code review open; waiting for you. Reopen: ${url}`, "info");
     }
 
     private approvalHost(): ApprovalHost {
@@ -156,9 +177,11 @@ export class ReviewCoordinator {
             ask: (title, message) => this.ask(title, message),
             pageApproved: async (review) => {
                 this.currentReview = await this.reviewStore.markPageApproved(review);
+                this.syncReviewStatus();
             },
             pageDeclined: async (review) => {
                 this.currentReview = await this.reviewStore.clearPageApproval(review);
+                this.syncReviewStatus();
             },
             approved: (review, method, fingerprint) => this.finishApproval(review, method, fingerprint),
             changed: () => this.server?.publish("review-updated"),
@@ -213,7 +236,7 @@ export class ReviewCoordinator {
         const approvedHeads = await headsToRecord(this.workspace, review);
         const approval = { method, ...(fingerprint === undefined ? {} : { fingerprint }) };
         this.currentReview = await this.reviewStore.approve(review, approval, approvedHeads);
-        this.clearWaiting();
+        this.syncReviewStatus();
         const approved = this.currentReview;
 
         const files = filesOfDiff(approved.iterations.at(-1)?.diff ?? "");
@@ -305,7 +328,7 @@ export class ReviewCoordinator {
         await this.tracker.finishRun(ctx);
 
         if (this.currentReview?.status === "awaiting-agent") {
-            this.clearWaiting(ctx);
+            this.syncReviewStatus(ctx);
             await this.refreshReviewAfterAgent(ctx);
             return;
         }
@@ -361,7 +384,7 @@ export class ReviewCoordinator {
             return { url };
         } catch (error) {
             const message = error instanceof Error ? error.message : "Unable to start interactive review";
-            this.clearWaiting(ctx);
+            this.syncReviewStatus(ctx);
             ctx.ui.notify(message, "error");
             return { error: message };
         }
@@ -399,7 +422,7 @@ export class ReviewCoordinator {
     }
 
     private async replaceCurrentReview(selection: ReviewFileSelection): Promise<ReviewRecord> {
-        this.clearWaiting();
+        this.clearReviewStatus();
         if (this.currentReview !== undefined)
             this.currentReview = await this.reviewStore.abandonOrDelete(this.currentReview);
         return this.createReview(selection);
@@ -467,6 +490,7 @@ export class ReviewCoordinator {
         const submittedIds = new Set(this.currentReview.iterations.at(-1)?.submittedCommentIds ?? []);
         const submitted = this.currentReview.comments.filter((comment) => submittedIds.has(comment.id));
         this.pi.sendUserMessage(buildReviewSubmissionPrompt(this.currentReview, submitted), { deliverAs: "followUp" });
+        this.syncReviewStatus();
     }
 
     private async updateSettings(settings: Partial<ReviewSettings>): Promise<void> {
@@ -480,7 +504,7 @@ export class ReviewCoordinator {
         const diff = await this.workspace.getDiff({ scope, folder, ticket });
         this.currentReview = await this.reviewStore.addIteration(this.currentReview, diff);
         this.server?.publish("review-updated");
-        this.clearWaiting(ctx);
+        this.syncReviewStatus(ctx);
 
         const settings = await this.getSettings();
         if (this.lastSubmissionMode === "ask") {
