@@ -40,6 +40,7 @@ interface ActionSpec {
 const TARGET = ["environment", "database", "collection"] as const;
 
 export const ACTIONS = {
+    access: { required: ["environment"], optional: ["cluster"], effect: "read" },
     databases: { required: ["environment"], optional: ["maxTimeMS"], effect: "read" },
     collections: { required: ["environment", "database"], optional: ["maxTimeMS"], effect: "read" },
     schema: { required: TARGET, optional: ["filter", "limit", "maxTimeMS"], effect: "read" },

@@ -62,6 +62,29 @@ describe("a read in a test environment", () => {
     });
 });
 
+describe("mongo access", () => {
+    test("reads the configured rules with no database, and opens no connection", async () => {
+        h.load({
+            connect: async () => {
+                throw new Error("the database is down");
+            },
+        });
+        const result = await h.call({ action: "access", environment: "staging" });
+        assert.match(result.text, /^mongo access staging\ndeny list:/);
+        assert.match(result.text, /fields: \*\.notes/, "a global field rule keeps its scope");
+        assert.match(result.text, /always denied: admin, config, local \(system databases\), system\.\* collections/);
+        assert.equal(h.connects.length, 0, "no connection was asked for");
+        const admin = await h.call({
+            action: "find",
+            environment: "staging",
+            database: "admin",
+            collection: "users",
+            filter: {},
+        });
+        assert.match(admin.error?.message ?? admin.text, /always denied/);
+    });
+});
+
 describe("a read in production", () => {
     test("reads only the allowed fields through a forced projection, from a secondary where there is one", async () => {
         h.backend.answers.find = [{ _id: 1, status: "open", items: [{ sku: "a", token: "t" }], internalNotes: "x" }];
@@ -288,7 +311,10 @@ describe("an environment with several connections", () => {
     test("needs `cluster`, and a call without it is refused before anyone is asked, naming the choices", async () => {
         const result = await h.call(find("staging"));
         // A read is allowed by the table and does not ask, so its refusal is the tool's own error, not a block.
-        assert.equal(result.error?.message, "staging has several connections: add cluster, one of orders, billing");
+        assert.equal(
+            result.error?.message,
+            "staging has several connections: add cluster, one of orders, billing; call mongo access to see each one's rules",
+        );
         assert.equal(h.connects.length, 0);
         // The refusal is the preview's now: classification is from the input alone.
         await assert.rejects(

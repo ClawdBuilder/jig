@@ -139,6 +139,7 @@ const EXPECTED: Record<string, Given> = {
     "jig-mongo": {
         tools: {
             mongo: [
+                "access",
                 "aggregate",
                 "bulk",
                 "collections",

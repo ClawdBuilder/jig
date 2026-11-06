@@ -15,6 +15,7 @@ const refused = (input: Record<string, unknown>, pattern: RegExp) =>
 describe("the actions", () => {
     test("every action of the README is there, with its kind", () => {
         assert.deepEqual(ACTION_NAMES, [
+            "access",
             "databases",
             "collections",
             "schema",
@@ -79,7 +80,7 @@ describe("checking a call", () => {
     });
 
     test("an unknown action, a missing parameter and a parameter the action does not use each get the usage line", () => {
-        refused({ action: "launch", ...base }, /unknown action "launch"; use one of databases, collections/);
+        refused({ action: "launch", ...base }, /unknown action "launch"; use one of access, databases/);
         refused({ ...base }, /unknown action undefined/);
         refused(
             { action: "find", environment: "staging", collection: "orders" },

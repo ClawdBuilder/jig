@@ -38,7 +38,7 @@ const VERIFY_MAX_TIME_MS = 5000;
 const REMEMBERED = 100;
 
 const DESCRIPTION =
-    "MongoDB in your configured environments. Explore: databases, collections, schema, stats. Indexes and plans: indexes, " +
+    "MongoDB in your configured environments. Access: access lists each environment's allowed or denied names. Explore: databases, collections, schema, stats. Indexes and plans: indexes, " +
     "index_stats, explain. Query: count, find, distinct, sample, aggregate. Write: insert, update, replace, delete, bulk, " +
     "create_index, drop_index. Filters, documents and pipelines are Extended JSON. Writes show a count and ask first; " +
     "production is read-only. Fields that look like credentials are never returned.";
@@ -84,7 +84,7 @@ function connectionOf(settings: MongoSettings, call: Call): Connection {
         const connection = settings.connections.get(call.environment);
         if (connection === undefined) {
             throw new InputError(
-                `unknown environment ${shown(call.environment, 30)}; configured: ${shortList(environmentsOf(settings))}`,
+                `unknown environment ${shown(call.environment, 30)}; configured: ${shortList(environmentsOf(settings))}. Call mongo access with a configured environment to see its rules`,
             );
         }
         if (call.cluster !== undefined) {
@@ -93,7 +93,9 @@ function connectionOf(settings: MongoSettings, call: Call): Connection {
         return connection;
     }
     if (call.cluster === undefined) {
-        throw new InputError(`${call.environment} has several connections: add cluster, one of ${shortList(clusters)}`);
+        throw new InputError(
+            `${call.environment} has several connections: add cluster, one of ${shortList(clusters)}; call mongo access to see each one's rules`,
+        );
     }
     const connection = CLUSTER_NAME.test(call.cluster)
         ? settings.connections.get(connectionKey(call.environment, call.cluster))
@@ -333,6 +335,12 @@ export function createTool(options: MongoOptions = {}): MongoTool {
 
                 if (c.planned.effect === "read") {
                     const run = c.planned.run;
+                    if (c.call.action === "access") {
+                        // The rules come from jig.json: this read opens no connection, so it works with Mongo down.
+                        const rendered = await raceAbort(run.run(undefined as never, until), until);
+                        jig().addFacts(toolCallId, withCluster(c, rendered.facts));
+                        return text(rendered.text, rendered.details);
+                    }
                     const rendered = await withBackend(c, until, (backend) =>
                         raceAbort(run.run(backend, until), until),
                     ).catch((error: unknown) => {

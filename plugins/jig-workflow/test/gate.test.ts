@@ -57,6 +57,8 @@ describe("holds on write and edit", () => {
                 held.reason ?? "",
                 new RegExp(`${tool} waits for plan-approved, which is not met: .*plan.md does not exist`),
             );
+            assert.match(held.reason ?? "", /Next: workflow submit_plan\./);
+            assert.doesNotMatch(held.reason ?? "", /Next: workflow advance\./);
         }
     });
 

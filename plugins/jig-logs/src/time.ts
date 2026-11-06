@@ -76,8 +76,17 @@ export interface RangeInput {
 
 /** The searched range: an explicit `from` and `to`, or the last `window` (else `defaultWindow`) ending now. */
 export function resolveRange(input: RangeInput, defaultWindow: string, now: number): Range {
-    if ((input.from === undefined) !== (input.to === undefined))
-        return refuse("logs: from and to must be given together");
+    if (input.from !== undefined && input.to === undefined) {
+        if (input.window !== undefined) return refuse("logs: give either window or from and to, not both");
+        const from = parseInstant(input.from, "from");
+        if (now <= from) return refuse("logs: from must be before now when to is not given");
+        if (now - from > MAX_RANGE_MS) {
+            return refuse("logs: from must be within 7 days of now; search older logs in slices of at most 7 days");
+        }
+        return { from, to: now };
+    }
+    if (input.to !== undefined && input.from === undefined)
+        return refuse("logs: to needs from; give from as well, or use window");
     if (input.from !== undefined && input.to !== undefined) {
         if (input.window !== undefined) return refuse("logs: give either window or from and to, not both");
         const range = { from: parseInstant(input.from, "from"), to: parseInstant(input.to, "to") };

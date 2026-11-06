@@ -9,6 +9,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - `git.accounts` maps a repository's remote to the `gh` account its GitHub calls use, so a work repository and a personal one
   keep working while either account is active. Jig reads that account's token for the one call and never switches the active
   account or stores the token ([jig-git](plugins/jig-git/docs/configuration.md)).
+- `mongo access` lists an environment's configured rules without opening a database connection, so it works while
+  MongoDB is down; the list keeps a field rule's scope such as `*.notes` and names the always-denied system databases,
+  system collections and credential-like fields.
 
 ### Changed
 
@@ -20,6 +23,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   the overlay cannot open.
 - A browser code review keeps one line and a `review: waiting for you` or `review: agent working` status in Pi; the diff
   stays in the browser.
+- `logs` accepts `from` alone, searching through now, and refuses a start older than seven days as an explicit range
+  does.
+- Refusals point at what clears them: `mongo` names `mongo access`, `jira update` names `jira.updateFields`, and a
+  workflow hold names the action that records its evidence.
 
 ## [0.4.2] - 2026-11-06
 

@@ -58,6 +58,18 @@ function mustAsk(rt: Runtime, call: GateCall): string | undefined {
     }
 }
 
+/** The next call for each condition: the one that records the evidence it waits for. */
+const NEXT_STEP: Readonly<Record<string, string>> = {
+    "plan-approved": "workflow submit_plan",
+    "tests-pass-at-head": "workflow test",
+    "scenarios-pass": "workflow scenario",
+    "pull-request-open": "pr create",
+    "checks-pass": "ci status",
+    "review-done": "start_interactive_code_review",
+    "notes-updated": "write what you learned in notes.md",
+    "you-approve": "ask the person",
+};
+
 async function held(rt: Runtime, call: GateCall): Promise<string | undefined> {
     const ticket = rt.activeTicket();
     if (ticket === undefined) return undefined;
@@ -80,9 +92,13 @@ async function held(rt: Runtime, call: GateCall): Promise<string | undefined> {
         if (result.ok) continue;
         const what = hold.calls.find((entry) => holdMatches(entry, call));
         const missing = result.lines.slice(0, 2).join("; ");
+        // The call that records the evidence each condition needs; a condition no single call clears says nothing rather
+        // than pointing at `workflow advance`, which records none of them.
+        const next = NEXT_STEP[hold.until];
+        const hint = next === undefined ? "" : ` Next: ${next}.`;
         return (
             `held by workflow ${state.workflow} on ${ticket}: ${what === undefined ? call.tool : callText(what)} waits for ` +
-            `${hold.until}, which is not met: ${missing}`
+            `${hold.until}, which is not met: ${missing}.${hint}`
         );
     }
     return undefined;

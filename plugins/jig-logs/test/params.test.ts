@@ -148,7 +148,7 @@ test("a phrase or query must be printable text of the right length", () => {
 test("window, from and to are refused with the rule they break", () => {
     refused(() => query({ ...base, window: "9d" }), /^logs: window must look like 30m, 2h or 1d and be at most 7d/);
     refused(() => query({ ...base, window: 5 }), /^logs: window must be text/);
-    refused(() => query({ ...base, from: "2026-10-13T10:00:00Z" }), /from and to must be given together/);
+    assert.ok(ok({ ...base, from: "2026-10-13T10:00:00Z" }));
     refused(
         () => query({ ...base, window: "1h", from: "2026-10-13T10:00:00Z", to: "2026-10-13T11:00:00Z" }),
         /either window or from and to, not both/,

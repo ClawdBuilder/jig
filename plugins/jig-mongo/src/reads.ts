@@ -1,7 +1,7 @@
 // The actions that only read. Each is planned first, with nothing sent: the call is checked against the access lists and the
 // request to the backend is built. `run` then sends that request, and shapes the answer: denied fields are taken out of it,
 // and what is left is written as lines for the model.
-import { fieldPath, projectionFor, stripCredentials } from "./access.ts";
+import { fieldPath, projectionFor, stripCredentials, SYSTEM_DATABASES } from "./access.ts";
 import type { Access, Ns } from "./access.ts";
 import type { Backend } from "./backend.ts";
 import { isLeaf, toExtended, typeName } from "./bson.ts";
@@ -531,8 +531,46 @@ export function planAggregateRead(
 }
 
 /** Plans a call that only reads, other than an aggregation. `options.requireIndex` makes the reads that scan a collection refuse. */
+function planAccess(call: Call, access: Access): ReadRun {
+    const label = labelOf(call);
+    const summary = access.summary;
+    return {
+        label,
+        async run() {
+            const lines = [label];
+            if (summary.mode === "allow") {
+                lines.push("allow list: only these collections and fields are readable");
+                for (const entry of summary.allow) {
+                    lines.push(
+                        `${entry.collection}: ${entry.fields.length === 0 ? "(no fields)" : entry.fields.join(", ")}`,
+                    );
+                }
+            } else {
+                lines.push(
+                    "deny list: these names are refused; every other name is allowed, except the always-denied ones",
+                );
+                if (summary.databases.length > 0) lines.push(`databases: ${summary.databases.join(", ")}`);
+                if (summary.collections.length > 0) lines.push(`collections: ${summary.collections.join(", ")}`);
+                if (summary.fields.length > 0) lines.push(`fields: ${summary.fields.join(", ")}`);
+            }
+            lines.push(
+                "always denied: " +
+                    `${[...SYSTEM_DATABASES].sort().join(", ")} (system databases), system.* collections, ` +
+                    "field names that look like credentials (password, secret, token, apiKey)",
+            );
+            return {
+                text: lines.join("\n"),
+                details: { mode: summary.mode, collections: summary.mode === "allow" ? summary.collections.length : 0 },
+                facts: { returned: summary.mode === "allow" ? summary.collections.length : 0 },
+            };
+        },
+    };
+}
+
 export function planRead(call: Call, access: Access, options?: PlanOptions): ReadRun {
     switch (call.action) {
+        case "access":
+            return planAccess(call, access);
         case "databases":
             return planDatabases(call, access);
         case "collections":

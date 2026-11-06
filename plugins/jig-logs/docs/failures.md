@@ -39,10 +39,12 @@ cut to 40 characters. No secret is read and no request is made.
   must look like 30m, 2h or 1d and be at most 7d; for older logs pass from and to in
   slices of at most 7 days (got "9d")`
 - **`from` and `to`:** one of
-  - `logs: from and to must be given together`
+  - `logs: to needs from; give from as well, or use window`
   - `logs: give either window or from and to, not both`
   - `logs: to must be after from`
   - `logs: from..to must span at most 7 days; search older logs in slices of at most 7 days`
+  - `logs: from must be before now when to is not given`
+  - `logs: from must be within 7 days of now; search older logs in slices of at most 7 days`
   - `logs: from must be ISO 8601 with a timezone, such as 2026-10-13T09:30:00Z (got "2026-10-13")`
 - **An `order` that is not `asc` or `desc`:** `logs: order must be asc or desc (got
   "sideways")`

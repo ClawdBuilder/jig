@@ -368,7 +368,7 @@ describe("update", () => {
             refused.blocked,
             "Blocked by jig-core: jira cannot run with this input: " +
                 'jira update: "reporter" is not a field that update may set. ' +
-                "It may set: summary, description, labels, priority, assignee",
+                "Allowed: summary, description, labels, priority, assignee. Use jira find_field for the id; a company adds it to jira.updateFields",
         );
 
         h.configure({
@@ -378,7 +378,10 @@ describe("update", () => {
             updateFields: ["summary", "points", "customfield_10500"],
         });
         const refusedAgain = await h.call({ action: "update", key: "PROJ-1", fields: { labels: ["x"] } });
-        assert.match(refusedAgain.blocked ?? "", /It may set: summary, points, customfield_10500, Pull Request$/);
+        assert.match(
+            refusedAgain.blocked ?? "",
+            /Allowed: summary, points, customfield_10500, Pull Request\. Use jira find_field.*updateFields/,
+        );
         const result = await h.call({
             action: "update",
             key: "PROJ-1",

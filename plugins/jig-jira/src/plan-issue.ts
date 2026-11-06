@@ -107,7 +107,7 @@ export async function planUpdate(env: Env, call: CallOf<"update">): Promise<Plan
         if (id === undefined || !allowed.has(id)) {
             throw new InputError(
                 `jira update: "${name.slice(0, 40)}" is not a field that update may set. ` +
-                    `It may set: ${allowedNames(settings)}`,
+                    `Allowed: ${allowedNames(settings)}. Use jira find_field for the id; a company adds it to jira.updateFields`,
             );
         }
         if (wanted.some((entry) => entry.id === id)) throw new InputError(`jira update: ${id} is given twice`);

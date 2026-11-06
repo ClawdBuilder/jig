@@ -75,8 +75,9 @@ test("an explicit range needs both ends, excludes its end and spans at most 7 da
     assert.deepEqual(resolveRange(hour, "2h", T0), { from: T0 - 2 * HOUR_MS, to: T0 - HOUR_MS });
     const week = { from: "2026-10-06T12:00:00Z", to: "2026-10-13T12:00:00Z" };
     assert.deepEqual(resolveRange(week, "2h", T0), { from: T0 - 7 * DAY_MS, to: T0 });
-    refused(() => resolveRange({ from: hour.from }, "2h", T0), /from and to must be given together/);
-    refused(() => resolveRange({ to: hour.to }, "2h", T0), /from and to must be given together/);
+    assert.deepEqual(resolveRange({ from: hour.from }, "2h", T0), { from: Date.parse(hour.from), to: T0 });
+    refused(() => resolveRange({ to: hour.to }, "2h", T0), /to needs from/);
+    refused(() => resolveRange({ from: "2026-10-01T12:00:00Z" }, "2h", T0), /at most 7 days/);
     refused(() => resolveRange({ window: "1h", ...hour }, "2h", T0), /either window or from and to, not both/);
     refused(() => resolveRange({ from: hour.to, to: hour.to }, "2h", T0), /to must be after from/);
     refused(() => resolveRange({ from: hour.to, to: hour.from }, "2h", T0), /to must be after from/);

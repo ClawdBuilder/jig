@@ -16,7 +16,7 @@ export interface Ns {
 /** `yes`: the field is visible. `partial`: part of it is (an allowed `items.sku` makes `items` partial). `no`: it is not. */
 export type Visibility = "yes" | "partial" | "no";
 
-const SYSTEM_DATABASES: ReadonlySet<string> = new Set(["admin", "local", "config"]);
+export const SYSTEM_DATABASES: ReadonlySet<string> = new Set(["admin", "local", "config"]);
 /** Field names that look like credentials, in every environment. */
 const CREDENTIAL_NAME = /password|secret|token|apikey/i;
 
@@ -218,8 +218,52 @@ export interface View {
     readonly leaves: readonly (readonly string[])[];
 }
 
+/** The configured rules as names, never data. A deny list is open-ended: everything not named is allowed. */
+export interface AccessSummary {
+    mode: "deny" | "allow";
+    databases: string[];
+    collections: string[];
+    fields: string[];
+    allow: Array<{ collection: string; fields: string[] }>;
+}
+
+export function summaryOfRules(rules: AccessRules): AccessSummary {
+    if (rules.mode === "deny") {
+        return {
+            mode: "deny",
+            databases: [...rules.deny.databases].sort(),
+            collections: [...rules.deny.collections].sort(),
+            // A rule with no database or collection is a field denied in every collection; its `*` is the scope, not a word
+            // to drop, or `*.notes` would read as a field called "notes" in one place.
+            fields: rules.deny.fields
+                .map((rule) =>
+                    [
+                        ...(rule.db === undefined ? ["*"] : [rule.db]),
+                        ...(rule.db === undefined && rule.coll === undefined ? [] : [rule.coll ?? "*"]),
+                        ...rule.path,
+                    ].join("."),
+                )
+                .sort(),
+            allow: [],
+        };
+    }
+    return {
+        mode: "allow",
+        databases: [],
+        collections: [...rules.allow.keys()].sort(),
+        fields: [],
+        allow: [...rules.allow.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([collection, lists]) => ({
+                collection,
+                fields: lists.map((path) => path.join(".")),
+            })),
+    };
+}
+
 export interface Access {
     readonly mode: "deny" | "allow";
+    readonly summary: AccessSummary;
     /** Whether `$where`, `$function` and `$accumulator` may run (test environments that say so). */
     readonly javascript: boolean;
     /** Throws an InputError naming why a database or collection may not be used. */
@@ -252,6 +296,7 @@ export function createAccess(rules: AccessRules): Access {
 
     const access: Access = {
         mode: rules.mode,
+        summary: summaryOfRules(rules),
         javascript,
         namespaceVisible: visible,
         isReference: (db, coll) => rules.mode === "allow" && rules.reference?.has(`${db}.${coll}`) === true,
@@ -277,7 +322,9 @@ export function createAccess(rules: AccessRules): Access {
                 throw new InputError(
                     `${name} is not in the allow list: nothing is allowed yet, so add it to the allow list of this environment`,
                 );
-            throw new InputError(`${name} is not in the allow list; allowed: ${shortList(names, ", ", 90)}`);
+            throw new InputError(
+                `${name} is not in the allow list; allowed: ${shortList(names, ", ", 90)}. Call mongo access to see the configured rules`,
+            );
         },
 
         view(namespaces) {
