@@ -15,12 +15,21 @@ export interface GuardTarget {
 
 /** Whether a repository-relative path is one the file tools guard and that runs later. */
 export function guardedRelative(path: string): boolean {
-    const normalized = path.split("\\").join("/");
-    if (normalized === ".git/config" || normalized.startsWith(".git/hooks/")) return false;
-    for (const item of PI_PROJECT_PATHS) {
-        if (normalized === item || normalized.startsWith(`${item}/`)) return true;
-    }
-    return isRepositoryRunsLater(normalized) || normalized === ".envrc" || normalized.startsWith(".envrc/");
+    // Fold case on every platform: over-asking on Linux is safe, and macOS/Windows would otherwise let .PI through.
+    const normalized = path.split("\\").join("/").toLowerCase();
+    const named = (relative: string): boolean => {
+        const name = relative.toLowerCase();
+        return (
+            normalized === name ||
+            normalized.startsWith(`${name}/`) ||
+            normalized.includes(`/${name}/`) ||
+            normalized.endsWith(`/${name}`)
+        );
+    };
+    // The working tree's own .git/config is the file-tools-only exception; a nested repository's is still guarded.
+    if (normalized === ".git/config") return false;
+    for (const item of PI_PROJECT_PATHS) if (named(item)) return true;
+    return isRepositoryRunsLater(normalized) || named(".envrc");
 }
 
 async function sha(root: string, ref: string, signal?: AbortSignal): Promise<string | undefined> {

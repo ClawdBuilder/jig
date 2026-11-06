@@ -108,8 +108,13 @@ export function runsLaterPaths(
 
 /** Whether a repository-relative path is one of the repository-scope list. */
 export function isRepositoryRunsLater(relative: string): boolean {
-    const normalized = relative.split("\\").join("/");
+    // Folded on every platform, as the file tools do: an over-ask on Linux is safer than .PI on macOS or Windows.
+    const normalized = relative.split("\\").join("/").toLowerCase();
     return RUNS_LATER.some(
-        (item) => item.scope === "repository" && (normalized === item.path || normalized.startsWith(`${item.path}/`)),
+        (item) =>
+            item.scope === "repository" &&
+            (normalized === item.path.toLowerCase() ||
+                normalized.startsWith(`${item.path.toLowerCase()}/`) ||
+                normalized.includes(`/${item.path.toLowerCase()}/`)),
     );
 }

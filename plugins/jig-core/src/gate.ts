@@ -94,9 +94,15 @@ async function decideCall(
         cwd,
         home: homedir(),
         canWrite: (absolute: string) => {
+            const fold = process.platform === "darwin" || process.platform === "win32";
+            const normalized = (value: string): string => {
+                const slashed = value.split("\\").join("/").replace(/\/+$/, "");
+                return fold ? slashed.toLowerCase() : slashed;
+            };
             const inside = (folder: string): boolean => {
-                const root = folder.endsWith("/") ? folder : `${folder}/`;
-                return absolute === folder || absolute.startsWith(root);
+                const path = normalized(folder);
+                const target = normalized(absolute);
+                return target === path || target.startsWith(`${path}/`);
             };
             if (inside(cwd)) return true;
             if (state.sandbox?.active !== true) return false;

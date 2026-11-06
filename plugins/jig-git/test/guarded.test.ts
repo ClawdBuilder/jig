@@ -43,6 +43,10 @@ test("guardedChanges finds the project files Pi loads, and not ordinary ones", a
     assert.deepEqual(await guardedChanges(r.dir, base, tip), [".pi/settings.json"]);
     assert.equal(guardedRelative("README.md"), false);
     assert.equal(guardedRelative(".vscode/tasks.json"), true);
+    assert.equal(guardedRelative("packages/app/.pi/settings.json"), true);
+    assert.equal(guardedRelative(".PI/settings.json"), true);
+    assert.equal(guardedRelative("apps/service/.git/hooks/pre-commit"), true);
+    assert.equal(guardedRelative(".git/config"), false);
 });
 
 test("a stash's untracked third parent is seen", async () => {

@@ -876,3 +876,18 @@ describe("a child agent whose role may not write", () => {
         );
     });
 });
+
+test("a core toolchain path with ask stays ask-first in the sandbox", () => {
+    const set = rules(linux({ dirs: [`${HOME}/.nvm`] }), {
+        protectedPaths: [
+            {
+                path: `${HOME}/.nvm`,
+                shown: "~/.nvm",
+                kind: "guarded",
+                source: "default",
+                ask: true,
+            },
+        ],
+    });
+    assert.equal(ruleFor(set, `${HOME}/.nvm/versions`)?.kind, "ask-first");
+});

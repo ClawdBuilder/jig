@@ -62,7 +62,13 @@ function protectedFromCore(): ProtectedEntry[] {
     try {
         return jig()
             .protectedPaths.list()
-            .map((entry) => ({ path: entry.path, shown: entry.shown, kind: entry.kind, source: entry.source }));
+            .map((entry) => ({
+                path: entry.path,
+                shown: entry.shown,
+                kind: entry.kind,
+                source: entry.source,
+                ...(entry.ask === true ? { ask: true } : {}),
+            }));
     } catch {
         return [];
     }

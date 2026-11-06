@@ -59,6 +59,8 @@ export interface ProtectedEntry {
     shown: string;
     kind: "secret" | "guarded";
     source: "default" | "personal" | "company";
+    /** The write asks the person instead of being refused: a toolchain folder that runs later. */
+    ask?: boolean;
 }
 
 export interface RulesInput {
@@ -237,6 +239,7 @@ export function computeRules(input: RulesInput): RuleSet {
         // .git/config is the file-tools-only exception: git has to write it, and the after-command audit keeps it clean.
         if (entry.source === "default" && /(^|\/)\.git\/config$/.test(entry.path)) continue;
         if (entry.kind === "secret") add("hidden", entry.path, "credentials", CORE_SOURCE[entry.source]);
+        else if (entry.ask === true) add("ask-first", entry.path, "toolchain", CORE_SOURCE[entry.source]);
         else add("locked", entry.path, "pi", CORE_SOURCE[entry.source]);
     }
     // Hidden: the doors to other systems.

@@ -2,7 +2,7 @@
 // alone must never delete it; only a dead owner does. A folder a reaper removed while the session lives is recreated.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "node:test";
@@ -68,6 +68,14 @@ describe("session folders", () => {
         rmSync(path.join(folder, "owner"), { force: true });
         makeSessionFolders(deps(tmpRoot, Date.now() + 48 * 3_600_000), "next");
         assert.ok(existsSync(folder), "cannot be proved dead, so it is not removed");
+    });
+
+    test("a root that another user or the world can enter is refused", () => {
+        const tmpRoot = tempRoot();
+        const folder = path.join(tmpRoot, "jig-sandbox-1000", "session");
+        mkdirSync(path.dirname(folder), { recursive: true, mode: 0o700 });
+        chmodSync(path.dirname(folder), 0o777);
+        assert.throws(() => ensureSessionFolders(folder), /not a private folder owned by this user/);
     });
 
     test("a session folder that vanished is recreated for a restart", () => {

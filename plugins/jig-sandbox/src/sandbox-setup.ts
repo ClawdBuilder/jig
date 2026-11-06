@@ -2,7 +2,7 @@
 // and the base configuration given to the runtime. Both are plain functions of what they are given, so they are apart from the class
 // that holds the session's state.
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { NetworkMode } from "./config.ts";
 import type { FoundPrograms } from "./programs.ts";
@@ -68,6 +68,18 @@ export function makeSessionFolders(
 
 /** Recreates a session folder that went missing, and records its owner. Safe to call on a folder that exists. */
 export function ensureSessionFolders(folder: string, deps?: Pick<SandboxDeps, "files">): string {
+    const root = path.dirname(folder);
+    mkdirSync(root, { recursive: true, mode: 0o700 });
+    const rootInfo = lstatSync(root);
+    const uid = process.getuid?.();
+    if (
+        !rootInfo.isDirectory() ||
+        rootInfo.isSymbolicLink() ||
+        (uid !== undefined && rootInfo.uid !== uid) ||
+        (rootInfo.mode & 0o077) !== 0
+    ) {
+        throw new Error(`refusing to use ${root}: it is not a private folder owned by this user`);
+    }
     mkdirSync(folder, { recursive: true, mode: 0o700 });
     chmodSync(folder, 0o700);
     for (const name of ["broker", "tmp"]) {
