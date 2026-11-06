@@ -4,6 +4,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Changed
+
+- `pr create` fails on a missing body or a repository the configured `gh` account cannot see before it asks, so an approval
+  is not spent on a call that cannot work; `repo` accepts `owner/name` when one workspace folder has that origin; `git log`
+  accepts `pickaxe` (`-S`) and the prompt names `log`, `show` and `blame`.
+
 ## [0.4.3] - 2026-11-06
 
 ### Added

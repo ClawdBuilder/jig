@@ -305,7 +305,7 @@ export async function planEdit(params: EditParams, call: Call): Promise<Planned>
         reviewers: params.reviewers === undefined ? undefined : checkWords(params.reviewers, "reviewers"),
     };
     if (Object.values(edit).every((value) => value === undefined))
-        throw new Error(
+        throw new InputError(
             "pr edit needs title, body, base, labels or reviewers. Usage: pr edit {number, title?, body?, base?, labels?, reviewers?, repo?}",
         );
     const repo = await resolveRepo(params.repo, call.signal);

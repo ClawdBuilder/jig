@@ -611,3 +611,14 @@ test("repo: owner/name resolves when exactly one workspace folder has that origi
     const text = ok(await h.call("git", { action: "status", repo: `acme/${name}` }));
     assert.match(text, new RegExp(name));
 });
+
+test("repo owner/name with no match names the workspace, and several matches list the choices", async () => {
+    const r = makeRepo(h.sb, `acme${++counter}`, "acme");
+    const missing = await h.call("git", { action: "status", repo: "acme/does-not-exist" });
+    assert.match(missing.error?.message ?? "", /no folder in .* has that origin/);
+    const copy = path.join(h.sb.workspace, `${r.name}-copy`);
+    git(h.sb.workspace, "clone", "-q", r.origin, copy);
+    git(copy, "remote", "set-url", "origin", `git@github.com:acme/${r.name}.git`);
+    const many = await h.call("git", { action: "status", repo: `acme/${r.name}` });
+    assert.match(many.error?.message ?? "", /matches several folders: .*copy/);
+});
