@@ -4,7 +4,22 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-06
+
+### Changed
+
+- Jig is published as **`@clawdbuilder/jig`**; the command is still `jig`. Install the Pi package with
+  `pi install npm:@clawdbuilder/jig@<version>` and the command with `npm install -g @clawdbuilder/jig`. An existing `git:`
+  install keeps working: the command recognises the old unscoped package name from git or a folder. The tarball ships the
+  command, every plugin, the review page and the docs, without tests.
+
 ### Fixed
+
+- **The npm packages of 0.4.0 and 0.4.1 could not run bash.** The `files` allowlist omitted
+  `plugins/jig-sandbox/broker/broker.mjs`, so every sandboxed command failed with “Cannot find module … broker.mjs”; it
+  also omitted the three built-in agent roles and the lens viewer. The tarball now ships all three runtime folders, a test
+  derives those paths from the code, and the doctor fails when the broker or roles are missing. `npm install -g
+  @clawdbuilder/jig` and `pi install npm:@clawdbuilder/jig` need 0.4.2 or later.
 
 - `jig doctor` reads the package filter in Pi's settings, as Pi does. A filter that leaves out Jig's core or its sandbox is
   a failure naming the file to change, not an all-clear; a filter that turns off a choosable plugin is a calm skip, and a
@@ -30,13 +45,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   worktree add, clone) asks the person first, naming the paths and commits; a normal switch does not ask. A file-tool
   write outside the working folder, or outside a folder the person allowed with `/sandbox allow`, asks the same way;
   inside it nothing changes, and with no terminal the ask is refused.
-
-### Changed
-
-- Jig is published as **`@clawdbuilder/jig`**; the command is still `jig`. Install the Pi package with
-  `pi install npm:@clawdbuilder/jig@<version>` and the command with `npm install -g @clawdbuilder/jig`. An existing `git:`
-  install keeps working: the command recognises the old unscoped package name from git or a folder. The tarball ships the
-  command, every plugin, the review page and the docs, without tests.
 
 ## [0.4.0] - 2026-11-05
 
