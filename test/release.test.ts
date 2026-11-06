@@ -173,6 +173,17 @@ describe("release", () => {
     });
 });
 
+test("the release job leaves room for the npm confirmation loop", () => {
+    const text = readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8");
+    const timeout = Number(/timeout-minutes:\s*(\d+)/.exec(text)?.[1]);
+    const attempts = Number(/seq 1 (\d+)/.exec(text)?.[1]);
+    assert.ok(Number.isFinite(timeout) && Number.isFinite(attempts));
+    assert.ok(
+        timeout * 60 >= attempts * 2 + 5 * 60,
+        `a ${timeout}-minute job cannot finish a ${attempts}-attempt, two-second loop plus packing and the release`,
+    );
+});
+
 describe("release-notes", () => {
     test("prints the entries of a release, without its heading, and nothing else", () => {
         const root = project("0.2.0", CHANGELOG);

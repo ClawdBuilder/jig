@@ -23,7 +23,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
       # The tag's own commit, so its package.json and its changelog are the ones the release is about.
       - name: Check out the repository
