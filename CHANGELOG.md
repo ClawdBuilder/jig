@@ -25,7 +25,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   MongoDB is down; the list keeps a field rule's scope such as `*.notes` and names the always-denied system databases,
   system collections and credential-like fields.
 
-### Changed
+### Fixed
+- A tool's own refusal is recorded as `blocked`/`refused`, not a tool error, so `/lens` counts guards apart from failures.
+  `jig-mongo`'s scan, partly-allowed-field and several-connections refusals use it; what the model sees is unchanged. A
+  tunnel whose password store is locked now says so and points at `secrets.pass.unlockAtStart`.
 
 - `tool_search` runs without asking: it only loads a tool definition, and the permission gate still decides each real
   call.

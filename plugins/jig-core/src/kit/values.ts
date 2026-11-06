@@ -18,6 +18,14 @@ export class InputError extends TypeError {
     }
 }
 
+/** The tool ran and refused by its own rules: the model sees the same error text, the record says blocked/refused. */
+export class RefusedError extends InputError {
+    constructor(message: string) {
+        super(message);
+        this.name = "RefusedError";
+    }
+}
+
 /**
  * A section a tool needs from `jig.json` is missing or invalid, so there is no decision to take. It is an `InputError`, so
  * jig-core blocks the call without asking and the message reads as one; the class is how a test tells "the tool is not
