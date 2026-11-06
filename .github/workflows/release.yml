@@ -90,14 +90,19 @@ jobs:
             npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
             npm publish --provenance --access public
           fi
+          # npm may take many minutes to show a new version. Wait up to 30 minutes, and say so while waiting; a failure
+          # still names what npm last reported. Re-running is safe: an already-published version skips the publish.
           got=""
-          for _ in $(seq 1 30); do
+          for attempt in $(seq 1 900); do
             got="$(npm view "@clawdbuilder/jig@${version}" version 2>/dev/null || true)"
             [ "${got}" = "${version}" ] && break
+            if [ $((attempt % 10)) -eq 1 ]; then
+              echo "waiting for npm to report @clawdbuilder/jig@${version} (last: ${got:-not found}); attempt ${attempt}/900"
+            fi
             sleep 2
           done
           if [ "${got}" != "${version}" ]; then
-            echo "::error::npm does not report @clawdbuilder/jig@${version} after publishing"
+            echo "::error::npm does not report @clawdbuilder/jig@${version} after 30 minutes (last: ${got:-not found}); the publish may have succeeded, so re-run this job"
             exit 1
           fi
 
