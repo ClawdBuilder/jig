@@ -106,7 +106,7 @@ function reviewed(root: string): string[] {
 }
 
 const linkNotice = (session: Session): boolean =>
-    session.notices.some((notice) => notice.startsWith("Interactive review ready: "));
+    session.notices.some((notice) => notice.startsWith("Code review open; waiting for you. Reopen: "));
 
 test("after a two-file edit on a ticket branch with earlier commits, the offer reviews those two files only", async () => {
     const w = newWorkspace();
@@ -152,14 +152,11 @@ test("the agent's start tool opens the ticket's branch review itself; only the u
     const result = await w.host.tool("start_interactive_code_review", {}, w.session.ctx);
 
     // The link carries the server's secret: the agent must not get it.
-    assert.equal(
-        result.content[0]!.text,
-        "Review opened in the user's browser. Ask the user to review and approve it there.",
-    );
+    assert.equal(result.content[0]!.text, "Code review open; waiting for you. Reopen with /code-review.");
     assert.doesNotMatch(JSON.stringify(result), /http|localhost|127\.0\.0\.1|[?&]k=/);
     assert.ok(
         w.session.notices.some((notice) =>
-            /^Interactive review ready: http:\/\/localhost:\d+\/\S+[?&]k=\S+$/.test(notice),
+            /^Code review open; waiting for you\. Reopen: http:\/\/localhost:\d+\/\S+[?&]k=\S+$/.test(notice),
         ),
         `the user gets the link: ${w.session.notices.join(" | ")}`,
     );

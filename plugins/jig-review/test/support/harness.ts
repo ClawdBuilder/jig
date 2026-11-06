@@ -46,6 +46,8 @@ export interface Session {
     asked: string[];
     /** Notices shown to the user. */
     notices: string[];
+    /** Status-line values by key, as Pi shows them. */
+    statuses: Map<string, string | undefined>;
     /** The answer to a question; default no. */
     answer: (title: string) => boolean | Promise<boolean>;
     ctx: never;
@@ -53,13 +55,20 @@ export interface Session {
 
 /** The context Pi passes to a handler: an interactive session by default, `print` for `pi -p`. */
 export function context(cwd: string, mode: "tui" | "print" | "json" = "tui", entries: unknown[] = []): Session {
-    const session: Session = { asked: [], notices: [], answer: () => false, ctx: undefined as never };
+    const session: Session = {
+        asked: [],
+        notices: [],
+        statuses: new Map(),
+        answer: () => false,
+        ctx: undefined as never,
+    };
     session.ctx = {
         mode,
         hasUI: mode === "tui",
         cwd,
         ui: {
             notify: (message: string) => void session.notices.push(message),
+            setStatus: (key: string, value: string | undefined) => void session.statuses.set(key, value),
             confirm: async (title: string, message: string) => {
                 session.asked.push(`${title}: ${message}`);
                 return session.answer(title);
@@ -236,7 +245,9 @@ export async function openReview(
     );
     if (options.byAgent) await host.tool("start_interactive_code_review", {}, session.ctx);
     else await host.run("code-review", args, session.ctx);
-    const link = session.notices.map((notice) => /^Interactive review ready: (\S+)$/.exec(notice)?.[1]).find(Boolean);
+    const link = session.notices
+        .map((notice) => /^Code review open; waiting for you\. Reopen: (\S+)$/.exec(notice)?.[1])
+        .find(Boolean);
     if (!link) throw new Error(`no review link in: ${session.notices.join(" | ")}`);
 
     const url = new URL(link);

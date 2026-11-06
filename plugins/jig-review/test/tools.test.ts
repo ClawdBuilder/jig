@@ -59,6 +59,15 @@ test("the tool names are the ones the agent was taught", () => {
     assert.equal(RESOLUTION_TOOL, "record_interactive_review_resolution");
 });
 
+test("the status line says the review waits for the user, and the notice is one line", async () => {
+    session = await openReview("", { byAgent: true });
+    assert.equal(session.session.statuses.get("jig-review"), "review: waiting for you");
+    const notice = session.session.notices.find((line) => line.startsWith("Code review open;"));
+    assert.ok(notice);
+    assert.equal(notice.split("\n").length, 1);
+    assert.doesNotMatch(notice.slice(0, notice.indexOf("Reopen:")), /diff|\+\+\+|---/);
+});
+
 test("the start tool's result never holds the link, whatever the outcome", async () => {
     session = await openReview("", { byAgent: true });
     const result = await session.host.tool("start_interactive_code_review", {}, session.session.ctx);

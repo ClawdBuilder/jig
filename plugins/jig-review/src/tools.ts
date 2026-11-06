@@ -19,7 +19,7 @@ export const START_TOOL = "start_interactive_code_review";
 export const RESOLUTION_TOOL = "record_interactive_review_resolution";
 
 /** What the start tool tells the agent. It never holds the page link: that goes to the user alone. */
-export const OPENED_TEXT = "Review opened in the user's browser. Ask the user to review and approve it there.";
+export const OPENED_TEXT = "Code review open; waiting for you. Reopen with /code-review.";
 
 export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandlers): void {
     registerJigTool(pi, {
