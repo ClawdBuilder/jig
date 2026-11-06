@@ -16,7 +16,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Fixed
 
 - **Nothing under a `.git` path can be written with the file tools,** at any depth. This includes a linked worktree's `.git`
-  pointer file, which could otherwise send plain git to hooks the agent wrote.
+  pointer file, which could otherwise send plain git to hooks the agent wrote. The sandbox locks that file for `bash` too.
 
 - Qodo's review findings on the package and guards are fixed: nested `.git` and project paths are guarded by shape and at any
   depth, case is folded, the guard resolves the default base and remote names, blob ids are compared after a fetch, a

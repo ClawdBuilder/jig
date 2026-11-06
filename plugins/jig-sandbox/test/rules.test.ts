@@ -406,6 +406,13 @@ describe("locked paths", () => {
         });
         const set = rules(files);
         assert.ok(of(set, "locked").includes("/repos/main/.git/hooks"));
+        // Rewriting the pointer would send plain git to a folder of the agent's.
+        assert.ok(of(set, "locked").includes(`${CWD}/.git`));
+    });
+
+    test("a repository's .git folder stays writable: git has to write it", () => {
+        const set = rules(linux({ dirs: [`${CWD}/.git/hooks`] }));
+        assert.ok(!of(set, "locked").includes(`${CWD}/.git`));
     });
 
     test("the folder core.hooksPath names is locked", () => {

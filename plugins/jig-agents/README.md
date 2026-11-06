@@ -116,6 +116,8 @@ names a company's model: they come from [configuration](#configure).
   configuration's keeps the actions both list, so configuration cannot add `push`. Its `ask` adds to the file's.
 - **A file of your own replaces a shipped role of the same name.** That is your file, in a place the model cannot
   write; it is not configuration, and it is what you use to change `writes` or `tools`.
+- **A missing shipped folder is a broken install:** `jig doctor` fails and `loadRoles` names it. A missing folder of your
+  own is fine.
 
 ### The roles that ship
 
@@ -274,8 +276,3 @@ jig-agents/
 - [Options](docs/options.md): the Pi store's packages compared, how others specialise a subagent, and what the earlier harness taught
 - [Design](docs/design.md): launch, the role's policy, approvals, limits, results, configuration, tests
 - [Not verified](docs/not-verified.md): what only a real model run can show
-
-## A missing roles folder
-
-If `plugins/jig-agents/agents` is missing, the install is broken: `jig doctor` fails and `loadRoles` names the missing
-built-in folder. A person's own optional roles folder may be absent without a problem.

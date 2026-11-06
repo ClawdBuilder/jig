@@ -275,6 +275,9 @@ export function computeRules(input: RulesInput): RuleSet {
     }
     for (const repo of repos) {
         add("locked", path.posix.join(repo.commonDir, "hooks"), "hooks", "project repositories");
+        // A linked worktree's .git is a pointer file, and plain git follows it to wherever it says, hooks and config included.
+        const pointer = path.posix.join(repo.root, ".git");
+        if (files.type(pointer) === "file") add("locked", pointer, "hooks", "project repositories");
         const named = hooksPathOf(files, repo);
         if (named !== undefined) add("locked", named, "hooks", "project repositories (core.hooksPath)");
     }
