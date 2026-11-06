@@ -59,6 +59,41 @@ If your settings file is a link, as a dotfiles setup often makes it, setup follo
 will change, and writes that file. The link stays a link. A link that points nowhere, or to a folder, is refused
 and nothing changes.
 
+## Updating
+
+```text
+jig update [--check] [--to <version>]
+```
+
+Jig is installed in two copies: Pi's package and the global `jig` command. `jig update` moves both to one published stable
+version, in that order: Pi when the release needs a newer one, then Pi's copy, then the global command, then a check of both
+and the doctor. It needs a terminal, like `jig setup`; `--check` says what would happen and changes nothing. `--to` names a
+published version instead of the newest.
+
+A release states the oldest Pi it runs with and the one it is tested with, in `jig.agents.pi`. If the installed Pi is older
+than the oldest, update asks a yes/no question, defaulting to No, and installs the exact tested Pi; No changes nothing. It
+never installs "the latest Pi". If Pi is newer than the tested one, it says so and continues. Pi's own `pi update` still
+works and is not blocked; if it moves Pi past the tested version, the doctor and the next start warn, and do not block.
+
+A company package can cap which Jig versions are allowed with `"jig": { "range": ">=0.4.1 <0.5.0" }` in its package.json.
+Update stops at the newest version inside every installed company's range and names the range. If Pi's Jig copy is a
+checkout, a git source, or pinned by a version, update says so and changes nothing. It gives the exact command to run
+instead.
+
+Before the first change it checks the registry, the target's Pi versions, that its settings folder is writable, that `npm`
+and `pi` are on PATH, and how Pi was installed. Pi is installed by its own method with the exact tested version; if that
+cannot be built, update prints the command and stops. If any step fails, it puts every version it changed back and says
+what happened. Open Pi sessions keep the old code until restarted.
+
+### The notice inside Pi
+
+At most once a day, in the background, Jig asks the npm registry whether a newer stable release exists and tells you on
+your screen: "Jig X is available... run `jig update` in a terminal." The notice respects the company cap, is silent when
+offline or when `PI_OFFLINE` is set, and never reaches the model's context. If the running version is deprecated on npm,
+it says so more strongly. It also warns once when Pi is newer than the tested version. Turn it off with
+`"updates": { "check": false }`; a company default can turn it off too, and your file wins. The check is cached in Jig's
+state folder.
+
 ## This folder's Pi packages, and trust
 
 Project packages (the `packages` in `<folder>/.pi/settings.json`, cloned under `<folder>/.pi/git`) are code, and Pi loads

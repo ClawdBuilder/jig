@@ -32,6 +32,8 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 | The `JIG_*` environment variables | `surface.test.ts` |
 | Every tool name and its actions, every slash command, every `jig.json` section | `plugin-surface.test.ts` |
 | Which parts of `jig-core` a plugin may import | `boundaries.test.ts` |
+| The package's `jig.agents.pi` minimum and tested versions | `surface.test.ts`, `pi-requirement.test.ts` |
+| The `updates.check` setting | `surface.test.ts` |
 
 - **The handle** is `Symbol.for("jig.core.api/v1")` on `globalThis`, which holds the `JigApi`. Plugins that load before `jig-core` wait
   on `Symbol.for("jig.core.pending/v1")`. `JigApi.version` is `1`.
@@ -42,6 +44,10 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
   classify rules match. A name is a promise.
 - **The record line** is one JSON object per call or turn in `<state>/records/`, which `jig-lens` and dashboards read
   ([Records](../plugins/jig-core/docs/records.md)).
+- **The version data** is `jig.agents.pi` in `package.json`: the oldest Pi a release runs with, and the one it is tested with.
+  A company package may cap Jig with `jig.range` in its own package.json.
+- **The `updates` section** turns the background update notice off with `updates.check: false`; a company plugin can set
+  that default, and the person's file wins.
 - **The variables** are `JIG_STATE_DIR`, `JIG_CONDITION`, `JIG_AGENT_ROLE`, `JIG_PARENT_SESSION`, `JIG_ROLE_POLICY`, `JIG_LENS_INDEX`,
   `JIG_LENS_DASHBOARDS` and `JIG_THEME_FOOTER`.
 - **Everything else in `jig-core`** is internal: any other file, the text of a message, the layout of `/jig`. It can change in any
