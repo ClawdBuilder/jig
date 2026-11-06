@@ -15,6 +15,7 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-w
 import { Text, TruncatedText } from "@earendil-works/pi-tui";
 import type { TSchema } from "typebox";
 import { jig } from "../client.ts";
+import { RefusedError } from "./values.ts";
 
 /** The `jig.json` section that holds `deferred`. jig-core checks it; a company plugin may give defaults for it. */
 export const TOOLS_SECTION = "tools";
@@ -262,12 +263,29 @@ function withDefaultRenderers(tool: JigToolDefinition, options: JigToolOptions):
  * starts, a tool named in `jig.json`'s `tools.deferred` is registered again with `exposure: "deferred"` (see the top of
  * this file). Registering again during a session, as a plugin may to change a description, keeps the exposure.
  */
+const refusedCalls = new Set<string>();
+export const markRefused = (toolCallId: string): void => void refusedCalls.add(toolCallId);
+export const isRefused = (toolCallId: string): boolean => refusedCalls.has(toolCallId);
+export const clearRefused = (toolCallId: string): void => void refusedCalls.delete(toolCallId);
+
 export function registerJigTool<TParams extends TSchema = TSchema, TDetails = unknown, TState = unknown>(
     pi: ExtensionAPI,
     tool: ToolDefinition<TParams, TDetails, TState>,
     options: JigToolOptions = {},
 ): void {
-    const definition = withDefaultRenderers(tool as JigToolDefinition, options);
+    const plain = withDefaultRenderers(tool as JigToolDefinition, options);
+    const original = plain.execute;
+    const definition: JigToolDefinition = {
+        ...plain,
+        async execute(toolCallId, ...rest: unknown[]) {
+            try {
+                return await (original as unknown as (...args: unknown[]) => unknown)(toolCallId, ...rest);
+            } catch (error) {
+                if (error instanceof RefusedError) markRefused(toolCallId);
+                throw error;
+            }
+        },
+    } as JigToolDefinition;
     let slot = slots.get(pi);
     if (slot === undefined) {
         const created: Slot = { tools: new Map(), started: false };

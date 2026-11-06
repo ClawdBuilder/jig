@@ -19,7 +19,7 @@ import type { Planned } from "./plan.ts";
 import { Session, systemSessionDeps } from "./session.ts";
 import type { SessionDeps } from "./session.ts";
 import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
-import { InputError, errorMessage, shortList, shown } from "./values.ts";
+import { InputError, RefusedError, errorMessage, shortList, shown } from "./values.ts";
 import type { Prepared, WriteRun } from "./writes.ts";
 
 export interface MongoOptions {
@@ -93,7 +93,7 @@ function connectionOf(settings: MongoSettings, call: Call): Connection {
         return connection;
     }
     if (call.cluster === undefined) {
-        throw new InputError(
+        throw new RefusedError(
             `${call.environment} has several connections: add cluster, one of ${shortList(clusters)}; call mongo access to see each one's rules`,
         );
     }

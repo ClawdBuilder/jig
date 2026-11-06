@@ -1,10 +1,10 @@
 // Small helpers the modules share: the error that means "invalid input", and ways to put a value into a message.
 import { oneLine, shortList, stringOf } from "../../jig-core/src/kit/text.ts";
-import { InputError, isObject } from "../../jig-core/src/kit/values.ts";
+import { InputError, isObject, RefusedError } from "../../jig-core/src/kit/values.ts";
 
 /** Shared with the other plugins (jig-core's `kit/values.ts`). A mistake in a call's input is an InputError, a
  *  TypeError that jig-core reads as "invalid input"; tool.ts keeps a TypeError from a bug here from being mistaken for one. */
-export { InputError, isObject };
+export { InputError, isObject, RefusedError };
 
 /** Shared with the other plugins (jig-core's `kit/text.ts`), so a fix lands once. */
 export { oneLine, shortList };

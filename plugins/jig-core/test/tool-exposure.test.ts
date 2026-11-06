@@ -11,7 +11,8 @@ import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-age
 import { Type } from "typebox";
 import { jig, withdrawJig } from "../src/client.ts";
 import { jigCore } from "../src/index.ts";
-import { NOT_DEFERRABLE, registerJigTool, transcriptTools } from "../src/kit/tools.ts";
+import { NOT_DEFERRABLE, clearRefused, isRefused, registerJigTool, transcriptTools } from "../src/kit/tools.ts";
+import { RefusedError } from "../src/kit/values.ts";
 import { validateToolsSection } from "../src/tool-exposure.ts";
 import { fakeContext, fakePi } from "./support/fake-pi.ts";
 import type { FakePi } from "./support/fake-pi.ts";
@@ -290,4 +291,31 @@ describe("registerJigTool", () => {
         assert.equal(tools.exposure("bash"), "direct");
         assert.ok(tools.active.includes("bash"));
     });
+});
+
+test("a RefusedError marks the call refused without changing its text", async () => {
+    const world = load();
+    const refusal = new RefusedError("mongo find: refused, it would scan");
+    registerJigTool(world.plugin.pi, {
+        ...tool("mongo"),
+        execute: async () => {
+            throw refusal;
+        },
+    } as never);
+    const registered = world.tools.registry.get("mongo")?.tool;
+    assert.ok(registered);
+    await assert.rejects(
+        async () =>
+            (registered.execute as (...args: unknown[]) => Promise<unknown>)(
+                "call-1",
+                {},
+                new AbortController().signal,
+                undefined,
+                {},
+            ),
+        (error: Error) => error === refusal && error.message === "mongo find: refused, it would scan",
+    );
+    assert.equal(isRefused("call-1"), true);
+    clearRefused("call-1");
+    assert.equal(isRefused("call-1"), false);
 });
