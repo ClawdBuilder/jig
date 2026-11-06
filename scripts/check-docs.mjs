@@ -80,9 +80,14 @@ export function checkDocs(root) {
             const plain = line.replace(/`[^`]*`/g, "");
             for (const match of plain.matchAll(/\]\(([^)\s]+)\)/g)) {
                 const target = match[1] ?? "";
-                if (/^[a-z]+:/i.test(target) || target.startsWith("#")) continue;
+                if (/^[a-z]+:/i.test(target)) continue;
                 const [pathPart, anchor] = target.split("#");
-                if (!pathPart) continue;
+                if (!pathPart) {
+                    if (anchor && !headingAnchors.has(anchor)) {
+                        failures.push(`${rel}:${index + 1} anchor does not resolve: ${target}`);
+                    }
+                    continue;
+                }
                 const resolved = path.resolve(path.dirname(file), pathPart);
                 if (!existsSync(resolved)) {
                     failures.push(`${rel}:${index + 1} link does not resolve: ${target}`);

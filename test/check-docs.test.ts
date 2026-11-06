@@ -47,3 +47,12 @@ test("deprecated install advice in prose or a code span fails", () => {
     const failures = checkDocs(root).failures;
     assert.ok(failures.some((one: string) => one.includes("names 0.4.0")), failures.join("\n"));
 });
+
+test("same-page anchors are checked against this document's headings", () => {
+    const root = tree({
+        "README.md": "# Title\n\n[good](#title) and [bad](#missing)\n",
+    });
+    const failures = checkDocs(root).failures;
+    assert.ok(failures.some((one: string) => one.includes("anchor does not resolve: #missing")), failures.join("\n"));
+    assert.ok(!failures.some((one: string) => one.includes("#title")), failures.join("\n"));
+});
