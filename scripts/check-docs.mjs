@@ -63,15 +63,15 @@ export function checkDocs(root) {
                 } else fence = false;
                 continue;
             }
+            if (/^\s*(npm install|pi install|npm i )/.test(line)) {
+                for (const version of DEPRECATED) {
+                    if (line.includes(version)) failures.push(`${rel}:${index + 1} install example names ${version}`);
+                }
+            }
             if (fence) continue;
             if (/^\s*\|/.test(line)) {
                 for (const cell of line.split("|")) {
                     if (cell.trim().length > MAX_CELL) warnings.push(`${rel}:${index + 1} table cell is long`);
-                }
-            }
-            if (/^\s*(npm install|pi install|npm i )/.test(line)) {
-                for (const version of DEPRECATED) {
-                    if (line.includes(version)) failures.push(`${rel}:${index + 1} install example names ${version}`);
                 }
             }
             const plain = line.replace(/`[^`]*`/g, "");

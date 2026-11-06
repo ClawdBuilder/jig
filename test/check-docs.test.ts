@@ -31,3 +31,11 @@ test("an unresolved link, an untagged block and a deprecated install all fail", 
     assert.ok(failures.some((one: string) => one.includes("no language tag")));
     assert.ok(failures.some((one: string) => one.includes("names 0.4.1")));
 });
+
+test("a deprecated install inside a fenced block fails", () => {
+    const root = tree({
+        "README.md": "```bash\nnpm install -g @clawdbuilder/jig@0.4.1\n```\n",
+    });
+    const failures = checkDocs(root).failures;
+    assert.ok(failures.some((one: string) => one.includes("names 0.4.1")), failures.join("\n"));
+});
