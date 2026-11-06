@@ -163,8 +163,8 @@ describe("the package manifest", () => {
         assert.equal(pkg.name, "@clawdbuilder/jig");
         assert.equal(pkg.private, undefined);
         assert.equal(pkg.publishConfig?.access, "public");
-        assert.ok((pkg.files ?? []).includes("bin/"));
-        assert.ok((pkg.files ?? []).includes("plugins/*/src/"));
+        assert.ok((pkg.files ?? []).includes("bin/**"));
+        assert.ok((pkg.files ?? []).includes("plugins/*/src/**"));
         assert.equal(npmInstall(pkg.name), "npm:@clawdbuilder/jig");
     });
 
