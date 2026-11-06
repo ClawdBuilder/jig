@@ -76,5 +76,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "@clawdbuilder/jig@${version}" version > /dev/null 2>&1; then
+            echo "npm already has @clawdbuilder/jig@${version}; nothing to publish"
+            exit 0
+          fi
           npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
           npm publish --provenance --access public
