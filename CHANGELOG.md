@@ -15,6 +15,13 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Fixed
 
+- A sandbox session open for more than a day no longer loses its folder to the next Pi or child agent: a folder is removed
+  only when the process that owns it is gone, and a session whose folder vanished recreates it on restart. Background task
+  cleanup follows the same owner rule.
+- `workflow bind` with `base: "origin/develop"` no longer asks git for `origin/origin/develop`; `develop`, `origin/develop`,
+  `release/1.2` and a remote whose name has a slash all resolve once.
+- `jig doctor` checks a company-declared absolute program such as `process.execPath` as a path, not a PATH name, and treats
+  a package only its TypeScript loader cannot read as “not checked” rather than a failure.
 - **The npm packages of 0.4.0 and 0.4.1 could not run bash.** The `files` allowlist omitted
   `plugins/jig-sandbox/broker/broker.mjs`, so every sandboxed command failed with “Cannot find module … broker.mjs”; it
   also omitted the three built-in agent roles and the lens viewer. The tarball now ships all three runtime folders, a test

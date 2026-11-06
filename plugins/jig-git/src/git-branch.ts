@@ -54,13 +54,11 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
             run: async () => {
                 // Always cut from the freshly fetched remote base, never from a possibly stale local copy.
                 await fetchBranch(repo, target.remote, target.branch, signal);
-                const shaTarget = await revParse(
-                    repo.root,
-                    `refs/remotes/${target.remote}/${target.branch}`,
-                    signal,
-                );
+                const shaTarget = await revParse(repo.root, `refs/remotes/${target.remote}/${target.branch}`, signal);
                 if (shaTarget === undefined)
-                    throw new Error(`${target.remote}/${target.branch} is not there after the fetch; nothing was created`);
+                    throw new Error(
+                        `${target.remote}/${target.branch} is not there after the fetch; nothing was created`,
+                    );
                 const brought = newGuarded(plannedGuarded, await guardedChanges(repo.root, before, shaTarget, signal));
                 if (brought.length > 0) throw lateGuardError(brought);
                 await gitOut(repo.root, ["switch", "-c", name, "--no-track", shaTarget], { signal });

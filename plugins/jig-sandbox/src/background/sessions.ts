@@ -2,16 +2,7 @@
 // under `<agent folder>/jig-sandbox/background` (a folder the sandbox cannot write, so a command cannot swap a log for a link
 // to a file Pi can read and the command cannot), an `owner.pid` file naming the Pi process, and a `manifest.json` naming the
 // shells of the tasks that run. The next session start reads them and stops what a crash left behind.
-import {
-    chmodSync,
-    lstatSync,
-    mkdirSync,
-    readdirSync,
-    readFileSync,
-    rmdirSync,
-    rmSync,
-    unlinkSync,
-} from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { replaceFileDurably } from "../../../jig-core/src/kit/files.ts";
 import type { ProcessPort } from "./process.ts";
