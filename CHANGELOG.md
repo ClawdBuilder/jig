@@ -31,12 +31,19 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   write outside the working folder, or outside a folder the person allowed with `/sandbox allow`, asks the same way;
   inside it nothing changes, and with no terminal the ask is refused.
 
+### Changed
+
+- Jig is published as **`@clawdbuilder/jig`**; the command is still `jig`. Install the Pi package with
+  `pi install npm:@clawdbuilder/jig@<version>` and the command with `npm install -g @clawdbuilder/jig`. An existing `git:`
+  install keeps working: the command recognises the old unscoped package name from git or a folder. The tarball ships the
+  command, every plugin, the review page and the docs, without tests.
+
 ## [0.4.0] - 2026-11-05
 
 ### Added
 
 - `jig doctor` and `jig setup` run in a terminal, with no Pi session, model or provider login. Install the command with
-  `npm install -g --allow-git=root github:Dev-Mriganka/jig` (npm 12 turns git installs off by default; `#v0.4.0` pins a
+  `npm install -g --allow-git=root github:ClawdBuilder/jig` (npm 12 turns git installs off by default; `#v0.4.0` pins a
   release). `jig doctor` prints the same report as `/jig doctor`, with `ok`, `warn`, `fail` and `skip` levels, and exits 0
   with no failures, 1 with one; `--json` prints the report on stdout, `--network` tests the configured hosts and the latest
   release, and `--quiet` keeps warnings and failures. `jig setup` starts with which company setup you use and where, asks
@@ -61,7 +68,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   scope under `<cwd>/.pi/git/<host>/<path>`, with `.git` and the `@ref` stripped, and project packages read from
   `<cwd>/.pi/settings.json` too. npm packages are looked for at the folder Pi manages, with its global fallback. A package
   Pi lists but whose files are gone is a failure naming the folder, not "not installed"; the doctor's fix line is
-  `pi install git:github.com/Dev-Mriganka/jig`.
+  `pi install git:github.com/ClawdBuilder/jig`.
 - Pi's four packages are optional peers now, so a global install carries no copy of Pi: it is 51 MB instead of 215 MB,
   and the command stops with "jig needs Pi installed" when Pi is absent. The repository's tests pin them as dev
   dependencies, so `npm ci` and CI still have them.

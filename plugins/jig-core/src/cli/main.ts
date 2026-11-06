@@ -10,7 +10,7 @@ import { doctorContext } from "../doctor-checks.ts";
 import { formatDoctor, runDoctor } from "../doctor.ts";
 import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
-import { installLocation, piVersion, jigPackage } from "../pi-version.ts";
+import { npmInstall, piVersion, jigPackage } from "../pi-version.ts";
 import { loadPersonalConfig } from "../state.ts";
 import type { JigState } from "../state.ts";
 import { agentDirFor, loadHeadless, ownPackage } from "./headless.ts";
@@ -220,10 +220,10 @@ async function setup(): Promise<number> {
                 ? skipped.setupLine
                 : (() => {
                       const pkg = ownPackage();
-                      const where = installLocation(pkg.repository) ?? "github.com/Dev-Mriganka/jig";
+                      const where = npmInstall(pkg.name);
                       return skipped === undefined && loaded.jigListedButMissing !== undefined
-                          ? `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}\nInstall it with: pi install git:${where}\nThen run jig setup again.`
-                          : `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install git:${where}\nThen run jig setup again.`;
+                          ? `Pi lists Jig, but its files are not there: ${loaded.jigListedButMissing.problem}\nInstall it with: pi install ${where}\nThen run jig setup again.`
+                          : `Jig is not installed in Pi yet, so there is nothing to set up for.\nInstall it with: pi install ${where}\nThen run jig setup again.`;
                   })();
         ui.notify(message, "error");
         ui.close();
