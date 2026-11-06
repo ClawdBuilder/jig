@@ -84,6 +84,7 @@ A **pin** (a version line in a control repository) is read by `deploy status` an
 
 | Action | Kind | What it does |
 |---|---|---|
+| `services` | read | The catalog's services with a ci entry, one line each with its CI system |
 | `status` | read | The checks or jobs of a pull request, branch, commit or run, counted as pass, fail, pending, skipped |
 | `runs` | read | Recent workflow runs, pipelines or builds, by branch, commit or state |
 | `run` | read | One run's jobs and steps (GitHub also its artifacts), a pipeline's jobs, or a build's stages |

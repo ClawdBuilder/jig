@@ -287,11 +287,38 @@ export function describeServices(catalog: Catalog): string {
 }
 
 /** The service a call names. A name nobody configured is invalid input, and the message lists the ones there are. */
+function nearestName(name: string, names: readonly string[]): string | undefined {
+    let best: string | undefined;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const candidate of names) {
+        let previous = Array.from({ length: name.length + 1 }, (_unused, index) => index);
+        for (let right = 1; right <= candidate.length; right++) {
+            const next = [right];
+            for (let left = 1; left <= name.length; left++) {
+                next[left] = Math.min(
+                    (previous[left] ?? 0) + 1,
+                    (next[left - 1] ?? 0) + 1,
+                    (previous[left - 1] ?? 0) + (name[left - 1] === candidate[right - 1] ? 0 : 1),
+                );
+            }
+            previous = next;
+        }
+        const score = previous[name.length] ?? Infinity;
+        if (score < bestScore && score <= Math.max(2, Math.floor(name.length / 3))) {
+            best = candidate;
+            bestScore = score;
+        }
+    }
+    return best;
+}
+
 export function findService(catalog: Catalog, who: string, service: unknown): Service {
     const found = typeof service === "string" ? catalog.services.get(service) : undefined;
     if (found === undefined) {
+        const near = typeof service === "string" ? nearestName(service, [...catalog.services.keys()]) : undefined;
         throw new InputError(
-            `${who}: no service named ${shown(service, 30)}. Known services: ${describeServices(catalog)}`,
+            `${who}: no service named ${shown(service, 30)}. Known services: ${describeServices(catalog)}` +
+                (near === undefined ? "" : `. Did you mean ${near}?`),
         );
     }
     return found;

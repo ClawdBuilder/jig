@@ -24,8 +24,8 @@ import { contextFor, CI_KIND } from "./watch.ts";
 import type { CiWatchOptions } from "./watch.ts";
 
 const DESCRIPTION =
-    "CI for a service from the ops catalog, on GitHub Actions, GitLab CI, Jenkins or Concourse: status, runs, run, log, " +
-    "rerun (asks), trigger (asks), and watch, which waits in the background until a finish line and reports once. " +
+    "CI for a service from the ops catalog, on GitHub Actions, GitLab CI, Jenkins or Concourse: services lists what is " +
+    "configured; status, runs, run, log, rerun (asks), trigger (asks), and watch, which waits in the background until a finish line and reports once. " +
     "With environment, a call acts on that environment's CI job, such as the job that deploys it.";
 
 type Input = Readonly<Record<string, unknown>>;
@@ -79,6 +79,19 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
     }
 
     async function run(call: Call, toolCallId: string, signal: AbortSignal | undefined): Promise<Outcome> {
+        if (call.action === "services") {
+            const services = [...(currentCatalog()?.services.values() ?? [])]
+                .filter((service) => service.ci !== undefined)
+                .map((service) => `${service.name}: ${service.ci?.system}`);
+            return {
+                text:
+                    services.length === 0
+                        ? "ci services: none of the catalog's services has a ci entry"
+                        : ["ci services:", ...services].join("\n"),
+                facts: { returned: services.length },
+                details: { count: services.length },
+            };
+        }
         const adapter = adapterOf(call, signal);
         const { params } = call;
         switch (call.action) {
@@ -133,6 +146,7 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
             // that says what to change, and jig-core blocks the call without asking.
             return classifying(() => {
                 const call = parseCall(input, currentCatalog());
+                if (call.action === "services") return { action: call.action, environment: "local", effect: "read" };
                 if (call.action === "watch") return { action: call.action, environment: "local", effect: "write" };
                 const environment = call.service.ci.environment ?? "external";
                 const effect = call.action === "rerun" || call.action === "trigger" ? "write" : "read";
@@ -145,6 +159,8 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
         async preview(input, signal) {
             return previewing(async () => {
                 const call = parseCall(input, currentCatalog());
+                if (call.action === "services")
+                    return { summary: "list the catalog's services with a ci entry and its system" };
                 const name = call.service.name;
                 switch (call.action) {
                     case "rerun":
@@ -163,7 +179,7 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
             label: "CI",
             description: DESCRIPTION,
             promptSnippet:
-                "ci: status, runs, log, rerun, trigger and watch for a service's CI (GitHub Actions, GitLab, Jenkins, Concourse)",
+                "ci: services, status, runs, log, rerun, trigger and watch for a service's CI (GitHub Actions, GitLab, Jenkins, Concourse)",
             promptGuidelines: [
                 "ci: a push or pull request starts a watch by itself for a catalog service; do not poll with status.",
                 "ci: rerun and trigger ask the user. When a reply is lost, check once and never send again.",

@@ -14,7 +14,7 @@ import type { CiSystem } from "./config.ts";
 import type { ArtifactRule } from "./settings.ts";
 import type { CiSpec, CiState } from "./watch.ts";
 
-export const CI_ACTIONS = ["status", "runs", "run", "log", "rerun", "trigger", "watch"] as const;
+export const CI_ACTIONS = ["services", "status", "runs", "run", "log", "rerun", "trigger", "watch"] as const;
 export type CiAction = (typeof CI_ACTIONS)[number];
 
 /** The finish lines of a watch. Only GitHub has all of them; GitLab and Jenkins have the first three. */

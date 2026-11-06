@@ -610,7 +610,7 @@ describe("what the ci tool says about itself", () => {
 
     test("the schema names the actions of the tool and refuses any other parameter", () => {
         assert.deepEqual(schema.properties.action?.enum, [...CI_ACTIONS]);
-        assert.deepEqual(schema.required, ["action", "service"]);
+        assert.deepEqual(schema.required, ["action"]);
         assert.equal(schema.additionalProperties, false);
         assert.equal(Check(schema as never, { action: "status", service: "a", cwd: "/tmp" }), false);
         assert.equal(Check(schema as never, { action: "status", service: "a" }), true);
