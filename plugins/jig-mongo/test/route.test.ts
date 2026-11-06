@@ -348,6 +348,15 @@ describe("a company's tunnel", () => {
             /the tunnel "corp-net" could not be opened: tunnel provider "corp-net" failed: the VPN is not connected/,
         );
         jig.api.tunnels.register("corp-net", {
+            open: async () => {
+                throw new Error("the password store is locked");
+            },
+        });
+        await assert.rejects(
+            startForward(tunnel, target, deps()),
+            /password store is locked.*secrets\.pass\.unlockAtStart/,
+        );
+        jig.api.tunnels.register("corp-net", {
             open: async () => ({ kind: "udp", port: 41_779, close: () => {} }) as never,
         });
         await assert.rejects(startForward(tunnel, target, deps()), /whose kind is not forward or socks/);

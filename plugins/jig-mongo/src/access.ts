@@ -5,7 +5,7 @@
 // A list is turned into an `Access`. Each call asks it three questions: may this database or collection be used (`namespace`),
 // what is the status of a field path (`view().visibility`), and what remains of a result (`view().strip`).
 import { isLeaf } from "./bson.ts";
-import { InputError, isObject, shortList } from "./values.ts";
+import { InputError, isObject, RefusedError, shortList } from "./values.ts";
 import type { Doc } from "./values.ts";
 
 export interface Ns {
@@ -426,7 +426,7 @@ export function projectionFor(access: Access, ns: Ns, requested: Doc | undefined
     } else {
         for (const path of wanted) {
             const status = view.visibility(path);
-            if (status === "no") throw new InputError(`projection: ${view.reason(path)}`);
+            if (status === "no") throw new RefusedError(`projection: ${view.reason(path)}`);
             if (status === "yes") chosen.push(path);
             else chosen.push(...view.leaves.filter((leaf) => hasPrefix(leaf, path)).map((leaf) => [...leaf]));
         }
@@ -439,7 +439,7 @@ export function projectionFor(access: Access, ns: Ns, requested: Doc | undefined
     // `_id` comes with an inclusion projection unless it is switched off, so it is switched off when it may not be read.
     if (dropId || view.visibility(["_id"]) === "no") projection._id = 0;
     if (Object.entries(projection).every(([key, flag]) => key === "_id" && flag === 0)) {
-        throw new InputError("the projection leaves no field that may be read");
+        throw new RefusedError("the projection leaves no field that may be read");
     }
     return projection;
 }
