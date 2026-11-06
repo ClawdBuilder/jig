@@ -64,7 +64,7 @@ says what that covers and which names Jig keeps stable for company plugins.
 pi install npm:@clawdbuilder/jig
 ```
 
-To pin a release, name it: `pi install npm:@clawdbuilder/jig@0.4.2`. From an unreleased checkout the `git:` form still
+To pin a release, name it: `pi install npm:@clawdbuilder/jig@0.4.3`. From an unreleased checkout the `git:` form still
 works: `pi install git:github.com/ClawdBuilder/jig`.
 Pi keeps a tag or a commit pinned and never moves it. [Releases](docs/releases.md) says what a version means
 and how one is cut.
@@ -76,7 +76,7 @@ and which programs it uses, such as `git`, `gh` and `glab` for `jig-git`.
 For the setup questions themselves, run `jig setup` in a terminal, outside Pi: no Pi session, model or provider login
 is needed. `jig doctor` there prints the same report as `/jig doctor` and exits non-zero when something failed.
 `pi install` copies a package but does not link programs, so get the command with
-`npm install -g @clawdbuilder/jig`. Add `@0.4.2` to pin a release; from a checkout,
+`npm install -g @clawdbuilder/jig`. Add `@0.4.3` to pin a release; from a checkout,
 `npm install -g --install-links .` does the same.
 [Setup and doctor](docs/setup-and-doctor.md) has the exit codes and the PATH notes.
 
@@ -150,10 +150,10 @@ directly. Otherwise:
 - **What an earlier terminal left behind.** A variable the tmux server holds from the terminal that started it, and this one does not
   set, is removed from the session. Values travel through tmux's socket, never on a command line.
 
-Two things a launcher is often asked to do are settings of `jig.json` instead, and run inside Pi however it was started. They are
-built on another branch and are not part of this version:
-- **Checks before the first prompt,** such as reaching a VPN-only host: `startChecks`, run by `jig-core`.
-- **Unlocking a password store at start:** `secrets.pass.unlockAtStart`, run by `jig-core`.
+Two things a launcher is often asked to do are settings of `jig.json` instead, and `jig-core` runs them inside Pi however it
+was started:
+- **Checks before the first prompt,** such as reaching a VPN-only host: `startChecks` (up to 16 TCP checks), run by `jig-core`.
+- **Unlocking a password store at start:** `secrets.pass.unlockAtStart`, run by `jig-core` when `pass` is an enabled backend.
 
 Why the launcher is this small: [Decisions](docs/decisions.md#2026-11-02-an-optional-launcher-with-nothing-a-company-decides).
 
