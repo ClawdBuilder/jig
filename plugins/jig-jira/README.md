@@ -1,7 +1,8 @@
 # jig-jira: Jira issues
 
-**Status: built.** Tested against a fake Jira on this machine. Not tried against
-a real Jira yet (see [Not verified yet](docs/not-verified.md)).
+**Status: built.** Tested against a fake Jira on this machine and used in real sessions against a real Jira through a
+company transport: reads, a create, updates and a link. Not tried: the four direct auth forms, Jira Cloud, ScriptRunner,
+attachments and transitions (see [Not verified yet](docs/not-verified.md)).
 
 `jig-jira` gives the agent one tool, `jira`, over Jira's REST API version 2,
 which takes wiki markup and works on Jira Cloud and on Jira Data Center. Every
