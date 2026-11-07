@@ -15,7 +15,6 @@ import type { ReviewApprovedEvent } from "./events.ts";
 import { jigGit } from "./git.ts";
 import type { Git, ReviewFileSelection } from "./git.ts";
 import { openUrl as open } from "./open.ts";
-import { setReviewHold } from "./hold.ts";
 import { PasskeyStore } from "./passkey/store.ts";
 import { buildApprovalPrompt, buildReviewSubmissionPrompt } from "./prompts.ts";
 import { ReviewServer } from "./server.ts";
@@ -54,8 +53,10 @@ export class ReviewCoordinator {
     private agentRequestedReviewId?: string;
     /** False while a review the agent opened is open and the person has not answered. */
     private holdReleased = true;
-    /** How many writes the gate has refused in this wait; the second stops the turn instead of feeding a spin. */
+    /** Refused writes per wait and per turn: a second turn, not a parallel second call, stops the spin. */
     private holdDenials = 0;
+    private holdTurn = 0;
+    private lastHoldTurn = -1;
     private lastSubmissionMode: CommentSubmissionMode = "review";
     private server?: ReviewServer;
     private settings?: ReviewSettings;
@@ -96,7 +97,8 @@ export class ReviewCoordinator {
             this.holdReleased === false &&
             this.currentReview?.status === "awaiting-review" &&
             this.currentReview.id === this.agentRequestedReviewId &&
-            (this.settings?.holdAgent ?? true)
+            (this.settings?.holdAgent ?? true) &&
+            this.server?.isRunning() === true
         );
     }
 
@@ -104,13 +106,21 @@ export class ReviewCoordinator {
     public releaseHold(): void {
         this.holdReleased = true;
         this.holdDenials = 0;
-        setReviewHold(false);
+        this.lastHoldTurn = -1;
     }
 
-    /** One write refused by the wait. The second aborts the turn, so a model cannot spin on the same refusal. */
+    /** One write refused by the wait. Only a refusal on a later turn aborts, so parallel calls see one refusal. */
     public noteHoldDenial(): void {
+        if (this.lastHoldTurn === this.holdTurn) return;
+        this.lastHoldTurn = this.holdTurn;
         this.holdDenials += 1;
-        if (this.holdDenials >= 2) this.ctx?.abort();
+        const limit = this.settings?.holdAbortAfter ?? 2;
+        if (this.holdDenials < limit) return;
+        try {
+            this.ctx?.abort();
+        } catch {
+            // A context that cannot abort is not a gate failure: the call still records blocked.
+        }
     }
 
     public async runStartTaken(): Promise<void> {
@@ -119,15 +129,29 @@ export class ReviewCoordinator {
 
     /** Registers event handlers, the command and the tools. Touches no files: see session_start. */
     public register(): void {
+        // A slash command is a person's action too, and Pi runs command handlers before input handlers. Wrap command
+        // registration so a command releases the hold even when no input event follows it.
+        const registerCommand = this.pi.registerCommand.bind(this.pi);
+        this.pi.registerCommand = ((name, options) => {
+            return registerCommand(name, {
+                ...options,
+                handler: async (args, ctx) => {
+                    this.releaseHold();
+                    return options.handler(args, ctx);
+                },
+            });
+        }) as typeof this.pi.registerCommand;
+
         this.pi.on("session_start", async (_event, ctx): Promise<void> => {
             this.ctx = ctx;
             this.holdReleased = true;
-            setReviewHold(false);
             await this.cleanupStaleReviews(ctx);
         });
 
-        this.pi.on("input", (): void => {
-            this.releaseHold();
+        this.pi.on("input", (event): void => {
+            // Pi runs the same handler for sendUserMessage with source "extension": a child's result, a workflow
+            // follow-up or our own approval message must not release a hold the person has not answered.
+            if (event.source === "interactive" || event.source === "rpc") this.releaseHold();
         });
 
         this.pi.on("tool_call", (event, ctx): void => {
@@ -139,6 +163,7 @@ export class ReviewCoordinator {
         // first tool call can change a file. agent_end waits for it.
         this.pi.on("agent_start", (_event, ctx): void => {
             this.ctx = ctx;
+            this.holdTurn += 1;
             this.tracker.startRun(ctx);
         });
 
@@ -347,12 +372,14 @@ export class ReviewCoordinator {
 
     private async startReviewForAgent(ctx: ExtensionContext): Promise<ReviewStart | undefined> {
         this.ctx = ctx;
+        // A fresh review the person opened is theirs: the agent may show it, but never claims it or holds on it.
+        const persons = this.agentRequestedReviewId === undefined && this.currentReview?.status === "awaiting-review";
         const started = await this.handleCodeReviewCommand("", ctx);
-        if (started !== undefined && "url" in started) {
+        if (started !== undefined && "url" in started && !persons) {
             this.agentRequestedReviewId = this.currentReview?.id;
             this.holdReleased = false;
             this.holdDenials = 0;
-            setReviewHold(this.settings?.holdAgent ?? true);
+            this.lastHoldTurn = -1;
         }
         return started;
     }

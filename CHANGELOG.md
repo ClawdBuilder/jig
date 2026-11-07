@@ -14,8 +14,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   without printing content, takes hand labels with `--labels`, and scores top 3 independently of the display cap.
   Automatic and agent searches are recorded for `jig-lens` with entry and query counts, and no text. CRLF notes, symlinks
   and FIFOs are handled safely, and recalled text is stripped of control characters.
-- `jig-review` holds the agent's writes while a review the agent opened waits for the person; approval, submitted comments or
-  the person's next message release it. `holdAgent: false` turns it off.
+- `jig-review` holds the agent's writes while a review the agent opened waits for the person. Only a person's message or
+  slash command, approval or submitted comments release it; extension messages do not. The gate reads the live review, so a
+  replaced, abandoned, restarted or stopped review stops holding. `holdAgent: false` turns it off, and `holdAbortAfter`
+  (default 2) sets the per-turn refusals before the turn is aborted.
 
 ### Changed
 

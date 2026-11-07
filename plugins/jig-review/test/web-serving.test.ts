@@ -98,6 +98,7 @@ test("every API route the built page calls is answered by the server", async () 
         autoOpenBrowser: false,
         diffView: "split",
         holdAgent: true,
+        holdAbortAfter: 2,
     });
     assert.equal(
         (

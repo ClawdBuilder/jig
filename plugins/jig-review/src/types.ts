@@ -12,6 +12,8 @@ export type ReviewSettings = {
     diffView: "split" | "unified";
     /** Hold the agent's writes while a review it started is open. Default true. */
     holdAgent: boolean;
+    /** Refused writes, over different turns, before the turn is aborted. Default 2. */
+    holdAbortAfter: number;
 };
 
 export type ReviewComment = {

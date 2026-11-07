@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
     autoOpenBrowser: false,
     diffView: "split",
     holdAgent: true,
+    holdAbortAfter: 2,
 };
 
 /** Review settings and records for one workspace. */
@@ -79,5 +80,12 @@ export function parseReviewSettings(value: unknown): ReviewSettings {
             typeof raw.autoOpenBrowser === "boolean" ? raw.autoOpenBrowser : DEFAULT_SETTINGS.autoOpenBrowser,
         diffView: raw.diffView === "split" || raw.diffView === "unified" ? raw.diffView : DEFAULT_SETTINGS.diffView,
         holdAgent: typeof raw.holdAgent === "boolean" ? raw.holdAgent : DEFAULT_SETTINGS.holdAgent,
+        holdAbortAfter:
+            typeof raw.holdAbortAfter === "number" &&
+            Number.isInteger(raw.holdAbortAfter) &&
+            raw.holdAbortAfter >= 1 &&
+            raw.holdAbortAfter <= 10
+                ? raw.holdAbortAfter
+                : DEFAULT_SETTINGS.holdAbortAfter,
     };
 }

@@ -201,6 +201,7 @@ export interface ReviewSession {
     records(): Array<Record<string, unknown>>;
     /** Posts as the page does. */
     post(route: string, body?: unknown): ReturnType<typeof request>;
+    patch(route: string, body?: unknown): ReturnType<typeof request>;
     get(route: string): ReturnType<typeof request>;
     close(): Promise<void>;
 }
@@ -278,6 +279,7 @@ export async function openReview(
                     (name) => JSON.parse(readFileSync(path.join(reviewsDir, name), "utf8")) as Record<string, unknown>,
                 ),
         post: (route, body) => request(base, route, { method: "POST", cookie, body }),
+        patch: (route, body) => request(base, route, { method: "PATCH", cookie, body }),
         get: (route) => request(base, route, { cookie }),
         close: async () => {
             await host.fire("session_shutdown", session.ctx);

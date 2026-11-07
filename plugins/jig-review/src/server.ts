@@ -64,6 +64,14 @@ export class ReviewServer {
         this.handlers = handlers;
     }
 
+    /** Whether the local server is listening: a review whose server has stopped no longer holds the agent. */
+    private running = false;
+
+    /** Whether the local server is listening. */
+    public isRunning(): boolean {
+        return this.running;
+    }
+
     /** Starts the server if needed and returns its base URL, `http://localhost:<port>`. */
     public async start(): Promise<string> {
         if (this.server === undefined) {
@@ -73,6 +81,7 @@ export class ReviewServer {
             });
             this.port = (this.server.address() as AddressInfo).port;
         }
+        this.running = true;
         return `http://${PAGE_HOST}:${this.port.toString()}`;
     }
 
@@ -91,6 +100,7 @@ export class ReviewServer {
         this.server?.close();
         this.server?.closeAllConnections();
         this.server = undefined;
+        this.running = false;
         this.clients.clear();
         this.handlers.approval.stop();
     }
@@ -323,6 +333,10 @@ function parseSettingsUpdate(body: unknown): Partial<ReviewSettings> {
     if (typeof body.autoAskReview === "boolean") settings.autoAskReview = body.autoAskReview;
     if (typeof body.autoOpenBrowser === "boolean") settings.autoOpenBrowser = body.autoOpenBrowser;
     if (body.diffView === "split" || body.diffView === "unified") settings.diffView = body.diffView;
+    if (typeof body.holdAgent === "boolean") settings.holdAgent = body.holdAgent;
+    if (typeof body.holdAbortAfter === "number" && Number.isInteger(body.holdAbortAfter)) {
+        settings.holdAbortAfter = body.holdAbortAfter;
+    }
     return settings;
 }
 
