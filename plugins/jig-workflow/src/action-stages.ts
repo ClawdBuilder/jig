@@ -149,6 +149,6 @@ export function back(rt: Runtime, params: Params): ActionResult {
     });
     return {
         text: `Moved ${ticket} back from ${stage.id} to ${to.id}. Nothing recorded was erased: results still count while the commit or the plan they are about is unchanged.\n${describeStage(workflow, target)}`,
-        details: { ticket, workflow: workflow.name, from: stage.id, to: to.id, at, last: false },
+        details: { ticket, workflow: workflow.name, from: stage.id, to: to.id, at, last: false, via: "back" },
     };
 }

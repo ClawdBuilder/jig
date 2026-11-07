@@ -166,6 +166,7 @@ export function start(rt: Runtime, input: StartInput): ActionResult {
             to: first.id,
             at: state.startedAt,
             last: workflow.stages.length === 1,
+            via: "start",
         },
     };
 }

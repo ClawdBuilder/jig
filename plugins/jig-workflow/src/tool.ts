@@ -283,6 +283,7 @@ function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): Stag
         to: details.to,
         at: when,
         last: details.last === true,
+        via: details.via === "start" || details.via === "advance" || details.via === "back" ? details.via : "advance",
     };
 }
 

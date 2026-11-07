@@ -13,6 +13,7 @@ import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts"
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { InputError } from "../../jig-core/src/kit/values.ts";
 import { addCheck, CHECK_TEXT_LIMIT, checkLines, closeCheck, openChecks, readChecks } from "./checks.ts";
+import { isSafeKey } from "./store.ts";
 import { labelProblem, PASTED_LIMIT, pastedProblem, savePasted } from "./evidence.ts";
 
 export const TOOL_NAME = "ticket";
@@ -102,8 +103,13 @@ export function checkInput(input: Readonly<Record<string, unknown>>): ActionName
         if (input[key] !== undefined && typeof input[key] !== "string") throw new InputError(`${key} must be text`);
     }
     if (name === "recall" && (input.query as string).trim() === "") throw new InputError("ticket recall needs a query");
-    if (name === "close" && input.update !== undefined && typeof input.update !== "boolean") {
-        throw new InputError("ticket close update must be true or false");
+    if (name === "close") {
+        if (input.update !== undefined && typeof input.update !== "boolean") {
+            throw new InputError("ticket close update must be true or false");
+        }
+        if (input.ticket !== undefined && (typeof input.ticket !== "string" || !isSafeKey(input.ticket))) {
+            throw new InputError("ticket close: ticket must be a plain ticket key, not a path");
+        }
     }
     if (name === "save_evidence") {
         const problem = labelProblem(input.label as string) ?? pastedProblem(input.text as string);
@@ -129,7 +135,7 @@ export interface TicketHost {
     active(): { folder: string; key: string } | undefined;
     now(): Date;
     /** Drafts the card and returns the text that asks the agent to fill it. */
-    close(ticket: string | undefined, update: boolean): string;
+    close(ticket: string | undefined, update: boolean): { text: string; drafted: boolean; key?: string };
     /** Search earlier tickets by text. Read only; the active ticket is excluded by the caller. */
     search(query: string): { text: string; entries: number };
 }
@@ -158,8 +164,8 @@ export function ticketTool(host: TicketHost): ToolDefinition<typeof parameters> 
             }
             if (action === "close") {
                 const outcome = host.close(input.ticket as string | undefined, input.update === true);
-                if (outcome.includes("Fill its three sections")) jig().addFacts(toolCallId, { closed: 1 });
-                return text(outcome, { action, key: input.ticket ?? host.active()?.key });
+                if (outcome.drafted) jig().addFacts(toolCallId, { closed: 1 });
+                return text(outcome.text, { action, ...(outcome.key === undefined ? {} : { key: outcome.key }) });
             }
             const ticket = host.active();
             if (ticket === undefined) throw new Error("No active ticket: /ticket KEY makes one active.");

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { type CardFront, checkCard, draftCard, PLACEHOLDER, renderCard, SECTION_LIMIT } from "../src/card.ts";
@@ -258,8 +258,11 @@ test("a reopened ticket closes again with a fresh draft", async (t) => {
     await pi.command("PROJ-1");
     pi.result("logs", "ERROR second failure", { action: "query" });
     await pi.command("close");
-    assert.match(read(paths.card), /## Problem\n\(not filled yet\)/);
-    assert.match(read(paths.card), /second failure/);
+    assert.match(read(paths.card), /first failure/);
+    assert.equal(
+        pi.notices.some((notice) => /A card already exists/.test(notice.text)),
+        true,
+    );
     assert.deepEqual(jig.tickets, ["PROJ-1", undefined, "PROJ-1"]);
 });
 
@@ -296,13 +299,14 @@ test("the last stage offers the close once, and back or a refused advance does n
         to,
         at: new Date().toISOString(),
         last,
+        via: "advance" as const,
     });
     const before = pi.sent.length;
     pi.events.emit("jig:stage-done", message("PROJ-1", false, "review"));
     assert.equal(pi.sent.length, before);
     pi.events.emit("jig:stage-done", message("PROJ-1", true));
     assert.equal(pi.sent.length, before + 1);
-    assert.match(pi.sent[before]?.message.content ?? "", /reached the last stage.*ticket.*close/);
+    assert.match(pi.sent[before]?.message.content ?? "", /reached its workflow.s last stage.*ticket tool.s close/);
     pi.events.emit("jig:stage-done", message("PROJ-1", true));
     assert.equal(pi.sent.length, before + 1, "never repeated");
     const before2 = pi.sent.length;
@@ -316,4 +320,74 @@ test("a resumed session knows which tickets were already offered", () => {
         { type: "custom", customType: "jig-memory-close-offer", data: { ticket: "PROJ-2" } },
     ] as never;
     assert.deepEqual([...sessionOffers(entries)].sort(), ["PROJ-1", "PROJ-2"]);
+});
+
+test("the close action refuses a path, an absolute path, a symlink and a missing ticket", async (t) => {
+    const { folder, pi } = start(t);
+    pi.input("look at PROJ-1");
+    assert.match((await pi.tool({ action: "close", ticket: ".." })).text, /plain ticket key/);
+    assert.match((await pi.tool({ action: "close", ticket: "../elsewhere" })).text, /plain ticket key/);
+    assert.match((await pi.tool({ action: "close", ticket: "/tmp/elsewhere" })).text, /plain ticket key/);
+    assert.match((await pi.tool({ action: "close", ticket: "MISSING" })).text, /No folder for MISSING/);
+    symlinkSync(path.join(folder, "PROJ-1"), path.join(folder, "LINKED"));
+    assert.match((await pi.tool({ action: "close", ticket: "LINKED" })).text, /symlinks and files are refused/);
+});
+
+test("a malformed stage event does nothing", async (t) => {
+    const { pi } = start(t);
+    pi.input("look at PROJ-1");
+    const before = pi.sent.length;
+    pi.events.emit("jig:stage-done", {
+        ticket: "../x",
+        workflow: "feature",
+        from: null,
+        to: "done",
+        last: true,
+        at: "now",
+    });
+    pi.events.emit("jig:stage-done", {
+        ticket: "PROJ-1",
+        workflow: "../x",
+        from: null,
+        to: "done",
+        last: true,
+        at: new Date().toISOString(),
+    });
+    assert.equal(pi.sent.length, before);
+});
+
+test("an update that is aborted keeps the old card", async (t) => {
+    const { folder, pi } = start(t);
+    pi.input("look at PROJ-1");
+    pi.result("logs", "10:00:00 ERROR NullPointerException in OrderMapper", { action: "query" });
+    const paths = ticketPaths(folder, "PROJ-1");
+    const first = await pi.tool({ action: "close" });
+    assert.equal(first.isError, false, first.text);
+    writeFileSync(paths.card, renderCard(checkCard(read(paths.card)).front as CardFront, SECTIONS));
+    const old = read(paths.card);
+    await pi.tool({ action: "close", update: true });
+    pi.settle(true);
+    assert.equal(read(paths.card), old);
+});
+
+test("a real session_start restores the offered set and does not offer again", (t) => {
+    const folder = tempFolder(t);
+    ensureTicket(folder, "PROJ-1");
+    useJig(t, { memory: { ticketPattern: PATTERN, folder } });
+    const pi = loadPlugin("/work", [
+        { type: "custom", customType: "jig-memory-ticket", data: { key: "PROJ-1" } },
+        { type: "custom", customType: "jig-memory-close-offer", data: { ticket: "PROJ-1" } },
+    ] as never);
+    pi.start();
+    const before = pi.sent.length;
+    pi.events.emit("jig:stage-done", {
+        ticket: "PROJ-1",
+        workflow: "feature",
+        from: "build",
+        to: "done",
+        last: true,
+        via: "advance",
+        at: new Date().toISOString(),
+    });
+    assert.equal(pi.sent.length, before);
 });

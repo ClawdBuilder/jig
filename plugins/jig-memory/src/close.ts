@@ -12,6 +12,7 @@ import {
     SECTIONS,
 } from "./card.ts";
 import { frontOf, hasContent, readMaterial } from "./material.ts";
+import { copyFileSync, rmSync } from "node:fs";
 import { readText, replaceFile, ticketPaths } from "./store.ts";
 
 /** The custom message that asks the agent to write the card. */
@@ -26,13 +27,12 @@ export interface Closing {
     front: CardFront;
     /** Whether the one correction message has been sent. */
     corrected: boolean;
+    /** The old card, kept while an update draft is checked; restored if the close fails. */
+    backup?: string;
 }
 
 /** The ticket has nothing a card could say. */
 export class NothingToClose extends Error {}
-
-/** A card is already there; a close must say so and ask before replacing it. */
-export class CardExists extends Error {}
 
 /**
  * Writes the draft card of a ticket and returns what the plugin keeps of it. An existing card is replaced: a ticket
@@ -50,8 +50,14 @@ export function draftClose(
         throw new NothingToClose(`${key} has no notes or saved evidence yet, so there is nothing to put on a card.`);
     }
     const front = frontOf(material, pattern, now);
-    replaceFile(ticketPaths(folder, key).card, draftCard(front));
-    return { key, front, corrected: false };
+    const card = ticketPaths(folder, key).card;
+    let backup: string | undefined;
+    if (_replace && readText(card) !== "") {
+        backup = `${card}.bak-${String(process.pid)}-${String(Date.now())}`;
+        copyFileSync(card, backup);
+    }
+    replaceFile(card, draftCard(front));
+    return { key, front, corrected: false, ...(backup === undefined ? {} : { backup }) };
 }
 
 /** The one message that asks the agent to fill the card. */
@@ -83,6 +89,13 @@ export function correctionText(folder: string, key: string, problems: readonly s
  * problems say what to change. When the sections are fine and the front matter is not, the drafted front matter is
  * written back, because only the plugin fills it.
  */
+/** Puts the old card back when an update could not be completed. */
+export function restoreCard(folder: string, closing: Closing): void {
+    if (closing.backup === undefined) return;
+    copyFileSync(closing.backup, ticketPaths(folder, closing.key).card);
+    rmSync(closing.backup, { force: true });
+}
+
 export function verifyCard(folder: string, closing: Closing): { ok: boolean; problems: string[] } {
     const file = ticketPaths(folder, closing.key).card;
     const text = readText(file);
@@ -98,5 +111,6 @@ export function verifyCard(folder: string, closing: Closing): { ok: boolean; pro
         const sections = Object.fromEntries(SECTIONS.map((name) => [name, checked.sections[name] ?? ""]));
         replaceFile(file, renderCard(closing.front, sections as CardSections));
     }
+    if (closing.backup !== undefined) rmSync(closing.backup, { force: true });
     return { ok: true, problems: [] };
 }

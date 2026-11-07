@@ -11,14 +11,15 @@
 // tickets (recall.ts), as one more message. A ticket that becomes active or is restored is searched for empty files that a
 // crash may have left (empty-files.ts). The `ticket` tool (tool.ts) keeps pasted evidence and open checks (checks.ts), and
 // every prompt while a check is open carries the list.
-import { existsSync } from "node:fs";
+import type { Stats } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
 import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import {
     CARD_FIX,
     CARD_REQUEST,
-    CardExists,
+    restoreCard,
     type Closing,
     correctionText,
     draftClose,
@@ -310,12 +311,20 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             note(ctx, `No folder for ${key} in ${mem.folder}: run /ticket ${key} first.`, "warning");
             return;
         }
+        if (existsSync(ticketPaths(mem.folder, key).card)) {
+            note(
+                ctx,
+                `A card already exists for ${key}: ${ticketPaths(mem.folder, key).card}. Use the ticket tool's close with update: true to replace it.`,
+                "warning",
+            );
+            return;
+        }
         try {
             closing = draftClose(mem.folder, key, mem.pattern, new Date());
         } catch (error) {
             note(
                 ctx,
-                error instanceof NothingToClose || error instanceof CardExists
+                error instanceof NothingToClose
                     ? error.message
                     : `Could not draft the card for ${key}: ${reason(error)}`,
                 "warning",
@@ -408,6 +417,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         }
         const list = verdict.problems.join(" ");
         if (event.aborted || pending.corrected) {
+            restoreCard(mem.folder, pending);
             closing = undefined;
             note(
                 ctx,
@@ -540,14 +550,28 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
                 if (memory === undefined) throw new Error("Ticket memory is not ready: no session has started.");
                 const key = ticket ?? active;
                 if (key === undefined) throw new Error("No active ticket: /ticket KEY makes one active.");
-                if (!existsSync(ticketPaths(memory.folder, key).dir)) {
+                if (!isSafeKey(key)) throw new Error("ticket close: ticket must be a plain ticket key, not a path");
+                const dir = ticketPaths(memory.folder, key).dir;
+                let stat: Stats;
+                try {
+                    stat = lstatSync(dir);
+                } catch {
                     throw new Error(`No folder for ${key} in ${memory.folder}: run /ticket ${key} first.`);
                 }
+                if (!stat.isDirectory() || stat.isSymbolicLink()) {
+                    throw new Error(
+                        `${key} is not a real ticket folder in ${memory.folder}; symlinks and files are refused.`,
+                    );
+                }
                 if (!update && existsSync(ticketPaths(memory.folder, key).card)) {
-                    return `A card already exists for ${key}: ${ticketPaths(memory.folder, key).card}. Call ticket close again with update: true to replace it.`;
+                    return {
+                        text: `A card already exists for ${key}: ${ticketPaths(memory.folder, key).card}. Call ticket close again with update: true to replace it.`,
+                        drafted: false,
+                        key,
+                    };
                 }
                 closing = draftClose(memory.folder, key, memory.pattern, new Date(), update);
-                return requestText(memory.folder, key);
+                return { text: requestText(memory.folder, key), drafted: true, key };
             },
             search: (query) => {
                 if (memory === undefined) throw new Error("Ticket memory is not ready: no session has started.");
@@ -558,15 +582,39 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
 
     // A workflow's last stage offers the close once per ticket, through Pi's event bus (jig-workflow publishes it).
     pi.events?.on?.("jig:stage-done", (data: unknown) => {
-        const event = data as { ticket?: unknown; workflow?: unknown; last?: unknown };
-        if (event.last !== true || typeof event.ticket !== "string") return;
+        const event = data as {
+            ticket?: unknown;
+            workflow?: unknown;
+            from?: unknown;
+            to?: unknown;
+            last?: unknown;
+            at?: unknown;
+            via?: unknown;
+        };
+        const NAME = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+        if (
+            event.last !== true ||
+            event.via !== "advance" ||
+            typeof event.ticket !== "string" ||
+            !NAME.test(event.ticket) ||
+            typeof event.workflow !== "string" ||
+            !NAME.test(event.workflow) ||
+            typeof event.to !== "string" ||
+            !NAME.test(event.to) ||
+            (event.from !== null && (typeof event.from !== "string" || !NAME.test(event.from))) ||
+            typeof event.at !== "string" ||
+            !Number.isFinite(Date.parse(event.at))
+        ) {
+            return;
+        }
         if (event.ticket !== active || offered.has(event.ticket)) return;
         offered.add(event.ticket);
         pi.appendEntry(CLOSE_OFFER_ENTRY, { ticket: event.ticket });
         pi.sendMessage(
             {
                 customType: "jig-memory-close-offer",
-                content: `[ticket ${event.ticket}] It reached the last stage of ${String(event.workflow)}. Close it with the ticket tool's close action so its card exists.`,
+                content:
+                    "[ticket] The active ticket reached its workflow's last stage. Close it with the ticket tool's close action so its card exists.",
                 display: true,
             },
             { triggerTurn: true, deliverAs: "followUp" },
