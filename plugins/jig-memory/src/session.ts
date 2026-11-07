@@ -50,6 +50,8 @@ export const RECALL_MESSAGE = "jig-memory-recall";
 export const EMPTY_FILES_MESSAGE = "jig-memory-empty-files";
 /** The custom message that lists the open checks, with every prompt while one is open. */
 export const CHECKS_MESSAGE = "jig-memory-checks";
+/** The session entry that records a close offer, so a resume does not offer the same ticket again. */
+export const CLOSE_OFFER_ENTRY = "jig-memory-close-offer";
 
 const ACTIVE = "Active.";
 const COMPACTED = "Still active after compaction; current notes follow.";
@@ -75,8 +77,20 @@ export function restoredTicket(branch: readonly SessionEntry[]): string | undefi
     return undefined;
 }
 
+/** Tickets already offered in the branch: a resume must not offer them again. */
+export function offeredTickets(entries: readonly SessionEntry[]): Set<string> {
+    const found = new Set<string>();
+    for (const entry of entries) {
+        if (entry?.type !== "custom" || entry.customType !== CLOSE_OFFER_ENTRY) continue;
+        const ticket = (entry.data as { ticket?: unknown } | undefined)?.ticket;
+        if (typeof ticket === "string") found.add(ticket);
+    }
+    return found;
+}
+
 export function registerTicketMemory(pi: ExtensionAPI): void {
-    // Tickets already offered a close in this session: one offer, never repeated.
+    // Tickets already offered a close: one offer, never repeated. This is jig-memory's own session state, so it needs no
+    // jig-core route: the trigger crosses plugins on Pi's event bus, but the record of "already offered" belongs here only.
     const offered = new Set<string>();
     // Set at session start, from the section jig-core loaded. Until then nothing is written, so no ticket folder can
     // be made in the working directory by mistake.
@@ -325,6 +339,13 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         sinceNotes = 0;
         reported.clear();
         closing = undefined;
+        offered.clear();
+        for (const entry of ctx.sessionManager.getBranch()) {
+            if (entry?.type === "custom" && entry.customType === CLOSE_OFFER_ENTRY) {
+                const ticket = (entry.data as { ticket?: unknown } | undefined)?.ticket;
+                if (typeof ticket === "string") offered.add(ticket);
+            }
+        }
         recalled.clear();
         activatedBy.clear();
         if (active !== undefined) {
@@ -541,6 +562,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         if (event.last !== true || typeof event.ticket !== "string") return;
         if (event.ticket !== active || offered.has(event.ticket)) return;
         offered.add(event.ticket);
+        pi.appendEntry(CLOSE_OFFER_ENTRY, { ticket: event.ticket });
         pi.sendMessage(
             {
                 customType: "jig-memory-close-offer",

@@ -12,6 +12,7 @@ import {
     requestText,
     verifyCard,
 } from "../src/close.ts";
+import { offeredTickets as sessionOffers } from "../src/session.ts";
 import { ticketPaths } from "../src/store.ts";
 import { ensureTicket } from "../src/store.ts";
 import { changed, loadPlugin, PATTERN, tempFolder, useJig } from "./support.ts";
@@ -307,4 +308,12 @@ test("the last stage offers the close once, and back or a refused advance does n
     const before2 = pi.sent.length;
     pi.events.emit("jig:stage-done", { ...message("PROJ-1", true), last: false });
     assert.equal(pi.sent.length, before2);
+});
+
+test("a resumed session knows which tickets were already offered", () => {
+    const entries = [
+        { type: "custom", customType: "jig-memory-close-offer", data: { ticket: "PROJ-1" } },
+        { type: "custom", customType: "jig-memory-close-offer", data: { ticket: "PROJ-2" } },
+    ] as never;
+    assert.deepEqual([...sessionOffers(entries)].sort(), ["PROJ-1", "PROJ-2"]);
 });
