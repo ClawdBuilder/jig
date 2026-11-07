@@ -183,10 +183,14 @@ export function reportLines(
         );
     }
     if (detail.reserve > 0) {
-        lines.push(`${paint("dim", "░")} ${"Compaction reserve".padEnd(15)} ${count(detail.reserve).padStart(8)}`);
+        lines.push(
+            `${paint("dim", "░")} ${"Compaction reserve".padEnd(15)} ${count(detail.reserve).padStart(8)}  ${percent(detail.reserve, window).padStart(6)}`,
+        );
     }
     if (detail.free !== null) {
-        lines.push(`${paint("dim", "░")} ${"Free".padEnd(15)} ${count(detail.free).padStart(8)}`);
+        lines.push(
+            `${paint("dim", "░")} ${"Free".padEnd(15)} ${count(detail.free).padStart(8)}  ${percent(detail.free, window).padStart(6)}`,
+        );
     }
     lines.push("", paint("accent", "Tools"));
     for (const group of report.groups) {
