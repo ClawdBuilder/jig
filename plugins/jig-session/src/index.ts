@@ -8,6 +8,7 @@ import { jig } from "../../jig-core/src/client.ts";
 import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
 import type { ContextHost } from "./context.ts";
 import { ContextView } from "./context.ts";
+import { buildReport, showContext } from "./context-command.ts";
 import { stateDir } from "./files.ts";
 import { SWITCHES_ENTRY } from "./requests.ts";
 import { StatusFile, terminalOf } from "./status.ts";
@@ -82,6 +83,41 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
                 const { terminal, terminalFrom } = terminalOf(env);
                 const term = terminal ? `terminal ${terminal} (${terminalFrom})` : "no terminal known";
                 ctx.ui.notify(`jig-session: status file ${where}; ${term}`, "info");
+            },
+        });
+
+        // `/context`: the Context panel's breakdown in the terminal, with tool ownership and Jig's own messages.
+        pi.registerCommand("context", {
+            description: "What fills this session's context, part by part, with tools and Jig's messages",
+            handler: async (_args, ctx) => {
+                try {
+                    const detail = context.detail(ctx);
+                    const model = ctx.model ? (ctx.model.name ?? ctx.model.id) : "no model";
+                    const declared = new Map(
+                        (() => {
+                            try {
+                                return jig().tools?.declared() ?? [];
+                            } catch {
+                                return [];
+                            }
+                        })().map((entry) => [entry.tool, entry.plugin] as const),
+                    );
+                    await showContext(
+                        ctx,
+                        buildReport({
+                            detail,
+                            model,
+                            declared,
+                            deferred: context.deferred(),
+                            entries: ctx.sessionManager.getBranch(),
+                        }),
+                    );
+                } catch (error) {
+                    ctx.ui.notify(
+                        `Context could not be read: ${error instanceof Error ? error.message : String(error)}`,
+                        "warning",
+                    );
+                }
             },
         });
 

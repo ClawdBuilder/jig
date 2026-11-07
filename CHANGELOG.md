@@ -13,6 +13,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `mods/keep-awake/config.json` (`display`), which also carries `idleMinutes`, and restarts the helper at once; the sun's
   tooltip says whether the screen is kept on. `Ctrl+Shift+Alt+K` cycles the modes.
 
+- `/context` in `jig-session` shows what fills a Pi session's context as a grid and a list, from the same `ContextDetail`
+  the Herdr Context panel reads: the parts, the tools split into Pi's, each Jig plugin's and deferred names, and Jig's
+  ticket, recall and review messages apart from the conversation. Tokens are marked as estimates.
+
 ### Changed
 
 - The Changes panel (`repo-changes`) lists the folder of the focused terminal, not the space's, and has a header toggle to

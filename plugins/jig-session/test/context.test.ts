@@ -29,6 +29,7 @@ import {
 } from "../src/breakdown.ts";
 import { fileName, sessionsDir } from "../src/files.ts";
 import { RELOAD_COMMAND, session } from "../src/index.ts";
+import { buildReport, jigMessages, reportLines } from "../src/context-command.ts";
 import { parseRequest, requestsDir, SWITCHES_ENTRY, sweepRequests, takeRequest } from "../src/requests.ts";
 import type { SessionStatus } from "../src/status.ts";
 
@@ -230,12 +231,27 @@ function fakePi(cwd: string) {
             commands.set(name, command);
         },
     } as unknown as ExtensionAPI;
+    let component: { render(width: number): string[]; handleInput?(data: string): void } | undefined;
+    const theme = {
+        fg: (_role: string, text: string) => text,
+        bg: (_role: string, text: string) => text,
+        bold: (text: string) => text,
+        italic: (text: string) => text,
+        underline: (text: string) => text,
+    };
     const ctx = {
         cwd,
         model: { provider: "acme", id: "m-1", name: "Model One", contextWindow: 1000 },
         sessionManager: { getSessionId: () => "0193-abc", getBranch: () => entries, getEntries: () => entries },
         isIdle: () => idle,
-        ui: { notify: () => {} },
+        hasUI: true,
+        ui: {
+            notify: () => {},
+            custom: async (factory: Function) => {
+                component = factory({ terminal: { rows: 40 }, requestRender: () => {} }, theme, {}, () => {});
+                return undefined;
+            },
+        },
         isProjectTrusted: () => false,
         getContextUsage: () => ({ tokens: 20, contextWindow: 1000, percent: 2 }),
         getSystemPrompt: () => renderPrompt(SKILLS),
@@ -250,6 +266,7 @@ function fakePi(cwd: string) {
         sent,
         commands,
         fire,
+        component: () => component,
         active: () => active,
         setIdle: (value: boolean) => {
             idle = value;
@@ -323,6 +340,30 @@ test("the status file carries the breakdown and the tools, skills and context fi
     );
     assert.equal(read().lastRequest, null);
     assert.ok(existsSync(path.dirname(requestFile)), "the requests folder is made for the reader");
+});
+
+test("/context shows the same breakdown the status file carries, and fits a narrow terminal", async (t) => {
+    const { pi, read } = rig(t);
+    await pi.fire("session_start", { reason: "startup" });
+    const detail = read().contextDetail;
+    assert.ok(detail);
+    await pi.commands.get("context")?.handler("", pi.ctx);
+    const component = pi.component();
+    assert.ok(component);
+    const lines = component.render(60);
+    assert.ok(
+        lines.every((line) => line.length <= 60),
+        "no line is wider than the terminal",
+    );
+    const all = lines.join("\n");
+    assert.match(all, new RegExp(String(detail.used)));
+    assert.match(all, /Context · Model One/);
+    assert.match(all, /estimate/);
+    assert.match(all, /[█░]/);
+    assert.deepEqual(
+        ["System prompt", "Context files", "Skills", "Tools", "Messages"].filter((part) => all.includes(part)).sort(),
+        ["Context files", "Messages", "Skills", "System prompt", "Tools"],
+    );
 });
 
 test("a request turns a tool off and on again: applied, answered in the file, saved, nothing else changed", async (t) => {
@@ -473,4 +514,63 @@ test("Reload runs /session-reload when Pi is idle, waits for the agent when it w
 
     await pi.fire("session_shutdown", { reason: "quit" });
     assert.equal(existsSync(file), false);
+});
+
+test("the report splits tools into Pi, each Jig plugin and deferred names", () => {
+    const report = buildReport({
+        detail: {
+            window: 1000,
+            used: 400,
+            usedFrom: "pi",
+            reserve: 100,
+            free: 500,
+            parts: { messages: 100, tools: 80, system: 120, skills: 40, contextFiles: 60 },
+            tools: [
+                { name: "read", on: true, tokens: 10 },
+                { name: "git", on: true, tokens: 30 },
+                { name: "jira", on: true, tokens: 40 },
+                { name: "mongo", on: false, tokens: 50 },
+            ],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        declared: new Map([
+            ["git", "jig-git"],
+            ["jira", "jig-jira"],
+            ["mongo", "jig-mongo"],
+        ]),
+        deferred: ["mongo"],
+    });
+    assert.deepEqual(
+        report.groups.map((group) => [group.label, group.tools.map((tool) => tool.name)]),
+        [
+            ["Pi built-in / other", ["read"]],
+            ["jig-git", ["git"]],
+            ["jig-jira", ["jira"]],
+        ],
+    );
+    assert.deepEqual(report.deferred, ["mongo"]);
+    const lines = reportLines(report, 70, (_role, text) => text).join("\n");
+    assert.match(lines, /Deferred \(found by tool_search\)/);
+    assert.match(lines, /mongo\s+not in context/);
+    assert.doesNotMatch(lines, /jig-mongo/);
+});
+
+test("Jig's messages are found by custom type, apart from review follow-ups", () => {
+    const messages = jigMessages([
+        { type: "custom", customType: "jig-memory-notes", content: "notes" },
+        { type: "custom", customType: "jig-memory-recall", content: "12345678" },
+        { type: "message", message: { role: "user", content: "Interactive code review r1 was submitted." } },
+        { type: "message", message: { role: "user", content: "A conversation message." } },
+    ]);
+    assert.deepEqual(
+        messages.map((m) => [m.label, m.count]),
+        [
+            ["Review follow-ups", 1],
+            ["Ticket notes", 1],
+            ["Recall results", 1],
+        ],
+    );
+    assert.ok(messages.every((m) => m.tokens > 0));
 });
