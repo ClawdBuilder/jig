@@ -18,8 +18,9 @@ device would. That proves the server's checks. It does not prove a real browser 
   - *What to try:* If the page does not open, a browser that does not fall back from `::1` to `127.0.0.1` needs the server to listen on both
 - **A security key** (FIDO2) with a PIN
   - *What to try:* Register and approve with it
-- **The hold while an agent review waits:** that a real turn stops calling tools, that a person's next message releases it,
-  and that a closed tab cannot leave an agent stuck. The gate is unit-tested only so far.
+- **The hold while an agent review waits:** the gate and its release are unit-tested; stock Pi with a scripted model proved a
+  write denied, a person's next message released, and a second refused write aborted the turn. A real model that ignores the
+  line is still not measured, and a closed tab's release by the next message is the rule but not yet tried with a real person.
 - **Pi's dialog slot** while an agent turn is running
   - *What to try:* Approve in the page during a turn, with the fallback, and see that Pi's question appears
 - **The page's look** at narrow widths and in a dark theme
