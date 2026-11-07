@@ -30,6 +30,11 @@ import type { Block } from "./summary.ts";
 import { createModelNames, MODEL_NAMES_EVENT } from "./usage-names.ts";
 import { homeUrl, viewerUrl } from "./viewer.ts";
 import type { Viewer, ViewerState } from "./viewer.ts";
+import { homedir } from "node:os";
+import path from "node:path";
+import { jig } from "../../jig-core/src/client.ts";
+import { themeChoice } from "../../jig-core/src/kit/theme.ts";
+import { agentDirFor, readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
 import { LensWeb } from "./web.ts";
 
 type Level = "info" | "warning" | "error";
@@ -223,6 +228,12 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
         now: () => deps.now(),
         names: modelNames.names,
         sessionsDir: () => deps.sessionsDir(),
+        theme: () => {
+            const saved = readThemePreference(agentDirFor());
+            if (saved !== undefined) return saved;
+            const section = jig().config.section("ui") as { theme?: unknown } | undefined;
+            return themeChoice(section?.theme);
+        },
     });
     pi.on("session_shutdown", () => web.stop());
 

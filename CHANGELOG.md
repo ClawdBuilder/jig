@@ -25,6 +25,16 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   a replaced, abandoned, restarted or stopped review stops holding. A `review` section supplies company defaults for
   `holdAgent` and `holdAbortAfter` (default 2 refused model responses before the turn is aborted); the settings page overrides
   them. Each copy of the plugin registers its own gate name.
+- Every Jig browser page shares one graphite palette, with a System / Light / Dark choice remembered in the browser and
+  `ui.theme` in `jig.json` (`system` by default); the review page has a dark mode for diffs, syntax, comments, modals,
+  approval panels, disabled buttons and empty states, and no page flashes white before its theme is set. The single token
+  file is `plugins/jig-core/src/kit/theme.css`; the light theme keeps working.
+- The review page shows **Approve** in the header from the start, beside Finish review; approving with draft line comments or a
+  general note asks whether to submit or discard them first, and an approved or awaiting-agent review says in words why its
+  Approve button is disabled. Approving is bound to the diff hash the page displays, so a stale page cannot approve newer
+  changes; the page must send the diff hash it rendered, and a missing or malformed one is refused. The theme choice has one
+  owner, `jig-core`'s shared theme file under the agent folder, and every page (review, preview, lens) resolves that same path.
+  A draft typed after "Discard and approve" cancels the pending discard, so the person is asked again.
 
 ### Changed
 

@@ -36,6 +36,10 @@ test("the page loads only assets that exist", () => {
         "index.html loads the stylesheet",
     );
     for (const file of referenced) {
+        if (file.startsWith("/theme-boot.js")) {
+            assert.ok(existsSync(path.join(PACKAGE_ROOT, "dist", "theme-boot.js")), "the boot script is in dist/");
+            continue;
+        }
         assert.match(file, /^\/assets\/[\w.-]+$/, `${file} is served from /assets/`);
         assert.ok(existsSync(path.join(PACKAGE_ROOT, "dist", file)), `${file} is missing from dist/`);
     }

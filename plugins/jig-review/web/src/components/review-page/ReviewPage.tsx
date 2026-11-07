@@ -1,6 +1,7 @@
 import type { ReviewFile } from "@web/review-file.js";
 import type { DraftComment, ReviewRecord, ReviewSettings } from "@web/types.js";
 import type { FC } from "react";
+import { useState } from "react";
 
 import { ReviewActionModal } from "./components/ReviewActionModal.js";
 import { ReviewHeader } from "./components/ReviewHeader.js";
@@ -35,6 +36,7 @@ export const ReviewPage: FC<ReviewPageProps> = ({
   review,
   settings,
 }) => {
+  const [approvalRequested, setApprovalRequested] = useState(false);
   const state = useReviewPageState({
     drafts,
     files,
@@ -45,17 +47,26 @@ export const ReviewPage: FC<ReviewPageProps> = ({
   });
 
   const openActionModal = (): void => {
+    setApprovalRequested(false);
+    state.setIsActionModalOpen(true);
+  };
+
+  const requestApproval = (): void => {
+    setApprovalRequested(true);
     state.setIsActionModalOpen(true);
   };
 
   const closeActionModal = (): void => {
+    setApprovalRequested(false);
     state.setIsActionModalOpen(false);
   };
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <ReviewHeader
+        draftCount={drafts.length + (generalComment.trim() === "" ? 0 : 1)}
         drafts={drafts}
+        onApprove={requestApproval}
         onOpenActions={openActionModal}
         onViewTypeChange={state.changeViewType}
         review={review}
@@ -73,9 +84,13 @@ export const ReviewPage: FC<ReviewPageProps> = ({
         viewType={state.viewType}
       />
       <ReviewActionModal
+        approveRequested={approvalRequested}
         drafts={drafts}
         generalComment={generalComment}
         isOpen={state.isActionModalOpen}
+        onApproveRequestHandled={() => {
+          setApprovalRequested(false);
+        }}
         onClose={closeActionModal}
         onDraftsChange={(nextDrafts) => {
           onDraftsChange(nextDrafts);

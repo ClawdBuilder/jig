@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
     diffView: "split",
     holdAgent: true,
     holdAbortAfter: 2,
+    theme: "system",
 };
 
 /** Review settings and records for one workspace. */
@@ -100,6 +101,10 @@ export function parseReviewSettings(value: unknown): ReviewSettings {
             raw.holdAbortAfter <= 10
                 ? raw.holdAbortAfter
                 : DEFAULT_SETTINGS.holdAbortAfter,
+        theme:
+            raw.theme === "light" || raw.theme === "dark" || raw.theme === "system"
+                ? raw.theme
+                : DEFAULT_SETTINGS.theme,
     };
 }
 

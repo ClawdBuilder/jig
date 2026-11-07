@@ -10,7 +10,14 @@ export const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.
 export const MANIFEST_FILE = "build.json";
 
 /** Everything the bundle is a function of besides the installed tools, which package-lock.json pins. */
-const SOURCE_FILES = ["index.html", "vite.config.ts", "package-lock.json"];
+const SOURCE_FILES = [
+  "index.html",
+  "vite.config.ts",
+  "package-lock.json",
+  "public/theme-boot.js",
+  "../../jig-core/src/kit/theme.css",
+  "../../jig-core/src/kit/theme-client.ts",
+];
 const SOURCE_DIRECTORY = "src";
 const OUTPUT_DIRECTORY = "dist";
 

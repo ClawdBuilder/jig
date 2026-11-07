@@ -280,6 +280,7 @@ export function buildApi(state: JigState): JigApi {
             },
             section(name) {
                 ensureConfigLoaded(state);
+                if (name === "ui") return state.personal.config.ui;
                 return state.personal.sections.get(name);
             },
         },

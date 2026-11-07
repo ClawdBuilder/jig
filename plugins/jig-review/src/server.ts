@@ -20,6 +20,8 @@ import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { clampHoldAbortAfter } from "./settings.ts";
 import { Hono } from "hono";
+import { themeAttribute, themeChoice } from "../../jig-core/src/kit/theme.ts";
+import type { ThemeChoice } from "../../jig-core/src/kit/theme.ts";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { ApprovalError } from "./approval.ts";
@@ -43,6 +45,8 @@ export type ReviewServerHandlers = {
     submitComments: (comments: SubmittedCommentInput[], mode: CommentSubmissionMode) => Promise<void>;
     updateSettings: (settings: Partial<ReviewSettings>) => Promise<void>;
     approval: ApprovalService;
+    /** The saved page theme, after settings; System when absent. */
+    theme?: () => Promise<ThemeChoice>;
 };
 
 export const COOKIE = "jig_review";
@@ -197,11 +201,15 @@ export class ReviewServer {
 
         // Approval. There is no route that approves because the page asked: each of these checks something the agent
         // cannot supply (a passkey signature) or waits for the user in Pi.
-        app.post("/api/approve/options", (context) => context.json(approval.approvalOptions()));
+        app.post("/api/approve/options", async (context) =>
+            context.json(approval.approvalOptions(await requiredDiffHash(context))),
+        );
         app.post("/api/approve/passkey", async (context) =>
             context.json(await approval.approveWithPasskey(await readJson(context))),
         );
-        app.post("/api/approve/page", async (context) => context.json(await approval.approveInPage()));
+        app.post("/api/approve/page", async (context) =>
+            context.json(await approval.approveInPage(await requiredDiffHash(context))),
+        );
 
         app.get("/api/passkeys", (context) => context.json(approval.passkeys()));
         app.post("/api/passkeys/options", (context) => context.json(approval.registrationOptions()));
@@ -223,7 +231,10 @@ export class ReviewServer {
 
         app.get("/api/events", () => this.createEventsResponse());
 
-        app.get("/*", (context) => readStaticAsset(context.req.path));
+        app.get("/*", async (context) => {
+            const saved = this.handlers.theme === undefined ? undefined : await this.handlers.theme();
+            return readStaticAsset(context.req.path, themeChoice(saved));
+        });
 
         return app;
     }
@@ -278,6 +289,21 @@ function sameSecret(given: string | undefined, secret: string): boolean {
 }
 
 /** The request's JSON body; a body that is not JSON is the caller's mistake, answered 400. */
+/** The revision the page displays: required, and refused when it is missing or malformed. */
+async function requiredDiffHash(context: Context): Promise<string> {
+    let body: unknown;
+    try {
+        body = await context.req.json();
+    } catch {
+        throw new ApprovalError(400, "This page is out of date; reload it to approve.");
+    }
+    const hash = isRecord(body) ? body.diffHash : undefined;
+    if (typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)) {
+        throw new ApprovalError(400, "This page is out of date; reload it to approve.");
+    }
+    return hash;
+}
+
 async function readJson(context: Context): Promise<unknown> {
     try {
         return await context.req.json();
@@ -298,7 +324,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "Cache-Control": "no-store",
 };
 
-async function readStaticAsset(requestPath: string): Promise<Response> {
+async function readStaticAsset(requestPath: string, theme: ThemeChoice = "system"): Promise<Response> {
     const webRoot = getWebRoot();
     let relativePath: string;
     try {
@@ -309,19 +335,26 @@ async function readStaticAsset(requestPath: string): Promise<Response> {
     const filePath = path.join(webRoot, relativePath);
     if (isOutsideDirectory(filePath, webRoot)) return new Response("Not found", { status: 404 });
     try {
+        if (relativePath === "index.html" || relativePath === "/") return indexResponse(filePath, theme);
         return new Response(await readFile(filePath), { headers: getStaticAssetHeaders(filePath) });
     } catch {
         // A path the page's router knows (a review's own address) gets the page, so a reload keeps the place.
         try {
-            return new Response(await readFile(path.join(webRoot, "index.html")), {
-                headers: getStaticAssetHeaders("index.html"),
-            });
+            return indexResponse(path.join(webRoot, "index.html"), theme);
         } catch {
             return new Response("The review page is not built: run `npm --prefix plugins/jig-review/web run build`.", {
                 status: 500,
             });
         }
     }
+}
+
+/** index.html with the configured theme put in before first paint, and no placeholder left in the served page. */
+async function indexResponse(file: string, theme: ThemeChoice): Promise<Response> {
+    const page = (await readFile(file, "utf8"))
+        .replace(' data-theme-placeholder="true"', themeAttribute(theme))
+        .replaceAll("__JIG_THEME_DEFAULT__", theme);
+    return new Response(page, { headers: getStaticAssetHeaders("index.html") });
 }
 
 function getWebRoot(): string {
@@ -336,6 +369,7 @@ function parseSettingsUpdate(body: unknown): Partial<ReviewSettings> {
     if (body.diffView === "split" || body.diffView === "unified") settings.diffView = body.diffView;
     if (typeof body.holdAgent === "boolean") settings.holdAgent = body.holdAgent;
     if (body.holdAbortAfter !== undefined) settings.holdAbortAfter = clampHoldAbortAfter(body.holdAbortAfter);
+    if (body.theme === "system" || body.theme === "light" || body.theme === "dark") settings.theme = body.theme;
     return settings;
 }
 

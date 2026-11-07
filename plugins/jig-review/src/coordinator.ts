@@ -18,6 +18,8 @@ import { openUrl as open } from "./open.ts";
 import { PasskeyStore } from "./passkey/store.ts";
 import { buildApprovalPrompt, buildReviewSubmissionPrompt } from "./prompts.ts";
 import { ReviewServer } from "./server.ts";
+import { themeChoice } from "../../jig-core/src/kit/theme.ts";
+import { agentDirFor, readThemePreference, saveThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
 import type { CommentSubmissionMode, SubmittedCommentInput } from "./server.ts";
 import { parseReviewSettings, SettingsStore, workspaceDirFor } from "./settings.ts";
 import { formatSettingsOptions, passkeyToRemove, toggleSelectedSetting } from "./settings-options.ts";
@@ -39,6 +41,8 @@ const QUEUE_WAIT_MS = 10_000;
 export interface ReviewOptions {
     /** `<agent folder>/jig-review`: the passkey store, and a folder per workspace for settings and reviews. */
     root: string;
+    /** The agent folder the shared theme file lives in. Default: `PI_CODING_AGENT_DIR` or `~/.pi/agent`. */
+    agentDir?: string;
     /** Runs git. Default: jig-core's. */
     git?: Git;
     /** How long a question waits for the dialog slot before it gives up, telling the page another question is open.
@@ -63,6 +67,8 @@ export class ReviewCoordinator {
     private ctx?: ExtensionContext;
     /** The question in Pi that is waiting for the user, so a shutdown can dismiss it. */
     private asking?: AbortController;
+    private readonly agentRoot: string;
+    private readonly themeDir: string;
     private readonly settingsStore: SettingsStore;
     private readonly reviewStore: ReviewStore;
     private readonly workspace: WorkspaceReviewSource;
@@ -76,6 +82,8 @@ export class ReviewCoordinator {
     /** `cwd` is Pi's folder: the repository, or a workspace whose repositories are reviewed together. */
     public constructor(pi: ExtensionAPI, cwd: string, options: ReviewOptions) {
         this.pi = pi;
+        this.agentRoot = options.root;
+        this.themeDir = options.agentDir ?? agentDirFor();
         this.askQueueWaitMs = options.askQueueWaitMs ?? QUEUE_WAIT_MS;
         this.git = options.git ?? jigGit;
         this.tracker = new RunTracker(cwd, this.git);
@@ -540,6 +548,12 @@ export class ReviewCoordinator {
             submitComments: (comments, mode): Promise<void> => this.submitComments(comments, mode),
             updateSettings: (settings): Promise<void> => this.updateSettings(settings),
             approval: this.approval,
+            theme: async () => {
+                const saved = readThemePreference(this.themeDir);
+                if (saved !== undefined) return saved;
+                const section = jig().config.section("ui") as { theme?: unknown } | undefined;
+                return themeChoice(section?.theme);
+            },
         });
         const baseUrl = await this.server.start();
         this.currentReview = review;
@@ -560,6 +574,7 @@ export class ReviewCoordinator {
     private async updateSettings(settings: Partial<ReviewSettings>): Promise<void> {
         this.settings = { ...(await this.getSettings()), ...settings };
         await this.settingsStore.save(this.settings);
+        if (settings.theme !== undefined) saveThemePreference(this.themeDir, themeChoice(settings.theme));
     }
 
     private async refreshReviewAfterAgent(ctx: ExtensionContext): Promise<void> {

@@ -27,7 +27,10 @@ type Approval = {
  *
  * @param onApproved Called once the server has approved the review.
  */
-export function useApproval(onApproved: (method: ApprovalMethod) => Promise<void>): Approval {
+export function useApproval(
+  diffHash: string,
+  onApproved: (method: ApprovalMethod) => Promise<void>,
+): Approval {
   const [state, setState] = useState<ApprovalState>({ step: "idle" });
 
   const finish = async (method: ApprovalMethod): Promise<void> => {
@@ -36,7 +39,7 @@ export function useApproval(onApproved: (method: ApprovalMethod) => Promise<void
   };
 
   const withPasskey = async (): Promise<void> => {
-    const options = await fetchApprovalOptions();
+    const options = await fetchApprovalOptions(diffHash);
 
     if (options.method === "none") {
       setState({ step: "choose", canRegister: options.canRegister, hasBrowserSupport: supportsPasskeys(), problem: options.problem });
@@ -67,7 +70,7 @@ export function useApproval(onApproved: (method: ApprovalMethod) => Promise<void
     approveElsewhere: () =>
       run(async () => {
         setState({ step: "working", message: "Waiting for your answer in Pi: y approves, n declines." });
-        const outcome = await approveInPi();
+        const outcome = await approveInPi(diffHash);
 
         if (outcome.ok) {
           await finish(outcome.method);

@@ -64,7 +64,11 @@ export interface PassBinding {
 export const OPEN_IN_BROWSER_MODES = ["on-key", "always"] as const;
 export type OpenInBrowser = (typeof OPEN_IN_BROWSER_MODES)[number];
 
+export const UI_THEMES = ["system", "light", "dark"] as const;
+export type UiTheme = (typeof UI_THEMES)[number];
+
 export interface JigConfig {
+    ui: { theme: UiTheme };
     environments: Record<string, EnvironmentConfig>;
     rules: Rule[];
     classify: ClassifyRule[];
@@ -84,6 +88,7 @@ export interface JigConfig {
 
 export function defaultConfig(): JigConfig {
     return {
+        ui: { theme: "system" },
         environments: {},
         rules: [],
         classify: [],
@@ -98,6 +103,7 @@ export function defaultConfig(): JigConfig {
 
 /** The top-level keys of the file that jig-core owns. A plugin cannot register a section under one of these names. */
 export const OWN_SECTIONS: readonly string[] = [
+    "ui",
     "environments",
     "rules",
     "classify",
@@ -231,6 +237,7 @@ export function parseConfig(
     }
     const company = companyOnly(checks, layers, written);
     for (const [key, section] of company.sections) sections.set(key, section);
+    if (value.ui !== undefined) config.ui = parseUi(value.ui, "ui", fail, config.ui);
     if (value.environments !== undefined)
         config.environments = parseEnvironments(value.environments, "environments", fail);
     if (value.rules !== undefined) config.rules = parseRules(value.rules, "rules", fail);
@@ -687,6 +694,21 @@ function parseRetention(
         return fallback;
     }
     return { retentionDays: days };
+}
+
+function parseUi(raw: unknown, path: string, fail: Fail, fallback: JigConfig["ui"]): JigConfig["ui"] {
+    if (!isObject(raw)) {
+        fail(path, "must be an object");
+        return fallback;
+    }
+    knownFields(raw, ["theme"], path, fail);
+    const theme = raw.theme;
+    if (theme === undefined) return fallback;
+    if (typeof theme !== "string" || !(UI_THEMES as readonly string[]).includes(theme)) {
+        fail(at(path, "theme"), `must be one of ${UI_THEMES.join(", ")}`);
+        return fallback;
+    }
+    return { theme: theme as UiTheme };
 }
 
 function parseApprovals(
