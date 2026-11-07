@@ -15,6 +15,7 @@ import type { ReviewApprovedEvent } from "./events.ts";
 import { jigGit } from "./git.ts";
 import type { Git, ReviewFileSelection } from "./git.ts";
 import { openUrl as open } from "./open.ts";
+import { setReviewHold } from "./hold.ts";
 import { PasskeyStore } from "./passkey/store.ts";
 import { buildApprovalPrompt, buildReviewSubmissionPrompt } from "./prompts.ts";
 import { ReviewServer } from "./server.ts";
@@ -100,6 +101,7 @@ export class ReviewCoordinator {
     /** The person approved, commented, or typed in Pi: the hold is over. */
     public releaseHold(): void {
         this.holdReleased = true;
+        setReviewHold(false);
     }
 
     public async runStartTaken(): Promise<void> {
@@ -111,6 +113,7 @@ export class ReviewCoordinator {
         this.pi.on("session_start", async (_event, ctx): Promise<void> => {
             this.ctx = ctx;
             this.holdReleased = true;
+            setReviewHold(false);
             await this.cleanupStaleReviews(ctx);
         });
 
@@ -339,6 +342,7 @@ export class ReviewCoordinator {
         if (started !== undefined && "url" in started) {
             this.agentRequestedReviewId = this.currentReview?.id;
             this.holdReleased = false;
+            setReviewHold(this.settings?.holdAgent ?? true);
         }
         return started;
     }

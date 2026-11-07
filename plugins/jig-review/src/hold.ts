@@ -7,6 +7,13 @@ export const WAIT_REASON =
     "a code review is open in the browser and waiting for the person. Stop and wait for their message; approval or comments " +
     "release this call.";
 
+let active = false;
+/** Set when an agent-opened review waits; cleared by approval, comments, a person's message or a restart. */
+export const setReviewHold = (held: boolean): void => {
+    active = held;
+};
+export const reviewHoldActive = (): boolean => active;
+
 /** A refusal for a write while a review waits, or undefined to let it through. Reads and the resolution tool stay open. */
 export function holdReason(call: Pick<GateCall, "tool" | "effect">, holding: boolean): string | undefined {
     if (!holding) return undefined;

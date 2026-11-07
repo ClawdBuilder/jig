@@ -6,7 +6,7 @@ import { withJig } from "../../jig-core/src/client.ts";
 import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts";
 import { ReviewCoordinator } from "./coordinator.ts";
 import { reviewRoot } from "./settings.ts";
-import { holdReason } from "./hold.ts";
+import { holdReason, reviewHoldActive } from "./hold.ts";
 import { RESOLUTION_TOOL, START_TOOL } from "./tools.ts";
 
 /** Both tools only write this plugin's own review files, in a folder under Pi's agent folder. */
@@ -26,7 +26,7 @@ export default function (pi: ExtensionAPI) {
             name: "review-wait",
             plugin: "jig-review",
             check(call) {
-                const reason = holdReason(call, coordinator.holdsAgent());
+                const reason = holdReason(call, reviewHoldActive());
                 return reason === undefined ? undefined : { decision: "deny", reason };
             },
         });
