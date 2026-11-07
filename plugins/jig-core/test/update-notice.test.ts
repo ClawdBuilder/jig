@@ -130,6 +130,23 @@ describe("checkUpdateAtStart", () => {
         assert.deepEqual(notes, []);
     });
 
+    test("backs off after a failed fetch instead of retrying every start", async () => {
+        let fetched = 0;
+        const notes: string[] = [];
+        const failing = async (): Promise<unknown> => {
+            fetched++;
+            throw new Error("offline");
+        };
+        await checkUpdateAtStart(state(), (message) => notes.push(message), { fetchJson: failing });
+        assert.equal(fetched, 1);
+        const now = new Date("2026-11-06T10:30:00.000Z").getTime();
+        await checkUpdateAtStart(state(), (message) => notes.push(message), { now, fetchJson: failing });
+        assert.equal(fetched, 1, "the failed check is backed off");
+        assert.deepEqual(notes, []);
+        const cache = JSON.parse(readFileSync(path.join(dir, "update-check.json"), "utf8"));
+        assert.equal(typeof cache.failedAt, "number");
+    });
+
     test("uses the company's cap and names it", async () => {
         mkdirSync(path.join(agent, "npm", "node_modules", "acme-jig"), { recursive: true });
         writeFileSync(

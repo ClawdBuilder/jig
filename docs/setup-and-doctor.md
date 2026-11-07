@@ -68,7 +68,9 @@ jig update [--check] [--to <version>]
 Jig is installed in two copies: Pi's package and the global `jig` command. `jig update` moves both to one published stable
 version, in that order: Pi when the release needs a newer one, then Pi's copy, then the global command, then a check of both
 and the doctor. It needs a terminal, like `jig setup`; `--check` says what would happen and changes nothing. `--to` names a
-published version instead of the newest.
+published version instead of the newest. `--check` needs no write access and runs no PATH check; its exit codes are 0
+when both copies are current, **2** when an update is available, and 1 on an error. A normal update exits 0 on success and
+1 on failure.
 
 A release states the oldest Pi it runs with and the one it is tested with, in `jig.agents.pi`. If the installed Pi is older
 than the oldest, update asks a yes/no question, defaulting to No, and installs the exact tested Pi; No changes nothing. It
@@ -77,17 +79,20 @@ works and is not blocked; if it moves Pi past the tested version, the doctor and
 
 A company package can cap which Jig versions are allowed with `"jig": { "range": ">=0.4.1 <0.5.0" }` in its package.json.
 Update stops at the newest version inside every installed company's range and names the range. If Pi's Jig copy is a
-checkout or a git source, update says so and changes nothing. An exact npm pin that names Jig is moved, and the line before
-the change says `pinned to X, moving to Y`; a company's hold is its `jig.range`, not a pin. The exact pin is written back,
-so Pi leaves the copy alone and only `jig update` moves it.
+checkout or a git source, update tells you to run `pi remove <source>` first, then the npm install, and changes nothing.
+Pi's Jig entry is pinned to the new version so `pi update` leaves it alone; `jig update` moves it next time. An exact pin
+that names Jig is also moved, and the line before the change says `pinned to X, moving to Y`; a company's hold is its
+`jig.range`, not a pin. The original entry, pinned or unpinned, is what an undo restores. If Pi lists more than one Jig
+entry, update refuses before changing anything and lists each with the `pi remove <source>` that leaves one.
 
-It asks the registry npm itself is configured to use (`npm config get registry`), so a company mirror and the `npm install`
-that follows agree.
+It asks npm for the published versions (`npm view`), so npm's registry, scope mapping, credentials and `.npmrc` rules
+apply to the check and the installs alike.
 
 Before the first change it checks the registry, the target's Pi versions, that its settings folder is writable, that `npm`
-and `pi` are on PATH, and how Pi was installed. Pi is installed by its own method with the exact tested version; if that
-cannot be built, update prints the command and stops. If any step fails, it puts every version it changed back and says
-what happened. Open Pi sessions keep the old code until restarted.
+and `pi` are on PATH, and how Pi was installed. Pi is installed by its own method with the exact tested version; after the
+step update reads Pi's version and fails, with undo, if it is not exactly that version. If that command cannot be built, update
+prints the command and stops. If any step fails, it puts every version it changed back and says what happened. An
+interrupted update does the same and prints the commands to restore by hand when an undo cannot run. Open Pi sessions keep the old code until restarted.
 
 ### The notice inside Pi
 

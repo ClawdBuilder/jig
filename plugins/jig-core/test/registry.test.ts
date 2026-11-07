@@ -55,3 +55,12 @@ describe("registryUrl", () => {
         assert.equal(registryUrl("https://mirror.example", "plain"), "https://mirror.example/plain");
     });
 });
+
+test("a scoped registry in .npmrc wins for that scope", () => {
+    writeFileSync(
+        path.join(home, ".npmrc"),
+        "@acme:registry=https://scoped.example/\nregistry=https://plain.example/\n",
+    );
+    assert.equal(registryFor({}, home, work, "@acme/jig"), "https://scoped.example/");
+    assert.equal(registryFor({}, home, work, "@other/jig"), "https://plain.example/");
+});

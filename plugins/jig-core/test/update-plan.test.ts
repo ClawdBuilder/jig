@@ -36,6 +36,22 @@ describe("planUpdate", () => {
         assert.equal(built.plan.changes, true);
     });
 
+    test("names the pin that `pi update` will leave alone", () => {
+        const built = planUpdate(input());
+        assert.ok("plan" in built);
+        assert.match(
+            describePlan(built.plan).join("\n"),
+            /Pi's Jig entry will be pinned to 0\.5\.0 so `pi update` leaves it alone; `jig update` moves it/,
+        );
+    });
+
+    test("refuses a release tested with a Pi older than its minimum", () => {
+        const backwards = target("0.5.0", "1.6.0", "1.5.0");
+        const built = planUpdate(input({ target: backwards }));
+        assert.ok("problem" in built);
+        assert.match(built.problem, /does not say which Pi version it needs/);
+    });
+
     test("names an explicit older target as asked, not as a company cap", () => {
         const chosen = target("0.4.2");
         chosen.newest = "0.5.0";

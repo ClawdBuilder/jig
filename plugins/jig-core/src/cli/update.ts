@@ -3,15 +3,16 @@
 // back when a step fails. `--check` says what it would do and changes nothing.
 import { spawn } from "node:child_process";
 import { accessSync, constants, existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { errorMessage } from "../errors.ts";
 import { jigPackage, piVersion } from "../pi-version.ts";
-import { normalizeRegistry, registryFor, registryUrl } from "../registry.ts";
+
 import { selectTarget } from "../update-versions.ts";
 import { companyRanges } from "../update-company.ts";
-import type { CompanyRange, RegistryMetadata } from "../update-versions.ts";
+import type { CompanyRange, RegistryMetadata, RegistryRelease } from "../update-versions.ts";
+import type { JigEntry } from "./packages.ts";
 import { describePlan, planUpdate, statedRequirement } from "../update-plan.ts";
 import type { UpdateCopy } from "../update-plan.ts";
 import { executeUpdate } from "../update-run.ts";
@@ -107,6 +108,11 @@ export function piSelfUpdateCommands(
     settings: { selfUpdateCommand?: string[] },
     version: string,
 ): InstallCommand[] | { problem: string } {
+    if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+        return {
+            problem: `Pi ${JSON.stringify(version)} is not a version jig update can install. Nothing was changed.`,
+        };
+    }
     const method = config.detectInstallMethod();
     const fromEnv = process.env.PI_SELF_UPDATE_COMMAND?.trim();
     const configured = config.getConfiguredSelfUpdateArgv(settings.selfUpdateCommand);
@@ -158,14 +164,21 @@ export function discover(
     piCopy?: UpdateCopy;
     company: CompanyRange[];
     problem?: string;
+    jigEntries: JigEntry[];
     listed: ReturnType<typeof readPackages>["listed"];
 } {
     const listed = readPackages(agentDir, cwd).listed;
+    const jigEntries: JigEntry[] = [];
     let piCopy: UpdateCopy | undefined;
     for (const entry of listed) {
         const manifest = entry.folder === undefined ? undefined : manifestOf(entry.folder);
         const packageName = manifest?.name ?? parseNpmSource(entry.source)?.name;
         if (packageName !== name) continue;
+        jigEntries.push({
+            source: entry.source,
+            scope: entry.scope,
+            ...(manifest?.version === undefined ? {} : { version: manifest.version }),
+        });
         if (piCopy === undefined || entry.scope === "user") {
             piCopy = {
                 ...(manifest?.version === undefined ? {} : { version: manifest.version }),
@@ -175,7 +188,24 @@ export function discover(
             };
         }
     }
-    return { ...(piCopy === undefined ? {} : { piCopy }), company: companyRanges(listed, name), listed };
+    if (jigEntries.length > 1) {
+        const lines = jigEntries.map(
+            (entry) =>
+                `${entry.scope}: ${entry.source}${entry.version === undefined ? "" : ` (${entry.version})`} — pi remove ${entry.source}`,
+        );
+        return {
+            problem: `Pi lists ${jigEntries.length} Jig entries. jig update will not choose which to keep; remove all but one first:\n${lines.join("\n")}`,
+            jigEntries,
+            company: companyRanges(listed, name),
+            listed,
+        };
+    }
+    return {
+        ...(piCopy === undefined ? {} : { piCopy }),
+        company: companyRanges(listed, name),
+        jigEntries,
+        listed,
+    };
 }
 
 function piSetting(agentDir: string): { selfUpdateCommand?: string[] } {
@@ -192,14 +222,22 @@ function piSetting(agentDir: string): { selfUpdateCommand?: string[] } {
     }
 }
 
-/** The registry metadata for this package, from the registry npm itself would use. */
-async function fetchRegistry(name: string, base: string): Promise<RegistryMetadata> {
-    const response = await fetch(registryUrl(base, name), {
-        headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) throw new Error(`the registry answered ${response.status}`);
-    return (await response.json()) as RegistryMetadata;
+/** The published versions, asked of npm itself so its registry scope, auth and .npmrc rules apply. */
+async function fetchRegistry(name: string, cwd: string): Promise<RegistryMetadata> {
+    const result = await run("npm", ["view", name, "versions", "--json"], cwd);
+    if (result.code !== 0) throw new Error(outputOf(result) || `npm view exited ${result.code}`);
+    const parsed: unknown = JSON.parse(result.stdout);
+    const list = Array.isArray(parsed) ? parsed : typeof parsed === "string" ? [parsed] : [];
+    return { versions: Object.fromEntries(list.filter((v): v is string => typeof v === "string").map((v) => [v, {}])) };
+}
+
+/** One release's package.json fields, again from npm view. */
+async function fetchRelease(name: string, version: string, cwd: string): Promise<RegistryRelease> {
+    const result = await run("npm", ["view", `${name}@${version}`, "jig", "version", "deprecated", "--json"], cwd);
+    if (result.code !== 0) throw new Error(outputOf(result) || `npm view exited ${result.code}`);
+    const parsed: unknown = JSON.parse(result.stdout);
+    const value = Array.isArray(parsed) ? parsed[0] : parsed;
+    return (value ?? {}) as RegistryRelease;
 }
 
 function usage(): string {
@@ -245,12 +283,6 @@ export async function update(args: readonly string[], host: string | undefined):
     const env = process.env;
     const agentDir = agentDirFor(env);
     const cwd = process.cwd();
-    if (!writable(existsSync(path.join(agentDir, "settings.json")) ? path.join(agentDir, "settings.json") : agentDir)) {
-        process.stderr.write(
-            `Jig cannot write ${path.join(agentDir, "settings.json")} because its folder is missing or read-only. Nothing was changed.\n`,
-        );
-        return 1;
-    }
     // PATH lookup without starting anything.
     const lookup = (program: string): string | undefined => {
         const folders = (env.PATH ?? "").split(path.delimiter).filter(Boolean);
@@ -263,28 +295,15 @@ export async function update(args: readonly string[], host: string | undefined):
         }
         return undefined;
     };
-    if (lookup("npm") === undefined) {
-        process.stderr.write("jig update needs npm on PATH to move the global command. Nothing was changed.\n");
-        return 1;
-    }
-    if (lookup("pi") === undefined) {
-        process.stderr.write("jig update needs Pi's command on PATH. Nothing was changed.\n");
-        return 1;
-    }
-    if (!writable(agentDir)) {
-        process.stderr.write(`Jig cannot write its package list in ${agentDir}. Nothing was changed.\n`);
-        return 1;
-    }
 
     const discovered = discover(agentDir, cwd, name);
-    const registryResult = await run("npm", ["config", "get", "registry"], cwd);
-    const registry =
-        registryResult.code === 0
-            ? (normalizeRegistry(outputOf(registryResult)) ?? registryFor(env, homedir(), cwd))
-            : registryFor(env, homedir(), cwd);
+    if (discovered.problem !== undefined) {
+        process.stderr.write(`${discovered.problem}\nNothing was changed.\n`);
+        return 1;
+    }
     let metadata: RegistryMetadata;
     try {
-        metadata = await fetchRegistry(name, registry);
+        metadata = await fetchRegistry(name, cwd);
     } catch (error) {
         process.stderr.write(
             `jig update could not reach the npm registry: ${errorMessage(error)}. Nothing was changed.\n`,
@@ -294,6 +313,14 @@ export async function update(args: readonly string[], host: string | undefined):
     const chosen = selectTarget(metadata, discovered.company, requested);
     if ("problem" in chosen) {
         process.stderr.write(`${chosen.problem} Nothing was changed.\n`);
+        return 1;
+    }
+    try {
+        chosen.target.release = await fetchRelease(name, chosen.target.version, cwd);
+    } catch (error) {
+        process.stderr.write(
+            `jig update could not read Jig ${chosen.target.version} from npm: ${errorMessage(error)}. Nothing was changed.\n`,
+        );
         return 1;
     }
     if (statedRequirement(chosen.target) === undefined) {
@@ -368,7 +395,25 @@ export async function update(args: readonly string[], host: string | undefined):
             );
         }
         process.stdout.write("No changes were made.\n");
-        return 0;
+        return plan.changes ? 2 : 0;
+    }
+    if (lookup("npm") === undefined) {
+        process.stderr.write("jig update needs npm on PATH to move the global command. Nothing was changed.\n");
+        return 1;
+    }
+    if (lookup("pi") === undefined) {
+        process.stderr.write("jig update needs Pi's command on PATH. Nothing was changed.\n");
+        return 1;
+    }
+    if (!writable(existsSync(path.join(agentDir, "settings.json")) ? path.join(agentDir, "settings.json") : agentDir)) {
+        process.stderr.write(
+            `Jig cannot write ${path.join(agentDir, "settings.json")} because its folder is missing or read-only. Nothing was changed.\n`,
+        );
+        return 1;
+    }
+    if (!writable(agentDir)) {
+        process.stderr.write(`Jig cannot write its package list in ${agentDir}. Nothing was changed.\n`);
+        return 1;
     }
     if (plan.changes) {
         for (const line of describePlan(plan)) process.stdout.write(`${line}\n`);
@@ -405,6 +450,11 @@ export async function update(args: readonly string[], host: string | undefined):
             args: ["install", `npm:${name}@${version}`],
             display: `pi install npm:${name}@${version}`,
         }),
+        piCopyRestore: (source) => ({
+            command: "pi",
+            args: ["install", source],
+            display: `pi install ${source}`,
+        }),
         globalInstall: (version) => ({
             command: "npm",
             args: [
@@ -420,6 +470,7 @@ export async function update(args: readonly string[], host: string | undefined):
         }),
         async verify() {
             return {
+                pi: piVersion(),
                 piCopy: piAfter(),
                 global: versionAt(globalCandidate),
             };
@@ -433,6 +484,17 @@ export async function update(args: readonly string[], host: string | undefined):
             return { code: result.code, output: outputOf(result) };
         },
     };
-    const result = await executeUpdate(plan, io);
+    const controller = new AbortController();
+    const interrupt = (): void => {
+        if (!controller.signal.aborted)
+            process.stderr.write("Update interrupted; putting the changed versions back.\n");
+        controller.abort();
+    };
+    process.once("SIGINT", interrupt);
+    process.once("SIGTERM", interrupt);
+    const result = await executeUpdate(plan, io, controller.signal).finally(() => {
+        process.removeListener("SIGINT", interrupt);
+        process.removeListener("SIGTERM", interrupt);
+    });
     return result.code;
 }

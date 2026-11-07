@@ -25,9 +25,11 @@ export interface UpdateIo {
     /** The commands that install this exact Pi version, or the plain reason they cannot be built. */
     piInstall(version: string): Promise<InstallCommand[] | { problem: string }>;
     piCopyInstall(version: string): InstallCommand;
+    /** Put back the exact original source, pinned or not. */
+    piCopyRestore(source: string): InstallCommand;
     globalInstall(version: string): InstallCommand;
     /** The versions both copies report after the steps. */
-    verify(): Promise<{ piCopy?: string; global?: string }>;
+    verify(): Promise<{ pi?: string; piCopy?: string; global?: string }>;
     doctor(): Promise<{ code: number; output: string }>;
 }
 
@@ -37,25 +39,32 @@ export interface UpdateResult {
 }
 
 function failureText(result: CommandResult): string {
+    if (result.timedOut === true) return "timed out";
     const detail = (result.stderr || result.stdout).trim().slice(0, 300);
     return detail === "" ? `exit code ${result.code}` : detail;
 }
 
-async function runCommands(io: UpdateIo, commands: readonly InstallCommand[]): Promise<void> {
+function isAborted(signal?: AbortSignal): boolean {
+    return signal?.aborted === true;
+}
+
+async function runCommands(io: UpdateIo, commands: readonly InstallCommand[], signal?: AbortSignal): Promise<void> {
     for (const command of commands) {
+        if (isAborted(signal)) throw new Error("Update interrupted.");
         const result = await io.run(command.command, command.args);
         if (result.code !== 0) throw new Error(`${command.display} failed: ${failureText(result)}`);
     }
 }
 
 /** Runs the plan. A `false` from the Pi question changes nothing and returns 0. Never throws. */
-export async function executeUpdate(plan: UpdatePlan, io: UpdateIo): Promise<UpdateResult> {
+export async function executeUpdate(plan: UpdatePlan, io: UpdateIo, signal?: AbortSignal): Promise<UpdateResult> {
     if (!plan.changes) {
         io.notify("Both copies are already on this version; nothing was changed.", "info");
         return { code: 0, changed: false };
     }
     const undo: Array<{ label: string; commands: InstallCommand[] }> = [];
     try {
+        if (isAborted(signal)) throw new Error("Update interrupted.");
         if (plan.pi !== undefined) {
             const agreed = await io.confirm(
                 `Update Pi to ${plan.pi.to}?`,
@@ -76,25 +85,36 @@ export async function executeUpdate(plan: UpdatePlan, io: UpdateIo): Promise<Upd
                 return { code: 1, changed: false };
             }
             undo.push({ label: `Pi ${plan.pi.from}`, commands: back });
-            await runCommands(io, commands);
+            await runCommands(io, commands, signal);
         }
+        if (isAborted(signal)) throw new Error("Update interrupted.");
         if (plan.piCopy?.needed === true) {
             undo.push({
                 label: `Pi's Jig copy ${plan.piCopy.from ?? "(version unknown)"}`,
-                commands: plan.piCopy.from === undefined ? [] : [io.piCopyInstall(plan.piCopy.from)],
+                commands:
+                    plan.piCopy.restoreSource === undefined
+                        ? plan.piCopy.from === undefined
+                            ? []
+                            : [io.piCopyInstall(plan.piCopy.from)]
+                        : [io.piCopyRestore(plan.piCopy.restoreSource)],
             });
-            await runCommands(io, [io.piCopyInstall(plan.target)]);
+            await runCommands(io, [io.piCopyInstall(plan.target)], signal);
         }
+        if (isAborted(signal)) throw new Error("Update interrupted.");
         if (plan.global?.needed === true) {
             undo.push({
                 label: `the jig command ${plan.global.from ?? "(version unknown)"}`,
                 commands: plan.global.from === undefined ? [] : [io.globalInstall(plan.global.from)],
             });
-            await runCommands(io, [io.globalInstall(plan.target)]);
+            await runCommands(io, [io.globalInstall(plan.target)], signal);
         }
 
+        if (isAborted(signal)) throw new Error("Update interrupted.");
         const found = await io.verify();
         const wrong = [
+            plan.pi === undefined || found.pi === plan.pi.to
+                ? undefined
+                : `Pi reports ${found.pi ?? "no version"}, not the tested ${plan.pi.to}`,
             found.piCopy === plan.target ? undefined : `Pi's copy reports ${found.piCopy ?? "no version"}`,
             found.global === plan.target ? undefined : `the jig command reports ${found.global ?? "no version"}`,
         ].filter((entry): entry is string => entry !== undefined);
@@ -122,11 +142,22 @@ export async function executeUpdate(plan: UpdatePlan, io: UpdateIo): Promise<Upd
                 continue;
             }
             try {
-                await runCommands(io, step.commands);
+                if (isAborted(signal)) {
+                    restored = false;
+                    io.notify(
+                        `Could not put ${step.label} back automatically after the interruption; run: ${step.commands.map((command) => command.display).join(" && ")}`,
+                        "error",
+                    );
+                    continue;
+                }
+                await runCommands(io, step.commands, signal);
                 io.notify(`Put ${step.label} back.`, "info");
             } catch (undoError) {
                 restored = false;
-                io.notify(`Could not put ${step.label} back: ${errorMessage(undoError)}`, "error");
+                io.notify(
+                    `Could not put ${step.label} back: ${errorMessage(undoError)}; run: ${step.commands.map((command) => command.display).join(" && ")}`,
+                    "error",
+                );
             }
         }
         io.notify(

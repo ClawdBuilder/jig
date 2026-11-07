@@ -50,6 +50,22 @@ describe("discover", () => {
         assert.deepEqual(found.company, [{ package: "acme-jig", range: ">=0.4.1 <0.5.0" }]);
     });
 
+    test("refuses two Jig entries and names a pi remove for each, without choosing", () => {
+        const first = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
+        const second = path.join(work, ".pi", "local-jig");
+        packageAt(first, { name: "@clawdbuilder/jig", version: "0.4.1" });
+        packageAt(second, { name: "@clawdbuilder/jig", version: "0.4.2" });
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["npm:@clawdbuilder/jig"] }));
+        mkdirSync(path.join(work, ".pi"), { recursive: true });
+        writeFileSync(path.join(work, ".pi", "settings.json"), JSON.stringify({ packages: [second] }));
+        const found = discover(agent, work, "@clawdbuilder/jig");
+        assert.ok(found.problem);
+        assert.match(found.problem, /2 Jig entries/);
+        assert.match(found.problem, /pi remove npm:@clawdbuilder\/jig/);
+        assert.match(found.problem, new RegExp(`pi remove ${second.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+        assert.equal(found.jigEntries.length, 2);
+    });
+
     test("finds a package by its npm name when the folder is missing", () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.4.1"] }));
         const found = discover(agent, work, "@clawdbuilder/jig");
@@ -153,11 +169,14 @@ describe("two updates in a row", () => {
             piCopyInstall(version): InstallCommand {
                 return { command: "pi", args: ["install", `npm:${name}@${version}`], display: `install ${version}` };
             },
+            piCopyRestore(source): InstallCommand {
+                return { command: "pi", args: ["install", source], display: `restore ${source}` };
+            },
             globalInstall(version): InstallCommand {
                 return { command: "npm", args: ["install", "-g", `@x/y@${version}`], display: `install ${version}` };
             },
             async verify() {
-                return { piCopy: manifestVersion(), global: expected };
+                return { pi: "1.5.0", piCopy: manifestVersion(), global: expected };
             },
             async doctor() {
                 return { code: 0, output: "" };

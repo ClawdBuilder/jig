@@ -25,7 +25,7 @@ export function normalizeRegistry(value: string | undefined): string | undefined
 }
 
 /** The `registry=` setting in one .npmrc, or undefined. */
-export function registryInNpmrc(file: string): string | undefined {
+export function registryInNpmrc(file: string, key = "registry"): string | undefined {
     if (!existsSync(file)) return undefined;
     let text: string;
     try {
@@ -38,7 +38,7 @@ export function registryInNpmrc(file: string): string | undefined {
         if (line === "" || line.startsWith("#") || line.startsWith(";")) continue;
         const equals = line.indexOf("=");
         if (equals < 0) continue;
-        if (line.slice(0, equals).trim().toLowerCase() !== "registry") continue;
+        if (line.slice(0, equals).trim().toLowerCase() !== key.toLowerCase()) continue;
         const value = line
             .slice(equals + 1)
             .replace(/\s+[#;].*$/, "")
@@ -52,13 +52,32 @@ export function registryInNpmrc(file: string): string | undefined {
 }
 
 /** Environment, project, user, then the named global config, in npm's precedence order. */
-export function registryFor(env: NodeJS.ProcessEnv, home: string = homedir(), cwd: string = process.cwd()): string {
+export function registryFor(
+    env: NodeJS.ProcessEnv,
+    home: string = homedir(),
+    cwd: string = process.cwd(),
+    name?: string,
+): string {
+    const scope = name?.startsWith("@") ? name.slice(0, name.indexOf("/")) : undefined;
+    const scopedEnv =
+        scope === undefined
+            ? undefined
+            : (normalizeRegistry(env[`npm_config_${scope}:registry`]) ??
+              normalizeRegistry(env[`NPM_CONFIG_${scope.toUpperCase()}:REGISTRY`]));
+    if (scopedEnv !== undefined) return scopedEnv;
     const fromEnv = normalizeRegistry(env.npm_config_registry) ?? normalizeRegistry(env.NPM_CONFIG_REGISTRY);
     if (fromEnv !== undefined) return fromEnv;
     const project = env.npm_config_projectconfig ?? env.NPM_CONFIG_PROJECTCONFIG ?? path.join(cwd, ".npmrc");
     const user = env.npm_config_userconfig ?? env.NPM_CONFIG_USERCONFIG ?? path.join(home, ".npmrc");
     const global = env.npm_config_globalconfig ?? env.NPM_CONFIG_GLOBALCONFIG;
-    for (const file of [project, user, ...(global === undefined ? [] : [global])]) {
+    const files = [project, user, ...(global === undefined ? [] : [global])];
+    if (scope !== undefined) {
+        for (const file of files) {
+            const found = registryInNpmrc(file, `${scope}:registry`);
+            if (found !== undefined) return found;
+        }
+    }
+    for (const file of files) {
         const found = registryInNpmrc(file);
         if (found !== undefined) return found;
     }

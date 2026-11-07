@@ -21,6 +21,13 @@ export interface ListedPackage {
     filter?: PackageFilter;
 }
 
+/** One Jig entry Pi lists, for the multiple-entry refusal. */
+export interface JigEntry {
+    source: string;
+    scope: PackageScope;
+    version?: string;
+}
+
 export interface ReadPackages {
     listed: ListedPackage[];
     /** Pi's settings files that could not be read, with the file and the reason. */

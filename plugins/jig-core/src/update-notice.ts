@@ -19,9 +19,12 @@ const CHECK_TIMEOUT = 5000;
 interface Cache {
     schema: 1;
     checkedAt?: number;
+    failedAt?: number;
     latest?: string;
     piWarned?: string;
 }
+
+const RETRY_AFTER_FAILURE = 60 * 60 * 1000;
 
 export interface NoticeOptions {
     /** A test can answer the registry without a network. */
@@ -52,10 +55,15 @@ function writeCache(file: string, cache: Cache): void {
 }
 
 async function defaultFetch(url: string): Promise<unknown> {
-    const response = await fetch(url, {
-        headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(CHECK_TIMEOUT),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CHECK_TIMEOUT);
+    timer.unref?.();
+    let response: Response;
+    try {
+        response = await fetch(url, { headers: { accept: "application/json" }, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
     if (!response.ok) throw new Error(`registry ${response.status}`);
     return await response.json();
 }
@@ -96,11 +104,12 @@ export async function checkUpdateAtStart(
         }
 
         if (state.env.PI_OFFLINE !== undefined && state.env.PI_OFFLINE !== "") return;
+        if (cache.failedAt !== undefined && now - cache.failedAt < RETRY_AFTER_FAILURE) return;
         if (cache.checkedAt !== undefined && now - cache.checkedAt < DAY) return;
 
         // No program at session start: read the npmrc sources npm reads first. jig update asks npm itself, so a mirror
         // that only npm can resolve is still used there.
-        const registry = registryFor(state.env, homedir(), state.workingDir);
+        const registry = registryFor(state.env, homedir(), state.workingDir, name);
         const metadata = (await (options.fetchJson ?? defaultFetch)(registryUrl(registry, name))) as RegistryMetadata;
         const agentDir = state.agentDir();
         const company = agentDir === "" ? [] : companyRanges(readPackages(agentDir, state.workingDir).listed, name);
@@ -108,8 +117,12 @@ export async function checkUpdateAtStart(
         if ("problem" in chosen) return;
         const deprecated = metadata.versions?.[current]?.deprecated;
         if (deprecated !== undefined) {
+            const clean = deprecated
+                .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
             notify(
-                `Jig ${current} is deprecated on npm: ${deprecated.slice(0, 200)}. Run jig update in a terminal now.`,
+                `Jig ${current} is deprecated on npm: ${clean.slice(0, 200)}. Run jig update in a terminal now.`,
                 "warning",
             );
         } else if (compareVersions(chosen.target.version, current) > 0) {
@@ -127,6 +140,14 @@ export async function checkUpdateAtStart(
             ...(cache.piWarned === undefined ? {} : { piWarned: cache.piWarned }),
         });
     } catch {
-        // Offline, a bad registry answer or an unreadable folder: a session start must not be delayed or failed.
+        // Offline, a bad registry answer or an unreadable folder: a session start must not be delayed or failed. Back
+        // off for an hour so a dead registry is not retried on every start.
+        try {
+            const now = options.now ?? state.now().getTime();
+            const file = path.join(stateDir(state.env), "update-check.json");
+            writeCache(file, { ...readCache(file), schema: 1, failedAt: now });
+        } catch {
+            // Nothing to do.
+        }
     }
 }

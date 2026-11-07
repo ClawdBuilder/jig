@@ -29,7 +29,7 @@ export interface UpdatePlan {
     pi?: { from: string; to: string };
     /** What to tell the person about Pi, including the tested-version warning. */
     piNotes: string[];
-    piCopy?: { from?: string; to: string; needed: boolean; pinned?: boolean };
+    piCopy?: { from?: string; to: string; needed: boolean; pinned?: boolean; source?: string; restoreSource?: string };
     global?: { from?: string; to: string; needed: boolean };
     cappedBy: CompanyRange[];
     warnings: string[];
@@ -42,6 +42,7 @@ export function statedRequirement(target: SelectedTarget): PiRequirement | undef
     const pi = target.release.jig?.agents?.pi;
     if (typeof pi?.minimum !== "string" || typeof pi?.tested !== "string") return undefined;
     if (!/^\d+\.\d+\.\d+$/.test(pi.minimum) || !/^\d+\.\d+\.\d+$/.test(pi.tested)) return undefined;
+    if (compareVersions(pi.tested, pi.minimum) < 0) return undefined;
     return { minimum: pi.minimum, tested: pi.tested };
 }
 
@@ -83,7 +84,7 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
     }
     if (copy.folder === undefined || copy.version === undefined) {
         return {
-            problem: `Pi's Jig copy is not installed cleanly (${copy.source ?? "no source"}). Reinstall it with: pi install npm:${input.name}; then run jig update. Nothing was changed.`,
+            problem: `Pi's Jig copy is not installed cleanly (${copy.source ?? "no source"}). Run pi remove ${copy.source ?? "<source>"} first, then pi install npm:${input.name}; then run jig update. Nothing was changed.`,
         };
     }
     if (copy.scope === "project") {
@@ -95,7 +96,7 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
     const source = movablePiSource(copy.source, input.name);
     if (source === undefined) {
         return {
-            problem: `Pi's Jig copy is not a plain npm source (${copy.source ?? "no source"}). Install it yourself with: pi install npm:${input.name}@${input.target.version}`,
+            problem: `Pi's Jig copy is not a plain npm source (${copy.source ?? "no source"}). Run pi remove ${copy.source ?? "<source>"} first, then pi install npm:${input.name}@${input.target.version}. Nothing was changed.`,
         };
     }
     const piCopy = {
@@ -103,6 +104,8 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
         to: input.target.version,
         needed: copy.version !== input.target.version,
         ...(source.version === undefined ? {} : { pinned: true }),
+        source: copy.source,
+        restoreSource: copy.source,
     };
     const global = {
         ...(input.globalVersion === undefined ? {} : { from: input.globalVersion }),
@@ -146,7 +149,7 @@ export function describePlan(plan: UpdatePlan): string[] {
         lines.push(
             plan.piCopy.pinned === true
                 ? `Pi's Jig copy is pinned to ${plan.piCopy.from ?? "(version unknown)"}; moving it to ${plan.piCopy.to}.`
-                : `Pi's Jig copy ${plan.piCopy.from ?? "(version unknown)"} -> ${plan.piCopy.to}.`,
+                : `Pi's Jig entry will be pinned to ${plan.piCopy.to} so \`pi update\` leaves it alone; \`jig update\` moves it.`,
         );
     } else if (plan.piCopy?.pinned === true) {
         lines.push(`Pi's Jig copy is pinned to ${plan.piCopy.from ?? "(version unknown)"}; that is the target.`);

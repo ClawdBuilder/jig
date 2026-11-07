@@ -31,6 +31,7 @@ interface Fake extends UpdateIo {
     failGlobal?: boolean;
     failUndo?: boolean;
     wrongVerify?: boolean;
+    wrongPi?: boolean;
 }
 
 function fake(overrides: Partial<Fake> = {}): Fake {
@@ -41,12 +42,14 @@ function fake(overrides: Partial<Fake> = {}): Fake {
         async run(command, args) {
             this.calls.push([command, ...args].join(" "));
             if (command === "pi-self") {
-                this.versions.pi = args[0] ?? "";
+                this.versions.pi = this.wrongPi === true ? "1.4.0" : (args[0] ?? "");
                 return { code: 0, stdout: "", stderr: "" };
             }
             if (command === "pi") {
                 const spec = args[1] ?? "";
-                this.versions.piCopy = spec.slice(spec.lastIndexOf("@") + 1);
+                const bare = spec.startsWith("npm:") ? spec.slice(4) : spec;
+                const at = bare.lastIndexOf("@");
+                this.versions.piCopy = at > 0 ? (bare.slice(at + 1) as string) : "0.4.1";
                 return { code: 0, stdout: "", stderr: "" };
             }
             if (command === "npm") {
@@ -79,6 +82,12 @@ function fake(overrides: Partial<Fake> = {}): Fake {
                 display: `install Jig ${version}`,
             };
         },
+        piCopyRestore(source): InstallCommand {
+            const spec = source.startsWith("npm:") ? source.slice(4) : source;
+            const at = spec.lastIndexOf("@");
+            this.versions.piCopy = at > 0 ? (spec.slice(at + 1) as string) : "0.4.1";
+            return { command: "pi", args: ["install", source], display: `restore ${source}` };
+        },
         globalInstall(version): InstallCommand {
             return {
                 command: "npm",
@@ -88,8 +97,8 @@ function fake(overrides: Partial<Fake> = {}): Fake {
         },
         async verify() {
             return this.wrongVerify === true
-                ? { piCopy: "0.4.1", global: "0.4.1" }
-                : { piCopy: this.versions.piCopy, global: this.versions.global };
+                ? { pi: this.versions.pi, piCopy: "0.4.1", global: "0.4.1" }
+                : { pi: this.versions.pi, piCopy: this.versions.piCopy, global: this.versions.global };
         },
         async doctor() {
             return { code: 0, output: "Jig doctor: all checks passed" };
@@ -135,7 +144,7 @@ describe("executeUpdate", () => {
             "pi install npm:@clawdbuilder/jig@0.5.0",
             "npm install -g @clawdbuilder/jig@0.5.0",
             "npm install -g @clawdbuilder/jig@0.4.1",
-            "pi install npm:@clawdbuilder/jig@0.4.1",
+            "pi install npm:@clawdbuilder/jig",
             "pi-self 1.3.0",
         ]);
         assert.equal(io.versions.pi, "1.3.0");
@@ -159,8 +168,27 @@ describe("executeUpdate", () => {
         const result = await executeUpdate(plan(false), io);
         assert.equal(result.code, 1);
         assert.match(io.messages.join("\n"), /versions do not match/);
-        assert.ok(io.calls.includes("pi install npm:@clawdbuilder/jig@0.4.1"));
+        assert.ok(io.calls.includes("pi install npm:@clawdbuilder/jig"));
         assert.ok(io.calls.includes("npm install -g @clawdbuilder/jig@0.4.1"));
+    });
+
+    test("a Pi that ignores the requested version fails the update and is undone", async () => {
+        const io = fake({ wrongPi: true });
+        const result = await executeUpdate(plan(true), io);
+        assert.equal(result.code, 1);
+        assert.match(io.messages.join("\n"), /not the tested 1\.5\.0/);
+        assert.ok(io.calls.includes("pi-self 1.3.0"));
+    });
+
+    test("an interruption before a step changes nothing", async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const io = fake();
+        const result = await executeUpdate(plan(true), io, controller.signal);
+        assert.equal(result.code, 1);
+        assert.equal(result.changed, false);
+        assert.deepEqual(io.calls, []);
+        assert.match(io.messages.join("\n"), /Update interrupted/);
     });
 
     test("nothing to do runs nothing", async () => {

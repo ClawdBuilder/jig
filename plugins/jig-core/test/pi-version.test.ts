@@ -110,6 +110,9 @@ describe("versions", () => {
         assert.ok(compareVersions("1.10.0", "1.9.9") > 0);
         assert.equal(meetsMinimum("22.19.0", "22.19.0"), true);
         assert.equal(meetsMinimum("22.18.0", "22.19.0"), false);
+        assert.ok(compareVersions("1.5.0-beta.1", "1.5.0") < 0);
+        assert.ok(compareVersions("1.5.0", "1.5.0-beta.1") > 0);
+        assert.ok(compareVersions("1.5.0-beta.2", "1.5.0-beta.10") < 0);
         assert.equal(meetsMinimum(undefined, "22.19.0"), false);
     });
 });
