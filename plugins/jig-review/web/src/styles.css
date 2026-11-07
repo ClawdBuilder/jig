@@ -70,8 +70,13 @@ button:disabled {
   background: var(--jig-diff-widget);
 }
 
-.diff-code-edit {
-  background-color: rgb(250 204 21 / 0.35);
+.diff-code-insert .diff-code-edit {
+  background-color: var(--jig-add-word);
+  border-radius: 0.125rem;
+}
+
+.diff-code-delete .diff-code-edit {
+  background-color: var(--jig-del-word);
   border-radius: 0.125rem;
 }
 
@@ -201,7 +206,6 @@ button:disabled {
 [data-theme="dark"] .diff-gutter-insert { color: var(--jig-success); }
 [data-theme="dark"] .diff-gutter-delete { color: var(--jig-error); }
 [data-theme="dark"] .diff-hunk { background: var(--jig-hunk-bg); color: var(--jig-muted); }
-[data-theme="dark"] .diff-code-edit { background: var(--jig-add-word); }
 [data-theme="dark"] .diff-widget { background: var(--jig-diff-widget); }
 [data-theme="dark"] .token.comment,
 [data-theme="dark"] .token.prolog,

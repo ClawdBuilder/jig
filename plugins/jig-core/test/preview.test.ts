@@ -173,7 +173,8 @@ describe("the page for the browser", () => {
         );
         assert.ok(!/<script/i.test(html));
         assert.ok(!/<form/i.test(html));
-        assert.match(html, /Approve or decline in Pi/);
+        assert.match(html, /This is a preview only: answer y or n in Pi, and you can close this page\./);
+        assert.doesNotMatch(html, /<p class="note">[^<]*\n/);
     });
 
     test("markdown is rendered, and raw HTML in it is shown as text", () => {
@@ -216,6 +217,7 @@ describe("the page for the browser", () => {
         assert.match(html, /<span class="d-del">-old &lt;line&gt;<\/span>/);
         assert.match(html, /<span class="d-add">\+new line<\/span>/);
         assert.match(html, /<span class="d-ctx"> context<\/span>/);
+        assert.doesNotMatch(html, /<\/span>\n<span/, "a block span per line, not a blank line between them");
     });
 
     test("plain text is shown as it is, in a block", () => {

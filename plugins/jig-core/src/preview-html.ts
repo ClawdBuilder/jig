@@ -63,7 +63,8 @@ function renderDiff(text: string): string {
                       : "d-ctx";
         return `<span class="${kind}">${escapeHtml(line)}</span>`;
     });
-    return `<pre class="diff">${lines.join("\n")}</pre>`;
+    // Each span is a block; joining them with a newline would add a blank line after every diff line.
+    return `<pre class="diff">${lines.join("")}</pre>`;
 }
 
 const STYLE = `
@@ -114,7 +115,7 @@ export function renderPreviewPage(preview: Preview, header: string, theme: Theme
 </head>
 <body>
 <main>
-<p class="note">This page only shows the preview. Approve or decline in Pi.</p>
+<p class="note">This is a preview only: answer y or n in Pi, and you can close this page.</p>
 <p class="meta">${escapeHtml(header)}</p>
 <h1>${escapeHtml(preview.summary)}</h1>
 ${body}
