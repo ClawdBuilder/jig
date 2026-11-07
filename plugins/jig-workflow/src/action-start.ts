@@ -130,12 +130,13 @@ export function start(rt: Runtime, input: StartInput): ActionResult {
         if (work.read.kind === "state") archiveState(work.paths.dir, work.read.state, rt.host.now());
         else archiveInvalid(work, rt.host.now());
     }
+    const at = rt.host.now();
     const state = newState({
         workflow: name,
         ticket: input.ticket,
         stage: first.id,
         notesHash: notesHash(work),
-        now: rt.host.now(),
+        now: at,
     });
     writeState(work.paths.dir, state);
     rt.guardState(input.ticket);
@@ -156,7 +157,18 @@ export function start(rt: Runtime, input: StartInput): ActionResult {
             `notes.md does not exist yet: /ticket ${input.ticket} creates the ticket's notes, plan and evidence folders.`,
         );
     }
-    return { text: lines.join("\n"), details: { ticket: input.ticket, workflow: name, stage: first.id } };
+    return {
+        text: lines.join("\n"),
+        details: {
+            ticket: input.ticket,
+            workflow: name,
+            stage: first.id,
+            to: first.id,
+            at: state.startedAt,
+            last: workflow.stages.length === 1,
+            via: "start",
+        },
+    };
 }
 
 /** Sets aside a state file that cannot be read, so that a new one can be written. It is kept as text: it is what could not be read. */

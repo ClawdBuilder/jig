@@ -164,6 +164,7 @@ describe("the API", () => {
             "secrets",
             "spill",
             "startChecks",
+            "ui",
         ]);
     });
 
@@ -203,7 +204,10 @@ describe("the API", () => {
 
     test("the events on Pi's event bus are these", async () => {
         const { JIG_EVENTS } = await import("../src/contract.ts");
-        assert.deepEqual({ ...JIG_EVENTS }, { decision: "jig:decision", watchDone: "jig:watch-done" });
+        assert.deepEqual(
+            { ...JIG_EVENTS },
+            { decision: "jig:decision", watchDone: "jig:watch-done", stageDone: "jig:stage-done" },
+        );
     });
 });
 
@@ -252,6 +256,7 @@ describe("what plugins import", () => {
             "SandboxRunResult",
             "SignInRequest",
             "SignInService",
+            "StageDoneEvent",
             "StartWatch",
             "ToolDeclaration",
             "Transport",
@@ -292,6 +297,10 @@ describe("what plugins import", () => {
             "sandbox-programs.ts",
             "schema.ts",
             "text.ts",
+            "theme-client.ts",
+            "theme-preference.ts",
+            "theme.css",
+            "theme.ts",
             "tools.ts",
             "values.ts",
         ]);
@@ -351,6 +360,29 @@ describe("what plugins import", () => {
             ],
             "schema.ts": ["stringEnum"],
             "text.ts": ["oneLine", "printable", "shortList", "stringOf"],
+            "theme-client.ts": [
+                "THEME_CHOICES",
+                "THEME_KEY",
+                "ThemeChoice",
+                "installTheme",
+                "resolvedTheme",
+                "themeBootScript",
+                "themeChoice",
+                "themeControlScript",
+            ],
+            "theme-preference.ts": ["agentDirFor", "readThemePreference", "saveThemePreference", "themePreferenceFile"],
+            "theme.css": [],
+            "theme.ts": [
+                "THEME_CHOICES",
+                "THEME_KEY",
+                "ThemeChoice",
+                "resolvedTheme",
+                "themeAttribute",
+                "themeBootScript",
+                "themeChoice",
+                "themeControlScript",
+                "themeCss",
+            ],
             "tools.ts": [
                 "JigToolOptions",
                 "NOT_DEFERRABLE",
@@ -372,7 +404,9 @@ describe("what plugins import", () => {
         const modules = [
             "client.ts",
             "contract.ts",
-            ...readdirSync(path.join(CORE, "kit")).map((name) => `kit/${name}`),
+            ...readdirSync(path.join(CORE, "kit"))
+                .filter((name) => name.endsWith(".ts"))
+                .map((name) => `kit/${name}`),
         ];
         for (const module of modules) {
             const file = path.join(CORE, module);

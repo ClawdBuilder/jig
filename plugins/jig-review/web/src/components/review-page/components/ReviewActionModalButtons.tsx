@@ -5,7 +5,7 @@ import type { FC } from "react";
 type ReviewActionModalButtonsProps = {
   drafts: DraftComment[];
   generalComment: string;
-  onApprove: () => Promise<void>;
+  onApprove: () => void | Promise<void>;
   onClose: () => void;
   onSubmitReview: () => Promise<void>;
   review: ReviewRecord;
@@ -49,6 +49,11 @@ export const ReviewActionModalButtons: FC<ReviewActionModalButtonsProps> = ({
     </Button>
   </div>
 );
+
+/** Whether approving now would leave a draft comment behind; anything that would asks first. */
+export function hasDraftComments(drafts: DraftComment[], generalComment: string): boolean {
+  return getSubmittedComments(drafts, generalComment).length > 0;
+}
 
 export function getSubmittedComments(
   drafts: DraftComment[],

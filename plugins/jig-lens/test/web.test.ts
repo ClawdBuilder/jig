@@ -398,3 +398,13 @@ test("the page draws the lanes and asks this server for one call's detail", () =
     assert.match(page, /\/api\/call\?id=\$/);
     assert.match(page, /show this call|Show this call/);
 });
+
+test("the page gets the shared palette before paint and has no token placeholder left", async (t) => {
+    const { get } = await served(t);
+    const page = await get("/");
+    assert.equal(page.body.includes("__JIG_THEME_CSS__"), false);
+    assert.equal(page.body.includes("__JIG_THEME_SCRIPTS__"), false);
+    assert.match(page.body, /--jig-dark-bg: #111113;/);
+    assert.match(page.body, /id="jig-theme-tokens"/);
+    assert.match(page.body, /id="jig-theme"/);
+});

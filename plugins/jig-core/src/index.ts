@@ -13,6 +13,7 @@
 // The factory only registers things. It starts nothing long-lived (Pi's documentation forbids it): the configuration is
 // loaded when the session starts.
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { agentDirFor } from "./kit/theme-preference.ts";
 import type { ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { buildApi } from "./api.ts";
 import { publishJig, withdrawJig } from "./client.ts";
@@ -46,7 +47,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const state = createState(pi, options);
         state.configPath = () => configFile(getAgentDir());
-        state.agentDir = () => getAgentDir();
+        state.agentDir = () => agentDirFor();
         running = state;
         const api = buildApi(state);
         const badCondition = conditionProblem(process.env);

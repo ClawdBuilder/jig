@@ -4,22 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jig lens</title>
+<script nonce="__NONCE__">__JIG_THEME_SCRIPTS__</script>
+<style id="jig-theme-tokens">/*__JIG_THEME_CSS__*/</style>
 <style>
-/* The Jig palettes: paper by day, signal by night. The page follows the system. */
+/* The tokens come from jig-core's one palette; the server puts them in this page. These aliases keep the page's own names. */
 :root {
-    color-scheme: light dark;
-    --bg: #FAF6EE; --panel: #F1EADB; --selected: #E5DAC3; --error-bg: #FBE3DF;
-    --text: #1B1712; --muted: #5A5144; --dim: #6A6050; --border: #B8AA90; --border-muted: #DDD2BD;
-    --accent: #9C4208; --link: #0B6A94; --heading: #862A74; --info: #2A55A0;
-    --success: #25702A; --warning: #8A5600; --error: #B3261E; --bar: #2A55A0;
-}
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #0E1520; --panel: #111C2A; --selected: #1B2A3D; --error-bg: #241820;
-        --text: #FFFFFF; --muted: #A9B6C6; --dim: #8292A6; --border: #273344; --border-muted: #1D2734;
-        --accent: #55DDE0; --link: #55DDE0; --heading: #C099FF; --info: #78A9FF;
-        --success: #7BD88F; --warning: #FFB454; --error: #FF6B7A; --bar: #78A9FF;
-    }
+    --bg: var(--jig-bg); --panel: var(--jig-surface); --selected: var(--jig-raised); --error-bg: var(--jig-del-bg);
+    --text: var(--jig-text); --muted: var(--jig-muted); --dim: var(--jig-muted); --border: var(--jig-border); --border-muted: var(--jig-border);
+    --accent: var(--jig-accent); --link: var(--jig-link); --heading: var(--jig-accent); --info: var(--jig-link);
+    --success: var(--jig-success); --warning: var(--jig-warning); --error: var(--jig-error); --bar: var(--jig-accent);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
@@ -86,20 +79,21 @@ input[type=search] { font: inherit; padding: 4px 8px; border-radius: 6px; border
 /* The session's lanes: model time, tool time and the time waiting for the person. */
 .lanes { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
 .lane { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 8px; }
-.lane .at { font-size: 12px; color: #8a8a8a; }
-.lane-bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: #262626; }
-.lane-model { background: #4a7bd0; }
-.lane-tool { background: #c99a3e; }
-.lane-you { background: #b05a8a; }
-.legend { display: flex; gap: 14px; font-size: 12px; color: #9a9a9a; margin: 4px 0 2px; }
+.lane .at { font-size: 12px; color: var(--muted); }
+.lane-bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--jig-lane-track); }
+.lane-model { background: var(--jig-lane-model); }
+.lane-tool { background: var(--jig-lane-tool); }
+.lane-you { background: var(--jig-lane-you); }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 4px 0 2px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
 li.call.clickable { cursor: pointer; }
-li.call.clickable:hover, li.call:focus { background: rgba(255, 255, 255, 0.06); outline: none; }
+li.call.clickable:hover { background: var(--selected); }
+li.call:focus, li.call:focus-visible { background: var(--selected); outline: 2px solid var(--jig-focus); outline-offset: -2px; }
 /* One call's arguments and result, from Pi's masked session file. */
-.detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 94vw); background: #161616; border-left: 1px solid #333;
+.detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 94vw); background: var(--jig-detail-bg); border-left: 1px solid var(--jig-detail-border);
     padding: 14px 18px; overflow: auto; z-index: 20; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45); }
 .detail h2 { margin: 0 0 6px; font-size: 16px; }
-.detail pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: #0e0e0e; padding: 8px;
+.detail pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: var(--jig-bg); padding: 8px;
     border-radius: 4px; max-height: 38vh; overflow: auto; }
 .detail .close { float: right; }
 </style>

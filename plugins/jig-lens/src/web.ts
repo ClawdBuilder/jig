@@ -15,6 +15,8 @@ import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
+import { themeBootScript, themeChoice, themeControlScript, themeCss } from "../../jig-core/src/kit/theme.ts";
+import type { ThemeChoice } from "../../jig-core/src/kit/theme.ts";
 import { MAX_DAYS } from "./command.ts";
 import { lastDays } from "./period.ts";
 import type { Scope } from "./queries.ts";
@@ -51,6 +53,8 @@ export interface WebSource {
     names?: ModelNames;
     /** Pi's sessions folder, for one call's arguments and result. Without it, the page says it does not know it. */
     sessionsDir?: () => string;
+    /** The configured page theme. System when absent. */
+    theme?: () => ThemeChoice;
 }
 
 /** An answer to a request: a status and a JSON body. */
@@ -282,7 +286,11 @@ export class LensWeb {
         }
 
         if (url.pathname === "/") {
-            const page = (this.page ?? "").replaceAll(NONCE_MARK, nonce);
+            const theme = themeChoice(this.source.theme?.());
+            const page = (this.page ?? "")
+                .replaceAll(NONCE_MARK, nonce)
+                .replace("/*__JIG_THEME_CSS__*/", themeCss())
+                .replace("__JIG_THEME_SCRIPTS__", themeBootScript(theme) + themeControlScript());
             return { status: 200, type: "text/html; charset=utf-8", body: page, headers: {} };
         }
         if (!url.pathname.startsWith("/api/")) return plain(404, "Not found");

@@ -6,6 +6,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- The `ticket` tool has a `close` action that drafts the card and asks the agent to fill it; an existing card needs
+  `update: true`. When `jig:stage-done` reaches a workflow's last stage, the active ticket gets one offer to close, never
+  repeated. The skill says to close when the work is done, and closes are recorded as text-free facts for `/lens`. A close
+  writes and verifies `card.draft.md` before atomically replacing `card.md`; one close is pending at a time, and a symlinked
+  draft is refused.
 - A ticket with notes is searchable before it is closed: `jig-memory` derives a bounded entry from its `## Now` and
   `## Decisions`, searches it with recall, and labels it as from notes with its date and that it may be out of date.
   Automatic recall needs a shared name, ID or error and takes at most one derived entry; `/ticket recall` and the
@@ -15,6 +20,21 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   without printing content, takes hand labels with `--labels`, and scores top 3 independently of the display cap.
   Automatic and agent searches are recorded for `jig-lens` with entry and query counts, and no text. CRLF notes, symlinks
   and FIFOs are handled safely, and recalled text is stripped of control characters.
+- `jig-review` holds the agent's writes while a review the agent opened waits for the person. Only a person's message,
+  approval or submitted comments release it; extension messages and slash commands do not. The gate reads the live review, so
+  a replaced, abandoned, restarted or stopped review stops holding. A `review` section supplies company defaults for
+  `holdAgent` and `holdAbortAfter` (default 2 refused model responses before the turn is aborted); the settings page overrides
+  them. Each copy of the plugin registers its own gate name.
+- Every Jig browser page shares one graphite palette, with a System / Light / Dark choice remembered in the browser and
+  `ui.theme` in `jig.json` (`system` by default); the review page has a dark mode for diffs, syntax, comments, modals,
+  approval panels, disabled buttons and empty states, and no page flashes white before its theme is set. The single token
+  file is `plugins/jig-core/src/kit/theme.css`; the light theme keeps working.
+- The review page shows **Approve** in the header from the start, beside Finish review; approving with draft line comments or a
+  general note asks whether to submit or discard them first, and an approved or awaiting-agent review says in words why its
+  Approve button is disabled. Approving is bound to the diff hash the page displays, so a stale page cannot approve newer
+  changes; the page must send the diff hash it rendered, and a missing or malformed one is refused. The theme choice has one
+  owner, `jig-core`'s shared theme file under the agent folder, and every page (review, preview, lens) resolves that same path.
+  A draft typed after "Discard and approve" cancels the pending discard, so the person is asked again.
 
 - `jig update [--check] [--to <version>]` moves Pi's Jig copy and the global `jig` command to one published stable version.
   It installs the exact tested Pi only when the release needs a newer one, asks first and defaults to No, respects a company
@@ -40,6 +60,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   what the model sees is unchanged. A tunnel whose password store is locked now says so and points at
   `secrets.pass.unlockAtStart`.
 
+### Added
+
+- `jig-workflow` shows up to three useful error lines from the whole output on a failed test run plus one neutral line to
+  check `workflow.tests`; it no longer guesses that tests did not run. It also accepts `submit-plan` as `submit_plan`,
+  publishes `jig:stage-done` after a stage move, and records text-free facts such as `passed`, `total`, `stage` and `missing`
+  for `/lens`.
 ## [0.4.3] - 2026-11-06
 
 ### Added

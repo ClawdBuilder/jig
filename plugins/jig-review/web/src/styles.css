@@ -1,6 +1,11 @@
 /* Tailwind scans only this folder: without source(".") it also reads dist/, README.md and the lockfile, so a build
    differed depending on the previous build's output. */
 @import "tailwindcss" source(".");
+@import "../../../jig-core/src/kit/theme.css";
+
+:root { background: var(--jig-bg); color: var(--jig-text); }
+html, body, #root { min-height: 100%; }
+body { background: var(--jig-bg); color: var(--jig-text); transition: background 120ms ease, color 120ms ease; }
 
 button:not(:disabled) {
   cursor: pointer;
@@ -12,7 +17,7 @@ button:disabled {
 
 .typing-dot {
   animation: typing-dot 1.2s infinite ease-in-out;
-  background: #64748b;
+  background: var(--jig-muted);
   border-radius: 9999px;
   display: inline-block;
   height: 0.25rem;
@@ -62,11 +67,16 @@ button:disabled {
 }
 
 .diff-widget {
-  background: #eff6ff;
+  background: var(--jig-diff-widget);
 }
 
-.diff-code-edit {
-  background-color: rgb(250 204 21 / 0.35);
+.diff-code-insert .diff-code-edit {
+  background-color: var(--jig-add-word);
+  border-radius: 0.125rem;
+}
+
+.diff-code-delete .diff-code-edit {
+  background-color: var(--jig-del-word);
   border-radius: 0.125rem;
 }
 
@@ -74,11 +84,11 @@ button:disabled {
 .token.prolog,
 .token.doctype,
 .token.cdata {
-  color: #6b7280;
+  color: var(--jig-syntax-comment);
 }
 
 .token.punctuation {
-  color: #475569;
+  color: var(--jig-syntax-punctuation);
 }
 
 .token.property,
@@ -87,7 +97,7 @@ button:disabled {
 .token.number,
 .token.constant,
 .token.symbol {
-  color: #b45309;
+  color: var(--jig-syntax-number);
 }
 
 .token.selector,
@@ -95,28 +105,143 @@ button:disabled {
 .token.string,
 .token.char,
 .token.builtin {
-  color: #047857;
+  color: var(--jig-syntax-string);
 }
 
 .token.operator,
 .token.entity,
 .token.url,
 .token.variable {
-  color: #334155;
+  color: var(--jig-syntax-variable);
 }
 
 .token.atrule,
 .token.attr-value,
 .token.function,
 .token.class-name {
-  color: #2563eb;
+  color: var(--jig-syntax-function);
 }
 
 .token.keyword {
-  color: #7c3aed;
+  color: var(--jig-syntax-keyword);
 }
 
 .token.regex,
 .token.important {
-  color: #be123c;
+  color: var(--jig-syntax-regex);
 }
+
+
+/* The review page is the one page built outside jig-core. Its Tailwind classes keep their light values; this block is
+   the dark half of the one palette, applied to the classes the page already uses. Nothing here redefines a colour. */
+[data-theme="dark"] body { background: var(--jig-bg); color: var(--jig-text); }
+[data-theme="dark"] .bg-white { background-color: var(--jig-surface); }
+[data-theme="dark"] .bg-white\/95 { background-color: color-mix(in srgb, var(--jig-surface) 95%, transparent); }
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-slate-100 { background-color: var(--jig-raised); }
+[data-theme="dark"] .bg-slate-200,
+[data-theme="dark"] .bg-slate-300 { background-color: var(--jig-border); }
+[data-theme="dark"] .bg-slate-400 { background-color: var(--jig-muted); }
+[data-theme="dark"] .bg-slate-950\/40 { background-color: rgb(0 0 0 / 0.62); }
+[data-theme="dark"] .bg-blue-50,
+[data-theme="dark"] .bg-blue-100 { background-color: color-mix(in srgb, var(--jig-accent) 16%, var(--jig-surface)); }
+[data-theme="dark"] .bg-red-50 { background-color: color-mix(in srgb, var(--jig-error) 14%, var(--jig-surface)); }
+[data-theme="dark"] .bg-amber-50,
+[data-theme="dark"] .bg-amber-100 { background-color: color-mix(in srgb, var(--jig-warning) 14%, var(--jig-surface)); }
+[data-theme="dark"] .bg-emerald-50,
+[data-theme="dark"] .bg-emerald-100 { background-color: color-mix(in srgb, var(--jig-success) 14%, var(--jig-surface)); }
+[data-theme="dark"] .bg-purple-100 { background-color: color-mix(in srgb, var(--jig-accent) 16%, var(--jig-surface)); }
+[data-theme="dark"] .bg-blue-600,
+[data-theme="dark"] .bg-emerald-600 { background-color: var(--jig-accent); }
+[data-theme="dark"] .text-slate-950,
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800 { color: var(--jig-text); }
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400 { color: var(--jig-muted); }
+[data-theme="dark"] .text-blue-600,
+[data-theme="dark"] .text-blue-700,
+[data-theme="dark"] .text-blue-800,
+[data-theme="dark"] .text-blue-900,
+[data-theme="dark"] .text-blue-950,
+[data-theme="dark"] .text-emerald-700,
+[data-theme="dark"] .text-emerald-800,
+[data-theme="dark"] .text-emerald-900,
+[data-theme="dark"] .text-emerald-950 { color: var(--jig-link); }
+[data-theme="dark"] .text-red-700,
+[data-theme="dark"] .text-red-800,
+[data-theme="dark"] .text-red-900,
+[data-theme="dark"] .text-red-950 { color: var(--jig-error); }
+[data-theme="dark"] .text-amber-800,
+[data-theme="dark"] .text-amber-900,
+[data-theme="dark"] .text-amber-950 { color: var(--jig-warning); }
+[data-theme="dark"] .text-purple-800 { color: var(--jig-accent); }
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-300,
+[data-theme="dark"] .border-slate-400 { border-color: var(--jig-border); }
+[data-theme="dark"] .border-white { border-color: var(--jig-border); }
+[data-theme="dark"] .border-blue-200,
+[data-theme="dark"] .border-blue-300,
+[data-theme="dark"] .border-blue-400 { border-color: var(--jig-accent); }
+[data-theme="dark"] .border-red-200,
+[data-theme="dark"] .border-red-400 { border-color: var(--jig-error); }
+[data-theme="dark"] .border-amber-200,
+[data-theme="dark"] .border-amber-300 { border-color: var(--jig-warning); }
+[data-theme="dark"] .border-emerald-200,
+[data-theme="dark"] .border-emerald-400 { border-color: var(--jig-success); }
+[data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--jig-border); }
+[data-theme="dark"] .ring-blue-200 { --tw-ring-color: var(--jig-accent); }
+[data-theme="dark"] .hover\:bg-blue-50:hover,
+[data-theme="dark"] .hover\:bg-blue-50\/60:hover { background-color: color-mix(in srgb, var(--jig-accent) 16%, var(--jig-surface)); }
+[data-theme="dark"] .hover\:bg-slate-50:hover { background-color: var(--jig-raised); }
+[data-theme="dark"] .hover\:border-blue-200:hover { border-color: var(--jig-accent); }
+[data-theme="dark"] .diff { background: var(--jig-code); color: var(--jig-text); }
+[data-theme="dark"] .diff-gutter { background: var(--jig-surface); color: var(--jig-muted); }
+[data-theme="dark"] .diff-code { background: var(--jig-code); }
+[data-theme="dark"] .diff-gutter-insert,
+[data-theme="dark"] .diff-code-insert { background: var(--jig-add-bg); }
+[data-theme="dark"] .diff-gutter-delete,
+[data-theme="dark"] .diff-code-delete { background: var(--jig-del-bg); }
+[data-theme="dark"] .diff-gutter-insert { color: var(--jig-success); }
+[data-theme="dark"] .diff-gutter-delete { color: var(--jig-error); }
+[data-theme="dark"] .diff-hunk { background: var(--jig-hunk-bg); color: var(--jig-muted); }
+[data-theme="dark"] .diff-widget { background: var(--jig-diff-widget); }
+[data-theme="dark"] .token.comment,
+[data-theme="dark"] .token.prolog,
+[data-theme="dark"] .token.doctype,
+[data-theme="dark"] .token.cdata { color: var(--jig-syntax-comment); }
+[data-theme="dark"] .token.punctuation { color: var(--jig-syntax-punctuation); }
+[data-theme="dark"] .token.property,
+[data-theme="dark"] .token.tag,
+[data-theme="dark"] .token.boolean,
+[data-theme="dark"] .token.number,
+[data-theme="dark"] .token.constant,
+[data-theme="dark"] .token.symbol { color: var(--jig-syntax-number); }
+[data-theme="dark"] .token.selector,
+[data-theme="dark"] .token.attr-name,
+[data-theme="dark"] .token.string,
+[data-theme="dark"] .token.char,
+[data-theme="dark"] .token.builtin { color: var(--jig-syntax-string); }
+[data-theme="dark"] .token.operator,
+[data-theme="dark"] .token.entity,
+[data-theme="dark"] .token.url,
+[data-theme="dark"] .token.variable { color: var(--jig-syntax-punctuation); }
+[data-theme="dark"] .token.atrule,
+[data-theme="dark"] .token.attr-value,
+[data-theme="dark"] .token.function,
+[data-theme="dark"] .token.class-name { color: var(--jig-syntax-function); }
+[data-theme="dark"] .token.keyword { color: var(--jig-syntax-keyword); }
+[data-theme="dark"] .token.regex,
+[data-theme="dark"] .token.important { color: var(--jig-syntax-regex); }
+
+[data-theme="dark"] button:disabled { background-color: var(--jig-border); color: var(--jig-muted); opacity: 0.75; }
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select { background-color: var(--jig-bg); color: var(--jig-text); border-color: var(--jig-border); }
+[data-theme="dark"] ::placeholder { color: var(--jig-muted); opacity: 0.9; }
+
+[data-theme="dark"] .bg-blue-600,
+[data-theme="dark"] .bg-emerald-600 { color: var(--jig-accent-text); }
+[data-theme="dark"] input[type="checkbox"],
+[data-theme="dark"] input[type="radio"] { accent-color: var(--jig-accent); }

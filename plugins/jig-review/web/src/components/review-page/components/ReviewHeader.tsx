@@ -3,23 +3,41 @@ import type { DraftComment, ReviewRecord, ReviewSettings } from "@web/types.js";
 import type { FC } from "react";
 
 type ReviewHeaderProps = {
+  draftCount?: number;
   drafts: DraftComment[];
+  onApprove: () => void;
   onOpenActions: () => void;
   onViewTypeChange: (viewType: ReviewSettings["diffView"]) => void;
   review: ReviewRecord;
   viewType: ReviewSettings["diffView"];
 };
 
+/** Why Approve is not available, in words the person can see; undefined when it is. */
+export function approvalIssue(review: ReviewRecord): string | undefined {
+  if (review.status === "approved") return "Approved already; there is nothing left to approve.";
+  if (review.status === "awaiting-agent")
+    return "Waiting for the agent to answer the comments; approve after it replies.";
+  if (review.status === "abandoned") return "This review was abandoned; there is nothing to approve.";
+  if (review.pageApprovedAt !== undefined)
+    return "Approved in the page; answer y in Pi to finish the approval.";
+  return undefined;
+}
+
 /**
  * Renders review identity, status, the diff view toggle, and the combined review action.
  */
 export const ReviewHeader: FC<ReviewHeaderProps> = ({
+  draftCount,
   drafts,
+  onApprove,
   onOpenActions,
   onViewTypeChange,
   review,
   viewType,
-}) => (
+}) => {
+  const issue = approvalIssue(review);
+  const count = draftCount ?? drafts.length;
+  return (
   <header className="sticky top-0 z-10 border-b border-slate-300 bg-white/95 px-6 py-4 shadow-sm backdrop-blur">
     <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
       <div>
@@ -60,15 +78,32 @@ export const ReviewHeader: FC<ReviewHeaderProps> = ({
             Unified
           </button>
         </div>
-        <Button
-          className="px-4 py-2"
-          disabled={review.status === "approved" || review.status === "awaiting-agent"}
-          onClick={onOpenActions}
-          variant="primary"
-        >
-          Finish review{drafts.length === 0 ? "" : ` (${drafts.length.toString()})`}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            <Button
+              className="px-4 py-2"
+              disabled={issue !== undefined}
+              onClick={onApprove}
+              title="Approve with your passkey, or in Pi if you have none"
+              variant="success"
+            >
+              Approve{count === 0 ? "" : ` (${count.toString()})`}
+            </Button>
+            <Button
+              className="px-4 py-2"
+              disabled={review.status === "approved" || review.status === "awaiting-agent"}
+              onClick={onOpenActions}
+              variant="secondary"
+            >
+              Finish review{count === 0 ? "" : ` (${count.toString()})`}
+            </Button>
+          </div>
+          {issue === undefined ? undefined : (
+            <p className="max-w-xs text-right text-xs text-slate-600">{issue}</p>
+          )}
+        </div>
       </div>
     </div>
   </header>
-);
+  );
+};

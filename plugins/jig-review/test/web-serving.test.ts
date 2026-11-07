@@ -4,7 +4,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { after, before, test } from "node:test";
+import { agentDirFor, readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
 import { PACKAGE_ROOT } from "../web/scripts/manifest.ts";
+import { hashDiff } from "../src/store.ts";
 import { openReview, request } from "./support/harness.ts";
 import type { ReviewSession } from "./support/harness.ts";
 
@@ -24,7 +26,13 @@ test("the index and every asset it loads are served as they were built", async (
     const index = await get("/");
     assert.equal(index.status, 200);
     assert.match(String(index.headers["content-type"]), /^text\/html/);
-    assert.equal(index.body, readFileSync(path.join(dist, "index.html"), "utf8"));
+    const built = readFileSync(path.join(dist, "index.html"), "utf8");
+    assert.equal(
+        index.body,
+        built.replace(' data-theme-placeholder="true"', "").replaceAll("__JIG_THEME_DEFAULT__", "system"),
+    );
+    assert.equal(index.body.includes("__JIG_THEME_DEFAULT__"), false);
+    assert.equal(index.body.includes("data-theme-placeholder"), false);
 
     const assets = [...index.body.matchAll(/\b(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]!);
     assert.equal(assets.length, 2, "one script and one stylesheet");
@@ -40,10 +48,15 @@ test("the index and every asset it loads are served as they were built", async (
 });
 
 test("a deep link into the app gets the index, so a reload keeps the page", async () => {
+    const built = readFileSync(path.join(dist, "index.html"), "utf8");
     for (const route of ["/review/2026-01-01T00-00-00Z/files", "/settings", "/reviews"]) {
         const deep = await get(route);
         assert.equal(deep.status, 200, route);
-        assert.equal(deep.body, readFileSync(path.join(dist, "index.html"), "utf8"), route);
+        assert.equal(
+            deep.body,
+            built.replace(' data-theme-placeholder="true"', "").replaceAll("__JIG_THEME_DEFAULT__", "system"),
+            route,
+        );
     }
 });
 
@@ -81,6 +94,13 @@ test("every API route the built page calls is answered by the server", async () 
         "the page's API surface changed: update the server and this test together",
     );
 
+    const record = session.records()[0] as { iterations?: Array<{ diff?: string; diffHash?: string }> };
+    const iteration = record.iterations?.at(-1);
+    assert.equal(
+        iteration?.diffHash,
+        hashDiff(String(iteration?.diff ?? "")),
+        "the hash is of the diff the page renders",
+    );
     const id = String(session.records()[0]!.id);
     const json = (res: Awaited<ReturnType<typeof get>>) => {
         assert.match(String(res.headers["content-type"]), /^application\/json/);
@@ -97,6 +117,9 @@ test("every API route the built page calls is answered by the server", async () 
         autoAskReview: false,
         autoOpenBrowser: false,
         diffView: "split",
+        holdAgent: true,
+        holdAbortAfter: 2,
+        theme: "system",
     });
     assert.equal(
         (
@@ -109,6 +132,21 @@ test("every API route the built page calls is answered by the server", async () 
         200,
     );
     assert.equal(json(await get("/api/settings")).diffView, "unified");
+    assert.equal(
+        (
+            await request(session.base, "/api/settings", {
+                method: "PATCH",
+                cookie: session.cookie,
+                body: { theme: "dark" },
+            })
+        ).status,
+        200,
+    );
+    assert.equal(json(await get("/api/settings")).theme, "dark");
+    assert.equal(readThemePreference(agentDirFor()), "dark", "the choice is saved for the next server and page");
+    const themed = await get("/");
+    assert.match(themed.body, /<html lang="en" data-theme="dark">/);
+    assert.match(themed.body, /theme-boot\.js\?theme=dark/);
     assert.deepEqual(json(await get("/api/passkeys")), { passkeys: [], problems: [] });
     assert.equal(
         (
@@ -121,8 +159,10 @@ test("every API route the built page calls is answered by the server", async () 
     assert.equal((await session.post("/api/comments", { comments: [{ body: "General note" }] })).status, 200);
     assert.equal(session.host.sent.length, 2, "both reached the agent as follow-up messages");
     // Waiting for the agent: the review cannot be approved, whichever way the page asks.
-    assert.equal((await session.post("/api/approve/options")).status, 409);
-    assert.equal((await session.post("/api/approve/page")).status, 409);
+    const waiting = session.records().at(-1) as { iterations?: Array<{ diffHash?: string }> };
+    const waitingHash = String(waiting?.iterations?.at(-1)?.diffHash ?? "");
+    assert.equal((await session.post("/api/approve/options", { diffHash: waitingHash })).status, 409);
+    assert.equal((await session.post("/api/approve/page", { diffHash: waitingHash })).status, 409);
 
     // The event stream stays open: read its first bytes, then hang up.
     const url = new URL(session.base);

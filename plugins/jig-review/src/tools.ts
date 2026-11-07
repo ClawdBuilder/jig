@@ -12,7 +12,7 @@ export interface ReviewToolHandlers {
     getCurrentReview: () => ReviewRecord | undefined;
     recordResolution: (resolution: Omit<ReviewResolution, "id" | "createdAt">) => Promise<ReviewRecord>;
     /** Opens the review `/code-review` would. Undefined only for the settings menu, which the tool never asks for. */
-    startReview: (ctx: ExtensionContext) => Promise<{ url: string } | { error: string } | undefined>;
+    startReview: (ctx: ExtensionContext) => Promise<{ url: string; person?: boolean } | { error: string } | undefined>;
 }
 
 export const START_TOOL = "start_interactive_code_review";
@@ -34,7 +34,9 @@ export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandle
             const text =
                 outcome === undefined || "error" in outcome
                     ? `The review did not open: ${outcome?.error ?? "unknown reason"}`
-                    : OPENED_TEXT;
+                    : outcome.person === true
+                      ? "The person already has this review open; it is theirs and nothing is held. Send a message to continue."
+                      : OPENED_TEXT;
             return { content: [{ type: "text", text }], details: {} };
         },
     });

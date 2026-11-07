@@ -165,8 +165,8 @@ async function postJson<T>(path: string, body: unknown, fallback: string): Promi
 }
 
 /** Asks the server how this review can be approved now: with a registered passkey, or not yet. */
-export function fetchApprovalOptions(): Promise<ApprovalOptionsPayload> {
-  return postJson("/api/approve/options", undefined, "Unable to start the approval.");
+export function fetchApprovalOptions(diffHash: string): Promise<ApprovalOptionsPayload> {
+  return postJson("/api/approve/options", { diffHash }, "Unable to start the approval.");
 }
 
 /**
@@ -183,8 +183,8 @@ export async function approveWithPasskey(options: Extract<ApprovalOptionsPayload
  * The fallback: marks the review approved in the page, then waits while Pi asks the user. It approves only when the user
  * answers y in Pi.
  */
-export function approveInPi(): Promise<ApprovalOutcome> {
-  return postJson("/api/approve/page", undefined, "Unable to ask Pi.");
+export function approveInPi(diffHash: string): Promise<ApprovalOutcome> {
+  return postJson("/api/approve/page", { diffHash }, "Unable to ask Pi.");
 }
 
 /** Makes a passkey on this device and registers it. The user must confirm its fingerprint in Pi before it is stored. */

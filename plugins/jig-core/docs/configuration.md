@@ -415,3 +415,11 @@ such as `git`, `lens` or `memory`.
 - **`BROWSER`:** a name, optionally with arguments, and `%s` for the address.
   The default is `xdg-open`, or `open` on macOS. The address is `http://localhost:<port>/preview/...`, served by Jig on
   this machine only, so a browser on the other side of WSL can open it.
+
+
+## Browser theme
+
+`ui.theme` is `system` (the default), `light` or `dark`. It is the first choice for every Jig browser page: a preview,
+the review page, the Jira preview and `jig-lens`. The page also remembers a person's choice in its browser, which wins over
+this setting; `system` follows `prefers-color-scheme`. A page sets its theme before the first paint. The palette itself
+is `plugins/jig-core/src/kit/theme.css`, one file used by every page; it is graphite, not navy, and light stays.

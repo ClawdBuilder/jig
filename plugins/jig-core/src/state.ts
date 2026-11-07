@@ -33,6 +33,7 @@ import { stateDir } from "./paths.ts";
 import { loadedCodePaths, loadedExtensionFiles } from "./loaded-code.ts";
 import { defaultProtectedPaths, mergeProtected } from "./protected-paths.ts";
 import { openPreview } from "./preview-html.ts";
+import { readThemePreference } from "./kit/theme-preference.ts";
 import { createPreviewServer } from "./preview-server.ts";
 import type { PreviewServer } from "./preview-server.ts";
 import { createRedactor } from "./redact.ts";
@@ -286,7 +287,13 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         approvals: createApprovals({
             now: () => Date.now(),
             openPreview:
-                options.openPreview ?? ((preview, header) => openPreview(preview, header, { server: previews, env })),
+                options.openPreview ??
+                ((preview, header) =>
+                    openPreview(preview, header, {
+                        server: previews,
+                        env,
+                        theme: readThemePreference(state.agentDir()) ?? state.personal.config.ui.theme,
+                    })),
             openInBrowser: () => state.personal.config.approvals.openInBrowser,
         }),
         gates: createGates(options.gateTimeoutMs === undefined ? {} : { timeoutMs: options.gateTimeoutMs }),

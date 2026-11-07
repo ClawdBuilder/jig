@@ -1,7 +1,8 @@
 # jig-review: reviewing code in the browser
 
-**Status: built.** Tested against a fake `jig-core`, a fake Pi and a fake authenticator on this
-machine; the page is not yet tried with Windows Hello or Touch ID ([Not verified yet](docs/not-verified.md)).
+**Status: built.** Tested against a fake `jig-core`, a fake Pi and a fake authenticator, and used in real sessions with a
+real browser and real approved pushes. Which approval path those used is not recorded; Windows Hello and Touch ID are not
+verified ([Not verified yet](docs/not-verified.md)).
 
 `jig-review` opens a private, GitHub-style review of the agent's changes in your browser, before
 anything is shared:
@@ -11,7 +12,8 @@ anything is shared:
 - **Approve**, with a passkey.
 
 The comments reach the agent as a message, the agent answers each one, and the next round
-shows what changed.
+shows what changed. **Approve** is in the header from the start, so a review with no comments is one click; if
+draft comments are open it asks whether to submit them or discard them first, so none is dropped quietly.
 
 For example, after the agent changes `orders-api`, `/code-review --branch` opens everything
 since the branch left the main branch. You comment on two lines and Finish review, the agent
@@ -55,6 +57,21 @@ After an agent run that changed files, Pi offers to review them. The files come 
 run starts and ends, so a change counts whatever tool made it. What came in from other commits (a merge, a
 pull, a rebase) is not the agent's, so it is left out; when nothing else changed, Pi says so in one line
 ([What counts as the agent's](docs/run-changes.md)). The other scopes show everything in them.
+
+## While a review is open
+
+When the **agent** opens a review, `jig-review` holds the agent's writes through `jig-core`'s gate: edits, commits and other
+non-read calls are refused with one line saying the review is open in the browser and to wait for the person's message. The
+hold is off for `record_interactive_review_resolution` and for read-only calls. A person's next message in Pi releases it;
+approval or submitted comments release it too. A second refused write in the same wait **aborts the turn**, so a model cannot
+spin on the refusal; the person's next message starts the next turn. A session restart holds nothing. Set `holdAgent` to `false` in the review
+settings to turn it off; it is `true` by default and a company may set it.
+
+A review a person starts with `/code-review` holds nothing while the agent is idle; if the agent then acts, the same rule
+applies once it is the agent's open review.
+
+The preview page has no switch because its policy forbids script; it follows the saved choice server-side, which is why the
+one theme file matters.
 
 ## Approving
 

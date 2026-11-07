@@ -17,6 +17,7 @@
 //
 // A tool without an `action` parameter (bash, the file tools, a single-purpose tool) is skipped: it has no action to audit.
 import assert from "node:assert/strict";
+import { canonicalAction } from "../src/kit/action-names.ts";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -356,6 +357,7 @@ const ACTION_INPUTS: Record<string, Record<string, unknown>> = {
     "ticket list_checks": {},
     "ticket close_check": { id: "1", outcome: "passed" },
     "ticket recall": { query: "OrderService" },
+    "ticket close": {},
     "subagent start": { role: "scout", task: "look at the build" },
     "subagent status": {},
     "subagent message": { child: "scout-1", text: "hello" },
@@ -365,6 +367,7 @@ const ACTION_INPUTS: Record<string, Record<string, unknown>> = {
     "workflow start": {},
     "workflow bind": { repo: "orders-api" },
     "workflow submit_plan": {},
+    "workflow submit-plan": {},
     "workflow test": {},
     "workflow scenario": { number: 1, result: "passed" },
     "workflow advance": {},
@@ -521,6 +524,8 @@ describe("what a plugin's documentation says", () => {
             if (actions.length === 0) continue;
             const rows = actionRows(docs, tool, actions);
             for (const action of actions) {
+                // An old action name is an alias, not a distinct row: the current name is the documented action.
+                if (canonicalAction(tool, action) !== action) continue;
                 if (!rows.has(action)) {
                     failures.push(`${plugin}: ${tool} ${action} is not a row of any table in its docs`);
                     continue;
@@ -646,11 +651,13 @@ const TABLE: Record<string, string> = {
     "ticket list_checks": "local read -",
     "ticket close_check": "local write -",
     "ticket recall": "local read -",
+    "ticket close": "local write -",
     "workflow list": "local read -",
     "workflow status": "local read -",
     "workflow start": "local write -",
     "workflow bind": "local write -",
     "workflow submit_plan": "local write review",
+    "workflow submit-plan": "local write review",
     "workflow test": "local write -",
     "workflow scenario": "local write -",
     "workflow advance": "local write -",

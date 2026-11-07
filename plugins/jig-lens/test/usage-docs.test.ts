@@ -51,5 +51,6 @@ test("session files are looked for where Pi keeps them: its agent folder, which 
     assert.equal(agentDir({ PI_CODING_AGENT_DIR: "~/work/pi" }), path.join(homedir(), "work/pi"));
     assert.equal(agentDir({ PI_CODING_AGENT_DIR: "~" }), homedir());
     assert.equal(agentDir({ PI_CODING_AGENT_DIR: "" }), path.join(homedir(), ".pi", "agent"));
-    assert.equal(agentDir({ PI_CODING_AGENT_DIR: "relative/dir" }), path.resolve("relative/dir"));
+    // Pi's getAgentDir expands `~` and leaves other relative paths as they were; it does not resolve them.
+    assert.equal(agentDir({ PI_CODING_AGENT_DIR: "relative/dir" }), "relative/dir");
 });

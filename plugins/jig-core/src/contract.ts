@@ -705,7 +705,7 @@ export interface JigApi {
          *  and `/jig` says the company defaults are incomplete. */
         addSectionDefaults(name: string, defaults: unknown): void;
         /** The section as loaded at the last session start, after validation: the user's, laid over the company's
-         *  defaults when it gave some. Undefined when absent or invalid. */
+         *  defaults when it gave some. Undefined when absent or invalid. `ui` is jig-core's own page-theme section. */
         section(name: string): unknown;
     };
 
@@ -892,7 +892,23 @@ export const JIG_EVENTS = {
     decision: "jig:decision",
     /** When a watch ends. Payload: `WatchDoneEvent`. */
     watchDone: "jig:watch-done",
+    /** After a workflow moves: start, advance or back. Payload: `StageDoneEvent`. */
+    stageDone: "jig:stage-done",
 } as const;
+
+/** A stage move announced on Pi's event bus. Text-free: names and a time, never notes or evidence. */
+export interface StageDoneEvent {
+    ticket: string;
+    workflow: string;
+    /** Null for `start`, which has no earlier stage. */
+    from: string | null;
+    to: string;
+    at: string;
+    /** True when `to` is the workflow's last stage. */
+    last: boolean;
+    /** How the move happened. */
+    via: "start" | "advance" | "back";
+}
 
 export interface DecisionEvent {
     toolCallId: string;
