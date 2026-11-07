@@ -75,8 +75,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - A **Keep awake** sun in the tab bar holds this computer awake: off, on until it is switched off or Herdr closes, or while
   any agent is working or blocked (and `idleMinutes`, 5 by default, after the last one). A hidden PowerShell
   (`SetThreadExecutionState`), `caffeinate` or `systemd-inhibit` holds the request, one at a time, on the computer Herdr
-  runs on; it ends with Herdr and changes no setting. `mods/keep-awake/config.json` sets `idleMinutes` and `display` (keep
-  the screen on too), and `Ctrl+Shift+Alt+K` cycles the modes.
+  runs on; it ends with Herdr and changes no setting. A `Keep screen on` switch in its popup (on by default) writes
+  `mods/keep-awake/config.json` (`display`), which also carries `idleMinutes`, and restarts the helper at once; the sun's
+  tooltip says whether the screen is kept on. `Ctrl+Shift+Alt+K` cycles the modes.
 ## [0.4.3] - 2026-11-06
 
 ### Added
