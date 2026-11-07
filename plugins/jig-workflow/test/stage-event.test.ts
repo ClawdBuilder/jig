@@ -15,9 +15,10 @@ test("start publishes a text-free stage-done event on Pi's bus", async (t) => {
     assert.equal(result.isError, false, result.text);
     assert.equal(seen.length, 1);
     const payload = seen[0] as Record<string, unknown>;
-    assert.deepEqual(Object.keys(payload).sort(), ["at", "from", "ticket", "to", "workflow"]);
+    assert.deepEqual(Object.keys(payload).sort(), ["at", "from", "last", "ticket", "to", "workflow"]);
     assert.equal(payload.ticket, "PROJ-1");
     assert.equal(payload.from, null);
+    assert.equal(payload.last, false);
     assert.equal(payload.to, "understand");
     assert.equal(typeof payload.at, "string");
 });

@@ -269,3 +269,42 @@ test("a tool result without a change, and a settle with no close pending, do not
     pi.settle();
     assert.equal(pi.sent.length, 1);
 });
+
+test("the ticket close action drafts the card, and an existing card needs update: true", async (t) => {
+    const { folder, pi } = start(t);
+    pi.input("look at PROJ-1");
+    pi.result("logs", "10:00:00 ERROR NullPointerException in OrderMapper", { action: "query" });
+    const drafted = await pi.tool({ action: "close" });
+    assert.equal(drafted.isError, false, drafted.text);
+    assert.match(drafted.text, /Fill its three sections/);
+    const paths = ticketPaths(folder, "PROJ-1");
+    assert.equal(existsSync(paths.card), true);
+    const again = await pi.tool({ action: "close" });
+    assert.match(again.text, /already exists.*update: true/);
+    const replaced = await pi.tool({ action: "close", update: true });
+    assert.match(replaced.text, /Fill its three sections/);
+});
+
+test("the last stage offers the close once, and back or a refused advance does not", async (t) => {
+    const { pi } = start(t);
+    pi.input("look at PROJ-1");
+    const message = (ticket: string, last: boolean, to = "done") => ({
+        ticket,
+        workflow: "feature",
+        from: "build",
+        to,
+        at: new Date().toISOString(),
+        last,
+    });
+    const before = pi.sent.length;
+    pi.events.emit("jig:stage-done", message("PROJ-1", false, "review"));
+    assert.equal(pi.sent.length, before);
+    pi.events.emit("jig:stage-done", message("PROJ-1", true));
+    assert.equal(pi.sent.length, before + 1);
+    assert.match(pi.sent[before]?.message.content ?? "", /reached the last stage.*ticket.*close/);
+    pi.events.emit("jig:stage-done", message("PROJ-1", true));
+    assert.equal(pi.sent.length, before + 1, "never repeated");
+    const before2 = pi.sent.length;
+    pi.events.emit("jig:stage-done", { ...message("PROJ-1", true), last: false });
+    assert.equal(pi.sent.length, before2);
+});

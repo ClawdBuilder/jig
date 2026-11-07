@@ -18,6 +18,7 @@ import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import {
     CARD_FIX,
     CARD_REQUEST,
+    CardExists,
     type Closing,
     correctionText,
     draftClose,
@@ -75,6 +76,8 @@ export function restoredTicket(branch: readonly SessionEntry[]): string | undefi
 }
 
 export function registerTicketMemory(pi: ExtensionAPI): void {
+    // Tickets already offered a close in this session: one offer, never repeated.
+    const offered = new Set<string>();
     // Set at session start, from the section jig-core loaded. Until then nothing is written, so no ticket folder can
     // be made in the working directory by mistake.
     let memory: Memory | undefined;
@@ -298,7 +301,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         } catch (error) {
             note(
                 ctx,
-                error instanceof NothingToClose
+                error instanceof NothingToClose || error instanceof CardExists
                     ? error.message
                     : `Could not draft the card for ${key}: ${reason(error)}`,
                 "warning",
@@ -512,12 +515,41 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             active: () =>
                 memory === undefined || active === undefined ? undefined : { folder: memory.folder, key: active },
             now: () => new Date(),
+            close: (ticket, update) => {
+                if (memory === undefined) throw new Error("Ticket memory is not ready: no session has started.");
+                const key = ticket ?? active;
+                if (key === undefined) throw new Error("No active ticket: /ticket KEY makes one active.");
+                if (!existsSync(ticketPaths(memory.folder, key).dir)) {
+                    throw new Error(`No folder for ${key} in ${memory.folder}: run /ticket ${key} first.`);
+                }
+                if (!update && existsSync(ticketPaths(memory.folder, key).card)) {
+                    return `A card already exists for ${key}: ${ticketPaths(memory.folder, key).card}. Call ticket close again with update: true to replace it.`;
+                }
+                closing = draftClose(memory.folder, key, memory.pattern, new Date(), update);
+                return requestText(memory.folder, key);
+            },
             search: (query) => {
                 if (memory === undefined) throw new Error("Ticket memory is not ready: no session has started.");
                 return searchEarlier(memory, query);
             },
         }),
     );
+
+    // A workflow's last stage offers the close once per ticket, through Pi's event bus (jig-workflow publishes it).
+    pi.events?.on?.("jig:stage-done", (data: unknown) => {
+        const event = data as { ticket?: unknown; workflow?: unknown; last?: unknown };
+        if (event.last !== true || typeof event.ticket !== "string") return;
+        if (event.ticket !== active || offered.has(event.ticket)) return;
+        offered.add(event.ticket);
+        pi.sendMessage(
+            {
+                customType: "jig-memory-close-offer",
+                content: `[ticket ${event.ticket}] It reached the last stage of ${String(event.workflow)}. Close it with the ticket tool's close action so its card exists.`,
+                display: true,
+            },
+            { triggerTurn: true, deliverAs: "followUp" },
+        );
+    });
 
     pi.registerCommand("ticket", {
         description:

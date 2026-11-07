@@ -31,11 +31,20 @@ export interface Closing {
 /** The ticket has nothing a card could say. */
 export class NothingToClose extends Error {}
 
+/** A card is already there; a close must say so and ask before replacing it. */
+export class CardExists extends Error {}
+
 /**
  * Writes the draft card of a ticket and returns what the plugin keeps of it. An existing card is replaced: a ticket
  * that was reopened gets a new card.
  */
-export function draftClose(folder: string, key: string, pattern: RegExp | undefined, now: Date): Closing {
+export function draftClose(
+    folder: string,
+    key: string,
+    pattern: RegExp | undefined,
+    now: Date,
+    _replace = false,
+): Closing {
     const material = readMaterial(folder, key);
     if (!hasContent(material)) {
         throw new NothingToClose(`${key} has no notes or saved evidence yet, so there is nothing to put on a card.`);

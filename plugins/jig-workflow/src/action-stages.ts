@@ -72,7 +72,15 @@ export async function advance(rt: Runtime, params: Params, call: Call): Promise<
     });
     return {
         text: `Moved ${ticket} from ${stage.id} to ${next.id}.\n${describeStage(workflow, index + 1)}`,
-        details: { ticket, workflow: workflow.name, advanced: true, from: stage.id, to: next.id, at },
+        details: {
+            ticket,
+            workflow: workflow.name,
+            advanced: true,
+            from: stage.id,
+            to: next.id,
+            at,
+            last: index + 1 === workflow.stages.length - 1,
+        },
     };
 }
 
@@ -141,6 +149,6 @@ export function back(rt: Runtime, params: Params): ActionResult {
     });
     return {
         text: `Moved ${ticket} back from ${stage.id} to ${to.id}. Nothing recorded was erased: results still count while the commit or the plan they are about is unchanged.\n${describeStage(workflow, target)}`,
-        details: { ticket, workflow: workflow.name, from: stage.id, to: to.id, at },
+        details: { ticket, workflow: workflow.name, from: stage.id, to: to.id, at, last: false },
     };
 }

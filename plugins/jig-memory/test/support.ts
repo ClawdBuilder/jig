@@ -175,7 +175,17 @@ export class FakePi {
     readonly notices: Notice[] = [];
     readonly sent: Array<{ message: { customType: string; content: string; details?: unknown }; options: unknown }> =
         [];
-    readonly events = new Map<string, Handler[]>();
+    readonly handlers = new Map<string, Handler[]>();
+    readonly bus = new Map<string, Array<(data: unknown) => void>>();
+    readonly events = {
+        on: (channel: string, listener: (data: unknown) => void) => {
+            this.bus.set(channel, [...(this.bus.get(channel) ?? []), listener]);
+            return () => undefined;
+        },
+        emit: (channel: string, data: unknown) => {
+            for (const listener of this.bus.get(channel) ?? []) listener(data);
+        },
+    };
     readonly commands = new Map<string, (args: string, ctx: ExtensionContext) => Promise<void>>();
     readonly tools = new Map<string, ToolDefinition>();
     readonly ctx: ExtensionContext;
@@ -201,7 +211,7 @@ export class FakePi {
     }
 
     on(event: string, handler: Handler): void {
-        this.events.set(event, [...(this.events.get(event) ?? []), handler]);
+        this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
     }
 
     registerTool(tool: ToolDefinition): void {
@@ -226,7 +236,7 @@ export class FakePi {
         } catch (error) {
             return { text: error instanceof Error ? error.message : String(error), isError: true };
         }
-        for (const handler of this.events.get("tool_result") ?? []) {
+        for (const handler of this.handlers.get("tool_result") ?? []) {
             const change = handler(
                 { type: "tool_result", toolName: name, toolCallId: "call", input, ...result },
                 this.ctx,
@@ -259,7 +269,7 @@ export class FakePi {
 
     /** Runs every handler of an event in registration order, and returns what each one returned. */
     fire(event: string, payload: Record<string, unknown> = {}): unknown[] {
-        return (this.events.get(event) ?? []).map((handler) => handler({ type: event, ...payload }, this.ctx));
+        return (this.handlers.get(event) ?? []).map((handler) => handler({ type: event, ...payload }, this.ctx));
     }
 
     start(reason = "startup"): unknown[] {

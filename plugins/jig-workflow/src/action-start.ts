@@ -159,7 +159,14 @@ export function start(rt: Runtime, input: StartInput): ActionResult {
     }
     return {
         text: lines.join("\n"),
-        details: { ticket: input.ticket, workflow: name, stage: first.id, to: first.id, at: state.startedAt },
+        details: {
+            ticket: input.ticket,
+            workflow: name,
+            stage: first.id,
+            to: first.id,
+            at: state.startedAt,
+            last: workflow.stages.length === 1,
+        },
     };
 }
 

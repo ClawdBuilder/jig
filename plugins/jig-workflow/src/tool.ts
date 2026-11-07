@@ -276,7 +276,14 @@ function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): Stag
     const from = typeof details.from === "string" && STAGE_NAME.test(details.from) ? details.from : null;
     const when =
         typeof details.at === "string" && Number.isFinite(Date.parse(details.at)) ? details.at : at.toISOString();
-    return { ticket: details.ticket, workflow: details.workflow, from, to: details.to, at: when };
+    return {
+        ticket: details.ticket,
+        workflow: details.workflow,
+        from,
+        to: details.to,
+        at: when,
+        last: details.last === true,
+    };
 }
 
 async function run(rt: Runtime, params: Params, call: actions.Call): Promise<ActionResult> {
