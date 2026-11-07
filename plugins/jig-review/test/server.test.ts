@@ -38,7 +38,13 @@ before(async () => {
         getReview: () => undefined,
         getReviewById: async () => undefined,
         getReviews: async () => [],
-        getSettings: async () => ({ autoAskReview: false, autoOpenBrowser: false, diffView: "split" }),
+        getSettings: async () => ({
+            autoAskReview: false,
+            autoOpenBrowser: false,
+            diffView: "split",
+            holdAgent: true,
+            holdAbortAfter: 2,
+        }),
         submitComments: async (comments) => {
             submitted.push(...comments.map((c) => c.body));
         },

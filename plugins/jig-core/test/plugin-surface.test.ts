@@ -134,7 +134,7 @@ const EXPECTED: Record<string, Given> = {
     "jig-review": {
         tools: { record_interactive_review_resolution: [], start_interactive_code_review: [] },
         commands: ["code-review"],
-        sections: [],
+        sections: ["review"],
     },
     "jig-mongo": {
         tools: {

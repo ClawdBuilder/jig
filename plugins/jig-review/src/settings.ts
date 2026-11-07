@@ -3,6 +3,7 @@
 // a command the agent ran.
 import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import type { ReviewSettings } from "./types.ts";
 
@@ -23,6 +24,8 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
     autoAskReview: false,
     autoOpenBrowser: false,
     diffView: "split",
+    holdAgent: true,
+    holdAbortAfter: 2,
 };
 
 /** Review settings and records for one workspace. */
@@ -52,6 +55,11 @@ export class SettingsStore {
         }
     }
 
+    /** Whether this person has saved any settings: without a file, a company section is the only source. */
+    public hasConfig(): boolean {
+        return existsSync(this.configPath);
+    }
+
     public async save(settings: ReviewSettings): Promise<void> {
         await this.ensureDirectories();
         await writeFile(this.configPath, `${JSON.stringify(settings, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
@@ -68,6 +76,13 @@ export class SettingsStore {
     }
 }
 
+/** The one clamp for the abort threshold: load, the settings page and a company section all use it. */
+export function clampHoldAbortAfter(value: unknown): number {
+    return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 10
+        ? value
+        : DEFAULT_SETTINGS.holdAbortAfter;
+}
+
 /** Settings from a parsed file: a key that is missing, of the wrong type or unknown is ignored. */
 export function parseReviewSettings(value: unknown): ReviewSettings {
     if (typeof value !== "object" || value === null) return { ...DEFAULT_SETTINGS };
@@ -77,5 +92,36 @@ export function parseReviewSettings(value: unknown): ReviewSettings {
         autoOpenBrowser:
             typeof raw.autoOpenBrowser === "boolean" ? raw.autoOpenBrowser : DEFAULT_SETTINGS.autoOpenBrowser,
         diffView: raw.diffView === "split" || raw.diffView === "unified" ? raw.diffView : DEFAULT_SETTINGS.diffView,
+        holdAgent: typeof raw.holdAgent === "boolean" ? raw.holdAgent : DEFAULT_SETTINGS.holdAgent,
+        holdAbortAfter:
+            typeof raw.holdAbortAfter === "number" &&
+            Number.isInteger(raw.holdAbortAfter) &&
+            raw.holdAbortAfter >= 1 &&
+            raw.holdAbortAfter <= 10
+                ? raw.holdAbortAfter
+                : DEFAULT_SETTINGS.holdAbortAfter,
     };
+}
+
+/** A `review` section in `jig.json`: company defaults for the per-person review settings. */
+export function validateReviewSection(value: unknown): string[] {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return ["review must be an object"];
+    const raw = value as Record<string, unknown>;
+    const errors: string[] = [];
+    const known = new Set(["autoAskReview", "autoOpenBrowser", "diffView", "holdAgent", "holdAbortAfter"]);
+    for (const key of Object.keys(raw)) if (!known.has(key)) errors.push(`review.${key}: unknown field`);
+    for (const key of ["autoAskReview", "autoOpenBrowser", "holdAgent"]) {
+        if (raw[key] !== undefined && typeof raw[key] !== "boolean")
+            errors.push(`review.${key}: must be true or false`);
+    }
+    if (raw.diffView !== undefined && raw.diffView !== "split" && raw.diffView !== "unified") {
+        errors.push("review.diffView: must be split or unified");
+    }
+    if (raw.holdAbortAfter !== undefined) {
+        const n = raw.holdAbortAfter;
+        if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 10) {
+            errors.push("review.holdAbortAfter: must be a whole number from 1 to 10");
+        }
+    }
+    return errors;
 }
