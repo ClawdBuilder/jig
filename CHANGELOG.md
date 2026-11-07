@@ -33,6 +33,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   what the model sees is unchanged. A tunnel whose password store is locked now says so and points at
   `secrets.pass.unlockAtStart`.
 
+### Added
+
+- `jig-workflow` says when a test command could not run tests (compile/setup failure) instead of calling it a failing test,
+  accepts `submit-plan` as `submit_plan`, publishes `jig:stage-done` after a stage move, and records text-free facts such as
+  `passed`, `total`, `stage` and `missing` for `/lens`.
+
 ## [0.4.3] - 2026-11-06
 
 ### Added

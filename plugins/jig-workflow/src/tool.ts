@@ -4,8 +4,11 @@
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import type { CallClass, Preview, ToolDeclaration } from "../../jig-core/src/contract.ts";
+import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
+import type { CallClass, Facts, Preview, StageDoneEvent, ToolDeclaration } from "../../jig-core/src/contract.ts";
 import { InputError } from "../../jig-core/src/kit/values.ts";
+import { canonicalAction } from "../../jig-core/src/kit/action-names.ts";
+import { jig } from "../../jig-core/src/client.ts";
 import * as actions from "./actions.ts";
 import type { ActionResult, Params } from "./actions.ts";
 import { TOOL_NAME } from "./gate.ts";
@@ -43,7 +46,8 @@ export const ACTION_NAMES: readonly string[] = NAMES;
 
 const parameters = Type.Object(
     {
-        action: stringEnum(NAMES, {
+        // The 0.x alias stays accepted at the tool boundary; 0.5 removes it with the alias table.
+        action: stringEnum([...NAMES, "submit-plan"], {
             description: NAMES.map((name) => `- ${name}: ${ACTIONS[name].summary}`).join("\n"),
         }),
         ticket: Type.Optional(
@@ -117,10 +121,11 @@ const DESCRIPTION = [
 
 /** Checks a call's input against the action's table. An `InputError` blocks the call without asking anyone. */
 export function checkInput(input: Readonly<Record<string, unknown>>): ActionName {
-    const action = input.action;
-    if (typeof action !== "string" || !Object.hasOwn(ACTIONS, action)) {
+    const asked = input.action;
+    const action = typeof asked === "string" ? canonicalAction("workflow", asked) : "";
+    if (!Object.hasOwn(ACTIONS, action)) {
         throw new InputError(
-            `workflow: unknown action ${JSON.stringify(String(action).slice(0, 40))}; use one of ${NAMES.join(", ")}`,
+            `workflow: unknown action ${JSON.stringify(String(asked).slice(0, 40))}; use one of ${NAMES.join(", ")}`,
         );
     }
     const spec = ACTIONS[action as ActionName] as { required?: readonly string[]; optional: readonly string[] };
@@ -235,10 +240,44 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
             rt.touch(ctx);
             const call = { toolCallId, ...(signal === undefined ? {} : { signal }), ctx };
             const result = await run(rt, params as Params, call);
-            return { content: [{ type: "text", text: result.text }], details: result.details ?? {} };
+            const details = result.details ?? {};
+            const facts = factsOf(details);
+            if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
+            const move = stageDoneOf(details, rt.host.now());
+            if (move !== undefined) rt.pi.events.emit(JIG_EVENTS.stageDone, move);
+            return { content: [{ type: "text", text: result.text }], details };
         },
     };
     return { definition, declaration };
+}
+
+/** Text-free counts for `/lens`: what the call proved, never the ticket's text. */
+function factsOf(details: Readonly<Record<string, unknown>>): Facts {
+    const facts: Record<string, number | boolean | string> = {};
+    for (const key of ["passed", "total", "advanced", "done", "sandboxed"]) {
+        const value = details[key];
+        if (typeof value === "number" || typeof value === "boolean") facts[key] = value;
+    }
+    if (Array.isArray(details.missing)) facts.missing = details.missing.length;
+    for (const key of ["stage", "from", "to", "workflow"]) {
+        const value = details[key];
+        if (typeof value === "string") facts[key] = value;
+    }
+    return facts;
+}
+
+/** A stage move, for the event bus; undefined when the call did not move. */
+function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): StageDoneEvent | undefined {
+    if (typeof details.ticket !== "string" || typeof details.to !== "string") return undefined;
+    const workflow = typeof details.workflow === "string" ? details.workflow : undefined;
+    if (workflow === undefined) return undefined;
+    return {
+        ticket: details.ticket,
+        workflow,
+        from: typeof details.from === "string" ? details.from : null,
+        to: details.to,
+        at: at.toISOString(),
+    };
 }
 
 async function run(rt: Runtime, params: Params, call: actions.Call): Promise<ActionResult> {

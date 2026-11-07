@@ -41,6 +41,13 @@ describe("input that is not valid is refused before anyone is asked", () => {
         assert.equal(w.asked.length, 0);
     });
 
+    test("the old submit-plan name is canonicalised at the tool boundary", async (t) => {
+        const w = await started(t);
+        const result = await w.call({ action: "submit-plan" });
+        assert.doesNotMatch(result.text, /unknown action/);
+        assert.match(result.text, /plan\.md|plan/i);
+    });
+
     test("a pass without evidence, and evidence of two kinds", async (t) => {
         const w = await world(t);
         assert.match((await w.call({ action: "scenario", number: 1, result: "pass" })).text, /a pass needs evidence/);

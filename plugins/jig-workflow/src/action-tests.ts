@@ -9,7 +9,7 @@ import { inspect, short } from "./repos.ts";
 import type { RepoView } from "./repos.ts";
 import type { Runtime } from "./runtime.ts";
 import { updateState } from "./store.ts";
-import { planTests, runTests, testIdentity } from "./tests.ts";
+import { noTestsRan, planTests, runTests, setupLines, testIdentity } from "./tests.ts";
 import type { TestPlan } from "./tests.ts";
 import { started, ticketOf } from "./action-support.ts";
 import type { ActionResult, Call, Params } from "./action-support.ts";
@@ -94,19 +94,28 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
             updateState(work.paths.dir, (state) => {
                 state.tests[view.root] = run.result;
             });
+            const setup = run.result.noTestsRan === true;
             const verdict = run.result.passed
                 ? "PASSED"
                 : run.result.timedOut
                   ? `TIMED OUT after ${plan.timeoutSeconds} s`
-                  : `FAILED (exit ${run.result.exitCode})`;
+                  : setup
+                    ? `FAILED (exit ${run.result.exitCode}): tests did not run`
+                    : `FAILED (exit ${run.result.exitCode})`;
             const note = run.result.clean
                 ? ""
                 : " on a tree with uncommitted changes, which does not count: commit, then run again";
+            const setupNote = setup
+                ? [
+                      "    The test command could not run tests: this is setup, not a failing test. Check workflow.tests in jig.json for this repository.",
+                      ...setupLines(run.tail).map(indent),
+                  ]
+                : [];
             if (run.result.passed && run.result.clean) passed++;
             lines.push(
                 `${view.name}: ${verdict} at ${short(view.head)}${note} · ${plan.command} · ${run.result.sandboxed ? "in the sandbox" : "outside the sandbox, as you approved"} · ${(run.result.durationMs / 1000).toFixed(1)} s`,
                 ...(plan.java === undefined ? [] : [`    Java: ${plan.java}`]),
-                ...(run.result.passed && run.result.clean ? [] : [indent(run.tail)]),
+                ...(setup ? setupNote : run.result.passed && run.result.clean ? [] : [indent(run.tail)]),
             );
         } catch (error) {
             // A cancelled call stops here; a repository that cannot be run does not stop the others.

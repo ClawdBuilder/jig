@@ -185,7 +185,10 @@ describe("the API", () => {
 
     test("the events on Pi's event bus are these", async () => {
         const { JIG_EVENTS } = await import("../src/contract.ts");
-        assert.deepEqual({ ...JIG_EVENTS }, { decision: "jig:decision", watchDone: "jig:watch-done" });
+        assert.deepEqual(
+            { ...JIG_EVENTS },
+            { decision: "jig:decision", watchDone: "jig:watch-done", stageDone: "jig:stage-done" },
+        );
     });
 });
 
@@ -234,6 +237,7 @@ describe("what plugins import", () => {
             "SandboxRunResult",
             "SignInRequest",
             "SignInService",
+            "StageDoneEvent",
             "StartWatch",
             "ToolDeclaration",
             "Transport",

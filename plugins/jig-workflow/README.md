@@ -1,8 +1,7 @@
 # jig-workflow: named workflows, with stages, holds and evidence
 
-**Status: built.** Tested with the real `jig-core`, real git repositories, a fake `gh` and `glab` (on recorded GitLab
-answers) and, where bubblewrap is installed, the real sandbox. Not tried against the real services: `gh pr view`, `glab api`
-and a CI watch. Not tried in a real Pi: a test set to run outside the sandbox, which reaches `bash` through `ctx.executeTool`.
+**Status: built.** Tested with the real `jig-core`, real git repositories, a fake `gh`/`glab`, and the real sandbox where
+bubblewrap is installed. Not tried against real `gh pr view`, `glab api` or a CI watch; not in real Pi for an outside test.
 
 `jig-workflow` takes a piece of work, such as a ticket, through a **workflow**: a named, ordered list of
 stages, each with a goal for the agent and the conditions that let the work move on. The conditions are
@@ -85,13 +84,14 @@ A fixed list, checked by the plugin itself, so a file never runs code. Each is d
 At session start, a line says which stage the active ticket is in and what is missing.
 
 ## Rules
-
 - **Nothing is built in.** Workflows are read from files at session start and on `/workflow reload`.
 - **One workflow per ticket.** Switching is an explicit `start` that lists what is lost; the old state is kept.
 - **Holds go through `jig-core`.** The plugin registers a gate, which can only make a decision stricter
   (allow to ask or deny, ask to deny); the floor still applies ([Holds](docs/holds.md)).
 - **Evidence is recorded against what it is about.** A new commit ends a test result, and an edited plan
   needs approving again ([State](docs/state.md)).
+- **Setup failures and stage events.** A command that could not run tests says “tests did not run” and points at
+  `workflow.tests`; a stage move publishes `jig:stage-done`. The old `submit-plan` name is accepted through 0.4.x.
 - **Tests run in the sandbox.** Without `jig-sandbox`, or for a command set to run `outside`, a test run asks
   first, naming the command. A Gradle wrapper gets the JDK that fits ([Tests](docs/tests.md#the-jdk-of-a-gradle-build)).
 - **The agent cannot mark anything passed.** It asks for a run, an approval or a check, and the plugin

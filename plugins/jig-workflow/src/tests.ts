@@ -158,6 +158,28 @@ export interface ShellRun {
 }
 
 /** Runs a plan's command in its repository some other way: the one that asks the user (see outside.ts). */
+const TEST_RAN =
+    /(Tests run:|tests completed|Test > .* (FAILED|PASSED)|There were failing tests|No tests found|test results)/i;
+const SETUP_FAILED =
+    /(FAILURE:|What went wrong:|Could not compile|compilation failed|Compilation failed|Could not determine java|Could not find method|Unsupported class file|invalid (JDK|Java)|No tests found|Could not resolve|plugin .* failed)/i;
+
+/** A nonzero run that shows setup or compile trouble and no sign that a test ever ran. */
+export function noTestsRan(output: string, exitCode: number | null, timedOut: boolean): boolean {
+    if (timedOut || exitCode === 0 || exitCode === null) return false;
+    const text = output.replace(/\r\n?/g, "\n");
+    return !TEST_RAN.test(text) && SETUP_FAILED.test(text);
+}
+
+/** The first few useful setup lines, for the model, without a whole build log. */
+export function setupLines(output: string): string[] {
+    return output
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "" && SETUP_FAILED.test(line))
+        .slice(0, 3);
+}
+
 export type OutsideRunner = (plan: TestPlan, options: { signal?: AbortSignal }) => Promise<ShellRun>;
 
 export interface TestRun {
@@ -228,6 +250,7 @@ export async function runTests(
             sandboxed: options.sandboxed,
             at: finished.toISOString(),
             durationMs: Math.max(0, finished.getTime() - started.getTime()),
+            ...(noTestsRan(output, code, timedOut) ? { noTestsRan: true } : {}),
             ...(plan.java === undefined ? {} : { java: plan.java }),
         },
         tail: tailOf(output),

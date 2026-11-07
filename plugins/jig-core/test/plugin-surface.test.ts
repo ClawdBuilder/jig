@@ -40,7 +40,20 @@ const EXPECTED: Record<string, Given> = {
         sections: ["memory"],
     },
     "jig-workflow": {
-        tools: { workflow: ["advance", "back", "bind", "list", "scenario", "start", "status", "submit_plan", "test"] },
+        tools: {
+            workflow: [
+                "advance",
+                "back",
+                "bind",
+                "list",
+                "scenario",
+                "start",
+                "status",
+                "submit-plan",
+                "submit_plan",
+                "test",
+            ],
+        },
         commands: ["workflow"],
         sections: ["workflow"],
     },

@@ -32,6 +32,8 @@ export interface TestResult {
     durationMs: number;
     /** One line on the JDK a Gradle build was given, or why it was left alone. Absent for other builds. */
     java?: string;
+    /** The command failed before any test ran: setup, compile or missing tool, not a failing test. */
+    noTestsRan?: boolean;
 }
 
 export type EvidenceKind = "path" | "toolResult" | "text";
