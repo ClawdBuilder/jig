@@ -27,6 +27,7 @@ export default function (pi: ExtensionAPI) {
             plugin: "jig-review",
             check(call) {
                 const reason = holdReason(call, reviewHoldActive());
+                if (reason !== undefined) coordinator.noteHoldDenial();
                 return reason === undefined ? undefined : { decision: "deny", reason };
             },
         });

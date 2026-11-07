@@ -62,7 +62,8 @@ pull, a rebase) is not the agent's, so it is left out; when nothing else changed
 When the **agent** opens a review, `jig-review` holds the agent's writes through `jig-core`'s gate: edits, commits and other
 non-read calls are refused with one line saying the review is open in the browser and to wait for the person's message. The
 hold is off for `record_interactive_review_resolution` and for read-only calls. A person's next message in Pi releases it;
-approval or submitted comments release it too. A session restart holds nothing. Set `holdAgent` to `false` in the review
+approval or submitted comments release it too. A second refused write in the same wait **aborts the turn**, so a model cannot
+spin on the refusal; the person's next message starts the next turn. A session restart holds nothing. Set `holdAgent` to `false` in the review
 settings to turn it off; it is `true` by default and a company may set it.
 
 A review a person starts with `/code-review` holds nothing while the agent is idle; if the agent then acts, the same rule

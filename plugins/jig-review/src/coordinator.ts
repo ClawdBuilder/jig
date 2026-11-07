@@ -54,6 +54,8 @@ export class ReviewCoordinator {
     private agentRequestedReviewId?: string;
     /** False while a review the agent opened is open and the person has not answered. */
     private holdReleased = true;
+    /** How many writes the gate has refused in this wait; the second stops the turn instead of feeding a spin. */
+    private holdDenials = 0;
     private lastSubmissionMode: CommentSubmissionMode = "review";
     private server?: ReviewServer;
     private settings?: ReviewSettings;
@@ -101,7 +103,14 @@ export class ReviewCoordinator {
     /** The person approved, commented, or typed in Pi: the hold is over. */
     public releaseHold(): void {
         this.holdReleased = true;
+        this.holdDenials = 0;
         setReviewHold(false);
+    }
+
+    /** One write refused by the wait. The second aborts the turn, so a model cannot spin on the same refusal. */
+    public noteHoldDenial(): void {
+        this.holdDenials += 1;
+        if (this.holdDenials >= 2) this.ctx?.abort();
     }
 
     public async runStartTaken(): Promise<void> {
@@ -342,6 +351,7 @@ export class ReviewCoordinator {
         if (started !== undefined && "url" in started) {
             this.agentRequestedReviewId = this.currentReview?.id;
             this.holdReleased = false;
+            this.holdDenials = 0;
             setReviewHold(this.settings?.holdAgent ?? true);
         }
         return started;
