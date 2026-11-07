@@ -220,7 +220,12 @@ test("the packed tarball runs bash in stock Pi, from a path with a space", { tim
 
 test("the front-end contracts are packed and importable without Jig's src/", { timeout: 60_000 }, async () => {
     const result = await pack();
-    for (const file of ["contracts/requests.js", "contracts/requests.d.ts", "contracts/palettes.json", "docs/contracts.md"]) {
+    for (const file of [
+        "contracts/requests.js",
+        "contracts/requests.d.ts",
+        "contracts/palettes.json",
+        "docs/contracts.md",
+    ]) {
         assert.ok(result.files.includes(file), file);
     }
     const requests = (await import("../contracts/requests.js")) as Record<string, unknown>;
