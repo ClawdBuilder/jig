@@ -6,6 +6,25 @@ import { executeUpdate } from "../src/update-run.ts";
 import { planUpdate } from "../src/update-plan.ts";
 import type { UpdatePlan } from "../src/update-plan.ts";
 
+function planLinked(): UpdatePlan {
+    const built = planUpdate({
+        name: "@clawdbuilder/jig",
+        current: "0.4.1",
+        target: {
+            version: "0.5.0",
+            release: { jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } } },
+            newest: "0.5.0",
+            cappedBy: [],
+        },
+        piVersion: "1.5.0",
+        piCopy: { version: "0.4.1", source: "npm:@clawdbuilder/jig", scope: "user", folder: "/tmp/jig" },
+        globalVersion: "0.3.0",
+        globalLinked: true,
+    });
+    if (!("plan" in built)) throw new Error(built.problem);
+    return built.plan;
+}
+
 function plan(withPi: boolean): UpdatePlan {
     const built = planUpdate({
         name: "@clawdbuilder/jig",
@@ -174,6 +193,15 @@ describe("executeUpdate", () => {
         assert.ok(io.calls.includes("npm install -g @clawdbuilder/jig@0.4.1"));
     });
 
+    test("a linked global command is not verified against the target", async () => {
+        const io = fake();
+        const result = await executeUpdate(planLinked(), io);
+        assert.equal(result.code, 0);
+        assert.equal(io.versions.global, "0.4.1", "the linked command keeps its version");
+        assert.ok(!io.calls.some((call) => call.startsWith("npm install")));
+        assert.equal(io.versions.piCopy, "0.5.0");
+    });
+
     test("a Pi that ignores the requested version fails the update and is undone", async () => {
         const io = fake({ wrongPi: true });
         const result = await executeUpdate(plan(true), io);
@@ -207,6 +235,22 @@ describe("executeUpdate", () => {
         assert.equal(result.changed, false);
         assert.deepEqual(io.calls, []);
         assert.match(io.messages.join("\n"), /Update interrupted/);
+    });
+
+    test("an undo that reports the wrong version prints the exact manual commands", async () => {
+        const io = fake({ failGlobal: true });
+        const run = io.run.bind(io);
+        io.run = async (command, args, signal) => {
+            const result = await run(command, args, signal);
+            if (command === "pi" && args[1]?.includes("0.4.1")) {
+                io.versions.piCopy = "0.3.0";
+            }
+            return result;
+        };
+        const result = await executeUpdate(plan(true), io);
+        assert.equal(result.code, 1);
+        assert.match(io.messages.join("\n"), /not 0\.4\.1/);
+        assert.match(io.messages.join("\n"), /run: pi install npm:@clawdbuilder\/jig@0\.4\.1/);
     });
 
     test("nothing to do runs nothing", async () => {

@@ -18,9 +18,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - `jig update [--check] [--to <version>]` moves Pi's Jig copy and the global `jig` command to one published stable version.
   It installs the exact tested Pi only when the release needs a newer one, asks first and defaults to No, respects a company
-  package's `jig.range`, moves an exact npm pin after saying `pinned to X, moving to Y`, and puts every changed version back
-  if a step fails. It asks the registry npm itself is configured to use. A background notice inside Pi checks at most once a
-  day, is silent offline, and can be turned off with `"updates": { "check": false }`.
+  package's `jig.range`, reads releases through `npm view`, refuses two Jig entries, verifies Pi after the step, restores
+  the old version and runs the undo on Ctrl-C, leaves a linked global command alone, and exits 2 from `--check` when an
+  update is available. A background notice inside Pi checks at most once a day, is silent offline, backs off after a failed
+  check, and can be turned off with `"updates": { "check": false }`.
 
 ### Changed
 

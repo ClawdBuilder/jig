@@ -18,7 +18,7 @@ import type { UpdateCopy } from "../update-plan.ts";
 import { executeUpdate } from "../update-run.ts";
 import type { CommandResult, InstallCommand, UpdateIo } from "../update-run.ts";
 import { agentDirFor, ownPackage } from "./headless.ts";
-import { manifestOf, packageFolder, parseNpmSource, readPackages } from "./packages.ts";
+import { manifestOf, packageFolder, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
 
 const PI = "@earendil-works/pi-coding-agent";
 const MAX_OUTPUT = 512 * 1024;
@@ -150,14 +150,21 @@ export function piSelfUpdateCommands(
 }
 
 /** The path to a package inside the global npm root, for a scoped name too. */
-/** A global command that is linked or a development checkout is not replaced. */
-async function linkedGlobal(name: string, root: string, folder: string, cwd: string): Promise<boolean> {
+/** A package folder is linked when its own real path is not the expected one under the real root. A symlinked
+ *  parent (an nvm prefix, for example) is not a linked package. */
+export function linkedPackageFolder(root: string, folder: string, name: string): boolean {
     try {
         if (lstatSync(folder).isSymbolicLink()) return true;
-        if (realpathSync(folder) !== folder) return true;
+        const expected = path.join(realpathSync(root), ...name.split("/"));
+        return realpathSync(folder) !== expected;
     } catch {
         return false;
     }
+}
+
+/** A global command that is linked or a development checkout is not replaced. */
+async function linkedGlobal(name: string, root: string, folder: string, cwd: string): Promise<boolean> {
+    if (linkedPackageFolder(root, folder, name)) return true;
     const listed = await run("npm", ["ls", "-g", name, "--json"], cwd);
     if (listed.code !== 0) return false;
     try {
@@ -198,11 +205,8 @@ export function discover(
     const looksLikeJig = (source: string): boolean => {
         const npm = parseNpmSource(source)?.name;
         if (npm === name) return true;
-        const clean = source
-            .replace(/[#?].*$/, "")
-            .replace(/\.git$/, "")
-            .replace(/\/+$/, "");
-        return clean.endsWith(`/${name}`) || clean.endsWith("/jig") || clean.includes(`/${name}@`);
+        const git = parseGitSource(source);
+        return git !== undefined && git.host === "github.com" && git.path.toLowerCase() === "clawdbuilder/jig";
     };
     let piCopy: UpdateCopy | undefined;
     for (const entry of listed) {

@@ -1,11 +1,11 @@
 // The facts `jig update` reads before changing anything: the installed copies and company ranges, and the exact Pi command
 // for the method Pi was installed by. Registry and command runs are faked in update-plan.test.ts and update-run.test.ts.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { discover, piSelfUpdateCommands, update } from "../src/cli/update.ts";
+import { discover, linkedPackageFolder, piSelfUpdateCommands, update } from "../src/cli/update.ts";
 import { executeUpdate } from "../src/update-run.ts";
 import type { InstallCommand, UpdateIo } from "../src/update-run.ts";
 import { planUpdate } from "../src/update-plan.ts";
@@ -48,6 +48,32 @@ describe("discover", () => {
             folder: jig,
         });
         assert.deepEqual(found.company, [{ package: "acme-jig", range: ">=0.4.1 <0.5.0" }]);
+    });
+
+    test("a symlinked prefix holding a normal install is not a linked package", () => {
+        const realRoot = path.join(home, "real-prefix");
+        const linkedRoot = path.join(home, "linked-prefix");
+        const folder = path.join(realRoot, "lib", "node_modules", "@clawdbuilder", "jig");
+        packageAt(folder, { name: "@clawdbuilder/jig", version: "0.4.1" });
+        mkdirSync(linkedRoot, { recursive: true });
+        symlinkSync(realRoot, path.join(linkedRoot, "lib"), "dir");
+        assert.equal(
+            linkedPackageFolder(path.join(linkedRoot, "lib", "node_modules"), folder, "@clawdbuilder/jig"),
+            false,
+        );
+        assert.equal(
+            linkedPackageFolder(path.join(realRoot, "lib", "node_modules"), folder, "@clawdbuilder/jig"),
+            false,
+        );
+    });
+
+    test("a look-alike local folder does not count as Jig", () => {
+        const impostor = path.join(work, "jig");
+        packageAt(impostor, { name: "not-jig", version: "0.4.1" });
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [impostor] }));
+        const found = discover(agent, work, "@clawdbuilder/jig");
+        assert.equal(found.jigEntries.length, 0);
+        assert.equal(found.problem, undefined);
     });
 
     test("refuses two Jig entries and names a pi remove for each, without choosing", () => {

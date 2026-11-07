@@ -39,6 +39,8 @@ export interface UpdateResult {
     changed: boolean;
 }
 
+const exactCommand = (command: InstallCommand): string => [command.command, ...command.args].join(" ");
+
 function failureText(result: CommandResult): string {
     if (result.timedOut === true) return "timed out";
     const detail = (result.stderr || result.stdout).trim().slice(0, 300);
@@ -128,7 +130,9 @@ export async function executeUpdate(plan: UpdatePlan, io: UpdateIo, signal?: Abo
                 ? undefined
                 : `Pi reports ${found.pi ?? "no version"}, not the tested ${plan.pi.to}`,
             found.piCopy === plan.target ? undefined : `Pi's copy reports ${found.piCopy ?? "no version"}`,
-            found.global === plan.target ? undefined : `the jig command reports ${found.global ?? "no version"}`,
+            plan.global?.needed === true && found.global !== plan.target
+                ? `the jig command reports ${found.global ?? "no version"}`
+                : undefined,
         ].filter((entry): entry is string => entry !== undefined);
         if (wrong.length > 0) throw new Error(`the versions do not match: ${wrong.join("; ")}`);
 
@@ -162,13 +166,13 @@ export async function executeUpdate(plan: UpdatePlan, io: UpdateIo, signal?: Abo
                 io.notify(`Put ${step.label} back.`, "info");
                 if (step.unpin !== undefined)
                     io.notify(
-                        `Pi's Jig entry is now pinned to ${step.expected}; run pi install ${step.unpin} to unpin it.`,
+                        `Pi's Jig entry is now pinned to ${step.expected}. Leave it pinned: the next jig update moves both copies together. To unpin it anyway, pi install ${step.unpin} would move Pi's copy to the newest release while the global command stays old.`,
                         "info",
                     );
             } catch (undoError) {
                 restored = false;
                 io.notify(
-                    `Could not put ${step.label} back: ${errorMessage(undoError)}; run: ${step.commands.map((command) => command.display).join(" && ")}`,
+                    `Could not put ${step.label} back: ${errorMessage(undoError)}; run: ${step.commands.map(exactCommand).join(" && ")}`,
                     "error",
                 );
             }
