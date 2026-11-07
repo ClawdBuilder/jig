@@ -14,8 +14,6 @@ export interface TestRule {
     env?: Readonly<Record<string, string>>;
     /** True when this repository's command runs outside the sandbox, with the user's approval each time (or a rule's). */
     outside?: boolean;
-    /** Report paths or folders, relative to the repository, that count as this run's test report. */
-    reports?: readonly string[];
 }
 
 export interface WorkflowSettings {
@@ -35,7 +33,7 @@ export const MAX_TIMEOUT_SECONDS = 7200;
 /** The fields of the section, in the order the README's table lists them. */
 export const SECTION_FIELDS: readonly string[] = ["folders", "disabled", "tests", "testTimeoutSeconds"];
 const FIELDS: ReadonlySet<string> = new Set(SECTION_FIELDS);
-const TEST_FIELDS: ReadonlySet<string> = new Set(["command", "timeoutSeconds", "env", "outside", "reports"]);
+const TEST_FIELDS: ReadonlySet<string> = new Set(["command", "timeoutSeconds", "env", "outside"]);
 const MAX_COMMAND = 1000;
 const MAX_DISABLED = 100;
 /** A workflow's name, as a file is named (see definition.ts). */
@@ -151,9 +149,6 @@ export function settingsFrom(section: unknown, home: string = os.homedir()): Wor
                     key,
                     command: value.command as string,
                     ...(value.timeoutSeconds === undefined ? {} : { timeoutSeconds: value.timeoutSeconds as number }),
-                    ...(Array.isArray(value.reports)
-                        ? { reports: value.reports.filter((entry): entry is string => typeof entry === "string") }
-                        : {}),
                     ...(value.env === undefined
                         ? {}
                         : { env: expandedEnv(value.env as Record<string, unknown>, home) }),

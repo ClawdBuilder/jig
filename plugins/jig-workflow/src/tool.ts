@@ -254,7 +254,7 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
 /** Text-free counts for `/lens`: what the call proved, never the ticket's text. */
 function factsOf(details: Readonly<Record<string, unknown>>): Facts {
     const facts: Record<string, number | boolean | string> = {};
-    for (const key of ["passed", "total", "advanced", "done", "sandboxed", "noReport"]) {
+    for (const key of ["passed", "total", "advanced", "done", "sandboxed"]) {
         const value = details[key];
         if (typeof value === "number" || typeof value === "boolean") facts[key] = value;
     }

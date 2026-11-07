@@ -171,8 +171,14 @@ One result per repository, replaced by the next run, in `workflow.json`:
 | `at`, `durationMs` | When, and how long |
 | `java` | For a Gradle build: the JDK it was given, or why the machine's own was kept |
 
-The output is not saved. The tool's result carries the last 60 lines, cleaned and capped like any result,
-for the agent to read; the full output is the sandbox's, or the program's, to keep.
+The output is not saved. For a failure the result carries up to three useful error lines from the whole
+output, then one fixed line: if the tests never started, check `workflow.tests` for this repository. Jig
+does not guess whether a command ran tests: a report file, a build tool's wording and a short duration are
+all unreliable across toolchains, so the result says only that the command failed. The full output is the
+sandbox's, or the program's, to keep.
+
+There is no test-report setting. A missing report is not evidence that the tests did not run, and a
+present one is not evidence that they did; both cases stay plain `FAILED`.
 
 ## When a result stops counting
 

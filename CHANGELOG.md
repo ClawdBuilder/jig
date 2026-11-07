@@ -35,9 +35,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
-- `jig-workflow` says when a test command could not run tests (compile/setup failure) instead of calling it a failing test,
-  accepts `submit-plan` as `submit_plan`, publishes `jig:stage-done` after a stage move, and records text-free facts such as
-  `passed`, `total`, `stage` and `missing` for `/lens`.
+- `jig-workflow` shows up to three useful error lines from the whole output on a failed test run plus one neutral line to
+  check `workflow.tests`; it no longer guesses that tests did not run. It also accepts `submit-plan` as `submit_plan`,
+  publishes `jig:stage-done` after a stage move, and records text-free facts such as `passed`, `total`, `stage` and `missing`
+  for `/lens`.
 
 ## [0.4.3] - 2026-11-06
 

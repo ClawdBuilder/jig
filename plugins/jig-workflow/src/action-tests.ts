@@ -9,7 +9,7 @@ import { inspect, short } from "./repos.ts";
 import type { RepoView } from "./repos.ts";
 import type { Runtime } from "./runtime.ts";
 import { updateState } from "./store.ts";
-import { noTestsRan, planTests, runTests, setupLines, testIdentity } from "./tests.ts";
+import { errorLines, planTests, runTests, testIdentity } from "./tests.ts";
 import type { TestPlan } from "./tests.ts";
 import { started, ticketOf } from "./action-support.ts";
 import type { ActionResult, Call, Params } from "./action-support.ts";
@@ -81,7 +81,6 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
     }
     const lines: string[] = [];
     let passed = 0;
-    let noReport = 0;
     for (const [index, plan] of plans.entries()) {
         const view = views[index] as RepoView;
         try {
@@ -95,34 +94,25 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
             updateState(work.paths.dir, (state) => {
                 state.tests[view.root] = run.result;
             });
-            const setup = run.result.noTestsRan === true;
             const verdict = run.result.passed
                 ? "PASSED"
                 : run.result.timedOut
                   ? `TIMED OUT after ${plan.timeoutSeconds} s`
-                  : setup
-                    ? `FAILED (exit ${run.result.exitCode}): tests did not run`
-                    : `FAILED (exit ${run.result.exitCode})`;
+                  : `FAILED (exit ${run.result.exitCode})`;
             const note = run.result.clean
                 ? ""
                 : " on a tree with uncommitted changes, which does not count: commit, then run again";
-            const setupNote = setup
-                ? [
-                      "    The test command could not run tests: this is setup, not a failing test. Check workflow.tests in jig.json for this repository.",
-                      ...setupLines(run.tail).map(indent),
-                  ]
-                : run.result.passed || run.result.reportFound
-                  ? []
-                  : [
-                        "    No test report was found for this run; if the tests never started, check workflow.tests for this repository.",
-                        ...setupLines(run.tail).map(indent),
-                    ];
+            const failedNote = run.result.passed
+                ? []
+                : [
+                      "    If the tests never started, check workflow.tests for this repository in jig.json.",
+                      ...errorLines(run.tail).map(indent),
+                  ];
             if (run.result.passed && run.result.clean) passed++;
-            if (!run.result.passed && run.result.reportFound !== true) noReport++;
             lines.push(
                 `${view.name}: ${verdict} at ${short(view.head)}${note} · ${plan.command} · ${run.result.sandboxed ? "in the sandbox" : "outside the sandbox, as you approved"} · ${(run.result.durationMs / 1000).toFixed(1)} s`,
                 ...(plan.java === undefined ? [] : [`    Java: ${plan.java}`]),
-                ...(setup ? setupNote : run.result.passed && run.result.clean ? [] : [indent(run.tail)]),
+                ...(run.result.passed ? [] : failedNote),
             );
         } catch (error) {
             // A cancelled call stops here; a repository that cannot be run does not stop the others.
@@ -133,7 +123,7 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
     lines.push(
         `${passed} of ${plans.length} repositor${plans.length === 1 ? "y" : "ies"} passed at HEAD on a clean tree.`,
     );
-    return { text: lines.join("\n"), details: { ticket, passed, total: plans.length, sandboxed, noReport } };
+    return { text: lines.join("\n"), details: { ticket, passed, total: plans.length, sandboxed } };
 }
 
 function indent(text: string): string {
