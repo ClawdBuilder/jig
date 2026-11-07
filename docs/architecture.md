@@ -136,7 +136,7 @@ jig (this repository, generic)
   jig-workflow tool: named workflows, with exit conditions decided from evidence; registers a gate that holds calls
   jig-lens   observability: reads jig-core's records, a summary in Pi and a local page; no tools
   jig-theme  the look: palettes as Pi themes, a footer, the answer colour; no tools
-  jig-session the live session's state as a status file other programs read, such as the Herdr app files (herdr/, not a plugin)
+  jig-session the live session's state as a status file other programs read, such as the Herdr app files (jig-herdr, not a plugin)
   jig-sandbox the sandbox around the agent's bash, and the bash tool that replaces Pi's
   jig-agents tool: child agents, each a separate Pi with the same plugins; their questions come to your screen, their limits are counted in the parent
   bin/       the optional `pi` launcher (not a plugin; Pi never loads it): own tmux, reattach, the terminal's environment; see [the launcher](launcher.md)

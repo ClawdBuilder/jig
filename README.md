@@ -88,7 +88,7 @@ waiting time after the first calls. A write asks before it runs; a production wr
 | Seeing | Cost, failures and waits; session state; themes and a footer | [`lens`](plugins/jig-lens/README.md), [`session`](plugins/jig-session/README.md), [`theme`](plugins/jig-theme/README.md) |
 
 All fifteen plugins are built. Every plugin needs `jig-core`; otherwise they work on their own, and each README is
-the specification its code follows. [Herdr](herdr/README.md) is not a plugin: its Work and Context panels read
+the specification its code follows. [jig-herdr](https://github.com/ClawdBuilder/jig-herdr) is optional: its Work and Context panels read
 `jig-session`'s file and show the session in focus.
 
 Company-specific environments, sign-in services and internal tools live in a private company plugin, never here.

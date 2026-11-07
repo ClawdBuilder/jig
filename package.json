@@ -12,7 +12,7 @@
         "pi-package"
     ],
     "scripts": {
-        "test": "node --import ./test/support/host.mjs --test \"test/*.test.ts\" \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\" \"herdr/test/*.test.ts\"",
+        "test": "node --import ./test/support/host.mjs --test \"test/*.test.ts\" \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\"",
         "test:it": "node --import ./test/support/host.mjs --test \"plugins/*/test/it/*.test.ts\"",
         "check": "node test/support/link-host.mjs && node scripts/check-pinned-deps.mjs && node scripts/check-runtime-deps.mjs && node scripts/check-docs.mjs && node scripts/check-version-pins.mjs && node scripts/check-released-changelog.mjs && tsc -p tsconfig.json && biome ci .",
         "check:install": "node scripts/check-install.mjs",
@@ -111,6 +111,7 @@
         "plugins/jig-lens/viewer/**",
         "plugins/jig-review/web/dist/**",
         "plugins/jig-lens/web/**",
+        "contracts/**",
         "docs/**",
         "README.md",
         "CHANGELOG.md",
