@@ -2,17 +2,20 @@ import { askAgent, submitComments } from "@web/api.js";
 import { Button } from "@web/components/ui/index.js";
 import type { ApprovalMethod, DraftComment, ReviewRecord } from "@web/types.js";
 import type { FC, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ApprovalPanel } from "./ApprovalPanel.js";
 import { DraftCommentList } from "./DraftCommentList.js";
-import { getSubmittedComments, ReviewActionModalButtons } from "./ReviewActionModalButtons.js";
+import { getSubmittedComments, hasDraftComments, ReviewActionModalButtons } from "./ReviewActionModalButtons.js";
 import { useApproval } from "./useApproval.js";
 
 type ReviewActionModalProps = {
+  /** True when the header's Approve button asked this modal to start an approval. */
+  approveRequested?: boolean;
   drafts: DraftComment[];
   generalComment: string;
   isOpen: boolean;
+  onApproveRequestHandled?: () => void;
   onClose: () => void;
   onDraftsChange: (drafts: DraftComment[]) => void;
   onGeneralCommentChange: (value: string) => void;
@@ -29,10 +32,46 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
     await props.onReload();
     closeReviewPage(getApprovedMessage(method));
   });
+  const [approvalNeedsDecision, setApprovalNeedsDecision] = useState(false);
+
+  useEffect(() => {
+    if (!props.isOpen || props.approveRequested !== true) return;
+    props.onApproveRequestHandled?.();
+    if (hasDraftComments(props.drafts, props.generalComment)) setApprovalNeedsDecision(true);
+    else void approval.approve();
+  }, [props.approveRequested, props.isOpen]);
 
   if (!props.isOpen) {
     return undefined;
   }
+
+  const close = (): void => {
+    setApprovalNeedsDecision(false);
+    props.onClose();
+  };
+
+  /** Start approval, but never drop a draft quietly: a draft asks for submit-or-discard first. */
+  const requestApproval = (): void => {
+    if (hasDraftComments(props.drafts, props.generalComment)) setApprovalNeedsDecision(true);
+    else void approval.approve();
+  };
+
+  const discardDraftsAndApprove = (): void => {
+    props.onDraftsChange([]);
+    props.onGeneralCommentChange("");
+    setApprovalNeedsDecision(false);
+    void approval.approve();
+  };
+
+  const submitDraftsAndApprove = async (): Promise<void> => {
+    const comments = getSubmittedComments(props.drafts, props.generalComment);
+    if (comments.length === 0) return;
+    await submitComments(comments);
+    props.onDraftsChange([]);
+    props.onGeneralCommentChange("");
+    setApprovalNeedsDecision(false);
+    await approval.approve();
+  };
 
   const submitReview = async (): Promise<void> => {
     const comments = getSubmittedComments(props.drafts, props.generalComment);
@@ -51,7 +90,7 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-6">
       <section className="w-full max-w-2xl rounded-xl bg-white p-5 shadow-2xl">
-        {renderModalHeader(props.onClose)}
+        {renderModalHeader(close)}
         {renderReviewCommentField({
           isAsking,
           onAsk: askGeneralComment,
@@ -62,14 +101,44 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
           <h3 className="font-medium">Draft line comments</h3>
           <DraftCommentList drafts={props.drafts} />
         </div>
-        <ReviewActionModalButtons
-          drafts={props.drafts}
-          generalComment={props.generalComment}
-          onApprove={approval.approve}
-          onClose={props.onClose}
-          onSubmitReview={submitReview}
-          review={props.review}
-        />
+        {approvalNeedsDecision ? (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
+            <p className="font-medium">You have draft comments.</p>
+            <p className="mt-1">
+              Approving does not submit them. Submit them first, or discard them and approve without them.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button className="px-3 py-1.5" onClick={() => void submitDraftsAndApprove()} variant="primary">
+                Submit comments, then approve
+              </Button>
+              <Button
+                className="border-red-300 px-3 py-1.5 text-red-800"
+                onClick={discardDraftsAndApprove}
+                variant="secondary"
+              >
+                Discard comments and approve
+              </Button>
+              <Button
+                className="px-3 py-1.5"
+                onClick={() => {
+                  setApprovalNeedsDecision(false);
+                }}
+                variant="link"
+              >
+                Keep reviewing
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <ReviewActionModalButtons
+            drafts={props.drafts}
+            generalComment={props.generalComment}
+            onApprove={requestApproval}
+            onClose={close}
+            onSubmitReview={submitReview}
+            review={props.review}
+          />
+        )}
         <ApprovalPanel
           onApprove={() => {
             void approval.approve();

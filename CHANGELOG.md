@@ -23,6 +23,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `ui.theme` in `jig.json` (`system` by default); the review page has a dark mode for diffs, syntax, comments, modals,
   approval panels, disabled buttons and empty states, and no page flashes white before its theme is set. The single token
   file is `plugins/jig-core/src/kit/theme.css`; the light theme keeps working.
+- The review page shows **Approve** in the header from the start, beside Finish review; approving with draft line comments or a
+  general note asks whether to submit or discard them first, and an approved or awaiting-agent review says in words why its
+  Approve button is disabled.
 
 ### Changed
 

@@ -12,7 +12,8 @@ anything is shared:
 - **Approve**, with a passkey.
 
 The comments reach the agent as a message, the agent answers each one, and the next round
-shows what changed.
+shows what changed. **Approve** is in the header from the start, so a review with no comments is one click; if
+draft comments are open it asks whether to submit them or discard them first, so none is dropped quietly.
 
 For example, after the agent changes `orders-api`, `/code-review --branch` opens everything
 since the branch left the main branch. You comment on two lines and Finish review, the agent
