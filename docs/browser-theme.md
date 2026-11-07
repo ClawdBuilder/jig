@@ -22,8 +22,9 @@ the light page; muted text is 6.75:1 and 6.15:1. Both pass WCAG AA (4.5:1); body
 not reach the 7:1 AAA normal-text threshold.
 The diff backgrounds keep body text at 13.0:1 (added) and 13.87:1 (removed) in dark, and 16.3:1 and 15.02:1 in light.
 
-On every page a small **System / Light / Dark** selector sits at the bottom right, remembers the choice in the browser's
-local storage, and wins over `ui.theme`. `system` follows `prefers-color-scheme` and changes when the system does. A page
+On every page a small **System / Light / Dark** selector sits at the bottom right. On the review page the choice is saved
+through its authenticated settings, in the agent folder, so the next review server — on a different random port — and the
+other Jig pages read it; local storage still makes the current page immediate. It wins over `ui.theme`. `system` follows `prefers-color-scheme` and changes when the system does. A page
 writes the theme before the first paint: the review page has a small `/theme-boot.js` in the head, the lens page has the
 choice in its nonce'd script, and an approval preview pins `data-theme` on `<html>`. Scrollbars, selection, focus rings,
 disabled buttons, code blocks, diffs and syntax highlighting use the same tokens.

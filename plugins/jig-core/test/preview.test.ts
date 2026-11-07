@@ -565,8 +565,9 @@ test("a preview uses the shared palette and pins the configured theme", () => {
     const preview = { summary: "git push", body: "diff", format: "diff" as const, fingerprint: "f" };
     const dark = renderPreviewPage(preview, "git push", "dark");
     assert.match(dark, /<html lang="en" data-theme="dark">/);
-    assert.match(dark, /--jig-bg: #111113;/);
-    assert.match(dark, /--jig-text: #e7e7ea;/);
+    assert.match(dark, /--jig-dark-bg: #111113;/);
+    assert.match(dark, /--jig-dark-text: #e7e7ea;/);
+    assert.match(dark, /--jig-bg: var\(--jig-dark-bg\)/);
     const system = renderPreviewPage(preview, "git push");
     assert.match(system, /<html lang="en">/);
 });

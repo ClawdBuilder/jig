@@ -280,6 +280,7 @@ describe("what plugins import", () => {
             "schema.ts",
             "text.ts",
             "theme-client.ts",
+            "theme-preference.ts",
             "theme.css",
             "theme.ts",
             "tools.ts",
@@ -351,6 +352,7 @@ describe("what plugins import", () => {
                 "themeChoice",
                 "themeControlScript",
             ],
+            "theme-preference.ts": ["readThemePreference", "saveThemePreference", "themePreferenceFile"],
             "theme.css": [],
             "theme.ts": [
                 "THEME_CHOICES",

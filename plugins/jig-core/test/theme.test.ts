@@ -21,13 +21,33 @@ test("the html attribute pins light or dark, and system leaves it to the media q
 
 test("the one palette defines graphite dark and light, and the boot script carries the configured default", () => {
     const css = themeCss();
-    assert.match(css, /--jig-bg: #111113;/);
+    assert.match(css, /--jig-dark-bg: #111113;/);
     assert.match(css, /--jig-bg: #ffffff;/);
-    assert.match(css, /--jig-text: #e7e7ea;/);
-    assert.match(css, /--jig-muted: #9a9aa2;/);
-    assert.match(css, /--jig-add-bg: #14251a;/);
-    assert.match(css, /--jig-del-bg: #2a1618;/);
+    assert.match(css, /--jig-dark-text: #e7e7ea;/);
+    assert.match(css, /--jig-dark-muted: #9a9aa2;/);
+    assert.match(css, /--jig-dark-add-bg: #14251a;/);
+    assert.match(css, /--jig-dark-del-bg: #2a1618;/);
+    assert.match(css, /--jig-bg: var\(--jig-dark-bg\)/);
     const script = themeBootScript("dark");
     assert.match(script, /"dark"/);
     assert.match(script, /jig-theme/);
+});
+
+test("the saved theme is read from the agent folder, and invalid files fall back to system", async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const { readThemePreference, saveThemePreference } = await import("../src/kit/theme-preference.ts");
+    const dir = mkdtempSync(path.join(tmpdir(), "jig-theme-"));
+    try {
+        assert.equal(readThemePreference(dir), undefined);
+        saveThemePreference(dir, "dark");
+        assert.equal(readThemePreference(dir), "dark");
+        writeFileSync(path.join(dir, "theme.json"), JSON.stringify({ version: 1, theme: "navy" }));
+        assert.equal(readThemePreference(dir), "system");
+        writeFileSync(path.join(dir, "theme.json"), "not json");
+        assert.equal(readThemePreference(dir), undefined);
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
 });

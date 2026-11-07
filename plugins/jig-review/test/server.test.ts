@@ -44,6 +44,7 @@ before(async () => {
             diffView: "split",
             holdAgent: true,
             holdAbortAfter: 2,
+            theme: "system",
         }),
         submitComments: async (comments) => {
             submitted.push(...comments.map((c) => c.body));

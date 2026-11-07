@@ -2,7 +2,7 @@ import { askAgent, submitComments } from "@web/api.js";
 import { Button } from "@web/components/ui/index.js";
 import type { ApprovalMethod, DraftComment, ReviewRecord } from "@web/types.js";
 import type { FC, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ApprovalPanel } from "./ApprovalPanel.js";
 import { DraftCommentList } from "./DraftCommentList.js";
@@ -28,15 +28,27 @@ type ReviewActionModalProps = {
  */
 export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
   const { askGeneralComment, isAsking } = useGeneralCommentAsk(props);
-  const approval = useApproval(async (method) => {
+  const diffHash = props.review.iterations.at(-1)?.diffHash ?? "";
+  const [approvalNeedsDecision, setApprovalNeedsDecision] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
+  const pendingApproval = useRef<(() => Promise<void>) | undefined>(undefined);
+  const discardOnSuccess = useRef(false);
+  const approval = useApproval(diffHash, async (method) => {
+    // Discarding is only recorded once the approval itself succeeded. A cancelled passkey, a missing passkey or a
+    // changed review leaves the drafts exactly where they were.
+    if (discardOnSuccess.current) {
+      discardOnSuccess.current = false;
+      props.onDraftsChange([]);
+      props.onGeneralCommentChange("");
+    }
     await props.onReload();
     closeReviewPage(getApprovedMessage(method));
   });
-  const [approvalNeedsDecision, setApprovalNeedsDecision] = useState(false);
 
   useEffect(() => {
     if (!props.isOpen || props.approveRequested !== true) return;
     props.onApproveRequestHandled?.();
+    pendingApproval.current = approval.approve;
     if (hasDraftComments(props.drafts, props.generalComment)) setApprovalNeedsDecision(true);
     else void approval.approve();
   }, [props.approveRequested, props.isOpen]);
@@ -47,44 +59,66 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
 
   const close = (): void => {
     setApprovalNeedsDecision(false);
+    setSubmitError(undefined);
+    pendingApproval.current = undefined;
+    discardOnSuccess.current = false;
     props.onClose();
   };
 
-  /** Start approval, but never drop a draft quietly: a draft asks for submit-or-discard first. */
-  const requestApproval = (): void => {
-    if (hasDraftComments(props.drafts, props.generalComment)) setApprovalNeedsDecision(true);
-    else void approval.approve();
-  };
-
-  const discardDraftsAndApprove = (): void => {
-    props.onDraftsChange([]);
-    props.onGeneralCommentChange("");
-    setApprovalNeedsDecision(false);
-    void approval.approve();
-  };
-
-  const submitDraftsAndApprove = async (): Promise<void> => {
-    const comments = getSubmittedComments(props.drafts, props.generalComment);
-    if (comments.length === 0) return;
-    await submitComments(comments);
-    props.onDraftsChange([]);
-    props.onGeneralCommentChange("");
-    setApprovalNeedsDecision(false);
-    await approval.approve();
+  /** Every approval path comes through here; with a draft it asks first, and never clears one. */
+  const startApproval = (action: () => Promise<void>): void => {
+    pendingApproval.current = action;
+    // After an explicit discard, the person has already answered the question: the drafts stay until this attempt
+    // succeeds, and a retry does not ask again.
+    if (discardOnSuccess.current || !hasDraftComments(props.drafts, props.generalComment)) {
+      void action();
+      return;
+    }
+    setSubmitError(undefined);
+    setApprovalNeedsDecision(true);
   };
 
   const submitReview = async (): Promise<void> => {
     const comments = getSubmittedComments(props.drafts, props.generalComment);
-
-    if (comments.length === 0) {
+    if (comments.length === 0) return;
+    try {
+      await submitComments(comments);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "The comments were not submitted.");
       return;
     }
-
-    await submitComments(comments);
+    discardOnSuccess.current = false;
     props.onDraftsChange([]);
     props.onGeneralCommentChange("");
     await props.onReload();
     closeReviewPage("Review submitted. You can close this tab.");
+  };
+
+  const discardAndApprove = (): void => {
+    const action = pendingApproval.current ?? approval.approve;
+    discardOnSuccess.current = true;
+    setApprovalNeedsDecision(false);
+    setSubmitError(undefined);
+    void action();
+  };
+
+  const keepReviewing = (): void => {
+    pendingApproval.current = undefined;
+    discardOnSuccess.current = false;
+    setApprovalNeedsDecision(false);
+    setSubmitError(undefined);
+  };
+
+  const guardedApprove = (): void => {
+    startApproval(approval.approve);
+  };
+
+  const guardedApproveElsewhere = (): void => {
+    startApproval(approval.approveElsewhere);
+  };
+
+  const guardedRegister = (): void => {
+    startApproval(approval.register);
   };
 
   return (
@@ -101,30 +135,31 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
           <h3 className="font-medium">Draft line comments</h3>
           <DraftCommentList drafts={props.drafts} />
         </div>
+        {submitError !== undefined && !approvalNeedsDecision ? (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
+            {submitError}
+          </p>
+        ) : undefined}
         {approvalNeedsDecision ? (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
             <p className="font-medium">You have draft comments.</p>
             <p className="mt-1">
-              Approving does not submit them. Submit them first, or discard them and approve without them.
+              Approving does not submit them. Submitting lets the agent answer; discarding removes them before the
+              approval starts.
             </p>
+            {submitError === undefined ? undefined : <p className="mt-2 text-red-800">{submitError}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button className="px-3 py-1.5" onClick={() => void submitDraftsAndApprove()} variant="primary">
-                Submit comments, then approve
+              <Button className="px-3 py-1.5" onClick={() => void submitReview()} variant="primary">
+                Submit comments
               </Button>
               <Button
                 className="border-red-300 px-3 py-1.5 text-red-800"
-                onClick={discardDraftsAndApprove}
+                onClick={discardAndApprove}
                 variant="secondary"
               >
                 Discard comments and approve
               </Button>
-              <Button
-                className="px-3 py-1.5"
-                onClick={() => {
-                  setApprovalNeedsDecision(false);
-                }}
-                variant="link"
-              >
+              <Button className="px-3 py-1.5" onClick={keepReviewing} variant="link">
                 Keep reviewing
               </Button>
             </div>
@@ -133,23 +168,20 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
           <ReviewActionModalButtons
             drafts={props.drafts}
             generalComment={props.generalComment}
-            onApprove={requestApproval}
+            onApprove={guardedApprove}
             onClose={close}
             onSubmitReview={submitReview}
             review={props.review}
           />
         )}
         <ApprovalPanel
-          onApprove={() => {
-            void approval.approve();
+          onApprove={guardedApprove}
+          onApproveInPi={guardedApproveElsewhere}
+          onRegister={guardedRegister}
+          onReset={() => {
+            discardOnSuccess.current = false;
+            approval.reset();
           }}
-          onApproveInPi={() => {
-            void approval.approveElsewhere();
-          }}
-          onRegister={() => {
-            void approval.register();
-          }}
-          onReset={approval.reset}
           state={approval.state}
         />
       </section>

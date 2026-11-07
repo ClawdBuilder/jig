@@ -25,7 +25,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   file is `plugins/jig-core/src/kit/theme.css`; the light theme keeps working.
 - The review page shows **Approve** in the header from the start, beside Finish review; approving with draft line comments or a
   general note asks whether to submit or discard them first, and an approved or awaiting-agent review says in words why its
-  Approve button is disabled.
+  Approve button is disabled. Approving is bound to the diff hash the page displays, so a stale page cannot approve newer
+  changes. The theme choice is saved through the review settings and is read by every Jig browser page.
 
 ### Changed
 

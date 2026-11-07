@@ -19,8 +19,10 @@ export function resolvedTheme(choice: ThemeChoice, systemDark: boolean): "light"
 export function themeBootScript(defaultChoice: ThemeChoice = "system"): string {
     return `(function(){try{
 var d=${JSON.stringify(themeChoice(defaultChoice))};
+try{var s=document.currentScript&&document.currentScript.src;var q=s?new URL(s).searchParams.get("theme"):null;if(q)d=q}catch(e){}
+try{window.__JIG_THEME_DEFAULT__=d}catch(e){}
 var c="system";try{c=localStorage.getItem("${THEME_KEY}")||d}catch(e){}
-if(c!=="light"&&c!=="dark"&&c!=="system")c=d;
+if(c!=="light"&&c!=="dark"&&c!=="system")c="system";
 var m=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;
 var r=c==="system"?(m?"dark":"light"):c;
 document.documentElement.dataset.theme=r;
@@ -72,7 +74,7 @@ interface BrowserGlobal {
     localStorage?: { getItem(key: string): string | null; setItem(key: string, value: string): void };
 }
 
-export function installTheme(): void {
+export function installTheme(onChange?: (choice: ThemeChoice) => void): void {
     const win = globalThis as unknown as BrowserGlobal;
     const doc = win.document;
     if (doc === undefined) return;
@@ -109,6 +111,7 @@ export function installTheme(): void {
             root.dataset.theme = now;
             root.style.colorScheme = now;
             win.__jigThemeChoice = next;
+            onChange?.(next);
         });
         doc.body.appendChild(select);
     };

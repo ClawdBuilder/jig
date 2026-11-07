@@ -222,9 +222,12 @@ export class ApprovalService {
 
     // ---- approval --------------------------------------------------------------------------------------------------
 
-    /** Which way the page can approve now: with a registered passkey (and its challenge), or not yet. */
-    public approvalOptions(): ApprovalOptions {
+    /** Which way the page can approve now: with a registered passkey (and its challenge), or not yet. The page sends
+     *  the diff hash it shows; approving a revision the person did not see is refused before a challenge exists. */
+    public approvalOptions(displayedHash?: string): ApprovalOptions {
         const review = this.openReview();
+        const current = diffHashOf(review);
+        if (displayedHash !== undefined && displayedHash !== current) throw staleApproval();
         const read = this.store.read();
         if (read.passkeys.length === 0) {
             return {
@@ -233,7 +236,10 @@ export class ApprovalService {
                 ...(read.unusable === undefined ? {} : { problem: `passkeys.json ${read.unusable}` }),
             };
         }
-        const challenge = this.challenges.issue("approve", { reviewId: review.id, diffHash: diffHashOf(review) });
+        const challenge = this.challenges.issue("approve", {
+            reviewId: review.id,
+            diffHash: displayedHash ?? current,
+        });
         return {
             method: "passkey",
             publicKey: {
@@ -303,10 +309,12 @@ export class ApprovalService {
      * The fallback: marks the review "approved in page", asks the user in Pi, and approves only on `y`. It is the same
      * rule as every other approval, with the page as the place the user pressed Approve.
      */
-    public async approveInPage(): Promise<ApprovalResult> {
+    public async approveInPage(displayedHash?: string): Promise<ApprovalResult> {
         return this.exclusive(async () => {
             const review = this.openReview();
-            const diffHash = diffHashOf(review);
+            const current = diffHashOf(review);
+            if (displayedHash !== undefined && displayedHash !== current) throw staleApproval();
+            const diffHash = displayedHash ?? current;
             await this.host.pageApproved(review);
             this.host.changed();
             const answer = await this.host.ask(
@@ -399,6 +407,11 @@ function summary(key: {
         createdAt: key.createdAt,
         ...(key.lastUsedAt === undefined ? {} : { lastUsedAt: key.lastUsedAt }),
     };
+}
+
+/** The page's revision is not the one the server holds: the person must load it again before approving. */
+function staleApproval(): ApprovalError {
+    return new ApprovalError(409, "The changes moved on since you loaded this page; reload to see them.");
 }
 
 function diffHashOf(review: ReviewRecord): string {

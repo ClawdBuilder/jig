@@ -160,6 +160,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/theme.css` | The one browser palette: graphite dark and the light one, as CSS custom properties | every browser page |
 | `kit/theme-client.ts` | The browser side: the choice, the pre-paint script and the System/Light/Dark selector | `jig-review`'s build, `preview-html.ts` |
 | `kit/theme.ts` | The server side: reads `theme.css`, the html theme attribute and the shared scripts | `preview-html.ts`, `jig-lens`'s page, `jig-review`'s server |
+| `kit/theme-preference.ts` | The person's saved theme in their agent folder, shared by every browser page | `state.ts`, `jig-lens`, `jig-review` |
 | `kit/files.ts` | Writing a file so it survives a crash: synced, renamed into place, its folder synced | `paths.ts`, `mask/key.ts`, plugins' stores |
 | `kit/git-settings.ts` | The git settings that make git run a program or redirect a remote: one table for the guard and the sandbox | `git-config-guard.ts`, `jig-sandbox`'s `gitconfig.ts` |
 | `kit/runs-later.ts` | Everything that runs later outside the sandbox: home, project and repository paths, with the ones a person may allow as an ask | `protected-paths.ts`, `jig-git` |

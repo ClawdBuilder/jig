@@ -376,3 +376,23 @@ test("a review waiting for the agent cannot be approved", async () => {
     assert.match(String(json(result).error), /waiting for the agent/);
     assert.equal(session.records()[0]?.status, "awaiting-agent");
 });
+
+test("a page showing an older diff cannot even ask to approve it", async () => {
+    session = await openReview("--branch");
+    const [review] = session.records() as Array<{ iterations?: Array<{ diffHash?: string }> }>;
+    const displayed = String(review?.iterations?.at(-1)?.diffHash ?? "");
+    assert.ok(displayed.length > 0);
+    const stale = `${displayed}-old`;
+
+    const options = await session.post("/api/approve/options", { diffHash: stale });
+    assert.equal(options.status, 409);
+    assert.match(String(json(options).error ?? options.body), /changes moved on since you loaded this page; reload/);
+
+    session.session.answer = () => true;
+    const page = await session.post("/api/approve/page", { diffHash: stale });
+    assert.equal(page.status, 409);
+    assert.match(String(json(page).error ?? page.body), /changes moved on since you loaded this page; reload/);
+    const [after] = session.records();
+    assert.equal(after?.status, "awaiting-review");
+    assert.equal(after?.pageApprovedAt, undefined);
+});

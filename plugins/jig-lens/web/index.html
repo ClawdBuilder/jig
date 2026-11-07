@@ -87,7 +87,8 @@ input[type=search] { font: inherit; padding: 4px 8px; border-radius: 6px; border
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 4px 0 2px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
 li.call.clickable { cursor: pointer; }
-li.call.clickable:hover, li.call:focus { background: rgba(255, 255, 255, 0.06); outline: none; }
+li.call.clickable:hover { background: var(--selected); }
+li.call:focus, li.call:focus-visible { background: var(--selected); outline: 2px solid var(--jig-focus); outline-offset: -2px; }
 /* One call's arguments and result, from Pi's masked session file. */
 .detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 94vw); background: var(--jig-detail-bg); border-left: 1px solid var(--jig-detail-border);
     padding: 14px 18px; overflow: auto; z-index: 20; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45); }

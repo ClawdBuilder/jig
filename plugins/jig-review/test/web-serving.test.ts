@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { after, before, test } from "node:test";
+import { readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
 import { PACKAGE_ROOT } from "../web/scripts/manifest.ts";
 import { openReview, request } from "./support/harness.ts";
 import type { ReviewSession } from "./support/harness.ts";
@@ -110,7 +111,7 @@ test("every API route the built page calls is answered by the server", async () 
         diffView: "split",
         holdAgent: true,
         holdAbortAfter: 2,
-    });
+theme: "system",    });
     assert.equal(
         (
             await request(session.base, "/api/settings", {
@@ -122,6 +123,21 @@ test("every API route the built page calls is answered by the server", async () 
         200,
     );
     assert.equal(json(await get("/api/settings")).diffView, "unified");
+    assert.equal(
+        (
+            await request(session.base, "/api/settings", {
+                method: "PATCH",
+                cookie: session.cookie,
+                body: { theme: "dark" },
+            })
+        ).status,
+        200,
+    );
+    assert.equal(json(await get("/api/settings")).theme, "dark");
+    assert.equal(readThemePreference(session.agentRoot), "dark", "the choice is saved for the next server and page");
+    const themed = await get("/");
+    assert.match(themed.body, /<html lang="en" data-theme="dark">/);
+    assert.match(themed.body, /theme-boot\.js\?theme=dark/);
     assert.deepEqual(json(await get("/api/passkeys")), { passkeys: [], problems: [] });
     assert.equal(
         (

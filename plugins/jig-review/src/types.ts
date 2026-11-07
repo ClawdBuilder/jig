@@ -14,7 +14,8 @@ export type ReviewSettings = {
     holdAgent: boolean;
     /** Refused writes, over different turns, before the turn is aborted. Default 2. */
     holdAbortAfter: number;
-};
+/** The person's saved page theme. `ui.theme` in jig.json is the fallback. */
+    theme: "system" | "light" | "dark";};
 
 export type ReviewComment = {
     id: string;

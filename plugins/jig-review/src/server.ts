@@ -45,8 +45,8 @@ export type ReviewServerHandlers = {
     submitComments: (comments: SubmittedCommentInput[], mode: CommentSubmissionMode) => Promise<void>;
     updateSettings: (settings: Partial<ReviewSettings>) => Promise<void>;
     approval: ApprovalService;
-    /** The configured page theme. System when absent. */
-    theme?: () => ThemeChoice;
+    /** The saved page theme, after settings; System when absent. */
+    theme?: () => Promise<ThemeChoice>;
 };
 
 export const COOKIE = "jig_review";
@@ -201,11 +201,15 @@ export class ReviewServer {
 
         // Approval. There is no route that approves because the page asked: each of these checks something the agent
         // cannot supply (a passkey signature) or waits for the user in Pi.
-        app.post("/api/approve/options", (context) => context.json(approval.approvalOptions()));
+        app.post("/api/approve/options", async (context) =>
+            context.json(approval.approvalOptions(await optionalDiffHash(context))),
+        );
         app.post("/api/approve/passkey", async (context) =>
             context.json(await approval.approveWithPasskey(await readJson(context))),
         );
-        app.post("/api/approve/page", async (context) => context.json(await approval.approveInPage()));
+        app.post("/api/approve/page", async (context) =>
+            context.json(await approval.approveInPage(await optionalDiffHash(context))),
+        );
 
         app.get("/api/passkeys", (context) => context.json(approval.passkeys()));
         app.post("/api/passkeys/options", (context) => context.json(approval.registrationOptions()));
@@ -227,7 +231,10 @@ export class ReviewServer {
 
         app.get("/api/events", () => this.createEventsResponse());
 
-        app.get("/*", (context) => readStaticAsset(context.req.path, themeChoice(this.handlers.theme?.())));
+        app.get("/*", async (context) => {
+            const saved = this.handlers.theme === undefined ? undefined : await this.handlers.theme();
+            return readStaticAsset(context.req.path, themeChoice(saved));
+        });
 
         return app;
     }
@@ -282,6 +289,16 @@ function sameSecret(given: string | undefined, secret: string): boolean {
 }
 
 /** The request's JSON body; a body that is not JSON is the caller's mistake, answered 400. */
+/** The revision the page displays, when it sent one; an older page sends no body and is accepted as before. */
+async function optionalDiffHash(context: Context): Promise<string | undefined> {
+    try {
+        const body = await context.req.json();
+        return isRecord(body) && typeof body.diffHash === "string" ? body.diffHash : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 async function readJson(context: Context): Promise<unknown> {
     try {
         return await context.req.json();
@@ -347,7 +364,7 @@ function parseSettingsUpdate(body: unknown): Partial<ReviewSettings> {
     if (body.diffView === "split" || body.diffView === "unified") settings.diffView = body.diffView;
     if (typeof body.holdAgent === "boolean") settings.holdAgent = body.holdAgent;
     if (body.holdAbortAfter !== undefined) settings.holdAbortAfter = clampHoldAbortAfter(body.holdAbortAfter);
-    return settings;
+if (body.theme === "system" || body.theme === "light" || body.theme === "dark") settings.theme = body.theme;    return settings;
 }
 
 function isOutsideDirectory(filePath: string, directory: string): boolean {
