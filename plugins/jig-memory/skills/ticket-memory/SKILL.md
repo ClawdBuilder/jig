@@ -33,3 +33,6 @@ When the user ran something themselves and pasted its output, save it before you
 ## Empty files
 
 When a ticket becomes active, you may be told that some files in its folder are empty, possibly cut short by a crash. Do not read such a file as "no rows": tell the user, and rebuild or recover it before any run uses it.
+
+
+- When a ticket's work is done, such as a root cause found and a Jira comment posted, run `ticket close`. At a workflow's last stage, one offer says the same; do not wait for `/ticket close`.

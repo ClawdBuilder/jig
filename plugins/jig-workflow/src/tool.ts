@@ -273,10 +273,20 @@ function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): Stag
     if (typeof details.ticket !== "string" || !STAGE_NAME.test(details.ticket)) return undefined;
     if (typeof details.to !== "string" || !STAGE_NAME.test(details.to)) return undefined;
     if (typeof details.workflow !== "string" || !STAGE_NAME.test(details.workflow)) return undefined;
+    const via = details.via;
+    if (via !== "start" && via !== "advance" && via !== "back") return undefined;
     const from = typeof details.from === "string" && STAGE_NAME.test(details.from) ? details.from : null;
     const when =
         typeof details.at === "string" && Number.isFinite(Date.parse(details.at)) ? details.at : at.toISOString();
-    return { ticket: details.ticket, workflow: details.workflow, from, to: details.to, at: when };
+    return {
+        ticket: details.ticket,
+        workflow: details.workflow,
+        from,
+        to: details.to,
+        at: when,
+        last: details.last === true,
+        via,
+    };
 }
 
 async function run(rt: Runtime, params: Params, call: actions.Call): Promise<ActionResult> {

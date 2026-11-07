@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { test } from "node:test";
 import { RECALL_MESSAGE } from "../src/session.ts";
 import { ticketPaths } from "../src/store.ts";
+import { draftPath } from "../src/close.ts";
 import { loadPlugin, PATTERN, tempFolder, useJig, writeCard } from "./support.ts";
 
 const ORDER_CARD = {
@@ -307,10 +308,16 @@ test("a card closed in this session is found by the next new ticket", async (t) 
     pi.input("PROJ-1: cancelling fails in OrderMapper");
     pi.result("logs", "ERROR java.lang.NullPointerException: customer is null in OrderMapper", { action: "query" });
     await pi.command("close");
-    writeCard(folder, "PROJ-1", ORDER_CARD, {
-        identifiers: ["OrderMapper", "NullPointerException"],
-        errors: ["ERROR java.lang.NullPointerException: customer is null in OrderMapper"],
-    });
+    writeCard(
+        folder,
+        "PROJ-1",
+        ORDER_CARD,
+        {
+            identifiers: ["OrderMapper", "NullPointerException"],
+            errors: ["ERROR java.lang.NullPointerException: customer is null in OrderMapper"],
+        },
+        draftPath(folder, "PROJ-1"),
+    );
     pi.settle();
     pi.input("PROJ-2: a NullPointerException in OrderMapper again");
     const [sent] = recalls(pi);

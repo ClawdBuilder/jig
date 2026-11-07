@@ -13,6 +13,7 @@ import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts"
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { InputError } from "../../jig-core/src/kit/values.ts";
 import { addCheck, CHECK_TEXT_LIMIT, checkLines, closeCheck, openChecks, readChecks } from "./checks.ts";
+import { isSafeKey } from "./store.ts";
 import { labelProblem, PASTED_LIMIT, pastedProblem, savePasted } from "./evidence.ts";
 
 export const TOOL_NAME = "ticket";
@@ -29,6 +30,7 @@ const ACTIONS = {
         summary: "search earlier tickets by an error, class name or behaviour",
         required: ["query"],
     },
+    close: { summary: "draft the ticket's card and ask the agent to fill it", required: [] },
 } as const satisfies Record<string, { summary: string; required: readonly string[] }>;
 
 type ActionName = keyof typeof ACTIONS;
@@ -51,6 +53,10 @@ const parameters = Type.Object(
             Type.String({ maxLength: 40, description: "save_evidence: a few words, such as batch-3-output." }),
         ),
         id: Type.Optional(Type.Integer({ minimum: 1, description: "close_check: the check's number." })),
+        ticket: Type.Optional(
+            Type.String({ maxLength: 64, description: "close: a ticket key; default the active one." }),
+        ),
+        update: Type.Optional(Type.Boolean({ description: "close: replace a card that already exists." })),
         query: Type.Optional(
             Type.String({
                 maxLength: 2_000,
@@ -72,6 +78,7 @@ const DESCRIPTION = [
     "add_check records something you said you would do before the next step; it is shown with every prompt until close_check.",
     "Before you hand the user a command for the next step, close each open check or say plainly that it is still open.",
     "recall searches earlier tickets' notes and cards by text, without leaving the active ticket in the results.",
+    "When a ticket's work is done, such as a root cause found and a Jira comment posted, close it with close; when it has no workflow, use this line to decide.",
 ].join(" ");
 
 /** Checks a call's input against the action's table. An `InputError` blocks the call without asking anyone. */
@@ -84,8 +91,9 @@ export function checkInput(input: Readonly<Record<string, unknown>>): ActionName
     }
     const name = action as ActionName;
     const required: readonly string[] = ACTIONS[name].required;
+    const optional = new Set<string>(name === "close" ? ["ticket", "update"] : []);
     for (const [key, value] of Object.entries(input)) {
-        if (value !== undefined && key !== "action" && !required.includes(key)) {
+        if (value !== undefined && key !== "action" && !required.includes(key) && !optional.has(key)) {
             throw new InputError(`ticket ${name} does not use ${key}`);
         }
     }
@@ -95,6 +103,14 @@ export function checkInput(input: Readonly<Record<string, unknown>>): ActionName
         if (input[key] !== undefined && typeof input[key] !== "string") throw new InputError(`${key} must be text`);
     }
     if (name === "recall" && (input.query as string).trim() === "") throw new InputError("ticket recall needs a query");
+    if (name === "close") {
+        if (input.update !== undefined && typeof input.update !== "boolean") {
+            throw new InputError("ticket close update must be true or false");
+        }
+        if (input.ticket !== undefined && (typeof input.ticket !== "string" || !isSafeKey(input.ticket))) {
+            throw new InputError("ticket close: ticket must be a plain ticket key, not a path");
+        }
+    }
     if (name === "save_evidence") {
         const problem = labelProblem(input.label as string) ?? pastedProblem(input.text as string);
         if (problem !== undefined) throw new InputError(problem);
@@ -118,6 +134,8 @@ export const declaration: ToolDeclaration = { tool: TOOL_NAME, plugin: "jig-memo
 export interface TicketHost {
     active(): { folder: string; key: string } | undefined;
     now(): Date;
+    /** Drafts the card and returns the text that asks the agent to fill it. */
+    close(ticket: string | undefined, update: boolean): { text: string; drafted: boolean; key?: string };
     /** Search earlier tickets by text. Read only; the active ticket is excluded by the caller. */
     search(query: string): { text: string; entries: number };
 }
@@ -133,7 +151,7 @@ export function ticketTool(host: TicketHost): ToolDefinition<typeof parameters> 
         label: "Ticket",
         description: DESCRIPTION,
         promptSnippet:
-            "ticket: search earlier tickets (recall); save pasted output (save_evidence); track open checks (add_check, list_checks, close_check)",
+            "ticket: search earlier tickets (recall); save pasted output (save_evidence); track open checks (add_check, list_checks, close_check); close a finished ticket (close), which drafts its card",
         parameters,
         executionMode: "sequential",
         async execute(toolCallId, params) {
@@ -143,6 +161,11 @@ export function ticketTool(host: TicketHost): ToolDefinition<typeof parameters> 
                 const found = host.search(input.query as string);
                 jig().addFacts(toolCallId, { entries: found.entries, queries: 1 });
                 return text(found.text, { action, entries: found.entries });
+            }
+            if (action === "close") {
+                const outcome = host.close(input.ticket as string | undefined, input.update === true);
+                if (outcome.drafted) jig().addFacts(toolCallId, { closed: 1 });
+                return text(outcome.text, { action, ...(outcome.key === undefined ? {} : { key: outcome.key }) });
             }
             const ticket = host.active();
             if (ticket === undefined) throw new Error("No active ticket: /ticket KEY makes one active.");

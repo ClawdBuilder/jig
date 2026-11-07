@@ -904,6 +904,10 @@ export interface StageDoneEvent {
     from: string | null;
     to: string;
     at: string;
+    /** True when `to` is the workflow's last stage. */
+    last: boolean;
+    /** How the move happened. */
+    via: "start" | "advance" | "back";
 }
 
 export interface DecisionEvent {
