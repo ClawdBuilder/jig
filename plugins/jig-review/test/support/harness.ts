@@ -191,6 +191,8 @@ export interface ReviewSession {
     /** The browser's cookie, after following the link Pi printed. */
     cookie: string;
     host: FakeHost;
+    /** The coordinator, for the hold state. */
+    coordinator: ReviewCoordinator;
     jig: FakeJig;
     session: Session;
     /** The link Pi showed the user. */
@@ -229,10 +231,11 @@ export async function openReview(
     const jig = installFakeJig();
     jig.setSection("memory", { folder: tickets });
     const host = fakeHost();
-    new ReviewCoordinator(host.pi, root, {
+    const coordinator = new ReviewCoordinator(host.pi, root, {
         root: agentRoot,
         ...(options.askQueueWaitMs === undefined ? {} : { askQueueWaitMs: options.askQueueWaitMs }),
-    } satisfies ReviewOptions).register();
+    } satisfies ReviewOptions);
+    coordinator.register();
     const withTicket = options.byAgent === true && options.ticket !== false;
     if (withTicket) {
         mkdirSync(path.join(tickets, TICKET), { recursive: true });
@@ -263,6 +266,7 @@ export async function openReview(
         base,
         cookie,
         host,
+        coordinator,
         jig,
         session,
         link,
