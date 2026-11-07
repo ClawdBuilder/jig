@@ -33,6 +33,7 @@ const review: ReviewRecord = {
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let drafts: DraftComment[];
+let setDraftsFromTest: ((next: DraftComment[]) => void) | undefined;
 
 function click(text: string): void {
   const button = [...host.querySelectorAll("button")].find((candidate) => candidate.textContent?.trim() === text);
@@ -45,6 +46,7 @@ function click(text: string): void {
 function App(): ReturnType<typeof createElement> {
   const [currentDrafts, setDrafts] = useState<DraftComment[]>([draft]);
   const [currentGeneral, setGeneral] = useState("");
+  setDraftsFromTest = setDrafts;
   drafts = currentDrafts;
   return createElement(
     "div",
@@ -123,6 +125,23 @@ describe("approving with drafts", () => {
     assert.equal(drafts.length, 0);
   });
 
+
+  test("a draft typed after discard is asked about again rather than cleared on success", async () => {
+    await render();
+    click("Approve");
+    click("Discard comments and approve");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const nextDraft: DraftComment = { ...draft, id: "d2", body: "A new comment after discard." };
+    await act(async () => {
+      setDraftsFromTest?.([draft, nextDraft]);
+    });
+    assert.match(host.textContent ?? "", /You have draft comments/);
+    assert.equal(drafts.length, 2);
+    click("Keep reviewing");
+    assert.equal(drafts.length, 2);
+  });
 
   test("Try again after a discarded approval does not ask a second time and still waits for success", async () => {
     api.fetchApprovalOptions.mockRejectedValueOnce(new Error("The review server is unreachable."));

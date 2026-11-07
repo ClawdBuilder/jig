@@ -352,7 +352,7 @@ describe("what plugins import", () => {
                 "themeChoice",
                 "themeControlScript",
             ],
-            "theme-preference.ts": ["readThemePreference", "saveThemePreference", "themePreferenceFile"],
+            "theme-preference.ts": ["agentDirFor", "readThemePreference", "saveThemePreference", "themePreferenceFile"],
             "theme.css": [],
             "theme.ts": [
                 "THEME_CHOICES",
