@@ -54,6 +54,8 @@ tickets ([Handoff](docs/handoff.md)).
 | `list_checks` | read | The open checks, and how many are closed |
 | `close_check` | local write | Closes a check by its number, with what was found or done |
 | `recall` | local read | Searches earlier tickets' cards and notes by an error, class name or behaviour; the active ticket is left out |
+Two sessions on the same ticket may each receive the one close offer; each session tracks only its own.
+
 | `close` | local write | Drafts the card for the active ticket, or a named one, and asks the agent to fill it; an existing card needs `update: true` |
 
 ## Commands
