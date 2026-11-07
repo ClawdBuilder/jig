@@ -52,6 +52,13 @@ describe("planUpdate", () => {
         assert.match(built.problem, /does not say which Pi version it needs/);
     });
 
+    test("leaves a linked global command alone and says why", () => {
+        const built = planUpdate(input({ globalLinked: true }));
+        assert.ok("plan" in built);
+        assert.equal(built.plan.global?.needed, false);
+        assert.match(describePlan(built.plan).join("\n"), /linked or a development checkout/);
+    });
+
     test("names an explicit older target as asked, not as a company cap", () => {
         const chosen = target("0.4.2");
         chosen.newest = "0.5.0";

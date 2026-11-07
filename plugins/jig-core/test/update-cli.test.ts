@@ -62,7 +62,8 @@ describe("discover", () => {
         assert.ok(found.problem);
         assert.match(found.problem, /2 Jig entries/);
         assert.match(found.problem, /pi remove npm:@clawdbuilder\/jig/);
-        assert.match(found.problem, new RegExp(`pi remove ${second.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+        assert.doesNotMatch(found.problem, /pi remove npm:@clawdbuilder\/jig -l/);
+        assert.match(found.problem, new RegExp(`pi remove ${second.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} -l`));
         assert.equal(found.jigEntries.length, 2);
     });
 

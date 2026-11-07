@@ -58,14 +58,13 @@ async function defaultFetch(url: string): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CHECK_TIMEOUT);
     timer.unref?.();
-    let response: Response;
     try {
-        response = await fetch(url, { headers: { accept: "application/json" }, signal: controller.signal });
+        const response = await fetch(url, { headers: { accept: "application/json" }, signal: controller.signal });
+        if (!response.ok) throw new Error(`registry ${response.status}`);
+        return await response.json();
     } finally {
         clearTimeout(timer);
     }
-    if (!response.ok) throw new Error(`registry ${response.status}`);
-    return await response.json();
 }
 
 /** Whether the notice setting is on; an absent section means on. */

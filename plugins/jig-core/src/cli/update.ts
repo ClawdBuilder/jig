@@ -2,7 +2,7 @@
 // needs it. It reads the registry first, refuses before changing anything it cannot finish, and puts every recorded version
 // back when a step fails. `--check` says what it would do and changes nothing.
 import { spawn } from "node:child_process";
-import { accessSync, constants, existsSync, readFileSync } from "node:fs";
+import { accessSync, constants, existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -49,13 +49,17 @@ export interface PiConfigModule {
     ): string;
 }
 
-function run(command: string, args: readonly string[], cwd: string): Promise<CommandResult> {
+function run(command: string, args: readonly string[], cwd: string, signal?: AbortSignal): Promise<CommandResult> {
     return new Promise((resolve) => {
         const child = spawn(command, [...args], {
             cwd,
             env: process.env,
             stdio: ["ignore", "pipe", "pipe"],
         });
+        const stop = (): void => {
+            child.kill("SIGTERM");
+        };
+        signal?.addEventListener("abort", stop, { once: true });
         let stdout = "";
         let stderr = "";
         let timedOut = false;
@@ -71,10 +75,12 @@ function run(command: string, args: readonly string[], cwd: string): Promise<Com
         });
         child.on("error", (error) => {
             clearTimeout(timer);
+            signal?.removeEventListener("abort", stop);
             resolve({ code: 1, stdout, stderr: error.message, ...(timedOut ? { timedOut } : {}) });
         });
         child.on("close", (code) => {
             clearTimeout(timer);
+            signal?.removeEventListener("abort", stop);
             resolve({ code: code ?? 1, stdout, stderr, ...(timedOut ? { timedOut } : {}) });
         });
     });
@@ -144,6 +150,26 @@ export function piSelfUpdateCommands(
 }
 
 /** The path to a package inside the global npm root, for a scoped name too. */
+/** A global command that is linked or a development checkout is not replaced. */
+async function linkedGlobal(name: string, root: string, folder: string, cwd: string): Promise<boolean> {
+    try {
+        if (lstatSync(folder).isSymbolicLink()) return true;
+        if (realpathSync(folder) !== folder) return true;
+    } catch {
+        return false;
+    }
+    const listed = await run("npm", ["ls", "-g", name, "--json"], cwd);
+    if (listed.code !== 0) return false;
+    try {
+        const parsed = JSON.parse(listed.stdout) as {
+            dependencies?: Record<string, { link?: unknown }>;
+        };
+        return parsed.dependencies?.[name]?.link === true;
+    } catch {
+        return false;
+    }
+}
+
 function globalFolder(root: string, name: string): string {
     return path.join(root, ...name.split("/"));
 }
@@ -169,17 +195,26 @@ export function discover(
 } {
     const listed = readPackages(agentDir, cwd).listed;
     const jigEntries: JigEntry[] = [];
+    const looksLikeJig = (source: string): boolean => {
+        const npm = parseNpmSource(source)?.name;
+        if (npm === name) return true;
+        const clean = source
+            .replace(/[#?].*$/, "")
+            .replace(/\.git$/, "")
+            .replace(/\/+$/, "");
+        return clean.endsWith(`/${name}`) || clean.endsWith("/jig") || clean.includes(`/${name}@`);
+    };
     let piCopy: UpdateCopy | undefined;
     for (const entry of listed) {
         const manifest = entry.folder === undefined ? undefined : manifestOf(entry.folder);
         const packageName = manifest?.name ?? parseNpmSource(entry.source)?.name;
-        if (packageName !== name) continue;
+        if (packageName !== name && !looksLikeJig(entry.source)) continue;
         jigEntries.push({
             source: entry.source,
             scope: entry.scope,
             ...(manifest?.version === undefined ? {} : { version: manifest.version }),
         });
-        if (piCopy === undefined || entry.scope === "user") {
+        if (packageName === name && (piCopy === undefined || entry.scope === "user")) {
             piCopy = {
                 ...(manifest?.version === undefined ? {} : { version: manifest.version }),
                 source: entry.source,
@@ -191,7 +226,7 @@ export function discover(
     if (jigEntries.length > 1) {
         const lines = jigEntries.map(
             (entry) =>
-                `${entry.scope}: ${entry.source}${entry.version === undefined ? "" : ` (${entry.version})`} — pi remove ${entry.source}`,
+                `${entry.scope}: ${entry.source}${entry.version === undefined ? "" : ` (${entry.version})`} — pi remove ${entry.source}${entry.scope === "project" ? " -l" : ""}`,
         );
         return {
             problem: `Pi lists ${jigEntries.length} Jig entries. jig update will not choose which to keep; remove all but one first:\n${lines.join("\n")}`,
@@ -225,18 +260,52 @@ function piSetting(agentDir: string): { selfUpdateCommand?: string[] } {
 /** The published versions, asked of npm itself so its registry scope, auth and .npmrc rules apply. */
 async function fetchRegistry(name: string, cwd: string): Promise<RegistryMetadata> {
     const result = await run("npm", ["view", name, "versions", "--json"], cwd);
-    if (result.code !== 0) throw new Error(outputOf(result) || `npm view exited ${result.code}`);
-    const parsed: unknown = JSON.parse(result.stdout);
+    if (result.code !== 0) throw new Error(npmViewProblem(name, result.stdout, result.stderr));
+    if (result.stdout.trim() === "") throw new Error(`npm view returned no versions for ${name}; is it published?`);
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(result.stdout);
+    } catch {
+        throw new Error(`npm view returned something that is not JSON for ${name}.`);
+    }
+    if (typeof parsed === "object" && parsed !== null && "error" in parsed) {
+        throw new Error(npmViewProblem(name, result.stdout, result.stderr));
+    }
     const list = Array.isArray(parsed) ? parsed : typeof parsed === "string" ? [parsed] : [];
     return { versions: Object.fromEntries(list.filter((v): v is string => typeof v === "string").map((v) => [v, {}])) };
+}
+
+/** A missing package or a registry error from npm, without showing its raw JSON to the person. */
+function npmViewProblem(name: string, stdout: string, stderr: string): string {
+    const text = `${stdout}\n${stderr}`.trim();
+    try {
+        const parsed = JSON.parse(stdout) as { error?: { code?: unknown; summary?: unknown; detail?: unknown } };
+        const error = parsed.error;
+        const detail = [error?.code, error?.summary, error?.detail]
+            .filter((part) => typeof part === "string")
+            .join(": ");
+        if (detail !== "") return `npm view could not read ${name}: ${detail}`;
+    } catch {
+        // Not npm's JSON error; use the text below.
+    }
+    return `npm view could not read ${name}: ${text.slice(0, 300) || "no output"}`;
 }
 
 /** One release's package.json fields, again from npm view. */
 async function fetchRelease(name: string, version: string, cwd: string): Promise<RegistryRelease> {
     const result = await run("npm", ["view", `${name}@${version}`, "jig", "version", "deprecated", "--json"], cwd);
-    if (result.code !== 0) throw new Error(outputOf(result) || `npm view exited ${result.code}`);
-    const parsed: unknown = JSON.parse(result.stdout);
+    if (result.code !== 0) throw new Error(npmViewProblem(name, result.stdout, result.stderr));
+    if (result.stdout.trim() === "") throw new Error(`npm view returned no metadata for ${name}@${version}.`);
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(result.stdout);
+    } catch {
+        throw new Error(`npm view returned something that is not JSON for ${name}@${version}.`);
+    }
     const value = Array.isArray(parsed) ? parsed[0] : parsed;
+    if (typeof value === "object" && value !== null && "error" in value) {
+        throw new Error(npmViewProblem(name, result.stdout, result.stderr));
+    }
     return (value ?? {}) as RegistryRelease;
 }
 
@@ -306,7 +375,7 @@ export async function update(args: readonly string[], host: string | undefined):
         metadata = await fetchRegistry(name, cwd);
     } catch (error) {
         process.stderr.write(
-            `jig update could not reach the npm registry: ${errorMessage(error)}. Nothing was changed.\n`,
+            `jig update could not read ${name} from npm: ${errorMessage(error)}. Nothing was changed.\n`,
         );
         return 1;
     }
@@ -346,6 +415,7 @@ export async function update(args: readonly string[], host: string | undefined):
         return 1;
     }
     const globalVersion = globalManifest.version ?? current;
+    const globalLinked = await linkedGlobal(name, root, globalCandidate, cwd);
     const prefix = npmPrefix(root);
     const built = planUpdate({
         name,
@@ -354,6 +424,7 @@ export async function update(args: readonly string[], host: string | undefined):
         piVersion: piVersion(),
         ...(discovered.piCopy === undefined ? {} : { piCopy: discovered.piCopy }),
         globalVersion,
+        globalLinked,
     });
     if ("problem" in built) {
         process.stderr.write(`${built.problem}\n`);
@@ -423,18 +494,31 @@ export async function update(args: readonly string[], host: string | undefined):
         const folder = packageFolder(`npm:${name}`, agentDir).folder;
         return versionAt(folder) ?? versionAt(piFolder);
     };
-    const confirm = async (title: string, message: string): Promise<boolean> => {
+    const confirm = async (title: string, message: string, signal?: AbortSignal): Promise<boolean> => {
+        if (signal?.aborted === true) return false;
         const { createInterface } = await import("node:readline/promises");
         const readline = createInterface({ input: process.stdin, output: process.stdout });
+        let onAbort: (() => void) | undefined;
+        const aborted = new Promise<boolean>((resolve) => {
+            onAbort = () => {
+                readline.close();
+                resolve(false);
+            };
+            signal?.addEventListener("abort", onAbort, { once: true });
+        });
         try {
-            const answer = (await readline.question(`${title}\n${message}\n(y/N) `)).trim().toLowerCase();
-            return answer === "y" || answer === "yes";
+            const question = readline.question(`${title}\n${message}\n(y/N) `);
+            return await Promise.race([
+                question.then((answer) => answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes"),
+                aborted,
+            ]);
         } finally {
+            if (onAbort !== undefined) signal?.removeEventListener("abort", onAbort);
             readline.close();
         }
     };
     const io: UpdateIo = {
-        run: (command, commandArgs) => run(command, commandArgs, cwd),
+        run: (command, commandArgs, signal) => run(command, commandArgs, cwd, signal),
         notify: (text, level) => {
             (level === "error" ? process.stderr : process.stdout).write(`${text}\n`);
         },
@@ -450,10 +534,10 @@ export async function update(args: readonly string[], host: string | undefined):
             args: ["install", `npm:${name}@${version}`],
             display: `pi install npm:${name}@${version}`,
         }),
-        piCopyRestore: (source) => ({
+        piCopyRestore: (version) => ({
             command: "pi",
-            args: ["install", source],
-            display: `pi install ${source}`,
+            args: ["install", `npm:${name}@${version}`],
+            display: `pi install npm:${name}@${version}`,
         }),
         globalInstall: (version) => ({
             command: "npm",

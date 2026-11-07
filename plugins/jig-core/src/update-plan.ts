@@ -18,6 +18,8 @@ export interface UpdatePlanInput {
     piVersion?: string;
     piCopy?: UpdateCopy;
     globalVersion?: string;
+    /** The global command is a link or a development checkout; never replace it. */
+    globalLinked?: boolean;
 }
 
 export interface UpdatePlan {
@@ -30,7 +32,7 @@ export interface UpdatePlan {
     /** What to tell the person about Pi, including the tested-version warning. */
     piNotes: string[];
     piCopy?: { from?: string; to: string; needed: boolean; pinned?: boolean; source?: string; restoreSource?: string };
-    global?: { from?: string; to: string; needed: boolean };
+    global?: { from?: string; to: string; needed: boolean; skipped?: string };
     cappedBy: CompanyRange[];
     warnings: string[];
     /** Anything to do at all? */
@@ -107,11 +109,19 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
         source: copy.source,
         restoreSource: copy.source,
     };
-    const global = {
-        ...(input.globalVersion === undefined ? {} : { from: input.globalVersion }),
-        to: input.target.version,
-        needed: input.globalVersion !== input.target.version,
-    };
+    const global =
+        input.globalLinked === true
+            ? {
+                  ...(input.globalVersion === undefined ? {} : { from: input.globalVersion }),
+                  to: input.target.version,
+                  needed: false,
+                  skipped: "The jig command is linked or a development checkout; leaving it alone.",
+              }
+            : {
+                  ...(input.globalVersion === undefined ? {} : { from: input.globalVersion }),
+                  to: input.target.version,
+                  needed: input.globalVersion !== input.target.version,
+              };
     return {
         plan: {
             name: input.name,
@@ -154,7 +164,9 @@ export function describePlan(plan: UpdatePlan): string[] {
     } else if (plan.piCopy?.pinned === true) {
         lines.push(`Pi's Jig copy is pinned to ${plan.piCopy.from ?? "(version unknown)"}; that is the target.`);
     }
-    if (plan.global?.needed === true) {
+    if (plan.global?.skipped !== undefined) {
+        lines.push(plan.global.skipped);
+    } else if (plan.global?.needed === true) {
         lines.push(`The jig command ${plan.global.from ?? "(version unknown)"} -> ${plan.global.to}.`);
     }
     for (const warning of plan.warnings) lines.push(warning);

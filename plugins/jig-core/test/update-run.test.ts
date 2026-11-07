@@ -82,11 +82,13 @@ function fake(overrides: Partial<Fake> = {}): Fake {
                 display: `install Jig ${version}`,
             };
         },
-        piCopyRestore(source): InstallCommand {
-            const spec = source.startsWith("npm:") ? source.slice(4) : source;
-            const at = spec.lastIndexOf("@");
-            this.versions.piCopy = at > 0 ? (spec.slice(at + 1) as string) : "0.4.1";
-            return { command: "pi", args: ["install", source], display: `restore ${source}` };
+        piCopyRestore(version): InstallCommand {
+            this.versions.piCopy = version;
+            return {
+                command: "pi",
+                args: ["install", `npm:@clawdbuilder/jig@${version}`],
+                display: `restore Jig ${version}`,
+            };
         },
         globalInstall(version): InstallCommand {
             return {
@@ -144,7 +146,7 @@ describe("executeUpdate", () => {
             "pi install npm:@clawdbuilder/jig@0.5.0",
             "npm install -g @clawdbuilder/jig@0.5.0",
             "npm install -g @clawdbuilder/jig@0.4.1",
-            "pi install npm:@clawdbuilder/jig",
+            "pi install npm:@clawdbuilder/jig@0.4.1",
             "pi-self 1.3.0",
         ]);
         assert.equal(io.versions.pi, "1.3.0");
@@ -168,7 +170,7 @@ describe("executeUpdate", () => {
         const result = await executeUpdate(plan(false), io);
         assert.equal(result.code, 1);
         assert.match(io.messages.join("\n"), /versions do not match/);
-        assert.ok(io.calls.includes("pi install npm:@clawdbuilder/jig"));
+        assert.ok(io.calls.includes("pi install npm:@clawdbuilder/jig@0.4.1"));
         assert.ok(io.calls.includes("npm install -g @clawdbuilder/jig@0.4.1"));
     });
 
@@ -178,6 +180,22 @@ describe("executeUpdate", () => {
         assert.equal(result.code, 1);
         assert.match(io.messages.join("\n"), /not the tested 1\.5\.0/);
         assert.ok(io.calls.includes("pi-self 1.3.0"));
+    });
+
+    test("an interruption after a step still runs and verifies the undo", async () => {
+        const controller = new AbortController();
+        const io = fake();
+        const run = io.run.bind(io);
+        io.run = async (command, args, signal) => {
+            const result = await run(command, args, signal);
+            if (command === "pi-self" && args[0] === "1.5.0") controller.abort();
+            return result;
+        };
+        const result = await executeUpdate(plan(true), io, controller.signal);
+        assert.equal(result.code, 1);
+        assert.equal(result.changed, false);
+        assert.ok(io.calls.includes("pi-self 1.3.0"));
+        assert.match(io.messages.join("\n"), /Put Pi 1\.3\.0 back/);
     });
 
     test("an interruption before a step changes nothing", async () => {
