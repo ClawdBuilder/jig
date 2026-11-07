@@ -19,10 +19,10 @@ import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import {
     CARD_FIX,
     CARD_REQUEST,
-    restoreCard,
     type Closing,
     correctionText,
     draftClose,
+    draftPath,
     NothingToClose,
     requestText,
     verifyCard,
@@ -336,7 +336,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             { customType: CARD_REQUEST, content: requestText(mem.folder, key), display: true, details: { key } },
             { triggerTurn: true, deliverAs: "followUp" },
         );
-        note(ctx, `Card for ${key} drafted in ${ticketPaths(mem.folder, key).card}; the agent is asked to fill it.`);
+        note(ctx, `Card for ${key} drafted in ${draftPath(mem.folder, key)}; the agent is asked to fill it.`);
     };
 
     pi.on("session_start", (_event, ctx) => {
@@ -417,7 +417,6 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         }
         const list = verdict.problems.join(" ");
         if (event.aborted || pending.corrected) {
-            restoreCard(mem.folder, pending);
             closing = undefined;
             note(
                 ctx,
@@ -548,6 +547,12 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             now: () => new Date(),
             close: (ticket, update) => {
                 if (memory === undefined) throw new Error("Ticket memory is not ready: no session has started.");
+                if (closing !== undefined) {
+                    return {
+                        text: "A close is already pending in this session: finish or cancel it before closing another ticket.",
+                        drafted: false,
+                    };
+                }
                 const key = ticket ?? active;
                 if (key === undefined) throw new Error("No active ticket: /ticket KEY makes one active.");
                 if (!isSafeKey(key)) throw new Error("ticket close: ticket must be a plain ticket key, not a path");
@@ -570,7 +575,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
                         key,
                     };
                 }
-                closing = draftClose(memory.folder, key, memory.pattern, new Date(), update);
+                closing = draftClose(memory.folder, key, memory.pattern, new Date());
                 return { text: requestText(memory.folder, key), drafted: true, key };
             },
             search: (query) => {

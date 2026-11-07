@@ -36,11 +36,15 @@ test("advance, back and a refused advance emit exactly the real moves", async (t
     await w.call({ action: "advance" });
     assert.equal(seen.length, 1);
     assert.deepEqual([seen[0]?.from, seen[0]?.to], ["understand", "plan"]);
+    assert.equal(seen[0]?.last, true, "advance onto the last stage says so");
+    assert.equal(seen[0]?.via, "advance");
     const at = seen[0]?.at;
     assert.equal(w.state()?.history.at(-1)?.at, at, "the event time is the state history time");
     await w.call({ action: "back", to: "understand" });
     assert.equal(seen.length, 2);
     assert.deepEqual([seen[1]?.from, seen[1]?.to], ["plan", "understand"]);
+    assert.equal(seen[1]?.last, false);
+    assert.equal(seen[1]?.via, "back");
     await w.call({ action: "advance" });
     assert.equal(seen.length, 2, "a refused advance emits nothing");
     w.writeState((state) => {

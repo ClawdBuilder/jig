@@ -27,8 +27,8 @@ export function writeCard(
     ticket: string,
     sections: CardSections,
     extra: Partial<Omit<CardFront, "ticket">> = {},
+    file = ticketPaths(folder, ticket).card,
 ): string {
-    const file = ticketPaths(folder, ticket).card;
     mkdirSync(ticketPaths(folder, ticket).dir, { recursive: true });
     const front: CardFront = {
         ticket,
