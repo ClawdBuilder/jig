@@ -14,10 +14,15 @@ interface Saved {
 
 export const themePreferenceFile = (agentDir: string): string => path.join(agentDir, "theme.json");
 
-/** The agent folder every page resolves the same way: `PI_CODING_AGENT_DIR`, else `~/.pi/agent`. */
+/** Pi's rule exactly: empty is unset, no trimming, a leading `~` expands, and a relative path stays relative. */
 export function agentDirFor(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string {
-    const configured = env.PI_CODING_AGENT_DIR?.trim();
-    return configured === undefined || configured === "" ? path.join(home, ".pi", "agent") : configured;
+    const configured = env.PI_CODING_AGENT_DIR;
+    if (configured) {
+        if (configured === "~") return home;
+        if (configured.startsWith("~/")) return path.join(home, configured.slice(2));
+        return configured;
+    }
+    return path.join(home, ".pi", "agent");
 }
 
 /** The saved choice, or undefined when there is none or the file is not one this version wrote. */

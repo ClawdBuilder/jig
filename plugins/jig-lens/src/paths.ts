@@ -1,6 +1,7 @@
 // Where jig-lens reads and writes. Everything it owns is below `<state>/lens`; the records beside it belong to jig-core
 // and are only read.
 import { homedir } from "node:os";
+import { agentDirFor } from "../../jig-core/src/kit/theme-preference.ts";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,12 +21,7 @@ export function stateDir(env: NodeJS.ProcessEnv = process.env): string {
  * that the plugin needs nothing from Pi but its types to know where the session files are.
  */
 export function agentDir(env: NodeJS.ProcessEnv = process.env): string {
-    const chosen = env.PI_CODING_AGENT_DIR;
-    if (chosen !== undefined && chosen !== "") {
-        if (chosen === "~") return homedir();
-        return chosen.startsWith("~/") ? join(homedir(), chosen.slice(2)) : resolve(chosen);
-    }
-    return join(homedir(), ".pi", "agent");
+    return agentDirFor(env);
 }
 
 /** Where Pi keeps its session files, which `/lens usage` reads. */

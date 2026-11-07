@@ -295,11 +295,11 @@ async function requiredDiffHash(context: Context): Promise<string> {
     try {
         body = await context.req.json();
     } catch {
-        throw new ApprovalError(400, "The request needs the diffHash of the review you saw.");
+        throw new ApprovalError(400, "This page is out of date; reload it to approve.");
     }
     const hash = isRecord(body) ? body.diffHash : undefined;
     if (typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)) {
-        throw new ApprovalError(400, "The request needs the diffHash of the review you saw.");
+        throw new ApprovalError(400, "This page is out of date; reload it to approve.");
     }
     return hash;
 }

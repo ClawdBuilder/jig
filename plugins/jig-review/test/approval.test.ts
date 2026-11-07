@@ -416,7 +416,11 @@ test("a page showing an older diff cannot even ask to approve it", async () => {
 
 test("an approval without a valid diffHash is refused", async () => {
     session = await openReview("--branch");
-    assert.equal((await session.post("/api/approve/options")).status, 400);
-    assert.equal((await session.post("/api/approve/options", { diffHash: "not-a-hash" })).status, 400);
+    const missing = await session.post("/api/approve/options");
+    assert.equal(missing.status, 400);
+    assert.match(missing.body, /This page is out of date; reload it to approve\./);
+    const malformed = await session.post("/api/approve/options", { diffHash: "not-a-hash" });
+    assert.equal(malformed.status, 400);
+    assert.match(malformed.body, /This page is out of date; reload it to approve\./);
     assert.equal((await session.post("/api/approve/page", {})).status, 400);
 });
