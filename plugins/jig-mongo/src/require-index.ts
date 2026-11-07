@@ -13,7 +13,7 @@ import type { Access, Ns } from "./access.ts";
 import type { Backend, ExplainQuery, Req } from "./backend.ts";
 import { toExtended } from "./bson.ts";
 import { describeFailure, isAbort } from "./errors.ts";
-import { InputError, isObject } from "./values.ts";
+import { InputError, isObject, RefusedError } from "./values.ts";
 import type { Doc } from "./values.ts";
 
 /** How a read is planned. Absent, or without `requireIndex`, no read is checked. */
@@ -171,17 +171,17 @@ async function refusal(
     ns: Ns,
     why: string,
     req: Req,
-): Promise<InputError> {
+): Promise<RefusedError> {
     const fields = await fieldsSentence(backend, access, ns, req);
     const advice = check.advice === undefined ? "" : ` ${check.advice}`;
-    return new InputError(
+    return new RefusedError(
         `${check.label}: refused, ${why}, and reads in ${check.environment} must use an index. ${fields}${advice}`,
     );
 }
 
 /** A check that could not be made. Nothing was read, and the read is not sent without it. */
 function unchecked(check: IndexCheck, what: string): InputError {
-    return new InputError(
+    return new RefusedError(
         `${check.label}: refused, the index check could not be made (${what}), and a read here is not sent without it. Nothing was read.`,
     );
 }

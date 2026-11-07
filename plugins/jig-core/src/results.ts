@@ -16,6 +16,7 @@ import type {
 import { capContent, textOf } from "./cap.ts";
 import type { Content } from "./cap.ts";
 import { errorMessage } from "./errors.ts";
+import { jig } from "./client.ts";
 import { callRecord, cleanFacts, oneLine, turnRecord, writeRecord } from "./records.ts";
 import type { ErrorKind, Outcome } from "./records.ts";
 import type { CallState, JigState } from "./state.ts";
@@ -208,6 +209,10 @@ function outcomeOf(
     if (call?.blocked !== undefined)
         return { outcome: "blocked", errorKind: call.blocked.kind, error: call.blocked.line };
     if (call?.withheld !== undefined) return { outcome: "error", errorKind: "withheld", error: oneLine(call.withheld) };
+    if (jig().takeRefused?.(event.toolCallId) === true) {
+        const text = textOf((event.result?.content ?? []) as Content[]);
+        return { outcome: "blocked", errorKind: "refused", error: oneLine(state.redactor.text(text)) };
+    }
     if (!event.isError) return { outcome: "ok" };
     // A call that never reached the tool manager failed before its tool could run, in Pi's own checks. Pi's message can
     // quote the arguments, and a record never holds those, so only the kind is kept.

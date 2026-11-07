@@ -15,6 +15,7 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-w
 import { Text, TruncatedText } from "@earendil-works/pi-tui";
 import type { TSchema } from "typebox";
 import { jig } from "../client.ts";
+import { RefusedError } from "./values.ts";
 
 /** The `jig.json` section that holds `deferred`. jig-core checks it; a company plugin may give defaults for it. */
 export const TOOLS_SECTION = "tools";
@@ -267,7 +268,19 @@ export function registerJigTool<TParams extends TSchema = TSchema, TDetails = un
     tool: ToolDefinition<TParams, TDetails, TState>,
     options: JigToolOptions = {},
 ): void {
-    const definition = withDefaultRenderers(tool as JigToolDefinition, options);
+    const plain = withDefaultRenderers(tool as JigToolDefinition, options);
+    const original = plain.execute;
+    const definition: JigToolDefinition = {
+        ...plain,
+        async execute(toolCallId, ...rest: unknown[]) {
+            try {
+                return await (original as unknown as (...args: unknown[]) => unknown)(toolCallId, ...rest);
+            } catch (error) {
+                if (error instanceof Error && error.name === "RefusedError") jig().markRefused?.(toolCallId);
+                throw error;
+            }
+        },
+    } as JigToolDefinition;
     let slot = slots.get(pi);
     if (slot === undefined) {
         const created: Slot = { tools: new Map(), started: false };

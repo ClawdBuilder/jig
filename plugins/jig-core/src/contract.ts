@@ -555,6 +555,12 @@ export interface JigApi {
     /** The preview the user approved for this call, or undefined when the call did not ask. */
     approvedPreview(toolCallId: string): Preview | undefined;
 
+    /** Marks a call whose tool refused by its own rules; the record says blocked/refused. */
+    markRefused?(toolCallId: string): void;
+
+    /** Takes the refusal mark for a call, so it is counted once and does not leak. */
+    takeRefused?(toolCallId: string): boolean;
+
     /** Adds facts to this call's record. */
     addFacts(toolCallId: string, facts: Facts): void;
 

@@ -323,6 +323,9 @@ export function buildApi(state: JigState): JigApi {
             },
         },
 
+        markRefused: (toolCallId) => state.refusedCalls.add(toolCallId),
+        takeRefused: (toolCallId) => state.refusedCalls.delete(toolCallId),
+
         gates: {
             register: (gate) => state.gates.register(gate),
         },
