@@ -36,7 +36,7 @@ beside them, and **Approve** is in the header; approval still returns to Pi. Thi
 
 ## Install
 
-Jig needs **Pi 1.4 or later** and **Node.js 22.19 or later**. [Compatibility](docs/compatibility.md) has the tested
+Jig needs Pi 1.4 or later and Node.js 22.19 or later. [Compatibility](docs/compatibility.md) has the tested
 versions and the names Jig keeps stable.
 
 ```bash

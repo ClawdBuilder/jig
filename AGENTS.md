@@ -95,11 +95,13 @@ changes, the other changes in the same commit. Tests read the tool tables of
   changes the docs and `TABLE` in the same commit. Add per-action input to `ACTION_INPUTS` when its `classify` needs fields
   (`TABLE` then says `needs input` until it does).
 - **Pi version.** The Pi that Jig is tested with is named in five places that move together: both `Install Pi` steps of
-  `.github/workflows/ci.yml`, the "Tested with" tables in `README.md` and `docs/compatibility.md` (with the date), the install
-  command in the `jig-agents` bullet above, and the exact Pi packages in `package.json`'s `devDependencies`
-  (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui` and `typebox`). To move it: run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`,
-  "Run workflow") and wait for it to be green on the new release, change those places in one commit, and run `npm run check`,
-  `npm test` and `npm run check:install` on that Pi. `plugins/jig-core/test/ci-config.test.ts` fails when they disagree.
+  `.github/workflows/ci.yml`, the "Tested with" table in `docs/compatibility.md` (with the date), the tested-version
+  sentence in `README.md`, the install command in the `jig-agents` bullet above, and the exact Pi packages in
+  `package.json`'s `devDependencies` (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`,
+  `@earendil-works/pi-tui` and `typebox`). To move it: run the weekly Pi canary by hand
+  (`.github/workflows/pi-canary.yml`, "Run workflow") and wait for it to be green on the new release, change those places
+  in one commit, and run `npm run check`, `npm test` and `npm run check:install` on that Pi.
+  `plugins/jig-core/test/ci-config.test.ts` fails when they disagree.
 - **Changelog and releases.** A change a user would notice adds a line under `## [Unreleased]` in `CHANGELOG.md`. A release runs
   `node scripts/release.mjs <version>`, which moves those lines under a dated version heading and raises `version` in
   `package.json` in the same commit: Pi shows a package's changelog after an update only when that field rises. Then commit, tag
