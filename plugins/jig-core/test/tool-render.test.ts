@@ -114,12 +114,13 @@ describe("the default tool renderers", () => {
         assert.equal(result.content[0]?.text, "token [redacted] here\nmore", "display does not change the result");
     });
 
-    test("a tool's own renderer is kept, and its execute function is the same one", () => {
+    test("a tool's own renderer is kept, and its execute is wrapped only to mark a refusal", () => {
         const own = () => ({ render: () => ["own"] });
         const original = tool({ renderCall: own as never });
         const value = registered(original);
         assert.equal(value.renderCall, own);
-        assert.equal(value.execute, original.execute);
+        assert.notEqual(value.execute, original.execute, "the wrapper marks a RefusedError");
+        assert.equal(typeof value.execute, "function");
     });
 
     test("a long call is truncated to the width, not wrapped", () => {

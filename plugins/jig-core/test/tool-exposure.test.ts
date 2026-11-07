@@ -11,7 +11,7 @@ import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-age
 import { Type } from "typebox";
 import { jig, withdrawJig } from "../src/client.ts";
 import { jigCore } from "../src/index.ts";
-import { NOT_DEFERRABLE, clearRefused, isRefused, registerJigTool, transcriptTools } from "../src/kit/tools.ts";
+import { NOT_DEFERRABLE, registerJigTool, transcriptTools } from "../src/kit/tools.ts";
 import { RefusedError } from "../src/kit/values.ts";
 import { validateToolsSection } from "../src/tool-exposure.ts";
 import { fakeContext, fakePi } from "./support/fake-pi.ts";
@@ -315,7 +315,6 @@ test("a RefusedError marks the call refused without changing its text", async ()
             ),
         (error: Error) => error === refusal && error.message === "mongo find: refused, it would scan",
     );
-    assert.equal(isRefused("call-1"), true);
-    clearRefused("call-1");
-    assert.equal(isRefused("call-1"), false);
+    assert.equal(jig().takeRefused?.("call-1"), true);
+    assert.equal(jig().takeRefused?.("call-1"), false);
 });

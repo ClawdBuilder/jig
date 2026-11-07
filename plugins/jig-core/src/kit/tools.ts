@@ -263,11 +263,6 @@ function withDefaultRenderers(tool: JigToolDefinition, options: JigToolOptions):
  * starts, a tool named in `jig.json`'s `tools.deferred` is registered again with `exposure: "deferred"` (see the top of
  * this file). Registering again during a session, as a plugin may to change a description, keeps the exposure.
  */
-const refusedCalls = new Set<string>();
-export const markRefused = (toolCallId: string): void => void refusedCalls.add(toolCallId);
-export const isRefused = (toolCallId: string): boolean => refusedCalls.has(toolCallId);
-export const clearRefused = (toolCallId: string): void => void refusedCalls.delete(toolCallId);
-
 export function registerJigTool<TParams extends TSchema = TSchema, TDetails = unknown, TState = unknown>(
     pi: ExtensionAPI,
     tool: ToolDefinition<TParams, TDetails, TState>,
@@ -281,7 +276,7 @@ export function registerJigTool<TParams extends TSchema = TSchema, TDetails = un
             try {
                 return await (original as unknown as (...args: unknown[]) => unknown)(toolCallId, ...rest);
             } catch (error) {
-                if (error instanceof RefusedError) markRefused(toolCallId);
+                if (error instanceof Error && error.name === "RefusedError") jig().markRefused?.(toolCallId);
                 throw error;
             }
         },

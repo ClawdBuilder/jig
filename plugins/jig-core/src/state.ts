@@ -157,6 +157,8 @@ export interface JigState {
     sessionAllows: Set<string>;
     /** Calls between their decision and the end of their execution, by tool call id. */
     calls: Map<string, CallState>;
+    /** Tool call ids whose tool refused by its own rules, until the record is written. */
+    refusedCalls: Set<string>;
     redactor: Redactor;
     secrets: Secrets;
     /** `jig().http`, bound to this runtime's secrets, sign-in services and transports. */
@@ -262,6 +264,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         ticket: undefined,
         sessionAllows: new Set(),
         calls: new Map(),
+        refusedCalls: new Set(),
         redactor,
         secrets: createSecrets({
             backends: () => effectiveBackends(state.personal.config.secrets, state.company).on,

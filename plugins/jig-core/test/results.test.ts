@@ -4,7 +4,6 @@ import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSyn
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { jig } from "../src/client.ts";
-import { markRefused } from "../src/kit/tools.ts";
 import { RefusedError } from "../src/kit/values.ts";
 import type { CallClass, JigApi } from "../src/contract.ts";
 import { brokenMasker } from "./support/fakes.ts";
@@ -419,7 +418,7 @@ describe("the record of a call", () => {
             id: "call-refused",
             input: { env: "local" },
             run: () => {
-                markRefused("call-refused");
+                jig().markRefused?.("call-refused");
                 throw new RefusedError("mongo find: refused, it would scan");
             },
         });
