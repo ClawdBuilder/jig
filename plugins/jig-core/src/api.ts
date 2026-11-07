@@ -353,7 +353,7 @@ export function buildApi(state: JigState): JigApi {
             git: (repo, args, options) => git(repo, args, options, guard),
         },
         records: {
-            recall: (entries, queries = 1) => {
+            recall: ({ tool, action, plugin, ticket, entries, queries = 1 }) => {
                 try {
                     const now = new Date();
                     const count = Number.isFinite(entries) ? Math.max(0, Math.floor(entries)) : 0;
@@ -362,16 +362,17 @@ export function buildApi(state: JigState): JigApi {
                         callRecord(
                             {
                                 session: state.sessionId ?? "unknown",
-                                tool: "memory",
-                                action: "recall",
-                                plugin: "jig-memory",
+                                ...(ticket === undefined ? {} : { ticket }),
+                                tool,
+                                action,
+                                plugin,
                                 environment: "local",
                                 environmentKind: "local",
                                 effect: "read",
                                 decision: "allow",
                                 decisionSource: "tool",
                                 outcome: "ok",
-                                toolCallId: `recall-${randomUUID()}`,
+                                toolCallId: `record-${randomUUID()}`,
                                 facts: { entries: count, queries: asked },
                             },
                             now,
@@ -379,7 +380,7 @@ export function buildApi(state: JigState): JigApi {
                         now,
                     );
                 } catch {
-                    // A recall that cannot be recorded must not break the message.
+                    // A record that cannot be written must not break the message.
                 }
             },
         },

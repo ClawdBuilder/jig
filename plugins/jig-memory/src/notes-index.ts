@@ -1,7 +1,7 @@
 // A search index of the tickets that have no card yet: the ## Now block and the decisions of notes.md, bounded and derived,
 // so a 73 KB note costs the same as a small one. It is a copy beside the cards index, rebuilt when a note changes, and it
 // never reads or writes evidence. A written card always wins over a derived entry for the same ticket.
-import { type Dirent, readdirSync, statSync } from "node:fs";
+import { type Dirent, lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { countTerms, tokenize } from "./bm25.ts";
 import { clipBytes } from "./clip.ts";
@@ -38,7 +38,8 @@ export const notesIndexFile = (folder: string): string => path.join(folder, ".no
 
 /** A level-2 section of a note, from its heading to the next # or ## heading, or "". */
 function section(text: string, name: string): string {
-    const lines = text.split("\n");
+    // CRLF notes are common on Windows and from pasted text; without this the heading carries a trailing \r.
+    const lines = text.replace(/\r\n?/g, "\n").split("\n");
     const start = lines.findIndex((line) => new RegExp(`^##[ \\t]+${name}[ \\t]*$`, "i").test(line));
     if (start < 0) return "";
     let end = start + 1;
@@ -93,7 +94,9 @@ function isEntry(value: unknown): value is NoteEntry {
 /** The index as it is on disk, or undefined when it is missing, unreadable, of another version or not shaped right. */
 function readIndex(folder: string, pattern: string): NoteIndex | undefined {
     try {
-        const raw = JSON.parse(readText(notesIndexFile(folder))) as {
+        const indexFile = notesIndexFile(folder);
+        if (!lstatSync(indexFile).isFile()) return undefined;
+        const raw = JSON.parse(readText(indexFile)) as {
             version?: unknown;
             source?: unknown;
             pattern?: unknown;
@@ -127,29 +130,38 @@ export function loadNoteIndex(folder: string, pattern: RegExp | undefined): Note
     } catch {
         return {};
     }
-    for (const dirent of dirents) {
-        if (!dirent.isDirectory() || !isSafeKey(dirent.name)) continue;
-        const file = ticketPaths(folder, dirent.name).notes;
+    const dirs = new Set(dirents.filter((dirent) => dirent.isDirectory() && isSafeKey(dirent.name)).map((d) => d.name));
+    for (const ticket of dirs) {
+        const file = ticketPaths(folder, ticket).notes;
         let stamp: { mtimeMs: number; size: number };
         try {
-            const stat = statSync(file);
+            const stat = lstatSync(file);
+            if (!stat.isFile()) {
+                // A symlink, a FIFO or a device is not a note: never open it, and do not hang on a FIFO.
+                if (stored?.[ticket] !== undefined) dirty = true;
+                continue;
+            }
             stamp = { mtimeMs: stat.mtimeMs, size: stat.size };
-        } catch {
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "ENOENT" && stored?.[ticket] !== undefined) dirty = true;
             continue;
         }
-        const known = stored?.[dirent.name];
+        const known = stored?.[ticket];
         if (known !== undefined && known.mtimeMs === stamp.mtimeMs && known.size === stamp.size) {
-            notes[dirent.name] = known;
+            notes[ticket] = known;
             continue;
         }
-        dirty = true;
         try {
-            notes[dirent.name] = noteEntryOf(dirent.name, readText(file), stamp, pattern);
+            // Only a note that was read can change the index; an unreadable one is tried again next time without a write.
+            notes[ticket] = noteEntryOf(ticket, readText(file), stamp, pattern);
+            dirty = true;
         } catch {
-            // A note that cannot be read now is tried again next time.
+            // A note that cannot be read now is tried again next time, and the old entry stays out.
         }
     }
-    if (stored !== undefined && Object.keys(stored).some((ticket) => notes[ticket] === undefined)) dirty = true;
+    if (stored !== undefined) {
+        for (const ticket of Object.keys(stored)) if (!dirs.has(ticket)) dirty = true;
+    }
     if (dirty) {
         try {
             replaceFile(

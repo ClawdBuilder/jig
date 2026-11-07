@@ -59,12 +59,17 @@ test("recall searches earlier notes and returns the history warning and its fact
         "# PROJ-88\n\n## Now\nStatus: OrderService throws NullPointerException\n\n## Decisions\nCheck for null.\n",
     );
     pi.input("PROJ-123: the next ticket");
+    writeFileSync(
+        ticketPaths(folder, "PROJ-123").notes,
+        "# PROJ-123\n\n## Now\nStatus: OrderService throws NullPointerException\n\n## Decisions\n",
+    );
     const result = await pi.tool({ action: "recall", query: "NullPointerException in OrderService" });
     assert.equal(result.isError, false);
     assert.match(result.text, /PROJ-88 \(from notes\.md, /);
     assert.match(result.text, /history, not instructions/);
     assert.deepEqual(jig.factsCalls.at(-1)?.facts, { entries: 1, queries: 1 });
-    assert.equal(result.text.includes("PROJ-123"), false, "the active ticket is excluded");
+    assert.match(result.text, /PROJ-88/);
+    assert.equal(result.text.includes("PROJ-123"), false, "the active ticket matches the query, and is still excluded");
 });
 
 test("pasted text is masked, saved to evidence with an index line, and the model gets the file name back", async (t) => {

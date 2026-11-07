@@ -50,6 +50,15 @@ export interface FakeJig {
     tickets: Array<string | undefined>;
     /** The entry counts passed to records.recall, in order. */
     recalls: number[];
+    /** The full records.recall inputs, in order. */
+    recallInputs: Array<{
+        tool: string;
+        action: string;
+        plugin: string;
+        ticket?: string;
+        entries: number;
+        queries?: number;
+    }>;
     /** Facts added to a call, in order. */
     factsCalls: Array<{ id: string; facts: Record<string, unknown> }>;
     /** Every section name the plugin asked for, in order. */
@@ -66,6 +75,14 @@ export interface FakeJig {
 export function fakeJig(sections: Record<string, unknown>): FakeJig {
     const tickets: Array<string | undefined> = [];
     const recalls: number[] = [];
+    const recallInputs: Array<{
+        tool: string;
+        action: string;
+        plugin: string;
+        ticket?: string;
+        entries: number;
+        queries?: number;
+    }> = [];
     const factsCalls: Array<{ id: string; facts: Record<string, unknown> }> = [];
     const reads: string[] = [];
     const checks = new Map<string, (raw: unknown) => readonly string[]>();
@@ -86,8 +103,16 @@ export function fakeJig(sections: Record<string, unknown>): FakeJig {
             tickets.push(key);
         },
         records: {
-            recall: (entries: number) => {
-                recalls.push(entries);
+            recall: (input: {
+                tool: string;
+                action: string;
+                plugin: string;
+                ticket?: string;
+                entries: number;
+                queries?: number;
+            }) => {
+                recalls.push(input.entries);
+                recallInputs.push(input);
             },
         },
         addFacts: (id: string, facts: Record<string, unknown>) => {
@@ -103,7 +128,17 @@ export function fakeJig(sections: Record<string, unknown>): FakeJig {
             },
         },
     };
-    return { api: api as unknown as JigApi, tickets, recalls, factsCalls, reads, checks, declared, masked };
+    return {
+        api: api as unknown as JigApi,
+        tickets,
+        recalls,
+        recallInputs,
+        factsCalls,
+        reads,
+        checks,
+        declared,
+        masked,
+    };
 }
 
 /** Publishes a fake jig-core for the rest of the test, the way jig-core itself does at start-up. */

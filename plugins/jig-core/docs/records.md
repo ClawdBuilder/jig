@@ -21,12 +21,13 @@ it once.
 own record, as declared in its contract: for example, tests passed and failed,
 or a CI run's conclusion. They are never free text.
 
-`jig-memory` writes one line for an automatic recall message that is not a tool
-call: tool `memory`, action `recall`, plugin `jig-memory`, outcome `ok`, and
-`facts.entries` and `facts.queries`, the numbers of entries and queries in the
-message. It carries no message text, note text or query text; `jig-lens` counts it
-like any other call. The `ticket` tool's `recall` action adds the same two facts to
-its own call record. The limits:
+A plugin can write one line for a message that is not a tool call through
+`records.recall({ tool, action, plugin, ticket, entries, queries })`: the caller
+supplies the names and the ticket, and jig-core adds the session. `jig-memory` uses
+tool `memory`, action `recall`, plugin `jig-memory`; the line carries
+`facts.entries` and `facts.queries` and no message, note or query text, so
+`jig-lens` counts it like any other call. The `ticket` tool's `recall` action adds
+the same two facts to its own call record. The limits:
 - a string over 64 characters is dropped, and so is anything that is not a
   number, a flag or a string;
 - a fact whose name is over 64 characters is dropped too;

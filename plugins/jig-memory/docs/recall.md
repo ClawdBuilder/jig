@@ -18,8 +18,8 @@ indexes and the tests that measure it. Back to the
   by an error, class name or behaviour. It is a local read, so it never asks for
   approval, and its result goes to the agent with the same labels and history
   warning. This is a pull: a weak result costs only the agent's own turn.
-- **Not automatically** when `recall.enabled` is false. By hand and the tool action
-  still work.
+- **Never** when `recall.enabled` is false: automatic recall and both pull paths
+  are off, so a company that wants no recall has one switch.
 - `recall.notes` controls **automatic** recall only. When it is off, `/ticket
   recall` and `ticket recall` still search notes, and listed cards come before
   derived entries. A person who asked should see the written cards first.
@@ -57,8 +57,9 @@ wins for its own ticket.
   word's weight is scaled so one that only one entry uses is worth 1.
 - **The text a card is searched by** is its three sections and its repositories.
   **The text a derived entry is searched by** is the ticket's `## Now` and
-  `## Decisions` only, each bounded at 4 KB. A 73 KB note therefore costs the same
-  as a small one, and evidence is never searched.
+  `## Decisions` only, each bounded at 4 KB. The 4 KB is a format bound, not
+  policy: it makes a 73 KB note cost the same as a small one. Evidence is never
+  searched.
 
 ## The threshold and the budget
 
@@ -70,7 +71,10 @@ How a derived entry may reach the agent depends on who asked:
 - **`/ticket recall`** (a person asked) also accepts a word that is rare in this
   folder. A word is rare when BM25's relative rarity is at least 0.6 — about three
   of 17 tickets, or six of 1,700 — so the rule needs no different number for a
-  large folder. There is no hand-written stop list; the two levels are the guard.
+  large folder. The 0.6 is relative to the folder, chosen so one ticket in 17 is
+  rare without a different constant for 1,700. There is no hand-written stop list;
+  the two levels are the guard. The 700-character excerpt cap keeps one message
+  small; it is a display bound, not a scoring rule.
 
 Hyphenated tool and script names such as `order-sync` and `run-tests.sh` are
 extracted as names, because a real neighbour can share one instead of sharing a
@@ -88,8 +92,10 @@ of the table above:
 
 `memory.recall.max` (3 by default) cuts the whole result. A derived entry also
 counts against `memory.recall.maxNotes`, 1 by default: a card does not. Set
-`maxNotes` to 0, or `recall.notes` to false, to leave derived entries out. The
-numbers below are why the default is off.
+`maxNotes` to 0, or `recall.notes` to false, to leave derived entries out of
+automatic recall. **Automatic recall takes at most one derived entry whatever
+`maxNotes` says**; the setting is for the manual search. The numbers below are why
+the default is off.
 
 ## The message
 

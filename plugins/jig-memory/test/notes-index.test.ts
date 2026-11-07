@@ -1,12 +1,14 @@
 // The notes index: only ## Now and ## Decisions are kept, a large note costs no more than a small one, an entry is rebuilt
 // when the note changes, and a written card wins over the derived entry for its ticket.
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmodSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 import { writeCard } from "./support.ts";
 import { loadCards } from "../src/cards.ts";
 import { RECALL_DEFAULTS } from "../src/config.ts";
-import { loadNoteIndex, NOTES_TEXT_LIMIT } from "../src/notes-index.ts";
+import { loadNoteIndex, NOTES_TEXT_LIMIT, notesIndexFile } from "../src/notes-index.ts";
 import { buildQuery, recall } from "../src/recall.ts";
 import { ticketPaths } from "../src/store.ts";
 import { tempFolder } from "./support.ts";
@@ -126,4 +128,42 @@ test("a note entry is labelled as from notes, dated and possibly out of date", (
     assert.equal(matches[0]?.source, "notes");
     assert.match(matches[0]?.date ?? "", /^\d{4}-\d{2}-\d{2}$/);
     assert.match(matches[0]?.now ?? "", /QueueWorker/);
+});
+
+test("a CRLF note is indexed, with no trailing carriage return in a block", (t) => {
+    const folder = tempFolder(t);
+    writeNote(folder, "PROJ-1", "# PROJ-1\r\n\r\n## Now\r\nStatus: OrderService\r\n\r\n## Decisions\r\nCheck.\r\n");
+    const entry = loadNoteIndex(folder, PATTERN)["PROJ-1"];
+    assert.match(entry?.now ?? "", /OrderService/);
+    assert.equal((entry?.now ?? "").includes("\r"), false);
+});
+
+test("a symlinked or FIFO note is skipped and never opened", (t) => {
+    const folder = tempFolder(t);
+    mkdirSync(ticketPaths(folder, "PROJ-1").dir, { recursive: true });
+    const real = path.join(folder, "outside.md");
+    writeFileSync(real, "# x\n\n## Now\nStatus: OrderService\n");
+    symlinkSync(real, ticketPaths(folder, "PROJ-1").notes);
+    assert.equal(loadNoteIndex(folder, PATTERN)["PROJ-1"], undefined, "symlink skipped");
+    rmSync(ticketPaths(folder, "PROJ-1").notes);
+    try {
+        execFileSync("mkfifo", [ticketPaths(folder, "PROJ-1").notes]);
+    } catch {
+        t.skip("mkfifo is not available");
+        return;
+    }
+    const started = Date.now();
+    assert.equal(loadNoteIndex(folder, PATTERN)["PROJ-1"], undefined, "FIFO skipped without opening it");
+    assert.ok(Date.now() - started < 2_000, "a FIFO must not hang the index");
+});
+
+test("an unreadable note does not rewrite the index on every read", (t) => {
+    const folder = tempFolder(t);
+    writeNote(folder, "PROJ-1", "# PROJ-1\n\n## Now\nStatus: first\n\n## Decisions\n");
+    loadNoteIndex(folder, PATTERN);
+    const index = notesIndexFile(folder);
+    const before = readFileSync(index, "utf8");
+    chmodSync(ticketPaths(folder, "PROJ-1").notes, 0o000);
+    loadNoteIndex(folder, PATTERN);
+    assert.equal(readFileSync(index, "utf8"), before, "the index is unchanged");
 });

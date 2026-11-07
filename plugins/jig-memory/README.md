@@ -99,11 +99,11 @@ plugin's rules. An error names the key, and the plugin then uses its defaults.
 |---|---|---|
 | `ticketPattern` | none | A regular expression for ticket keys, such as `[A-Z][A-Z0-9]+-\d+` |
 | `folder` | `~/.local/share/jig/tickets` | Where ticket folders live: an absolute path, or one that starts with `~/` |
-| `recall.enabled` | `true` | Run recall when a new ticket becomes active |
+| `recall.enabled` | `true` | Recall at all: automatic messages, `/ticket recall` and `ticket recall`; false stops all three |
 | `recall.max` | `3` | Most cards in one recall message, from 1 to 10 |
 | `recall.minScore` | `2` | The score an entry needs; see [Recall](docs/recall.md#the-threshold-and-the-budget) |
 | `recall.notes` | `false` | Search entries derived from notes in **automatic** recall; off because it missed the half-noise bar (0.818 to 0.455). `/ticket recall` and `ticket recall` always search notes |
-| `recall.maxNotes` | `1` | Most derived notes entries in one result, from 0 to `max`; 0 turns them off |
+| `recall.maxNotes` | `1` | Most derived notes entries in one manual result, from 0 to `max`; automatic recall is always capped at one whatever this says |
 
 Field notes and an example: [Configure](docs/configure.md).
 

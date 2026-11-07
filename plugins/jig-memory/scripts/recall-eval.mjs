@@ -9,12 +9,18 @@
 //
 // Usage: node recall-eval.mjs --folder <tickets> [--labels <json>] [--mode notes|cards|both]
 //        [--min-score 2] [--max 3] [--top 3] [--lines 25] [--rule on|off]
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { entryOf } from "../src/cards.ts";
-import { RECALL_DEFAULTS } from "../src/config.ts";
-import { noteEntryOf } from "../src/notes-index.ts";
-import { buildQuery, recall, recallMessage } from "../src/recall.ts";
-import { isSafeKey, readText, ticketPaths } from "../src/store.ts";
+import { readFileSync, readdirSync, lstatSync } from "node:fs";
+
+// The plugin's TypeScript is imported inside the try below, so an import failure prints {"error":true} and no stack.
+let entryOf;
+let RECALL_DEFAULTS;
+let noteEntryOf;
+let buildQuery;
+let recall;
+let recallMessage;
+let isSafeKey;
+let readText;
+let ticketPaths;
 
 function args(argv) {
     const out = {
@@ -124,13 +130,13 @@ function main() {
     for (const key of keys) {
         const paths = ticketPaths(a.folder, key);
         try {
-            const stat = statSync(paths.notes);
+            const stat = lstatSync(paths.notes);
             notes.set(key, { text: readText(paths.notes), stamp: { mtimeMs: stat.mtimeMs, size: stat.size } });
         } catch {
             // No note yet.
         }
         try {
-            const stat = statSync(paths.card);
+            const stat = lstatSync(paths.card);
             cards.set(key, { text: readText(paths.card), stamp: { mtimeMs: stat.mtimeMs, size: stat.size } });
         } catch {
             // No card yet.
@@ -309,6 +315,11 @@ function main() {
 }
 
 try {
+    ({ entryOf } = await import("../src/cards.ts"));
+    ({ RECALL_DEFAULTS } = await import("../src/config.ts"));
+    ({ noteEntryOf } = await import("../src/notes-index.ts"));
+    ({ buildQuery, recall, recallMessage } = await import("../src/recall.ts"));
+    ({ isSafeKey, readText, ticketPaths } = await import("../src/store.ts"));
     process.stdout.write(`${JSON.stringify(main(), null, 2)}\n`);
 } catch {
     process.stdout.write('{"error":true}\n');

@@ -1,7 +1,7 @@
 // The generic recall script runs on any folder and prints aggregates only. Invented notes cover it without real data: one
 // note names another ticket, one does not, and the score must find the named one without printing a key.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
@@ -18,7 +18,10 @@ function writeNote(folder: string, key: string, text: string): void {
 test("hand labels replace derived links, and top 3 is not capped by the display budget", (t) => {
     const folder = tempFolder(t);
     for (const key of ["PROJ-1", "PROJ-2", "PROJ-3"]) {
-        writeNote(folder, key, `# ${key}\n\n## Now\nStatus: OrderService\n\n## Decisions\n`);
+        writeNote(folder, key, `# ${key}\n\n## Now\nStatus: OrderService NullPointerException\n\n## Decisions\n`);
+    }
+    for (let n = 0; n < 10; n++) {
+        writeNote(folder, `FILL-${n}`, `# FILL-${n}\n\n## Now\nStatus: filler${n}\n\n## Decisions\n`);
     }
     const labels = path.join(folder, "labels.json");
     writeFileSync(
@@ -41,6 +44,8 @@ test("hand labels replace derived links, and top 3 is not capped by the display 
     assert.equal(result.cases, 3);
     assert.equal(result.top, 3);
     assert.equal(result.maxNotes, 3, "the top-3 retrieval is not capped by the display default");
+    assert.equal(result.hits, 4, "all four label directions are retrieved");
+    assert.equal(result.pairsFoundAny, 2, "both labelled pairs are found");
     assert.equal(stdout.includes("PROJ-1"), false);
 });
 
@@ -72,4 +77,24 @@ test("the script finds an invented linked ticket from notes, and prints no key",
         execFileSync(process.execPath, [SCRIPT, "--folder", folder, "--mode", "cards"], { encoding: "utf8" }),
     ) as Record<string, unknown>;
     assert.equal(cards.hits, 0);
+});
+
+test("the script prints only its error object on a bad folder or bad labels", (t) => {
+    const folder = tempFolder(t);
+    const badFolder = spawnSync(process.execPath, [SCRIPT, "--folder", path.join(folder, "missing")], {
+        encoding: "utf8",
+    });
+    assert.equal(badFolder.status, 1);
+    assert.equal(badFolder.stdout, '{"error":true}\n');
+    assert.equal(badFolder.stderr, "");
+
+    const labels = path.join(folder, "bad-labels.json");
+    writeFileSync(labels, "{not json");
+    const badLabels = spawnSync(process.execPath, [SCRIPT, "--folder", folder, "--labels", labels], {
+        encoding: "utf8",
+    });
+    assert.equal(badLabels.status, 1);
+    assert.equal(badLabels.stdout, '{"error":true}\n');
+    assert.equal(badLabels.stderr, "");
+    assert.equal(badLabels.stdout.includes(folder), false);
 });
