@@ -29,9 +29,9 @@ sees it. The same rules govern `bash`, pull requests, Jira, databases, APIs, CI 
 - **Browser pages have one palette.** A graphite dark theme and a light one, following the system or a saved choice;
   [Browser theme](docs/browser-theme.md) has the tokens and the contrast numbers.
 
-![A dark browser code review with two Java diff files, a review summary and Approve in the header; example data](docs/img/review-dark.png)
+![A dark browser code review with two Java diff files, a file list, a review summary and Approve in the header; example data](docs/img/review-dark.png)
 
-*A code review in Jig's browser page, in its graphite theme. Changed files and diffs are on the left, the summary stays
+*A code review in Jig's browser page, in its graphite theme. The file list and diffs are on the left, the summary stays
 beside them, and **Approve** is in the header; approval still returns to Pi. This is example data.*
 
 ## Install
