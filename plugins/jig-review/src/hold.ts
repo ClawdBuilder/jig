@@ -4,8 +4,8 @@ import type { GateCall } from "../../jig-core/src/contract.ts";
 import { RESOLUTION_TOOL, START_TOOL } from "./tools.ts";
 
 export const WAIT_REASON =
-    "a code review is open in the browser and waiting for the person. Stop and wait for their message; approval or comments " +
-    "release this call.";
+    "a code review is open in the browser and waiting for the person. Stop and wait; send a message to release this call, or " +
+    "approve or comment in the browser.";
 
 /** A refusal for a write while a review waits, or undefined to let it through. Reads and the resolution tool stay open. */
 export function holdReason(call: Pick<GateCall, "tool" | "effect">, holding: boolean): string | undefined {

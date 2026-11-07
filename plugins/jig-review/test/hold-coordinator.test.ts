@@ -15,11 +15,13 @@ test("an extension message does not release; interactive and rpc do", async () =
     }
 });
 
-test("a person's slash command releases, and a new person review releases the old hold", async () => {
+test("a slash command alone does not release; a message does", async () => {
     const review = await openReview("", { byAgent: true });
     try {
         await review.host.run("code-review", "", review.session.ctx);
-        assert.equal(review.coordinator.holdsAgent(), false, "the command releases the hold");
+        assert.equal(review.coordinator.holdsAgent(), true, "there is no command event to release on");
+        await review.host.fire("input", review.session.ctx, { text: "person", source: "interactive" });
+        assert.equal(review.coordinator.holdsAgent(), false);
     } finally {
         await review.close();
     }
@@ -59,18 +61,20 @@ test("holdAgent false stops the hold without releasing a person", async () => {
     }
 });
 
-test("abort counts turns, not parallel writes, and takes the context from the call", async () => {
+test("abort counts refused model responses, not parallel calls", async () => {
     const review = await openReview("", { byAgent: true });
     try {
         let aborts = 0;
         const ctx = { ...(review.session.ctx as object), abort: () => void aborts++ } as never;
-        await review.host.fire("agent_start", ctx);
+        await review.host.fire("turn_start", ctx);
         review.coordinator.noteHoldDenial();
         review.coordinator.noteHoldDenial();
-        assert.equal(aborts, 0, "two calls in one turn do not abort");
-        await review.host.fire("agent_start", ctx);
+        await review.host.fire("turn_end", ctx);
+        assert.equal(aborts, 0, "two parallel calls in one response do not abort");
+        await review.host.fire("turn_start", ctx);
         review.coordinator.noteHoldDenial();
-        assert.equal(aborts, 1, "the next turn's refusal aborts");
+        await review.host.fire("turn_end", ctx);
+        assert.equal(aborts, 1, "the second refused response aborts");
     } finally {
         await review.close();
     }
@@ -93,6 +97,28 @@ test("a session restart or a stopped server holds nothing", async () => {
         assert.equal(review.coordinator.holdsAgent(), true);
         await review.host.fire("session_start", review.session.ctx);
         assert.equal(review.coordinator.holdsAgent(), false, "restart releases");
+    } finally {
+        await review.close();
+    }
+});
+
+test("the start result says a person's review is open and nothing is held", async () => {
+    const review = await openReview("");
+    try {
+        const result = await review.host.tool("start_interactive_code_review", {}, review.session.ctx);
+        assert.match(result.content[0]?.text ?? "", /already has this review open.*nothing is held/);
+    } finally {
+        await review.close();
+    }
+});
+
+test("a company review section supplies defaults, and the person's store overrides it", async () => {
+    const review = await openReview("", { byAgent: true, review: { holdAgent: false } });
+    try {
+        assert.equal(review.coordinator.holdsAgent(), false, "the company section turns the hold off");
+        const response = await review.patch("/api/settings", { holdAgent: true });
+        assert.equal(response.status, 200);
+        assert.equal(review.coordinator.holdsAgent(), true, "the person's setting wins");
     } finally {
         await review.close();
     }

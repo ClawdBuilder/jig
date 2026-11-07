@@ -19,7 +19,7 @@ import { PasskeyStore } from "./passkey/store.ts";
 import { buildApprovalPrompt, buildReviewSubmissionPrompt } from "./prompts.ts";
 import { ReviewServer } from "./server.ts";
 import type { CommentSubmissionMode, SubmittedCommentInput } from "./server.ts";
-import { SettingsStore, workspaceDirFor } from "./settings.ts";
+import { parseReviewSettings, SettingsStore, workspaceDirFor } from "./settings.ts";
 import { formatSettingsOptions, passkeyToRemove, toggleSelectedSetting } from "./settings-options.ts";
 import { hashDiff, ReviewStore } from "./store.ts";
 import { activeTicket } from "./ticket.ts";
@@ -29,7 +29,7 @@ import type { ApprovalMethod, ReviewRecord, ReviewSettings } from "./types.ts";
 import { WorkspaceReviewSource } from "./workspace.ts";
 
 /** What starting a review gave: its page, or the one-line reason it could not open. */
-export type ReviewStart = { url: string } | { error: string };
+export type ReviewStart = { url: string; person?: boolean } | { error: string };
 
 /** How long a question in Pi waits for the user before it counts as a no. */
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
@@ -53,10 +53,9 @@ export class ReviewCoordinator {
     private agentRequestedReviewId?: string;
     /** False while a review the agent opened is open and the person has not answered. */
     private holdReleased = true;
-    /** Refused writes per wait and per turn: a second turn, not a parallel second call, stops the spin. */
-    private holdDenials = 0;
-    private holdTurn = 0;
-    private lastHoldTurn = -1;
+    /** Responses in a row, since the hold, that a refused call appeared in; parallel calls count once. */
+    private refusedResponses = 0;
+    private thisResponseRefused = false;
     private lastSubmissionMode: CommentSubmissionMode = "review";
     private server?: ReviewServer;
     private settings?: ReviewSettings;
@@ -105,22 +104,13 @@ export class ReviewCoordinator {
     /** The person approved, commented, or typed in Pi: the hold is over. */
     public releaseHold(): void {
         this.holdReleased = true;
-        this.holdDenials = 0;
-        this.lastHoldTurn = -1;
+        this.refusedResponses = 0;
+        this.thisResponseRefused = false;
     }
 
-    /** One write refused by the wait. Only a refusal on a later turn aborts, so parallel calls see one refusal. */
+    /** One write refused by the wait. Parallel calls in one response set this once. */
     public noteHoldDenial(): void {
-        if (this.lastHoldTurn === this.holdTurn) return;
-        this.lastHoldTurn = this.holdTurn;
-        this.holdDenials += 1;
-        const limit = this.settings?.holdAbortAfter ?? 2;
-        if (this.holdDenials < limit) return;
-        try {
-            this.ctx?.abort();
-        } catch {
-            // A context that cannot abort is not a gate failure: the call still records blocked.
-        }
+        this.thisResponseRefused = true;
     }
 
     public async runStartTaken(): Promise<void> {
@@ -129,19 +119,6 @@ export class ReviewCoordinator {
 
     /** Registers event handlers, the command and the tools. Touches no files: see session_start. */
     public register(): void {
-        // A slash command is a person's action too, and Pi runs command handlers before input handlers. Wrap command
-        // registration so a command releases the hold even when no input event follows it.
-        const registerCommand = this.pi.registerCommand.bind(this.pi);
-        this.pi.registerCommand = ((name, options) => {
-            return registerCommand(name, {
-                ...options,
-                handler: async (args, ctx) => {
-                    this.releaseHold();
-                    return options.handler(args, ctx);
-                },
-            });
-        }) as typeof this.pi.registerCommand;
-
         this.pi.on("session_start", async (_event, ctx): Promise<void> => {
             this.ctx = ctx;
             this.holdReleased = true;
@@ -161,9 +138,27 @@ export class ReviewCoordinator {
 
         // Not awaited: the model starts at once, and the snapshot (a git status per repository) is done long before the agent's
         // first tool call can change a file. agent_end waits for it.
+        this.pi.on("turn_start", (): void => {
+            this.thisResponseRefused = false;
+        });
+
+        this.pi.on("turn_end", (_event, ctx): void => {
+            if (this.thisResponseRefused) this.refusedResponses += 1;
+            else this.refusedResponses = 0;
+            this.thisResponseRefused = false;
+            const limit = this.settings?.holdAbortAfter ?? 2;
+            if (this.refusedResponses < limit) return;
+            try {
+                ctx.abort();
+            } catch {
+                // A context that cannot abort is not a gate failure: the call still records blocked.
+            }
+        });
+
         this.pi.on("agent_start", (_event, ctx): void => {
             this.ctx = ctx;
-            this.holdTurn += 1;
+            this.refusedResponses = 0;
+            this.thisResponseRefused = false;
             this.tracker.startRun(ctx);
         });
 
@@ -374,14 +369,15 @@ export class ReviewCoordinator {
         this.ctx = ctx;
         // A fresh review the person opened is theirs: the agent may show it, but never claims it or holds on it.
         const persons = this.agentRequestedReviewId === undefined && this.currentReview?.status === "awaiting-review";
+        await this.getSettings();
         const started = await this.handleCodeReviewCommand("", ctx);
         if (started !== undefined && "url" in started && !persons) {
             this.agentRequestedReviewId = this.currentReview?.id;
             this.holdReleased = false;
-            this.holdDenials = 0;
-            this.lastHoldTurn = -1;
+            this.refusedResponses = 0;
+            this.thisResponseRefused = false;
         }
-        return started;
+        return started !== undefined && "url" in started && persons ? { ...started, person: true } : started;
     }
 
     private async recordResolution(resolution: Parameters<ReviewStore["addResolution"]>[1]): Promise<ReviewRecord> {
@@ -616,7 +612,13 @@ export class ReviewCoordinator {
     }
 
     private async getSettings(): Promise<ReviewSettings> {
-        this.settings ??= await this.settingsStore.load();
+        if (this.settings === undefined) {
+            // A company section supplies defaults; the person's settings page overrides it.
+            const section = parseReviewSettings(jig().config.section("review"));
+            this.settings = this.settingsStore.hasConfig()
+                ? { ...section, ...(await this.settingsStore.load()) }
+                : section;
+        }
         return this.settings;
     }
 }

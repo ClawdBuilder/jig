@@ -18,6 +18,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
+import { clampHoldAbortAfter } from "./settings.ts";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -334,9 +335,7 @@ function parseSettingsUpdate(body: unknown): Partial<ReviewSettings> {
     if (typeof body.autoOpenBrowser === "boolean") settings.autoOpenBrowser = body.autoOpenBrowser;
     if (body.diffView === "split" || body.diffView === "unified") settings.diffView = body.diffView;
     if (typeof body.holdAgent === "boolean") settings.holdAgent = body.holdAgent;
-    if (typeof body.holdAbortAfter === "number" && Number.isInteger(body.holdAbortAfter)) {
-        settings.holdAbortAfter = body.holdAbortAfter;
-    }
+    if (body.holdAbortAfter !== undefined) settings.holdAbortAfter = clampHoldAbortAfter(body.holdAbortAfter);
     return settings;
 }
 

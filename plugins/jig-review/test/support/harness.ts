@@ -220,7 +220,7 @@ export const TICKET = "PROJ-1";
  */
 export async function openReview(
     args = "",
-    options: { byAgent?: boolean; ticket?: boolean; askQueueWaitMs?: number } = {},
+    options: { byAgent?: boolean; ticket?: boolean; askQueueWaitMs?: number; review?: Record<string, unknown> } = {},
 ): Promise<ReviewSession> {
     const root = mkdtempSync(path.join(os.tmpdir(), "jig-review-ws-"));
     const agentRoot = mkdtempSync(path.join(os.tmpdir(), "jig-review-root-"));
@@ -231,6 +231,7 @@ export async function openReview(
 
     const jig = installFakeJig();
     jig.setSection("memory", { folder: tickets });
+    if (options.review !== undefined) jig.setSection("review", options.review);
     const host = fakeHost();
     const coordinator = new ReviewCoordinator(host.pi, root, {
         root: agentRoot,
