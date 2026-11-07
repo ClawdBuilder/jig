@@ -34,8 +34,7 @@ changes, the other changes in the same commit. Tests read the tool tables of
   `herdr/mods/jig-theme-sync/convert.js`, run `node herdr/scripts/build-themes.ts`; a test fails when the committed themes
   are out of date. Write the other mods in your own words: never copy code from a mod under another licence (EUPL, GPL). `npm test` runs
   `herdr/test/` too.
-- **The launcher is not a plugin.** `bin/pi`, with `bin/tmux.conf` and `bin/clipboard-copy`, is the optional `pi` command. The "Starting
-  Pi" section of `README.md` is its specification, and `test/launcher.test.ts` fails when that section misses a flag or variable the
+- **The launcher is not a plugin.** `bin/pi`, with `bin/tmux.conf` and `bin/clipboard-copy`, is the optional `pi` command. `docs/launcher.md` is its specification, and `test/launcher.test.ts` fails when that section misses a flag or variable the
   script reads. The tests run a fake Pi and tmux in a closed world (`test/support/launcher-world.ts`) and start nothing real. It stays
   generic like everything here: it sets none of the user's settings, runs no checks at start, and never signs in.
 - **Docs.** Write them by [Writing the docs](docs/writing.md): open with what

@@ -663,13 +663,9 @@ describe("reattaching", () => {
     });
 });
 
-describe("the README", () => {
-    test("its Starting Pi section names every flag and variable the launcher reads", () => {
-        const readme = readFileSync(path.join(REPO, "README.md"), "utf8");
-        const from = readme.indexOf("\n## Starting Pi\n");
-        assert.notEqual(from, -1, "a Starting Pi section");
-        const rest = readme.slice(from + 1);
-        const section = rest.slice(0, rest.indexOf("\n## ", 1));
+describe("the launcher page", () => {
+    test("names every flag and variable the launcher reads", () => {
+        const section = readFileSync(path.join(REPO, "docs", "launcher.md"), "utf8");
         const source = readFileSync(LAUNCHER, "utf8");
         const names = new Set(source.match(/--no-tmux|--new\b|HC_TERMINAL_ID|\b(?:JIG|PI)_[A-Z_]+/g));
         // The ones only the tests use, and the marker that ties a session to its launcher, are described in bin/pi.
@@ -682,7 +678,7 @@ describe("the README", () => {
         ];
         for (const name of internal) names.delete(name);
         assert.ok(names.size >= 7, "the launcher reads flags and variables");
-        for (const name of names) assert.ok(section.includes(name), `${name} is in the Starting Pi section`);
+        for (const name of names) assert.ok(section.includes(name), `${name} is in the launcher page`);
         for (const word of [
             "~/.local/bin/pi",
             "tmux",
