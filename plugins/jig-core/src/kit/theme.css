@@ -1,3 +1,4 @@
+/* Three blocks are what CSS needs: the light tokens, the dark attribute for a pinned choice, and the media query for system. */
 /* The one browser palette. Graphite, not navy; light stays. Every page imports this file, or has it put in the page by
    jig-core, so a colour is defined here once and never copied into a plugin. */
 :root {

@@ -34,7 +34,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { jig } from "../../jig-core/src/client.ts";
 import { themeChoice } from "../../jig-core/src/kit/theme.ts";
-import { readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
+import { agentDirFor, readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
 import { LensWeb } from "./web.ts";
 
 type Level = "info" | "warning" | "error";
@@ -229,9 +229,7 @@ export function registerLens(pi: ExtensionAPI, deps: Deps): void {
         names: modelNames.names,
         sessionsDir: () => deps.sessionsDir(),
         theme: () => {
-            const saved = readThemePreference(
-                process.env.PI_CODING_AGENT_DIR?.trim() || path.join(homedir(), ".pi", "agent"),
-            );
+            const saved = readThemePreference(agentDirFor());
             if (saved !== undefined) return saved;
             const section = jig().config.section("ui") as { theme?: unknown } | undefined;
             return themeChoice(section?.theme);

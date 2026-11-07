@@ -46,6 +46,14 @@ export const ReviewActionModal: FC<ReviewActionModalProps> = (props) => {
   });
 
   useEffect(() => {
+    // A draft typed after "Discard and approve" cancels the pending discard, so the person is asked again.
+    if (discardOnSuccess.current && hasDraftComments(props.drafts, props.generalComment)) {
+      discardOnSuccess.current = false;
+      setApprovalNeedsDecision(true);
+    }
+  }, [props.drafts, props.generalComment]);
+
+  useEffect(() => {
     if (!props.isOpen || props.approveRequested !== true) return;
     props.onApproveRequestHandled?.();
     pendingApproval.current = approval.approve;

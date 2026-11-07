@@ -21,7 +21,8 @@ afterEach(async () => {
 /** Presses Approve in the page without a passkey, with the user saying y in Pi. */
 async function approveInPi(s: ReviewSession, answer = true) {
     s.session.answer = (title) => (title === "Approve this review?" ? answer : false);
-    return s.post("/api/approve/page");
+    const review = s.records().at(-1) as { iterations?: Array<{ diffHash?: string }> } | undefined;
+    return s.post("/api/approve/page", { diffHash: String(review?.iterations?.at(-1)?.diffHash ?? "") });
 }
 
 const json = (response: { body: string }): Record<string, unknown> =>
@@ -139,7 +140,7 @@ test("approving a review the after-turn offer opened sends the agent nothing", a
 
     // The page asks Pi through the latest context, which is the one that made this review.
     offered.answer = (title) => title === "Approve this review?";
-    assert.equal((await session.post("/api/approve/page")).status, 200);
+    assert.equal((await approveInPi(session)).status, 200);
     assert.equal(session.records().at(-1)?.status, "approved");
     assert.deepEqual(host.sent, []);
 });
@@ -152,7 +153,7 @@ test("a review the agent asked for that the user replaced by their own no longer
     await session.host.run("code-review", "", own.ctx);
     const review = session.records().at(-1)!;
     assert.equal(review.fileScope, "all");
-    assert.equal((await session.post("/api/approve/page")).status, 200);
+    assert.equal((await approveInPi(session)).status, 200);
     assert.equal(session.records().at(-1)?.status, "approved");
     assert.deepEqual(session.host.sent, []);
 });
@@ -237,7 +238,8 @@ test("the fallback approves only after y: the page's click alone leaves the revi
         duringQuestion = session!.records()[0];
         return false;
     };
-    await session.post("/api/approve/page");
+    const [latest] = session.records() as Array<{ iterations?: Array<{ diffHash?: string }> }>;
+    await session.post("/api/approve/page", { diffHash: String(latest?.iterations?.at(-1)?.diffHash ?? "") });
     assert.equal(duringQuestion?.status, "awaiting-review", "while Pi asks, the review is not approved");
     assert.ok(duringQuestion?.pageApprovedAt, "but the click in the page is on the record");
     const [declined] = session.records();
@@ -252,7 +254,7 @@ test("the fallback approves only after y: the page's click alone leaves the revi
 test("with no one to ask in Pi, the fallback does not approve", async () => {
     session = await openReview("--branch");
     (session.session.ctx as { hasUI: boolean }).hasUI = false; // no interactive session: Pi has nobody to ask
-    const result = await session.post("/api/approve/page");
+    const result = await approveInPi(session);
     assert.equal(result.status, 200);
     assert.equal(json(result).ok, false);
     assert.match(String(json(result).message), /no interactive session/);
@@ -268,7 +270,14 @@ test("registering a passkey through the page, then approving with it, needs no y
     const auth = new FakeAuthenticator();
     const origin = s.base;
 
-    assert.deepEqual(json(await s.post("/api/approve/options")), { method: "none", canRegister: true });
+    assert.deepEqual(
+        json(
+            await s.post("/api/approve/options", {
+                diffHash: String((s.records().at(-1) as any)?.iterations?.at(-1)?.diffHash ?? ""),
+            }),
+        ),
+        { method: "none", canRegister: true },
+    );
     const registration = json(await s.post("/api/passkeys/options")) as { publicKey: { challenge: string } };
     s.session.answer = (title) => title === "Register this passkey?";
     const registered = await s.post(
@@ -296,7 +305,11 @@ test("registering a passkey through the page, then approving with it, needs no y
     s.session.answer = () => {
         throw new Error("a passkey approval must not ask in Pi");
     };
-    const options = json(await s.post("/api/approve/options")) as {
+    const options = json(
+        await s.post("/api/approve/options", {
+            diffHash: String((s.records().at(-1) as any)?.iterations?.at(-1)?.diffHash ?? ""),
+        }),
+    ) as {
         method: string;
         publicKey: { challenge: string; rpId: string; userVerification: string };
     };
@@ -334,7 +347,11 @@ test("a page that posts an approval without a valid signature approves nothing, 
     );
 
     // What the agent could try with a stolen cookie: no signature, a signature by its own key, a replayed or guessed challenge.
-    const options = json(await s.post("/api/approve/options")) as { publicKey: { challenge: string } };
+    const options = json(
+        await s.post("/api/approve/options", {
+            diffHash: String((s.records().at(-1) as any)?.iterations?.at(-1)?.diffHash ?? ""),
+        }),
+    ) as { publicKey: { challenge: string } };
     const challenge = fromBase64Url(options.publicKey.challenge);
     const attacker = new FakeAuthenticator();
     for (const body of [
@@ -382,7 +399,7 @@ test("a page showing an older diff cannot even ask to approve it", async () => {
     const [review] = session.records() as Array<{ iterations?: Array<{ diffHash?: string }> }>;
     const displayed = String(review?.iterations?.at(-1)?.diffHash ?? "");
     assert.ok(displayed.length > 0);
-    const stale = `${displayed}-old`;
+    const stale = "0".repeat(64);
 
     const options = await session.post("/api/approve/options", { diffHash: stale });
     assert.equal(options.status, 409);
@@ -395,4 +412,11 @@ test("a page showing an older diff cannot even ask to approve it", async () => {
     const [after] = session.records();
     assert.equal(after?.status, "awaiting-review");
     assert.equal(after?.pageApprovedAt, undefined);
+});
+
+test("an approval without a valid diffHash is refused", async () => {
+    session = await openReview("--branch");
+    assert.equal((await session.post("/api/approve/options")).status, 400);
+    assert.equal((await session.post("/api/approve/options", { diffHash: "not-a-hash" })).status, 400);
+    assert.equal((await session.post("/api/approve/page", {})).status, 400);
 });

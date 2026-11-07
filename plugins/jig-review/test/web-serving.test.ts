@@ -4,8 +4,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
+import { agentDirFor, readThemePreference } from "../../jig-core/src/kit/theme-preference.ts";
 import { PACKAGE_ROOT } from "../web/scripts/manifest.ts";
+import { hashDiff } from "../src/store.ts";
 import { openReview, request } from "./support/harness.ts";
 import type { ReviewSession } from "./support/harness.ts";
 
@@ -93,6 +94,13 @@ test("every API route the built page calls is answered by the server", async () 
         "the page's API surface changed: update the server and this test together",
     );
 
+    const record = session.records()[0] as { iterations?: Array<{ diff?: string; diffHash?: string }> };
+    const iteration = record.iterations?.at(-1);
+    assert.equal(
+        iteration?.diffHash,
+        hashDiff(String(iteration?.diff ?? "")),
+        "the hash is of the diff the page renders",
+    );
     const id = String(session.records()[0]!.id);
     const json = (res: Awaited<ReturnType<typeof get>>) => {
         assert.match(String(res.headers["content-type"]), /^application\/json/);
@@ -134,7 +142,7 @@ theme: "system",    });
         200,
     );
     assert.equal(json(await get("/api/settings")).theme, "dark");
-    assert.equal(readThemePreference(session.agentRoot), "dark", "the choice is saved for the next server and page");
+    assert.equal(readThemePreference(agentDirFor()), "dark", "the choice is saved for the next server and page");
     const themed = await get("/");
     assert.match(themed.body, /<html lang="en" data-theme="dark">/);
     assert.match(themed.body, /theme-boot\.js\?theme=dark/);
@@ -150,8 +158,10 @@ theme: "system",    });
     assert.equal((await session.post("/api/comments", { comments: [{ body: "General note" }] })).status, 200);
     assert.equal(session.host.sent.length, 2, "both reached the agent as follow-up messages");
     // Waiting for the agent: the review cannot be approved, whichever way the page asks.
-    assert.equal((await session.post("/api/approve/options")).status, 409);
-    assert.equal((await session.post("/api/approve/page")).status, 409);
+    const waiting = session.records().at(-1) as { iterations?: Array<{ diffHash?: string }> };
+    const waitingHash = String(waiting?.iterations?.at(-1)?.diffHash ?? "");
+    assert.equal((await session.post("/api/approve/options", { diffHash: waitingHash })).status, 409);
+    assert.equal((await session.post("/api/approve/page", { diffHash: waitingHash })).status, 409);
 
     // The event stream stays open: read its first bytes, then hang up.
     const url = new URL(session.base);

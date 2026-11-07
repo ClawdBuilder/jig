@@ -324,6 +324,7 @@ test("a handler that refuses answers with the reason as JSON, and nothing else",
         method: "POST",
         cookie: session,
         origin: `http://localhost:${port}`,
+        body: JSON.stringify({ diffHash: "0".repeat(64) }),
     });
     assert.equal(res.status, 409, "no review is open: the approval service says so");
     assert.deepEqual(JSON.parse(res.body), { error: "No review is open." });

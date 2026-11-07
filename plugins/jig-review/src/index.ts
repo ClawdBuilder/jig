@@ -37,14 +37,15 @@ export function registerReviewGate(
 }
 
 export default function (pi: ExtensionAPI) {
-    const coordinator = new ReviewCoordinator(pi, process.cwd(), { root: reviewRoot(getAgentDir()) });
-    coordinator.register();
-    withJig((api) => {
-        api.config.registerSection("review", validateReviewSection);
-        registerReviewGate(coordinator, api);
+    const coordinator = new ReviewCoordinator(pi, process.cwd(), {
+        root: reviewRoot(getAgentDir()),
+        agentDir: getAgentDir(),
     });
+    coordinator.register();
     // jig-core may load after this plugin; withJig waits for it.
     withJig((api) => {
         for (const declaration of DECLARATIONS) api.declareTool(declaration);
+        api.config.registerSection("review", validateReviewSection);
+        registerReviewGate(coordinator, api);
     });
 }

@@ -26,7 +26,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - The review page shows **Approve** in the header from the start, beside Finish review; approving with draft line comments or a
   general note asks whether to submit or discard them first, and an approved or awaiting-agent review says in words why its
   Approve button is disabled. Approving is bound to the diff hash the page displays, so a stale page cannot approve newer
-  changes. The theme choice is saved through the review settings and is read by every Jig browser page.
+  changes; the page must send the diff hash it rendered, and a missing or malformed one is refused. The theme choice has one
+  owner, `jig-core`'s shared theme file under the agent folder, and every page (review, preview, lens) resolves that same path.
+  A draft typed after "Discard and approve" cancels the pending discard, so the person is asked again.
 
 ### Changed
 

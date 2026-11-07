@@ -70,6 +70,9 @@ settings to turn it off; it is `true` by default and a company may set it.
 A review a person starts with `/code-review` holds nothing while the agent is idle; if the agent then acts, the same rule
 applies once it is the agent's open review.
 
+The preview page has no switch because its policy forbids script; it follows the saved choice server-side, which is why the
+one theme file matters.
+
 ## Approving
 
 Approve in the page needs proof that you are there, and the agent cannot give it. There are two ways:

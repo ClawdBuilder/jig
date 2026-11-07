@@ -46,16 +46,25 @@ function App(): ReturnType<typeof createElement> {
   const [currentDrafts, setDrafts] = useState<DraftComment[]>([draft]);
   const [currentGeneral, setGeneral] = useState("");
   drafts = currentDrafts;
-  return createElement(ReviewActionModal, {
-    drafts: currentDrafts,
-    generalComment: currentGeneral,
-    isOpen: true,
-    onClose: () => undefined,
-    onDraftsChange: setDrafts,
-    onGeneralCommentChange: setGeneral,
-    onReload: async () => undefined,
-    review,
-  });
+  return createElement(
+    "div",
+    undefined,
+    createElement(
+      "button",
+      { onClick: () => setDrafts([...currentDrafts, { ...draft, id: `new-${currentDrafts.length}` }]) },
+      "Add draft",
+    ),
+    createElement(ReviewActionModal, {
+      drafts: currentDrafts,
+      generalComment: currentGeneral,
+      isOpen: true,
+      onClose: () => undefined,
+      onDraftsChange: setDrafts,
+      onGeneralCommentChange: setGeneral,
+      onReload: async () => undefined,
+      review,
+    }),
+  );
 }
 
 async function render(): Promise<void> {
@@ -148,5 +157,17 @@ describe("approving with drafts", () => {
     assert.equal(drafts.length, 1);
     assert.match(host.textContent ?? "", /The review server is unreachable/);
     assert.equal(api.approveInPi.mock.calls.length, 0, "submitting is not approving");
+  });
+});
+
+describe("a draft typed while a discard is pending", () => {
+  test("cancels the discard and asks again", async () => {
+    api.approveInPi.mockImplementation(() => new Promise(() => undefined));
+    await render();
+    click("Approve");
+    click("Discard comments and approve");
+    click("Add draft");
+    assert.match(host.textContent ?? "", /You have draft comments/);
+    assert.equal(drafts.length, 2);
   });
 });

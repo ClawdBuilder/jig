@@ -202,13 +202,13 @@ export class ReviewServer {
         // Approval. There is no route that approves because the page asked: each of these checks something the agent
         // cannot supply (a passkey signature) or waits for the user in Pi.
         app.post("/api/approve/options", async (context) =>
-            context.json(approval.approvalOptions(await optionalDiffHash(context))),
+            context.json(approval.approvalOptions(await requiredDiffHash(context))),
         );
         app.post("/api/approve/passkey", async (context) =>
             context.json(await approval.approveWithPasskey(await readJson(context))),
         );
         app.post("/api/approve/page", async (context) =>
-            context.json(await approval.approveInPage(await optionalDiffHash(context))),
+            context.json(await approval.approveInPage(await requiredDiffHash(context))),
         );
 
         app.get("/api/passkeys", (context) => context.json(approval.passkeys()));
@@ -289,14 +289,19 @@ function sameSecret(given: string | undefined, secret: string): boolean {
 }
 
 /** The request's JSON body; a body that is not JSON is the caller's mistake, answered 400. */
-/** The revision the page displays, when it sent one; an older page sends no body and is accepted as before. */
-async function optionalDiffHash(context: Context): Promise<string | undefined> {
+/** The revision the page displays: required, and refused when it is missing or malformed. */
+async function requiredDiffHash(context: Context): Promise<string> {
+    let body: unknown;
     try {
-        const body = await context.req.json();
-        return isRecord(body) && typeof body.diffHash === "string" ? body.diffHash : undefined;
+        body = await context.req.json();
     } catch {
-        return undefined;
+        throw new ApprovalError(400, "The request needs the diffHash of the review you saw.");
     }
+    const hash = isRecord(body) ? body.diffHash : undefined;
+    if (typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)) {
+        throw new ApprovalError(400, "The request needs the diffHash of the review you saw.");
+    }
+    return hash;
 }
 
 async function readJson(context: Context): Promise<unknown> {

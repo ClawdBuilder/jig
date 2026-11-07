@@ -2,6 +2,7 @@
 // authenticated settings; the other pages read the same file when they render. `ui.theme` is the fallback after this, then
 // the operating system.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { themeChoice } from "./theme-client.ts";
 import type { ThemeChoice } from "./theme-client.ts";
@@ -12,6 +13,12 @@ interface Saved {
 }
 
 export const themePreferenceFile = (agentDir: string): string => path.join(agentDir, "theme.json");
+
+/** The agent folder every page resolves the same way: `PI_CODING_AGENT_DIR`, else `~/.pi/agent`. */
+export function agentDirFor(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string {
+    const configured = env.PI_CODING_AGENT_DIR?.trim();
+    return configured === undefined || configured === "" ? path.join(home, ".pi", "agent") : configured;
+}
 
 /** The saved choice, or undefined when there is none or the file is not one this version wrote. */
 export function readThemePreference(agentDir: string): ThemeChoice | undefined {
