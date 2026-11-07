@@ -122,8 +122,9 @@ export function nextStep(reason: FailureReason, backend: LogBackend): string {
         case "index_not_found":
             return backend.words.notFound;
         case "request_budget":
+            return "Too many requests for one call; narrow the window, or search the missing windows separately.";
         case "time_budget":
-            return "Too much for one call; narrow the window, or search the missing windows separately.";
+            return "The search took too long (80 s limit); narrow the window or the environment, or search the missing windows separately.";
         case "not_run":
             return "Skipped after an earlier rejection; fix that first.";
     }

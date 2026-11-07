@@ -479,13 +479,14 @@ test("the time budget stops new requests and reports the rest as missing", async
         query(4 * DAY_MS),
         { now: () => FROM + requestsSoFar * 100_000 },
     );
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 1);
     assert.deepEqual(
         outcome.windows.map((w) => w.state),
-        ["searched", "searched", "missing", "missing"],
+        ["searched", "missing", "missing", "missing"],
     );
     assert.equal(outcome.windows[3]?.reason, "time_budget");
     assert.equal(outcome.status, "partial");
+    assert.equal(outcome.hits.length, 1, "what was already found is returned");
 });
 
 test("progress is reported once per request, with the environment and never the searched text", async () => {
