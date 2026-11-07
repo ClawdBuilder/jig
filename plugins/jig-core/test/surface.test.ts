@@ -76,6 +76,15 @@ describe("the global handle", () => {
     });
 });
 
+describe("the package", () => {
+    test("states the Pi minimum and tested version as public version data", () => {
+        const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
+            jig?: unknown;
+        };
+        assert.deepEqual(manifest.jig, { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } });
+    });
+});
+
 describe("the API", () => {
     test("has exactly these members: a name with () is a function, a name without is a value, nested namespaces included", () => {
         jigCore()(fakePi().pi);
@@ -174,6 +183,15 @@ describe("the API", () => {
             "tool_search",
             "write",
         ]);
+    });
+
+    test("updates is a core section a company can default, so it can turn the notice off", async () => {
+        const { UPDATES_SECTION, readUpdates, validateUpdatesSection } = await import("../src/updates-section.ts");
+        assert.equal(UPDATES_SECTION, "updates");
+        assert.deepEqual(readUpdates({ check: false }), { check: false });
+        assert.deepEqual(validateUpdatesSection({ check: false }), []);
+        assert.match(validateUpdatesSection({ check: "no" }).join(" "), /updates\.check must be true or false/);
+        assert.match(validateUpdatesSection({ nope: true }).join(" "), /updates\.nope is not a known field/);
     });
 
     test("jig-core checks two more sections of its own, which no plugin can register or give defaults for: profiles and profile", async () => {

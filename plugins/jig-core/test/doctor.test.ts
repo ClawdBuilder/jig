@@ -187,6 +187,22 @@ describe("/jig doctor checks", () => {
         assert.equal(line?.fix, undefined, "nothing to run: Pi's version is not the problem");
     });
 
+    test("Pi below the package's minimum warns and points at jig update", async () => {
+        const report = await runDoctor(context(), options({ piVersion: () => "1.3.9" }));
+        const line = report.lines.find((entry) => entry.id === "machine.pi");
+        assert.equal(line?.level, "warn");
+        assert.match(line?.detail ?? "", /needs 1\.4\.0 or later/);
+        assert.match(line?.fix ?? "", /jig update/);
+    });
+
+    test("Pi newer than the tested version warns, and does not block", async () => {
+        const report = await runDoctor(context(), options({ piVersion: () => "1.6.0" }));
+        const line = report.lines.find((entry) => entry.id === "machine.pi");
+        assert.equal(line?.level, "warn");
+        assert.match(line?.detail ?? "", /newer than 1\.5\.0/);
+        assert.equal(line?.fix, undefined);
+    });
+
     test("a missing settings file is fine; it says the defaults apply", async () => {
         const report = await runDoctor(context({ overrides: { personal: loaded({ found: false }) } }), options());
         const file = report.lines.find((line) => line.id === "config.file");

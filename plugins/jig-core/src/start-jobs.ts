@@ -8,6 +8,7 @@ import { effectiveBackends } from "./config.ts";
 import type { JigState } from "./state.ts";
 import { describeFailure } from "./start-checks.ts";
 import { unlockStoreAtStart } from "./start-unlock.ts";
+import { checkUpdateAtStart } from "./update-notice.ts";
 
 /** Whether this Pi was started by another Pi's `jig-agents`. `PI_SUBAGENT_ID` is the variable it sets, as `jig-agents`,
  *  `jig-theme` and `jig-review` read it; `PI_SUBAGENT_CHILD=1` is the older name of the same marker. */
@@ -25,8 +26,13 @@ function wantsUnlock(state: JigState): boolean {
 export function startJobs(state: JigState): void {
     state.startJobs?.abort();
     state.startJobs = undefined;
-    // `screen` is set only when the session has a UI.
-    if (state.screen === undefined || isChildAgent(state.env)) return;
+    if (isChildAgent(state.env)) return;
+    // A print-mode session has no UI but a person reading the command's output: the update notice can still be shown
+    // on stderr, never in the model's context. The other start jobs need a screen, so they stay off.
+    if (state.screen === undefined) {
+        void checkUpdateAtStart(state, (message) => process.stderr.write(`${message}\n`));
+        return;
+    }
     const control = new AbortController();
     state.startJobs = control;
     const notify = (message: string, level: "info" | "warning"): void => {
@@ -45,6 +51,7 @@ export function startJobs(state: JigState): void {
             signal: control.signal,
         });
     }
+    void checkUpdateAtStart(state, notify);
     const { startChecks } = state.personal.config;
     if (startChecks.length > 0) {
         void state.startChecks

@@ -36,6 +36,13 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   owner, `jig-core`'s shared theme file under the agent folder, and every page (review, preview, lens) resolves that same path.
   A draft typed after "Discard and approve" cancels the pending discard, so the person is asked again.
 
+- `jig update [--check] [--to <version>]` moves Pi's Jig copy and the global `jig` command to one published stable version.
+  It installs the exact tested Pi only when the release needs a newer one, asks first and defaults to No, respects a company
+  package's `jig.range`, reads releases through `npm view`, refuses two Jig entries, verifies Pi after the step, restores
+  the old version and runs the undo on Ctrl-C, leaves a linked global command alone, and exits 2 from `--check` when an
+  update is available. A background notice inside Pi checks at most once a day, is silent offline, backs off after a failed
+  check, and can be turned off with `"updates": { "check": false }`.
+
 ### Changed
 
 - `logs` stops a search at 80 seconds and returns what it found, with the windows it could not search named, instead of the

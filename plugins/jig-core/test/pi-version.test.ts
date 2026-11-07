@@ -11,6 +11,8 @@ import {
     jigPackage,
     meetsMinimum,
     minimumVersion,
+    piRequirement,
+    currentPiRequirement,
     reinstallFix,
 } from "../src/pi-version.ts";
 
@@ -54,6 +56,21 @@ describe("jigPackage", () => {
     });
 });
 
+describe("piRequirement", () => {
+    test("reads the package's stated Pi minimum and tested version", () => {
+        const file = packageFile({
+            jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } },
+        });
+        assert.deepEqual(piRequirement(file), { minimum: "1.4.0", tested: "1.5.0" });
+    });
+
+    test("is undefined when the release does not state a usable pair", () => {
+        assert.equal(piRequirement(packageFile({})), undefined);
+        assert.equal(piRequirement(packageFile({ jig: { agents: { pi: { minimum: "next" } } } })), undefined);
+        assert.deepEqual(currentPiRequirement(packageFile({})), { minimum: "1.4.0", tested: "1.5.0" });
+    });
+});
+
 describe("installLocation", () => {
     test("keeps the host and path, and drops git+, .git and the scheme", () => {
         assert.equal(installLocation("git+https://github.com/example/jig.git"), "github.com/example/jig");
@@ -93,6 +110,9 @@ describe("versions", () => {
         assert.ok(compareVersions("1.10.0", "1.9.9") > 0);
         assert.equal(meetsMinimum("22.19.0", "22.19.0"), true);
         assert.equal(meetsMinimum("22.18.0", "22.19.0"), false);
+        assert.ok(compareVersions("1.5.0-beta.1", "1.5.0") < 0);
+        assert.ok(compareVersions("1.5.0", "1.5.0-beta.1") > 0);
+        assert.ok(compareVersions("1.5.0-beta.2", "1.5.0-beta.10") < 0);
         assert.equal(meetsMinimum(undefined, "22.19.0"), false);
     });
 });

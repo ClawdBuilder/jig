@@ -106,13 +106,26 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
-| `cli/main.ts` | The `jig` command: arguments, the doctor's exit code and report, setup's company step and exit codes | `bin/jig.mjs` |
+| `cli/main.ts` | The `jig` command: arguments, the doctor's exit code and report, setup's company step and exit codes, and the update word | `bin/jig.mjs` |
+| `cli/update.ts` | `jig update`: reads the registry, Pi's copy, the global npm copy and company ranges, builds Pi's exact install command, then runs or checks the plan | `cli/main.ts` |
 | `cli/headless.ts` | The packages Pi would load, their extension files loaded into a host that only records, and the person's settings read against their sections and defaults | `cli/main.ts` |
 | `cli/packages.ts` | Where Pi puts a package: local, npm and git layouts for user and project scope, and the entries listed but not found | `cli/headless.ts` |
 | `cli/package-filter.ts` | Pi's package filter read as Pi reads it: per-type patterns, `!`, `+`, `-`, empty lists and `autoload:false` | `cli/packages.ts`, `cli/headless.ts` |
 | `cli/trust.ts` | Pi's project trust read without importing Pi: the closest saved decision in trust.json, then only the agent folder's defaultProjectTrust; fails closed | `cli/headless.ts` |
 | `cli/terminal.ts` | The setup questions on node:readline: numbered choices, plain input, a yes/no confirm | `cli/main.ts` |
 | `plain-label.ts` | Plain names for configuration paths, shared by the doctor and setup: "Jira auth token", not `jira.auth.token` | `doctor-secrets.ts`, `setup-fields.ts` |
+
+### Versions and updating
+
+| File | What it does | Called by |
+|---|---|---|
+| `update-versions.ts` | The newest stable release, `--to`, and the highest version inside every company `jig.range`; a range it cannot read is refused | `cli/update.ts`, `update-notice.ts` |
+| `update-plan.ts` | What would change: Pi when the release needs a newer one, Pi's copy, the global copy, and the company cap; refuses pinned or non-npm copies | `cli/update.ts`, `update-run.ts` |
+| `update-run.ts` | Runs the plan in order, verifies both copies, runs the doctor, and puts every recorded version back after a failure | `cli/update.ts` |
+| `update-company.ts` | Reads every installed company package's `jig.range` for the cap | `cli/update.ts`, `update-notice.ts` |
+| `registry.ts` | The registry npm uses: `jig update` asks `npm config get registry`; the notice reads env and .npmrc files without starting a program | `cli/update.ts`, `update-notice.ts` |
+| `updates-section.ts` | The `updates.check` section: checked like a plugin's so a company can turn the notice off; the person's file wins | `state.ts`, `update-notice.ts` |
+| `update-notice.ts` | The background notice in Pi: once a day, cached, silent offline or off, company cap, deprecated version, Pi newer than tested; the screen only | `start-jobs.ts` |
 
 ### Profiles (which company applies)
 

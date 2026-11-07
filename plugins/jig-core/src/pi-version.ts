@@ -34,6 +34,10 @@ export function piVersion(): string | undefined {
     try {
         const launcher = process.argv[1];
         if (launcher !== undefined && launcher !== "") {
+            // The launcher sits inside Pi's package in a bundled or global install. Walk up from it first: Pi's
+            // package has `exports` but no root export, so `require.resolve(PI_PACKAGE)` fails there.
+            const fromLauncher = versionFrom(path.resolve(launcher));
+            if (fromLauncher !== undefined) return fromLauncher;
             const require = createRequire(path.join(path.dirname(path.resolve(launcher)), "probe.js"));
             const found = versionFrom(require.resolve(PI_PACKAGE));
             if (found !== undefined) return found;
@@ -61,6 +65,29 @@ export function jigPackage(file: string | URL = new URL("../../../package.json",
         ...(node ? { node } : {}),
         ...(repository === undefined ? {} : { repository }),
     };
+}
+
+/** The agent versions a Jig release states: the oldest Pi it runs with, and the one it is tested with. */
+export interface PiRequirement {
+    minimum: string;
+    tested: string;
+}
+
+/** The Pi requirement a release states in `jig.agents.pi`, or undefined when the package does not say. */
+export function piRequirement(
+    file: string | URL = new URL("../../../package.json", import.meta.url),
+): PiRequirement | undefined {
+    const found = readPackage(file);
+    const agents = found?.jig?.agents;
+    const pi = agents?.pi;
+    if (typeof pi?.minimum !== "string" || typeof pi?.tested !== "string") return undefined;
+    if (!/^\d+\.\d+\.\d+$/.test(pi.minimum) || !/^\d+\.\d+\.\d+$/.test(pi.tested)) return undefined;
+    return { minimum: pi.minimum, tested: pi.tested };
+}
+
+/** The requirement this Jig runs with; a package that does not state one is treated as the old floor. */
+export function currentPiRequirement(file?: string | URL): PiRequirement {
+    return piRequirement(file) ?? { minimum: "1.4.0", tested: "1.5.0" };
 }
 
 /** Where `pi install git:` should fetch Jig from, from its `repository` field: `host/path`, without a scheme or `.git`.
@@ -136,17 +163,34 @@ export function minimumVersion(range: string | undefined): string | undefined {
 
 /** Compares two `x.y.z` versions: negative when `a` is lower, 0 when equal, positive when higher. */
 export function compareVersions(a: string, b: string): number {
-    const left = a
-        .split(/[.+-]/)
-        .slice(0, 3)
-        .map((part) => Number.parseInt(part, 10) || 0);
-    const right = b
-        .split(/[.+-]/)
-        .slice(0, 3)
-        .map((part) => Number.parseInt(part, 10) || 0);
+    const parse = (value: string): { numbers: number[]; pre?: string[] } => {
+        const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(value.trim());
+        if (match === null) return { numbers: [0, 0, 0] };
+        return {
+            numbers: [Number(match[1]), Number(match[2]), Number(match[3])],
+            ...(match[4] === undefined ? {} : { pre: match[4].split(".") }),
+        };
+    };
+    const left = parse(a);
+    const right = parse(b);
     for (let index = 0; index < 3; index++) {
-        const difference = (left[index] ?? 0) - (right[index] ?? 0);
+        const difference = (left.numbers[index] ?? 0) - (right.numbers[index] ?? 0);
         if (difference !== 0) return difference;
+    }
+    // A prerelease is below the release it belongs to; identifiers compare numerically when both are numbers, otherwise
+    // lexically, and a shorter identifier list is lower when all its parts are equal.
+    if (left.pre === undefined && right.pre === undefined) return 0;
+    if (left.pre === undefined) return 1;
+    if (right.pre === undefined) return -1;
+    const length = Math.max(left.pre.length, right.pre.length);
+    for (let index = 0; index < length; index++) {
+        const one = left.pre[index];
+        const two = right.pre[index];
+        if (one === undefined) return -1;
+        if (two === undefined) return 1;
+        if (one === two) continue;
+        if (/^\d+$/.test(one) && /^\d+$/.test(two)) return Number(one) - Number(two);
+        return one < two ? -1 : 1;
     }
     return 0;
 }
@@ -161,6 +205,7 @@ interface PackageJson {
     version?: unknown;
     engines?: { node?: unknown };
     repository?: unknown;
+    jig?: { agents?: { pi?: { minimum?: unknown; tested?: unknown } } };
 }
 
 function readPackage(file: string | URL): PackageJson | undefined {

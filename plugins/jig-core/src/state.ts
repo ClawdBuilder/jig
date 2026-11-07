@@ -52,6 +52,7 @@ import { createTunnels } from "./tunnels.ts";
 import type { Tunnels } from "./tunnels.ts";
 import type { Transports } from "./transports.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
+import { UPDATES_SECTION, validateUpdatesSection } from "./updates-section.ts";
 import { validateToolsSection } from "./tool-exposure.ts";
 import { createWatchEngine } from "./watch/engine.ts";
 import type { WatchEngine } from "./watch/engine.ts";
@@ -405,6 +406,7 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
     // defaults for `tools`, but they are not a plugin's: they stay out of `sectionChecks`, which `/jig` lists as the plugins' sections.
     const checks = new Map([
         [TOOLS_SECTION, validateToolsSection],
+        [UPDATES_SECTION, validateUpdatesSection],
         [PROFILES_SECTION, validateProfilesSection],
         [PROFILE_SECTION, validateProfileSection],
         ...state.sectionChecks,

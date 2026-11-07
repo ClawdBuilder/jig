@@ -16,14 +16,17 @@ import type { JigState } from "../state.ts";
 import { agentDirFor, loadHeadless, ownPackage } from "./headless.ts";
 import type { LoadFailure } from "./headless.ts";
 import { terminalUi } from "./terminal.ts";
+import { update as updateCommand } from "./update.ts";
 import { writeSetup } from "../setup-write.ts";
 import type { SetupChange } from "../setup-plan.ts";
 
 const USAGE = `Usage: jig doctor [--json] [--network] [--quiet]
        jig setup
+       jig update [--check] [--to <version>]
 
 jig doctor checks this machine, the settings and the secret stores, and changes nothing.
-jig setup asks only what is missing, then writes your settings file once, with a backup.`;
+jig setup asks only what is missing, then writes your settings file once, with a backup.
+jig update moves both copies of Jig to one published version; --check changes nothing.`;
 
 /** A package whose syntax this Node cannot strip is not a broken package: Pi's loader reads it, the command's does not. */
 function unreadableByThisLoader(reason: string): boolean {
@@ -270,7 +273,7 @@ async function setup(): Promise<number> {
 }
 
 /** `jig`: the word picks the command. Returns the process exit code. */
-export async function main(argv: readonly string[]): Promise<number> {
+export async function main(argv: readonly string[], piHost?: string): Promise<number> {
     const [word, ...rest] = argv;
     if (word === undefined || word === "--help" || word === "-h" || word === "help") {
         process.stdout.write(`${USAGE}\n`);
@@ -281,6 +284,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         return 0;
     }
     if (word === "doctor") return doctor(rest);
+    if (word === "update") return updateCommand(rest, piHost);
     if (word === "setup") {
         if (rest.length > 0) {
             process.stderr.write(`jig setup takes no options.\n${USAGE}\n`);

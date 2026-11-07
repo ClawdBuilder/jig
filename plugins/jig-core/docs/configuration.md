@@ -50,6 +50,9 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
 - **`startChecks`:** a list of at most 16 checks, each `{ "name": "VPN", "tcp":
   "vpn.example.com:443", "hint": "connect your VPN client" }`. See
   [At session start](#at-session-start).
+- **`updates.check`:** `true` (the default) or `false`. `false` turns off the background notice that a newer Jig exists.
+  A company plugin can set it as a default; your file wins. See
+  [Updating](../../../docs/setup-and-doctor.md#updating).
 
 ## At session start
 
@@ -387,7 +390,7 @@ such as `git`, `lens` or `memory`.
 - **A top-level key that neither jig-core nor a plugin registered** is an
   unknown field.
 - **A plugin cannot register a name jig-core uses itself:** `environments`,
-  `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`, `approvals`, `startChecks`.
+  `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`, `approvals`, `startChecks`, `updates`.
 - **Order does not matter.** A plugin that loads before jig-core waits for it,
   and a section or defaults registered after the file was read are applied at
   once.
