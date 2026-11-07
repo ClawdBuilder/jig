@@ -26,7 +26,8 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
     diffView: "split",
     holdAgent: true,
     holdAbortAfter: 2,
-theme: "system",};
+    theme: "system",
+};
 
 /** Review settings and records for one workspace. */
 export class SettingsStore {
@@ -100,10 +101,11 @@ export function parseReviewSettings(value: unknown): ReviewSettings {
             raw.holdAbortAfter <= 10
                 ? raw.holdAbortAfter
                 : DEFAULT_SETTINGS.holdAbortAfter,
-theme:
+        theme:
             raw.theme === "light" || raw.theme === "dark" || raw.theme === "system"
                 ? raw.theme
-                : DEFAULT_SETTINGS.theme,    };
+                : DEFAULT_SETTINGS.theme,
+    };
 }
 
 /** A `review` section in `jig.json`: company defaults for the per-person review settings. */

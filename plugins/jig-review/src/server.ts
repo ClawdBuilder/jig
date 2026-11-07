@@ -369,7 +369,8 @@ function parseSettingsUpdate(body: unknown): Partial<ReviewSettings> {
     if (body.diffView === "split" || body.diffView === "unified") settings.diffView = body.diffView;
     if (typeof body.holdAgent === "boolean") settings.holdAgent = body.holdAgent;
     if (body.holdAbortAfter !== undefined) settings.holdAbortAfter = clampHoldAbortAfter(body.holdAbortAfter);
-if (body.theme === "system" || body.theme === "light" || body.theme === "dark") settings.theme = body.theme;    return settings;
+    if (body.theme === "system" || body.theme === "light" || body.theme === "dark") settings.theme = body.theme;
+    return settings;
 }
 
 function isOutsideDirectory(filePath: string, directory: string): boolean {

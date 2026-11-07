@@ -119,7 +119,8 @@ test("every API route the built page calls is answered by the server", async () 
         diffView: "split",
         holdAgent: true,
         holdAbortAfter: 2,
-theme: "system",    });
+        theme: "system",
+    });
     assert.equal(
         (
             await request(session.base, "/api/settings", {
