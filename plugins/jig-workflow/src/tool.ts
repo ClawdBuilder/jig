@@ -254,7 +254,7 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
 /** Text-free counts for `/lens`: what the call proved, never the ticket's text. */
 function factsOf(details: Readonly<Record<string, unknown>>): Facts {
     const facts: Record<string, number | boolean | string> = {};
-    for (const key of ["passed", "total", "advanced", "done", "sandboxed"]) {
+    for (const key of ["passed", "total", "advanced", "done", "sandboxed", "noReport"]) {
         const value = details[key];
         if (typeof value === "number" || typeof value === "boolean") facts[key] = value;
     }
@@ -267,17 +267,16 @@ function factsOf(details: Readonly<Record<string, unknown>>): Facts {
 }
 
 /** A stage move, for the event bus; undefined when the call did not move. */
+const STAGE_NAME = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+
 function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): StageDoneEvent | undefined {
-    if (typeof details.ticket !== "string" || typeof details.to !== "string") return undefined;
-    const workflow = typeof details.workflow === "string" ? details.workflow : undefined;
-    if (workflow === undefined) return undefined;
-    return {
-        ticket: details.ticket,
-        workflow,
-        from: typeof details.from === "string" ? details.from : null,
-        to: details.to,
-        at: at.toISOString(),
-    };
+    if (typeof details.ticket !== "string" || !STAGE_NAME.test(details.ticket)) return undefined;
+    if (typeof details.to !== "string" || !STAGE_NAME.test(details.to)) return undefined;
+    if (typeof details.workflow !== "string" || !STAGE_NAME.test(details.workflow)) return undefined;
+    const from = typeof details.from === "string" && STAGE_NAME.test(details.from) ? details.from : null;
+    const when =
+        typeof details.at === "string" && Number.isFinite(Date.parse(details.at)) ? details.at : at.toISOString();
+    return { ticket: details.ticket, workflow: details.workflow, from, to: details.to, at: when };
 }
 
 async function run(rt: Runtime, params: Params, call: actions.Call): Promise<ActionResult> {

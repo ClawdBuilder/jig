@@ -81,6 +81,7 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
     }
     const lines: string[] = [];
     let passed = 0;
+    let noReport = 0;
     for (const [index, plan] of plans.entries()) {
         const view = views[index] as RepoView;
         try {
@@ -110,8 +111,14 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
                       "    The test command could not run tests: this is setup, not a failing test. Check workflow.tests in jig.json for this repository.",
                       ...setupLines(run.tail).map(indent),
                   ]
-                : [];
+                : run.result.passed || run.result.reportFound
+                  ? []
+                  : [
+                        "    No test report was found for this run; if the tests never started, check workflow.tests for this repository.",
+                        ...setupLines(run.tail).map(indent),
+                    ];
             if (run.result.passed && run.result.clean) passed++;
+            if (!run.result.passed && run.result.reportFound !== true) noReport++;
             lines.push(
                 `${view.name}: ${verdict} at ${short(view.head)}${note} · ${plan.command} · ${run.result.sandboxed ? "in the sandbox" : "outside the sandbox, as you approved"} · ${(run.result.durationMs / 1000).toFixed(1)} s`,
                 ...(plan.java === undefined ? [] : [`    Java: ${plan.java}`]),
@@ -126,7 +133,7 @@ export async function runTestsAction(rt: Runtime, params: Params, call: Call): P
     lines.push(
         `${passed} of ${plans.length} repositor${plans.length === 1 ? "y" : "ies"} passed at HEAD on a clean tree.`,
     );
-    return { text: lines.join("\n"), details: { ticket, passed, total: plans.length, sandboxed } };
+    return { text: lines.join("\n"), details: { ticket, passed, total: plans.length, sandboxed, noReport } };
 }
 
 function indent(text: string): string {

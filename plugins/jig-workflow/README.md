@@ -107,7 +107,7 @@ In `~/.pi/agent/jig.json`, under `workflow`. Every field is optional.
 |---|---|---|
 | `folders` | none | More folders to read workflow files from: absolute, or starting with `~/` |
 | `disabled` | none | Names of workflows to leave out, from whichever folder they come |
-| `tests` | by build file | A test command per repository: a name or path pattern, then a command or `{ command, timeoutSeconds, env, outside }` |
+| `tests` | by build file | A test command per repository: a name or path pattern, then a command or `{ command, timeoutSeconds, env, outside, reports }` |
 | `testTimeoutSeconds` | `900` | How long one test run may take, from 10 to 7200 |
 
 ```json

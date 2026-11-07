@@ -34,6 +34,8 @@ export interface TestResult {
     java?: string;
     /** The command failed before any test ran: setup, compile or missing tool, not a failing test. */
     noTestsRan?: boolean;
+    /** A test report was written after this run started. */
+    reportFound?: boolean;
 }
 
 export type EvidenceKind = "path" | "toolResult" | "text";
@@ -244,6 +246,8 @@ function normalize(raw: unknown): WorkflowState | string {
                     at: entry.at,
                     durationMs: typeof entry.durationMs === "number" ? entry.durationMs : 0,
                     ...(str(entry.java) ? { java: entry.java.slice(0, MAX_JAVA_NOTE) } : {}),
+                    ...(entry.noTestsRan === true ? { noTestsRan: true } : {}),
+                    ...(entry.reportFound === true ? { reportFound: true } : {}),
                 };
             }
         }

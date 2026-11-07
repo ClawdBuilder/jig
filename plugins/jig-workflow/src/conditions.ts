@@ -198,7 +198,10 @@ function testsPassAtHead(ev: Evidence, only: string | undefined): Promise<Condit
         if (!run.passed) {
             return {
                 ok: false,
-                line: `${name}: the tests failed at ${short(view.head)} (${run.timedOut ? "timed out" : `exit ${run.exitCode}`}): fix them, commit, and run workflow test`,
+                line:
+                    run.noTestsRan === true
+                        ? `${name}: the test command did not run tests at ${short(view.head)} (exit ${run.exitCode}): check workflow.tests for this repository, then run workflow test`
+                        : `${name}: the tests failed at ${short(view.head)} (${run.timedOut ? "timed out" : `exit ${run.exitCode}`}): fix them, commit, and run workflow test`,
             };
         }
         return {

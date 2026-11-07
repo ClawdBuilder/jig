@@ -1,7 +1,8 @@
 // Running a repository's tests, and recording what happened against the exact commit. The command comes from the user's
 // `workflow.tests` or from the build file in the repository's root. It runs inside the sandbox when there is one; without it,
 // only after the user has approved the exact commands (the gate makes the call ask, and the tool checks the approval).
-import { existsSync, readFileSync } from "node:fs";
+import type { Dirent } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { TestRule, WorkflowSettings } from "./config.ts";
 import { withEnvironment } from "./environment.ts";
@@ -29,6 +30,8 @@ export interface TestPlan {
     java?: string;
     /** Set when no installed JDK fits the build: the run for this repository does not start, and this says why. */
     javaProblem?: string;
+    /** Report paths or folders relative to the repository; default JUnit-style folders are checked too. */
+    reports?: readonly string[];
 }
 
 /** How many lines of output the tool hands back, and how many characters at most. */
@@ -121,6 +124,7 @@ function planCommand(settings: WorkflowSettings, view: RepoView, cwd: string): T
             timeoutSeconds: rule.timeoutSeconds ?? settings.testTimeoutSeconds,
             ...(rule.env === undefined ? {} : { env: rule.env }),
             ...(rule.outside === true ? { outside: true } : {}),
+            ...(rule.reports === undefined ? {} : { reports: rule.reports }),
             source: `workflow.tests "${rule.key}"`,
         };
     }
@@ -159,24 +163,62 @@ export interface ShellRun {
 
 /** Runs a plan's command in its repository some other way: the one that asks the user (see outside.ts). */
 const TEST_RAN =
-    /(Tests run:|tests completed|Test > .* (FAILED|PASSED)|There were failing tests|No tests found|test results)/i;
-const SETUP_FAILED =
-    /(FAILURE:|What went wrong:|Could not compile|compilation failed|Compilation failed|Could not determine java|Could not find method|Unsupported class file|invalid (JDK|Java)|No tests found|Could not resolve|plugin .* failed)/i;
+    /(Tests run:|tests completed|Test > .* (FAILED|PASSED)|There were failing tests|No tests found|test results|\d+ (passed|failed))/i;
+const USEFUL = /(error|failed|cannot|not found|unsupported|invalid|exception|missing|compile)/i;
+const SETUP_SIGNAL =
+    /(compile|compilation|cannot find|not found|unsupported class|invalid .{0,20}(jdk|java)|could not determine|could not resolve|configuration|no tests found|outofmemory|segmentation|killed|exception)/i;
 
-/** A nonzero run that shows setup or compile trouble and no sign that a test ever ran. */
-export function noTestsRan(output: string, exitCode: number | null, timedOut: boolean): boolean {
-    if (timedOut || exitCode === 0 || exitCode === null) return false;
-    const text = output.replace(/\r\n?/g, "\n");
-    return !TEST_RAN.test(text) && SETUP_FAILED.test(text);
+/** A test report written after this run started: JUnit XML or a configured report path. A stale file does not count. */
+export function reportWritten(root: string, startedMs: number, configured: readonly string[] = []): boolean {
+    const dirs = ["build/test-results", "target/surefire-reports", "build/reports/tests", "test-results", "reports"];
+    const seen = new Set<string>();
+    const fresh = (file: string): boolean => {
+        try {
+            return statSync(file).mtimeMs >= startedMs;
+        } catch {
+            return false;
+        }
+    };
+    const walk = (dir: string, depth: number): boolean => {
+        if (depth < 0 || seen.has(dir)) return false;
+        seen.add(dir);
+        let entries: Dirent[];
+        try {
+            entries = readdirSync(dir, { withFileTypes: true });
+        } catch {
+            return false;
+        }
+        for (const entry of entries) {
+            const candidate = `${dir}/${entry.name}`;
+            if (entry.isFile() && /\.xml$/i.test(entry.name) && fresh(candidate)) return true;
+            if (entry.isDirectory() && walk(candidate, depth - 1)) return true;
+        }
+        return false;
+    };
+    for (const entry of configured) {
+        const candidate = path.resolve(root, entry);
+        try {
+            if (statSync(candidate).isFile() && fresh(candidate)) return true;
+        } catch {
+            if (walk(candidate, 3)) return true;
+        }
+    }
+    return dirs.some((dir) => walk(path.resolve(root, dir), 3));
 }
 
-/** The first few useful setup lines, for the model, without a whole build log. */
+/** A nonzero run with a test report is a failing test; without one it may be setup, so never assert tests did not run. */
+export function noTestsRan(output: string, exitCode: number | null, timedOut: boolean, reportFound: boolean): boolean {
+    if (reportFound || timedOut || exitCode === 0 || exitCode === null) return false;
+    return !TEST_RAN.test(output) && SETUP_SIGNAL.test(output);
+}
+
+/** The first few useful error lines from the whole output, for the model. */
 export function setupLines(output: string): string[] {
     return output
         .replace(/\r\n?/g, "\n")
         .split("\n")
         .map((line) => line.trim())
-        .filter((line) => line !== "" && SETUP_FAILED.test(line))
+        .filter((line) => line !== "" && USEFUL.test(line))
         .slice(0, 3);
 }
 
@@ -250,7 +292,9 @@ export async function runTests(
             sandboxed: options.sandboxed,
             at: finished.toISOString(),
             durationMs: Math.max(0, finished.getTime() - started.getTime()),
-            ...(noTestsRan(output, code, timedOut) ? { noTestsRan: true } : {}),
+            ...(noTestsRan(output, code, timedOut, reportWritten(plan.root, started.getTime(), plan.reports))
+                ? { noTestsRan: true }
+                : {}),
             ...(plan.java === undefined ? {} : { java: plan.java }),
         },
         tail: tailOf(output),

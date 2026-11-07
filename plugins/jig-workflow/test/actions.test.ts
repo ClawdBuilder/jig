@@ -45,7 +45,11 @@ describe("input that is not valid is refused before anyone is asked", () => {
         const w = await started(t);
         const result = await w.call({ action: "submit-plan" });
         assert.doesNotMatch(result.text, /unknown action/);
-        assert.match(result.text, /plan\.md|plan/i);
+        const record = w.core
+            .records()
+            .filter((entry) => entry.tool === "workflow")
+            .at(-1);
+        assert.equal(record?.action, "submit_plan", "the record uses the canonical action");
     });
 
     test("a pass without evidence, and evidence of two kinds", async (t) => {
