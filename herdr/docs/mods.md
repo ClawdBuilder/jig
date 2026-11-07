@@ -69,6 +69,56 @@ Herdr's shipped `tabs` mod (Apache-2.0; the file says so at its top), with the F
 - **`Jig`** selects the `jig-work` child of `panel-body` and shows the panel; a second click hides it. Lit while it shows.
 - **Props:** `{ panel, stack, jig }`, the ids of the panel row, its stack and the Jig child; default `panel`, `panel-body`,
   `jig-work`. The side panel is remembered per space, as in Herdr's bar.
+- **The sun** at its right is [Keep awake](#keep-awake-the-keep-awake-control): lit while the computer is held awake, a
+  click turns it on or off, a right-click opens its three modes.
+
+## keep-awake: the Keep awake control
+
+A sun in the tab bar that keeps the computer Herdr runs on from going to sleep on its idle timer, like a presentation mode:
+for a long build, or an agent working overnight. The request is held by a small helper process; nothing about the power
+plan, the registry or the display is changed, and it needs no administrator right.
+
+- **Off** (the default), **On** (until switched off or Herdr closes), and **While agents work** (on while any agent in any
+  space, tab or machine is `working` or `blocked`, and `idleMinutes` after the last one stops). A click on the sun turns
+  Off ↔ On; a right-click opens a popup with the three modes, `Keep screen on` (on by default), what is held now, and what it
+  cannot do. `Ctrl+Shift+Alt+K` cycles the modes; the sun's tooltip says whether the screen is kept on too.
+- **Every machine counts**: "While agents work" holds for agents in any space, tab or machine, and `blocked` ones (a
+  permission question) count as busy, so one blocked agent anywhere keeps the computer awake.
+- **The screen is kept on** by default (`display: true`), not only the system; the popup's switch writes `config.json` and
+  restarts a running helper at once with the new flag, so the screen follows without waiting for it to die. A closed lid or
+  the power button still sleeps the computer; the popup says so.
+- **One helper, never two.** Its PID is in `shared("keep-awake.helper")`, and a claim in `keep-awake.helper.json` in the app
+  folder lets only one worker start one (two Herdr windows share that folder). A second copy, a reload or a restart reuses
+  it while it is alive and its command line is ours — the PowerShell with `-Owner <herdr pid>`, `caffeinate -w <herdr pid>`,
+  or the `systemd-inhibit` line whose `--why` is ours — and starts a new one otherwise.
+- **A recorded PID is verified before every kill.** If the record is gone, cannot be checked, or its PID now belongs to
+  another process, the record is dropped without touching anything; `taskkill` runs without `/T`, because the helper has no
+  tree of its own. A copy loaded by `herdr-app check` has no window or layout and does nothing at all; only the copy that
+  started a helper releases it when Herdr quits; otherwise the owner check ends it within about 5 seconds. The helper's
+  stop file, `keep-awake.stop` in the app folder, names the start that wrote it (`stop <token>`), so an old stop cannot end
+  a new helper.
+- **It ends when Herdr does.** The helper checks its stop file and Herdr's own process every 5 seconds; on close the mod
+  only writes `stop` (fast), so the helper is gone within about 5 seconds, and a crash cannot leave a computer awake for ever.
+  A started helper whose liveness cannot be read keeps its record and is retried, and every command the worker runs has a
+  deadline, so a step cannot stay stuck after a restart. Its request is tied to its own
+  lifetime, so nothing can outlive it.
+- **What it runs, on Herdr's computer** (`exec` without `on`, never on a space's machine):
+  - **Windows:** a hidden, detached PowerShell (`Start-Process -WindowStyle Hidden`, every argument quoted for the child)
+    running `keep-awake.ps1`, which calls
+    `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED [| ES_DISPLAY_REQUIRED])`, repeats it every 5 seconds, and
+    exits when its owner is gone, is no longer `herdr-app`, or the stop file names its own start.
+  - **macOS:** `caffeinate -i [-d] -w <herdr pid>`, in the background.
+  - **Linux:** `systemd-inhibit --what=sleep[:idle] --why="Herdr keep awake" --mode=block sh -c 'while kill -0 <herdr pid>;
+    do sleep 20; done' keep-awake`, in the background: the helper watches Herdr itself, so it cannot outlive it, and its
+    command line carries the marker and owner the mod recognises.
+- **Shared state:** `shared("keep-awake.mode")` (`"off"`, `"on"` or `"agents"`), `shared("keep-awake.display")` (the screen
+  setting for this session), `shared("keep-awake.active")` (whether the request is held now) and
+  `shared("keep-awake.helper")` (`{ pid, owner, at }`), so the tab bar, other layouts and the key all drive the same worker.
+- **Props:** none for the worker; `{ menu: true }` draws the mode popup. **Files:** `main.js`, `lib.js` (the mode decision
+  and idle timer, the commands for each platform, the PID bookkeeping and `config.json`), `keep-awake.ps1`,
+  `keep-awake.svg`, `config.json`. The Windows helper also checks that its owner process is still `herdr-app`, so a reused
+  PID cannot keep the computer awake. **Settings:** `idleMinutes` (5 by default; 0 stops as soon as the last agent does) and
+  `display` (true by default: keep the screen on too; a hand edit made while Herdr was closed wins at the next start).
 
 ## file-view: a file in a tab
 
@@ -290,8 +340,8 @@ notification. On this computer without `sh` (Windows), it uses the home folder a
 `layouts/jig.json` is written from Herdr's shipped `main` layout (Apache-2.0), with the right panel opened and our blocks
 added. The root has Herdr's `workspace-chrome`, `spaces` and `agents`, the `jig-tabs` bar and the terminals as cards
 (`pane`, the header always shown), and a `panel` row holding the `panel-body` stack and the `activity` bar. There is no
-status bar: `jig-theme-sync` sits in a 0 px block at the bottom of the sidebar, above its footer, unseen. The theme is
-`jig-lime`, and the follower changes it.
+status bar: `jig-theme-sync` and `keep-awake` sit in 0 px blocks at the bottom of the sidebar, above its footer, unseen;
+the first follows Pi's palette and the second holds the awake request. The theme is `jig-lime`, and the follower changes it.
 
 | Panel (stack child) | Mod | Icon |
 |---|---|---|
