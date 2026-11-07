@@ -80,6 +80,7 @@ export async function advance(rt: Runtime, params: Params, call: Call): Promise<
             to: next.id,
             at,
             last: index + 1 === workflow.stages.length - 1,
+            via: "advance",
         },
     };
 }

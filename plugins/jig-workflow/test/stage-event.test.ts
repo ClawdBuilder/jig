@@ -66,3 +66,19 @@ test("the call records text-free facts for the lens", async (t) => {
     assert.equal(record?.facts?.stage, "understand");
     assert.equal(record?.facts?.workflow, "feature");
 });
+
+test("a real advance onto the last stage reports last and via advance", async (t) => {
+    const w = await world(t, {
+        workflows: { short: { name: "short", stages: [{ id: "work", exit: [] }, { id: "done" }] } },
+    });
+    const seen: Array<Record<string, unknown>> = [];
+    w.pi.api.events.on(JIG_EVENTS.stageDone, (payload) => seen.push(payload as Record<string, unknown>));
+    w.activate("PROJ-1");
+    await w.call({ action: "start", name: "short" });
+    seen.length = 0;
+    const moved = await w.call({ action: "advance" });
+    assert.match(moved.text, /Moved PROJ-1 from work to done/);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0]?.last, true);
+    assert.equal(seen[0]?.via, "advance");
+});

@@ -307,6 +307,10 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
 
     /** Drafts the card of `key` and asks the agent to fill it. The check comes when the agent has settled. */
     const startClose = (mem: Memory, ctx: ExtensionContext, key: string) => {
+        if (closing !== undefined) {
+            note(ctx, `A close is already pending for ${closing.key}; finish or cancel it first.`, "warning");
+            return;
+        }
         if (!existsSync(ticketPaths(mem.folder, key).dir)) {
             note(ctx, `No folder for ${key} in ${mem.folder}: run /ticket ${key} first.`, "warning");
             return;

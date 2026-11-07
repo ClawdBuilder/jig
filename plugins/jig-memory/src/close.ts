@@ -13,6 +13,7 @@ import {
 } from "./card.ts";
 import { frontOf, hasContent, readMaterial } from "./material.ts";
 import path from "node:path";
+import { lstatSync } from "node:fs";
 import { rmSync } from "node:fs";
 import { readText, replaceFile, ticketPaths } from "./store.ts";
 
@@ -51,6 +52,12 @@ export function draftClose(folder: string, key: string, pattern: RegExp | undefi
     }
     const front = frontOf(material, pattern, now);
     const draft = draftPath(folder, key);
+    try {
+        if (lstatSync(draft).isSymbolicLink())
+            throw new Error(`the draft ${draft} is a symlink; refusing to write through it`);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
     replaceFile(draft, draftCard(front));
     return { key, front, corrected: false, draft };
 }
@@ -86,6 +93,11 @@ export function correctionText(folder: string, key: string, problems: readonly s
  */
 export function verifyCard(folder: string, closing: Closing): { ok: boolean; problems: string[] } {
     const draft = closing.draft;
+    try {
+        if (lstatSync(draft).isSymbolicLink()) throw new Error(`the draft ${draft} is a symlink; refusing to read it`);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
     const text = readText(draft);
     if (text === "") {
         return {

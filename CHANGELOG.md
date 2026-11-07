@@ -8,7 +8,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - The `ticket` tool has a `close` action that drafts the card and asks the agent to fill it; an existing card needs
   `update: true`. When `jig:stage-done` reaches a workflow's last stage, the active ticket gets one offer to close, never
-  repeated. The skill says to close when the work is done, and closes are recorded as text-free facts for `/lens`.
+  repeated. The skill says to close when the work is done, and closes are recorded as text-free facts for `/lens`. A close
+  writes and verifies `card.draft.md` before atomically replacing `card.md`; one close is pending at a time, and a symlinked
+  draft is refused.
 - A ticket with notes is searchable before it is closed: `jig-memory` derives a bounded entry from its `## Now` and
   `## Decisions`, searches it with recall, and labels it as from notes with its date and that it may be out of date.
   Automatic recall needs a shared name, ID or error and takes at most one derived entry; `/ticket recall` and the

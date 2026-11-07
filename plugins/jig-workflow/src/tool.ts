@@ -273,6 +273,8 @@ function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): Stag
     if (typeof details.ticket !== "string" || !STAGE_NAME.test(details.ticket)) return undefined;
     if (typeof details.to !== "string" || !STAGE_NAME.test(details.to)) return undefined;
     if (typeof details.workflow !== "string" || !STAGE_NAME.test(details.workflow)) return undefined;
+    const via = details.via;
+    if (via !== "start" && via !== "advance" && via !== "back") return undefined;
     const from = typeof details.from === "string" && STAGE_NAME.test(details.from) ? details.from : null;
     const when =
         typeof details.at === "string" && Number.isFinite(Date.parse(details.at)) ? details.at : at.toISOString();
@@ -283,7 +285,7 @@ function stageDoneOf(details: Readonly<Record<string, unknown>>, at: Date): Stag
         to: details.to,
         at: when,
         last: details.last === true,
-        via: details.via === "start" || details.via === "advance" || details.via === "back" ? details.via : "advance",
+        via,
     };
 }
 

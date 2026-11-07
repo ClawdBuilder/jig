@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { type CardFront, checkCard, draftCard, PLACEHOLDER, renderCard, SECTION_LIMIT } from "../src/card.ts";
@@ -432,4 +432,21 @@ test("a second close while one is pending is refused and changes nothing", async
     const second = await pi.tool({ action: "close" });
     assert.match(second.text, /A close is already pending/);
     assert.equal(second.isError, false);
+});
+
+test("/ticket close refuses while a close is pending, and refuses a symlinked draft", async (t) => {
+    const { folder, pi } = start(t);
+    pi.input("look at PROJ-1");
+    pi.result("logs", "ERROR first", { action: "query" });
+    await pi.command("close");
+    const before = pi.sent.length;
+    await pi.command("close");
+    assert.equal(pi.sent.length, before);
+    assert.match(pi.notices.at(-1)?.text ?? "", /A close is already pending/);
+    const draft = draftPath(folder, "PROJ-1");
+    writeFileSync(`${folder}/other.md`, "x");
+    rmSync(draft, { force: true });
+    symlinkSync(`${folder}/other.md`, draft);
+    pi.settle();
+    assert.match(pi.notices.at(-1)?.text ?? "", /symlink/);
 });
