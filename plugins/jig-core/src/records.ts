@@ -26,6 +26,7 @@ export type ErrorKind =
     | "no-screen" // the call needed approval and there was no screen
     | "declined" // the user said no
     | "invalid" // the tool's preview said the input is invalid, so nobody was asked
+    | "refused" // the tool ran and refused by its own rules
     | "dismissed" // the question was closed without an answer
     | "internal" // jig-core could not decide, so it blocked the call
     | "tool" // the tool ran and failed

@@ -114,6 +114,7 @@ describe("the API", () => {
             "exec.run()",
             "gates.register()",
             "http.request()",
+            "markRefused()",
             "mask.text()",
             "mask.value()",
             "onboarding.register()",
@@ -128,6 +129,7 @@ describe("the API", () => {
             "signIn.headers()",
             "signIn.register()",
             "status.register()",
+            "takeRefused()",
             "tools.declared()",
             "transports.register()",
             "transports.request()",
@@ -340,7 +342,7 @@ describe("what plugins import", () => {
                 "registerJigTool",
                 "transcriptTools",
             ],
-            "values.ts": ["InputError", "NotConfiguredError", "isObject"],
+            "values.ts": ["InputError", "NotConfiguredError", "RefusedError", "isObject"],
         };
         for (const module of modules) {
             assert.deepEqual(exportedNames(path.join(kit, module)), (expected[module] ?? []).sort(), module);

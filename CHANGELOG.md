@@ -14,6 +14,13 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   is not spent on a call that cannot work; `repo` accepts `owner/name` when one workspace folder has that origin; `git log`
   accepts `pickaxe` (`-S`) and the prompt names `log`, `show` and `blame`.
 
+### Fixed
+
+- A tool's own refusal is recorded as `blocked`/`refused`, not a tool error, so `/lens` counts guards apart from failures.
+  `jig-mongo`'s scan, partly-allowed-field and several-connections refusals and `jig-git`'s protected-branch refusals use it;
+  what the model sees is unchanged. A tunnel whose password store is locked now says so and points at
+  `secrets.pass.unlockAtStart`.
+
 ## [0.4.3] - 2026-11-06
 
 ### Added

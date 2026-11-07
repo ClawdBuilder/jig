@@ -5,6 +5,7 @@ import { digest } from "./previews.ts";
 import type { Call, Planned } from "./previews.ts";
 import { baseBranch, isProtected, resolveRepo } from "./repo.ts";
 import type { Repo } from "./repo.ts";
+import { RefusedError } from "../../jig-core/src/kit/values.ts";
 import { git, gitOut, refExists, requireBranch, revParse, summaryOf, upstreamOf } from "./run.ts";
 import { plural } from "./text.ts";
 import { fetchBranch, requireClean, shortHead } from "./git-guards.ts";
@@ -187,7 +188,7 @@ export async function planRebase(params: { repo?: string; base?: string }, call:
     const { signal } = call;
     const current = await requireBranch(repo.root, repo.name, "rebasing", signal);
     if (await isProtected(repo, current, call.settings, signal))
-        throw new Error(`refusing to rebase protected branch ${current}`);
+        throw new RefusedError(`refusing to rebase protected branch ${current}`);
     const base =
         params.base === undefined ? await baseBranch(repo, call.settings, signal) : checkBranch(params.base, "base");
     if (base === current) throw new Error(`${current} is the base; there is nothing to rebase onto`);
@@ -246,7 +247,7 @@ export async function planCherryPick(params: { repo?: string; revs?: string[] },
     const { signal } = call;
     const current = await requireBranch(repo.root, repo.name, "cherry-picking", signal);
     if (await isProtected(repo, current, call.settings, signal))
-        throw new Error(`refusing to cherry-pick onto protected branch ${current}`);
+        throw new RefusedError(`refusing to cherry-pick onto protected branch ${current}`);
     await requireClean(repo, "cherry-picking", signal);
     const shas: string[] = [];
     for (const rev of revs) {

@@ -215,7 +215,10 @@ async function startTunnel(
                 `no tunnel provider is registered: the route "${name}" needs a company plugin that provides it`,
             );
         }
-        throw new RouteError(`the tunnel "${name}" could not be opened: ${oneLine(message, 160)}`);
+        const locked = /pass|password store|locked|unlock/i.test(message)
+            ? " If the password store is locked, unlock it, or set secrets.pass.unlockAtStart in jig.json."
+            : "";
+        throw new RouteError(`the tunnel "${name}" could not be opened: ${oneLine(message, 160)}${locked}`);
     }
     let stopped = false;
     const stop = (): void => {

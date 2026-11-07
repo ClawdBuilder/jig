@@ -7,6 +7,7 @@ import type { Call, Planned } from "./previews.ts";
 import { digest, readOnly } from "./previews.ts";
 import { isProtected, resolveRepo } from "./repo.ts";
 import type { Repo } from "./repo.ts";
+import { RefusedError } from "../../jig-core/src/kit/values.ts";
 import {
     git,
     gitOut,
@@ -89,7 +90,9 @@ export async function planPush(params: PushParams, call: Call): Promise<Planned>
     const sha = await revParse(repo.root, `refs/heads/${branch}`, signal);
     if (!sha) throw new Error(`branch ${branch} does not exist locally in ${repo.name}`);
     if (await isProtected(repo, branch, settings, signal)) {
-        throw new Error(`refusing to push protected branch ${branch}; push a feature branch and open a pull request`);
+        throw new RefusedError(
+            `refusing to push protected branch ${branch}; push a feature branch and open a pull request`,
+        );
     }
     if ((await gitTry(repo.root, ["remote", "get-url", remote], { signal })) === undefined)
         throw new Error(`${repo.name} has no remote called ${remote}`);
