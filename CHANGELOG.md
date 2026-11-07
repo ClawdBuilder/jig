@@ -45,6 +45,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- The root README is now a 100-line introduction: purpose, install, a real review screenshot, a short area table and
+  five entry points. The launcher details moved to `docs/launcher.md`, the package filter and a short Updating section to
+  `docs/setup-and-doctor.md`, the two concept diagrams to `docs/architecture.md`, the Herdr note to `docs/plugins.md`,
+  the long reading list to `docs/reading.md`, and the internal harness history to `docs/decisions.md`.
+
 - `logs` stops a search at 80 seconds and returns what it found, with the windows it could not search named, instead of the
   bare “This operation was aborted”; two real searches took 108 and 120 seconds, so they now return a partial result with a
   line saying to narrow the window or the environment.
