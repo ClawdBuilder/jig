@@ -4,6 +4,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-08
+
 ### Added
 
 - The `ticket` tool has a `close` action that drafts the card and asks the agent to fill it; an existing card needs
@@ -43,6 +45,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   update is available. A background notice inside Pi checks at most once a day, is silent offline, backs off after a failed
   check, and can be turned off with `"updates": { "check": false }`.
 
+- `jig-workflow` shows up to three useful error lines from the whole output on a failed test run plus one neutral line to
+  check `workflow.tests`; it no longer guesses that tests did not run. It also accepts `submit-plan` as `submit_plan`,
+  publishes `jig:stage-done` after a stage move, and records text-free facts such as `passed`, `total`, `stage` and `missing`
+  for `/lens`.
+
 ### Changed
 
 - The root README is now a 100-line introduction: purpose, install, a real review screenshot, a short area table and
@@ -65,12 +72,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   what the model sees is unchanged. A tunnel whose password store is locked now says so and points at
   `secrets.pass.unlockAtStart`.
 
-### Added
-
-- `jig-workflow` shows up to three useful error lines from the whole output on a failed test run plus one neutral line to
-  check `workflow.tests`; it no longer guesses that tests did not run. It also accepts `submit-plan` as `submit_plan`,
-  publishes `jig:stage-done` after a stage move, and records text-free facts such as `passed`, `total`, `stage` and `missing`
-  for `/lens`.
 ## [0.4.3] - 2026-11-06
 
 ### Added

@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import { errorMessage } from "../errors.ts";
 import { jigPackage, piVersion } from "../pi-version.ts";
 
+import { compareVersions } from "../pi-version.ts";
 import { selectTarget } from "../update-versions.ts";
 import { companyRanges } from "../update-company.ts";
 import type { CompanyRange, RegistryMetadata, RegistryRelease } from "../update-versions.ts";
@@ -318,6 +319,11 @@ function usage(): string {
 }
 
 /** The `jig update` command. Returns the process exit code; `host` is Pi's package folder. */
+/** Whether a check should say the running Jig is already the newest it may use. */
+export function upToDate(current: string, target: string, requested: string | undefined): boolean {
+    return requested === undefined && compareVersions(target, current) <= 0;
+}
+
 export async function update(args: readonly string[], host: string | undefined): Promise<number> {
     let check = false;
     let requested: string | undefined;
@@ -387,6 +393,10 @@ export async function update(args: readonly string[], host: string | undefined):
     if ("problem" in chosen) {
         process.stderr.write(`${chosen.problem} Nothing was changed.\n`);
         return 1;
+    }
+    if (upToDate(current, chosen.target.version, requested)) {
+        process.stdout.write(`Jig ${current} is up to date.\n`);
+        return 0;
     }
     try {
         chosen.target.release = await fetchRelease(name, chosen.target.version, cwd);

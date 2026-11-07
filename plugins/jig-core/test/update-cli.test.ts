@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { discover, linkedPackageFolder, piSelfUpdateCommands, update } from "../src/cli/update.ts";
+import { discover, linkedPackageFolder, piSelfUpdateCommands, upToDate, update } from "../src/cli/update.ts";
 import { executeUpdate } from "../src/update-run.ts";
 import type { InstallCommand, UpdateIo } from "../src/update-run.ts";
 import { planUpdate } from "../src/update-plan.ts";
@@ -307,5 +307,14 @@ describe("piSelfUpdateCommands", () => {
         assert.ok(!Array.isArray(commands));
         assert.match(commands.problem, /pnpm add -g/);
         assert.match(commands.problem, /Nothing was changed/);
+    });
+});
+
+describe("a running Jig newer than the registry", () => {
+    test("says up to date instead of planning an older release", () => {
+        assert.equal(upToDate("0.5.0", "0.4.3", undefined), true);
+        assert.equal(upToDate("0.5.0", "0.5.0", undefined), true);
+        assert.equal(upToDate("0.5.0", "0.6.0", undefined), false);
+        assert.equal(upToDate("0.5.0", "0.4.3", "0.4.3"), false, "an explicit target is still planned");
     });
 });
