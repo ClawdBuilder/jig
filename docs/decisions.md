@@ -1905,3 +1905,11 @@ its own safety pipeline.
   pushes keep their confirmation until then.
 - **Rendered previews come with the Jira tools,** together with the PR text
   previews.
+
+## Relationship to the existing harness
+
+Jig is built clean, beside the harness the author uses every day today:
+- **It does not modify that harness.**
+- **It ports what works.**
+- **That harness keeps running** until each Jig plugin can replace its part.
+

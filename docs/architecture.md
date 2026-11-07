@@ -166,3 +166,16 @@ Jig is TypeScript on Node, as Pi is, so it runs on Linux and macOS.
   and not yet tested on a Mac, and its `filtered` and `ask` network modes mean `off`
   until the bridge between commands is tried there. Native Windows is not supported.
 - **Secrets have a backend per platform** (see Secrets).
+
+## Where Jig sits
+
+![Jig is the harness you own, around Pi, which is the harness its builders made around the model; a dashed outer ring is a later team harness](img/harnesses.svg)
+
+*Three harnesses, one inside the other, in [Birgitta Böckeler's](https://martinfowler.com/articles/harness-engineering.html) terms: the model is what gets harnessed, Pi's builders made the inner harness, and Jig is yours. A team harness would be the next ring if a team adopts Jig, and shared organizational memory would live there.*
+
+## How Jig steers the agent
+
+![Guides feed forward into Pi before it acts, sensors feed back after it acts, and you steer by changing both](img/harness-at-a-glance.svg)
+
+*Guides go forward into Pi before it acts, sensors feed back after it acts, and you steer by changing both. A star marks a model deciding, a dot a program, a figure a person, and a dashed outline something planned for later.*
+
