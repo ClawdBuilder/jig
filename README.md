@@ -69,6 +69,13 @@ pi
 Then `/jig` shows the rules and setup state, `/jig doctor` names any missing piece, and `/lens` shows cost and
 waiting time after the first calls. A write asks before it runs; a production write is denied.
 
+### Works on
+
+- **Linux and WSL2:** tested in CI and daily use. **macOS:** runs, with Seatbelt in the sandbox; `filtered` and `ask`
+  networking mean `off` there ([sandbox](plugins/jig-sandbox/README.md#network)). **Native Windows:** not yet, because of
+  the sandbox.
+- **Agent:** Pi 1.4 or later, tested with 1.5.0; Jig is a set of Pi plugins, and other agents are not supported.
+
 ## What you get
 
 | Area | What it gives you | Plugins |
@@ -87,6 +94,14 @@ the specification its code follows. [Herdr](herdr/README.md) is not a plugin: it
 Company-specific environments, sign-in services and internal tools live in a private company plugin, never here.
 [Writing a company plugin](docs/company-plugin.md) and the tested [`jig-acme`](examples/jig-acme/README.md) example
 show how; [Plugins](docs/plugins.md) is the map of every tool.
+
+## What is next
+
+Work with a page behind it, not a promise:
+
+- [jig-lens](plugins/jig-lens/docs/later.md): OpenTelemetry export to MLflow, and Datasette charts.
+- [jig-memory](plugins/jig-memory/docs/later.md): a memory keeper for organizational and personal facts, ticket text
+  from `jig-jira`, and embeddings or a graph only after real-ticket recall shows misses.
 
 ## Learn more
 
