@@ -191,6 +191,8 @@ export interface ReviewSession {
     /** The browser's cookie, after following the link Pi printed. */
     cookie: string;
     host: FakeHost;
+    /** The coordinator, for the hold state. */
+    coordinator: ReviewCoordinator;
     jig: FakeJig;
     session: Session;
     /** The link Pi showed the user. */
@@ -199,6 +201,7 @@ export interface ReviewSession {
     records(): Array<Record<string, unknown>>;
     /** Posts as the page does. */
     post(route: string, body?: unknown): ReturnType<typeof request>;
+    patch(route: string, body?: unknown): ReturnType<typeof request>;
     get(route: string): ReturnType<typeof request>;
     close(): Promise<void>;
 }
@@ -217,7 +220,7 @@ export const TICKET = "PROJ-1";
  */
 export async function openReview(
     args = "",
-    options: { byAgent?: boolean; ticket?: boolean; askQueueWaitMs?: number } = {},
+    options: { byAgent?: boolean; ticket?: boolean; askQueueWaitMs?: number; review?: Record<string, unknown> } = {},
 ): Promise<ReviewSession> {
     const root = mkdtempSync(path.join(os.tmpdir(), "jig-review-ws-"));
     const agentRoot = mkdtempSync(path.join(os.tmpdir(), "jig-review-root-"));
@@ -228,11 +231,13 @@ export async function openReview(
 
     const jig = installFakeJig();
     jig.setSection("memory", { folder: tickets });
+    if (options.review !== undefined) jig.setSection("review", options.review);
     const host = fakeHost();
-    new ReviewCoordinator(host.pi, root, {
+    const coordinator = new ReviewCoordinator(host.pi, root, {
         root: agentRoot,
         ...(options.askQueueWaitMs === undefined ? {} : { askQueueWaitMs: options.askQueueWaitMs }),
-    } satisfies ReviewOptions).register();
+    } satisfies ReviewOptions);
+    coordinator.register();
     const withTicket = options.byAgent === true && options.ticket !== false;
     if (withTicket) {
         mkdirSync(path.join(tickets, TICKET), { recursive: true });
@@ -263,6 +268,7 @@ export async function openReview(
         base,
         cookie,
         host,
+        coordinator,
         jig,
         session,
         link,
@@ -274,6 +280,7 @@ export async function openReview(
                     (name) => JSON.parse(readFileSync(path.join(reviewsDir, name), "utf8")) as Record<string, unknown>,
                 ),
         post: (route, body) => request(base, route, { method: "POST", cookie, body }),
+        patch: (route, body) => request(base, route, { method: "PATCH", cookie, body }),
         get: (route) => request(base, route, { cookie }),
         close: async () => {
             await host.fire("session_shutdown", session.ctx);

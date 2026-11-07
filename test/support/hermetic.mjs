@@ -56,6 +56,9 @@ for (const name of ["XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_C
 env.HOME = path.join(root, "home");
 env.GIT_CONFIG_GLOBAL = path.join(root, "gitconfig");
 env.GIT_CONFIG_NOSYSTEM = "1";
+// A test must never open a real browser: `BROWSER=true` makes the platform opener a no-op even when a test forgets its fake.
+// A test that checks the opener passes its own env to browserCommand/openUrl.
+env.BROWSER = "true";
 env.PI_OFFLINE = "1";
 env.PI_SKIP_VERSION_CHECK = "1";
 env.PI_TELEMETRY = "0";
