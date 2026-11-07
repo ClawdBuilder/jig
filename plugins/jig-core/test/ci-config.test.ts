@@ -117,25 +117,24 @@ describe("the Pi version Jig is tested with", () => {
         assert.match(pinned, /^\d+\.\d+\.\d+$/);
     });
 
-    for (const file of ["README.md", "docs/compatibility.md"]) {
-        test(`${file}: the "Tested with" row is that Pi, the Node lines of the checks job, and a date`, () => {
-            const row = /^\| (\d+\.\d+\.\d+) \| ([\d, ]+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read(file));
-            assert.ok(row, `${file} has no "Tested with" row`);
-            assert.equal(row[1], pinned);
-            assert.deepEqual(
-                (row[2] ?? "")
-                    .split(",")
-                    .map((node) => node.trim())
-                    .sort(),
-                nodes,
-            );
-        });
-    }
+    test(`docs/compatibility.md: the "Tested with" row is that Pi, the Node lines of the checks job, and a date`, () => {
+        const row = /^\| (\d+\.\d+\.\d+) \| ([\d, ]+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read("docs/compatibility.md"));
+        assert.ok(row, 'docs/compatibility.md has no "Tested with" row');
+        assert.equal(row[1], pinned);
+        assert.deepEqual(
+            (row[2] ?? "")
+                .split(",")
+                .map((node) => node.trim())
+                .sort(),
+            nodes,
+        );
+    });
 
-    test("the two tables say the same", () => {
-        const row = (file: string): string | undefined =>
-            /^\| \d+\.\d+\.\d+ \| [\d, ]+ \| \d{4}-\d{2}-\d{2} \|$/m.exec(read(file))?.[0];
-        assert.equal(row("README.md"), row("docs/compatibility.md"));
+    test("the README states the same tested Pi in its one sentence", () => {
+        const readme = read("README.md");
+        const stated = /tested with (\d+\.\d+\.\d+)/i.exec(readme);
+        assert.ok(stated, "the README has no tested-version sentence");
+        assert.equal(stated[1], pinned);
     });
 
     test("package.json's exact Pi devDependencies move with the pinned Pi", () => {

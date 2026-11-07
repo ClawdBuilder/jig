@@ -115,6 +115,29 @@ trust" wins over a parent's trust; a missing, unreadable or malformed `trust.jso
 User-scope packages are unaffected. Pi's `project_trust` extension event is not imitated: there is no screen for it here,
 and loading less is the safe direction.
 
+## Loading only some plugins
+
+Pi can load only some of Jig's plugins. Name each plugin by its entry file, `plugins/<name>/index.ts`; a filter that
+names `src/index.ts` matches nothing. Keep `jig-core` first in the list, because every other plugin needs it:
+
+```json
+{
+  "packages": [
+    {
+      "source": "npm:@clawdbuilder/jig",
+      "extensions": [
+        "plugins/jig-core/index.ts",
+        "plugins/jig-sandbox/index.ts",
+        "plugins/jig-git/index.ts"
+      ]
+    }
+  ]
+}
+```
+
+`jig doctor` reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`, or when a plugin's section in
+`jig.json` is left behind.
+
 ## The four words
 
 | Word | What it means |

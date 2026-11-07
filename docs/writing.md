@@ -49,6 +49,15 @@ Detail that would take it past that goes to `plugins/<name>/docs/`. A detail
 page opens with one sentence on what it covers, and ends with a link back to
 the README.
 
+## The root README
+
+The repository README is about 100 to 120 lines. In this order: the name and a one-line purpose, badges, three or four
+sentences on what Jig is and why, one real screenshot, install (requirements, the two commands, the first `/jig`) and
+updating, a table of what you get by area, then five entry points, contributing, security and the licence. Detail goes
+to `docs/`: launcher to `docs/launcher.md`, package filtering to `docs/setup-and-doctor.md`, concept diagrams to
+`docs/architecture.md`, and the longer reading list to `docs/reading.md`. The introduction should not grow back into a
+changelog, a plugin catalogue or an architecture page.
+
 ## Diagrams
 
 A diagram shows the plugin's real mechanism, not boxes with names. Draw it as

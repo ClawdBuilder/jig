@@ -1,5 +1,5 @@
 // The Pi version a release states is one fact in six places: `jig.agents.pi` in package.json, the two CI Install Pi steps,
-// the README and compatibility tables, the AGENTS.md test command, and the exact devDependencies. They move together.
+// the README sentence and compatibility table, the AGENTS.md test command, and the exact devDependencies. They move together.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -37,7 +37,7 @@ describe("the Pi requirement", () => {
         assert.equal(manifest.devDependencies["@earendil-works/pi-coding-agent"], tested);
         assert.equal(manifest.devDependencies["@earendil-works/pi-ai"], tested);
         assert.equal(manifest.devDependencies["@earendil-works/pi-tui"], tested);
-        assert.match(read("README.md"), new RegExp(`\\| ${tested.replaceAll(".", "\\.")} \\|`));
+        assert.match(read("README.md"), new RegExp(`tested with ${tested.replaceAll(".", "\\.")}`, "i"));
         assert.match(read("docs/compatibility.md"), new RegExp(`\\| ${tested.replaceAll(".", "\\.")} \\|`));
     });
 

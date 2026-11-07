@@ -326,44 +326,22 @@ test("the picture is an image with a description, and its swatches are jig-signa
 });
 
 test("the root documents list the plugin", () => {
-    assert.match(
-        read(path.join(ROOT, "docs/plugins.md")),
-        /\[`jig-theme`\]\(\.\.\/plugins\/jig-theme\/README\.md\) \| built \|/,
-    );
-    assert.match(read(path.join(ROOT, "README.md")), /\[`jig-theme`\]\(plugins\/jig-theme\/README\.md\) \| built \|/);
+    const plugins = read(path.join(ROOT, "docs/plugins.md"));
+    assert.match(plugins, /\[`jig-theme`\]\(\.\.\/plugins\/jig-theme\/README\.md\) \| built \|/);
+    // docs/plugins.md is the full status table, and every built row names a plugin README.
+    const rows = plugins.split("\n").filter((line) => /^\| \[`jig-[\w-]+`\]/.test(line));
+    assert.equal(rows.length, 15, "one row per plugin");
+    assert.equal(rows.filter((line) => line.includes("| built |")).length, 15, "every row is built");
+    // The README's area table links every plugin, with short labels.
+    const root = read(path.join(ROOT, "README.md"));
+    for (const row of rows) {
+        const name = /^\| \[`jig-([\w-]+)`\]/.exec(row)?.[1];
+        assert.ok(name, row);
+        assert.ok(root.includes(`(plugins/jig-${name}/README.md)`), `README links ${name}`);
+    }
     // AGENTS.md lists the built plugins in its first paragraph; jig-theme must be among them, however it is worded.
     const agentsIntro = read(path.join(ROOT, "AGENTS.md")).split("\n\n")[1] ?? "";
     assert.match(agentsIntro, /are built:[^.]*`jig-theme`/);
-    // The status line's count follows the plugin table, so it is checked against the table, not a fixed number.
-    const root = read(path.join(ROOT, "README.md"));
-    const words = [
-        "zero",
-        "one",
-        "two",
-        "three",
-        "four",
-        "five",
-        "six",
-        "seven",
-        "eight",
-        "nine",
-        "ten",
-        "eleven",
-        "twelve",
-        "thirteen",
-        "fourteen",
-        "fifteen",
-        "sixteen",
-    ];
-    const status = /\*\*Status:\*\* (\w+) of the (\w+) plugins are built/.exec(root);
-    assert.ok(status, "the README has a status line");
-    const rows = root.split("\n").filter((line) => /^\| \[`jig-[\w-]+`\]/.test(line));
-    assert.equal(
-        words.indexOf(status[1] ?? ""),
-        rows.filter((line) => line.includes("| built |")).length,
-        "built count",
-    );
-    assert.equal(words.indexOf(status[2] ?? ""), rows.length, "plugin count");
     assert.match(read(path.join(ROOT, "docs/architecture.md")), /jig-theme {2}the look/);
     const glossary = read(path.join(ROOT, "docs/glossary.md"));
     assert.match(glossary, /\| \*\*Palette\*\* \|/);

@@ -131,7 +131,7 @@ every line, and how to open a dashboard if you want one.
 You now have seen the three ideas Jig is made of: rules decide, you approve inside the waiting call, and
 everything is recorded. To learn how they are built:
 
-1. **The concepts, in order.** The main README has a [reading list](../README.md#read-in-this-order):
+1. **The concepts, in order.** The main README has a [reading list](reading.md):
    [Architecture](architecture.md), [Permissions](permissions.md), [Approvals](approvals.md) and
    [Secrets](secrets.md) first. The [glossary](glossary.md) explains the words.
 2. **A plugin's README.** Each one is the specification its code follows, in the same shape. Start with
