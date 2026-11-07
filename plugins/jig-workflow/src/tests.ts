@@ -158,6 +158,21 @@ export interface ShellRun {
 }
 
 /** Runs a plan's command in its repository some other way: the one that asks the user (see outside.ts). */
+const ERROR_LINE =
+    /(error|failed|failure|cannot|not found|unsupported|invalid|exception|compile|panic|assert|expect|expected|fatal|timed out)/i;
+const PREFERRED = /(error|exception|panic|assert|compile|fatal|cannot find|not found)/i;
+
+/** Up to three useful error lines from the whole output, not only the tail. */
+export function errorLines(output: string, limit = 3): string[] {
+    const lines = output
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "" && ERROR_LINE.test(line));
+    const preferred = lines.filter((line) => PREFERRED.test(line));
+    return (preferred.length > 0 ? preferred : lines).slice(0, limit).map((line) => line.slice(0, 500));
+}
+
 export type OutsideRunner = (plan: TestPlan, options: { signal?: AbortSignal }) => Promise<ShellRun>;
 
 export interface TestRun {

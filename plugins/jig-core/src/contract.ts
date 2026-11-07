@@ -892,7 +892,19 @@ export const JIG_EVENTS = {
     decision: "jig:decision",
     /** When a watch ends. Payload: `WatchDoneEvent`. */
     watchDone: "jig:watch-done",
+    /** After a workflow moves: start, advance or back. Payload: `StageDoneEvent`. */
+    stageDone: "jig:stage-done",
 } as const;
+
+/** A stage move announced on Pi's event bus. Text-free: names and a time, never notes or evidence. */
+export interface StageDoneEvent {
+    ticket: string;
+    workflow: string;
+    /** Null for `start`, which has no earlier stage. */
+    from: string | null;
+    to: string;
+    at: string;
+}
 
 export interface DecisionEvent {
     toolCallId: string;
