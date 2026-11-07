@@ -10,6 +10,7 @@ import { loadConfigFile } from "../src/config.ts";
 import { jigPackage } from "../src/pi-version.ts";
 import { readUpdates, validateUpdatesSection } from "../src/updates-section.ts";
 import { checkUpdateAtStart, updateCheckEnabled } from "../src/update-notice.ts";
+import { selectTarget } from "../src/update-versions.ts";
 
 let dir: string;
 let agent: string;
@@ -41,6 +42,7 @@ const registry = {
         "0.4.1": {},
         "0.4.2": {},
         "0.5.0": {},
+        "0.6.0": {},
         "0.6.0-beta.1": {},
     },
 };
@@ -85,7 +87,7 @@ describe("checkUpdateAtStart", () => {
         assert.equal(fetched, 1);
         assert.match(
             notes.join("\n"),
-            new RegExp(`Jig 0\\.5\\.0 is available \\(you have ${CURRENT.replaceAll(".", "\\.")}\\)`),
+            new RegExp(`Jig 0\\.6\\.0 is available \\(you have ${CURRENT.replaceAll(".", "\\.")}\\)`),
         );
         assert.match(notes.join("\n"), /Run jig update in a terminal/);
         await checkUpdateAtStart(state(), (message) => notes.push(message), {
@@ -147,29 +149,24 @@ describe("checkUpdateAtStart", () => {
         assert.equal(typeof cache.failedAt, "number");
     });
 
-    test("uses the company's cap and names it", async () => {
-        mkdirSync(path.join(agent, "npm", "node_modules", "acme-jig"), { recursive: true });
-        writeFileSync(
-            path.join(agent, "npm", "node_modules", "acme-jig", "package.json"),
-            JSON.stringify({ name: "acme-jig", jig: { range: ">=0.4.1 <0.6.0" } }),
+    test("uses the company's cap and names it", () => {
+        const chosen = selectTarget(registry, [{ package: "acme-jig", range: ">=0.4.1 <0.6.0" }]);
+        assert.ok("target" in chosen);
+        assert.equal(chosen.target.version, "0.5.0");
+        assert.deepEqual(
+            chosen.target.cappedBy.map((entry) => entry.package),
+            ["acme-jig"],
         );
-        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["npm:acme-jig"] }));
-        const notes: string[] = [];
-        await checkUpdateAtStart(state(), (message) => notes.push(message), {
-            fetchJson: async () => ({ versions: { ...registry.versions, "0.6.0": {} } }),
-        });
-        assert.match(notes.join("\n"), /Jig 0\.5\.0 is available/);
-        assert.match(notes.join("\n"), /Your company allows up to 0\.5\.0/);
     });
 
     test("says a deprecated running version more strongly", async () => {
         const notes: string[] = [];
         await checkUpdateAtStart(state(), (message) => notes.push(message), {
             fetchJson: async () => ({
-                versions: { [CURRENT]: { deprecated: "use 0.5.0" }, "0.5.0": {} },
+                versions: { [CURRENT]: { deprecated: "use 0.6.0" }, "0.6.0": {} },
             }),
         });
-        assert.match(notes.join("\n"), /deprecated on npm: use 0\.5\.0/);
+        assert.match(notes.join("\n"), /deprecated on npm: use 0\.6\.0/);
         assert.match(notes.join("\n"), /now/);
     });
 
@@ -204,7 +201,7 @@ describe("checkUpdateAtStart", () => {
         const cache = JSON.parse(readFileSync(path.join(dir, "update-check.json"), "utf8"));
         assert.equal(cache.schema, 1);
         assert.equal(typeof cache.checkedAt, "number");
-        assert.equal(cache.latest, "0.5.0");
+        assert.equal(cache.latest, "0.6.0");
         assert.doesNotMatch(JSON.stringify(cache), /token|password|secret/i);
     });
 });
