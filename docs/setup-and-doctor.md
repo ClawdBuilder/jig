@@ -115,22 +115,6 @@ trust" wins over a parent's trust; a missing, unreadable or malformed `trust.jso
 User-scope packages are unaffected. Pi's `project_trust` extension event is not imitated: there is no screen for it here,
 and loading less is the safe direction.
 
-## Updating
-
-In 0.5.0 and later, one command moves both copies of Jig — Pi's package and the global `jig` command — to one published
-stable version:
-
-```text
-jig update [--check] [--to <version>]
-```
-
-It needs a terminal. `--check` says what would happen and changes nothing; `--to` names a published version instead of the
-newest stable one. It installs the tested Pi only when the release needs a newer Pi and asks first; it never installs "the
-latest Pi". If Pi's Jig copy is a checkout or a git source, it says so and changes nothing. A company's `jig.range` caps
-the versions it may move to. Before the first change it checks the registry, the target's Pi versions, the folder and the
-programs; if a step fails, it puts the versions it changed back and says what happened. Open Pi sessions keep the old code
-until restarted.
-
 ## Loading only some plugins
 
 Pi can load only some of Jig's plugins. Name each plugin by its entry file, `plugins/<name>/index.ts`; a filter that
