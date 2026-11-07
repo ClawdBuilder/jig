@@ -131,8 +131,12 @@ export function planUpdate(input: UpdatePlanInput): { plan: UpdatePlan } | { pro
 export function describePlan(plan: UpdatePlan): string[] {
     const lines = [`Jig ${plan.current} -> ${plan.target}`];
     if (plan.target !== plan.newest) {
-        const holders = plan.cappedBy.map((entry) => `${entry.package} (${entry.range})`).join(", ");
-        lines.push(`Stopped at ${plan.target}, the newest inside the company range from ${holders}.`);
+        if (plan.cappedBy.length === 0) {
+            lines.push(`Using ${plan.target} as asked; the newest stable release is ${plan.newest}.`);
+        } else {
+            const holders = plan.cappedBy.map((entry) => `${entry.package} (${entry.range})`).join(", ");
+            lines.push(`Stopped at ${plan.target}, the newest inside the company range from ${holders}.`);
+        }
     }
     if (plan.pi !== undefined) {
         lines.push(`Pi ${plan.pi.from} -> ${plan.pi.to}: Jig ${plan.target} needs the newer Pi.`);

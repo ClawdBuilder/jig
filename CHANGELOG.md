@@ -16,6 +16,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   Automatic and agent searches are recorded for `jig-lens` with entry and query counts, and no text. CRLF notes, symlinks
   and FIFOs are handled safely, and recalled text is stripped of control characters.
 
+- `jig update [--check] [--to <version>]` moves Pi's Jig copy and the global `jig` command to one published stable version.
+  It installs the exact tested Pi only when the release needs a newer one, asks first and defaults to No, respects a company
+  package's `jig.range`, moves an exact npm pin after saying `pinned to X, moving to Y`, and puts every changed version back
+  if a step fails. It asks the registry npm itself is configured to use. A background notice inside Pi checks at most once a
+  day, is silent offline, and can be turned off with `"updates": { "check": false }`.
+
 ### Changed
 
 - `logs` stops a search at 80 seconds and returns what it found, with the windows it could not search named, instead of the
@@ -62,11 +68,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   does.
 - Refusals point at what clears them: `mongo` names `mongo access`, `jira update` names `jira.updateFields`, and a
   workflow hold names the action that records its evidence.
-- `jig update [--check] [--to <version>]` moves Pi's Jig copy and the global `jig` command to one published stable version.
-  It installs the exact tested Pi only when the release needs a newer one, asks first and defaults to No, respects a company
-  package's `jig.range`, moves an exact npm pin after saying `pinned to X, moving to Y`, and puts every changed version back
-  if a step fails. It asks the registry npm itself is configured to use. A background notice inside Pi checks at most once a
-  day, is silent offline, and can be turned off with `"updates": { "check": false }`.
 
 ## [0.4.2] - 2026-11-06
 

@@ -92,7 +92,8 @@ what happened. Open Pi sessions keep the old code until restarted.
 ### The notice inside Pi
 
 At most once a day, in the background, Jig asks the npm registry whether a newer stable release exists and tells you on
-your screen: "Jig X is available... run `jig update` in a terminal." The notice respects the company cap, is silent when
+your screen: "Jig X is available... run `jig update` in a terminal." In print mode it writes the same line to stderr, so
+it reaches you and never the model's context. The notice respects the company cap, is silent when
 offline or when `PI_OFFLINE` is set, and never reaches the model's context. If the running version is deprecated on npm,
 it says so more strongly. It also warns once when Pi is newer than the tested version. Turn it off with
 `"updates": { "check": false }`; a company default can turn it off too, and your file wins. The check is cached in Jig's

@@ -26,8 +26,13 @@ function wantsUnlock(state: JigState): boolean {
 export function startJobs(state: JigState): void {
     state.startJobs?.abort();
     state.startJobs = undefined;
-    // `screen` is set only when the session has a UI.
-    if (state.screen === undefined || isChildAgent(state.env)) return;
+    if (isChildAgent(state.env)) return;
+    // A print-mode session has no UI but a person reading the command's output: the update notice can still be shown
+    // on stderr, never in the model's context. The other start jobs need a screen, so they stay off.
+    if (state.screen === undefined) {
+        void checkUpdateAtStart(state, (message) => process.stderr.write(`${message}\n`));
+        return;
+    }
     const control = new AbortController();
     state.startJobs = control;
     const notify = (message: string, level: "info" | "warning"): void => {

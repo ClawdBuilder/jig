@@ -36,6 +36,16 @@ describe("planUpdate", () => {
         assert.equal(built.plan.changes, true);
     });
 
+    test("names an explicit older target as asked, not as a company cap", () => {
+        const chosen = target("0.4.2");
+        chosen.newest = "0.5.0";
+        const built = planUpdate(input({ target: chosen }));
+        assert.ok("plan" in built);
+        const lines = describePlan(built.plan).join("\n");
+        assert.match(lines, /Using 0\.4\.2 as asked; the newest stable release is 0\.5\.0\./);
+        assert.doesNotMatch(lines, /company range/);
+    });
+
     test("asks for the tested Pi when the installed one is below the minimum", () => {
         const built = planUpdate(input({ piVersion: "1.3.0", target: target("0.5.0", "1.4.0", "1.5.0") }));
         assert.ok("plan" in built);

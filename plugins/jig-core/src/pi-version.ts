@@ -34,6 +34,10 @@ export function piVersion(): string | undefined {
     try {
         const launcher = process.argv[1];
         if (launcher !== undefined && launcher !== "") {
+            // The launcher sits inside Pi's package in a bundled or global install. Walk up from it first: Pi's
+            // package has `exports` but no root export, so `require.resolve(PI_PACKAGE)` fails there.
+            const fromLauncher = versionFrom(path.resolve(launcher));
+            if (fromLauncher !== undefined) return fromLauncher;
             const require = createRequire(path.join(path.dirname(path.resolve(launcher)), "probe.js"));
             const found = versionFrom(require.resolve(PI_PACKAGE));
             if (found !== undefined) return found;
