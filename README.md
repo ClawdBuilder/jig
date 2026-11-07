@@ -37,6 +37,8 @@ In short:
 - **How Pi looks:** `jig-theme` gives six palettes, a one-line footer and your
   own colours. `jig-session` publishes each session's state as a file other programs read, such as the
   [Herdr app](#the-herdr-app) files.
+- **Browser pages:** one graphite dark palette and a light one for the review page, previews and `jig-lens`; follow the
+  system, choose light/dark on the page, or set `ui.theme`. See [Browser theme](docs/browser-theme.md).
 - **Checked on every push:** the type check, Biome, over 5,000 tests, the
   review page's build and every link in these docs run on GitHub Actions. A
   second job runs the plugins against real Elasticsearch, OpenSearch, Loki,

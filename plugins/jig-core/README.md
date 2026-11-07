@@ -84,6 +84,7 @@ All fields are optional.
 | `records.retentionDays` | 90 | Days record files are kept, from 1 to 3650 |
 | `spill.retentionDays` | 7 | Days spill files and rendered previews are kept |
 | `approvals.openInBrowser` | `"on-key"` | `"always"` opens a review screen's preview in the browser as soon as it appears |
+| `ui.theme` | `"system"` | `"light"` or `"dark"` for every Jig browser page; a person can still choose on the page |
 | `tools.deferred` | none | Jig tools whose descriptions stay out of the context until Pi's `tool_search` finds them |
 | `profiles` | none | Named company profiles: `{ "plugin": "jig-acme", "when": { "folders": [...], "remotes": [...] } }`. See [Profiles](docs/profiles.md) |
 | `profile` | `"auto"` | Which profile applies: `"auto"` (the first whose folder or remote matches), `"none"`, or a name |

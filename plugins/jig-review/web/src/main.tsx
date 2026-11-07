@@ -1,5 +1,6 @@
 import "react-diff-view/style/index.css";
 import "./styles.css";
+import "./theme.js";
 
 import { createRoot } from "react-dom/client";
 

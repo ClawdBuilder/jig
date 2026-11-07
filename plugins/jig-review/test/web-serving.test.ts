@@ -24,7 +24,13 @@ test("the index and every asset it loads are served as they were built", async (
     const index = await get("/");
     assert.equal(index.status, 200);
     assert.match(String(index.headers["content-type"]), /^text\/html/);
-    assert.equal(index.body, readFileSync(path.join(dist, "index.html"), "utf8"));
+    const built = readFileSync(path.join(dist, "index.html"), "utf8");
+    assert.equal(
+        index.body,
+        built.replace(' data-theme-placeholder="true"', "").replaceAll("__JIG_THEME_DEFAULT__", "system"),
+    );
+    assert.equal(index.body.includes("__JIG_THEME_DEFAULT__"), false);
+    assert.equal(index.body.includes("data-theme-placeholder"), false);
 
     const assets = [...index.body.matchAll(/\b(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]!);
     assert.equal(assets.length, 2, "one script and one stylesheet");
@@ -40,10 +46,15 @@ test("the index and every asset it loads are served as they were built", async (
 });
 
 test("a deep link into the app gets the index, so a reload keeps the page", async () => {
+    const built = readFileSync(path.join(dist, "index.html"), "utf8");
     for (const route of ["/review/2026-01-01T00-00-00Z/files", "/settings", "/reviews"]) {
         const deep = await get(route);
         assert.equal(deep.status, 200, route);
-        assert.equal(deep.body, readFileSync(path.join(dist, "index.html"), "utf8"), route);
+        assert.equal(
+            deep.body,
+            built.replace(' data-theme-placeholder="true"', "").replaceAll("__JIG_THEME_DEFAULT__", "system"),
+            route,
+        );
     }
 });
 

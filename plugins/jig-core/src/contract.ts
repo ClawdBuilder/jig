@@ -705,7 +705,7 @@ export interface JigApi {
          *  and `/jig` says the company defaults are incomplete. */
         addSectionDefaults(name: string, defaults: unknown): void;
         /** The section as loaded at the last session start, after validation: the user's, laid over the company's
-         *  defaults when it gave some. Undefined when absent or invalid. */
+         *  defaults when it gave some. Undefined when absent or invalid. `ui` is jig-core's own page-theme section. */
         section(name: string): unknown;
     };
 

@@ -20,6 +20,8 @@ import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { clampHoldAbortAfter } from "./settings.ts";
 import { Hono } from "hono";
+import { themeAttribute, themeChoice } from "../../jig-core/src/kit/theme.ts";
+import type { ThemeChoice } from "../../jig-core/src/kit/theme.ts";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { ApprovalError } from "./approval.ts";
@@ -43,6 +45,8 @@ export type ReviewServerHandlers = {
     submitComments: (comments: SubmittedCommentInput[], mode: CommentSubmissionMode) => Promise<void>;
     updateSettings: (settings: Partial<ReviewSettings>) => Promise<void>;
     approval: ApprovalService;
+    /** The configured page theme. System when absent. */
+    theme?: () => ThemeChoice;
 };
 
 export const COOKIE = "jig_review";
@@ -223,7 +227,7 @@ export class ReviewServer {
 
         app.get("/api/events", () => this.createEventsResponse());
 
-        app.get("/*", (context) => readStaticAsset(context.req.path));
+        app.get("/*", (context) => readStaticAsset(context.req.path, themeChoice(this.handlers.theme?.())));
 
         return app;
     }
@@ -298,7 +302,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "Cache-Control": "no-store",
 };
 
-async function readStaticAsset(requestPath: string): Promise<Response> {
+async function readStaticAsset(requestPath: string, theme: ThemeChoice = "system"): Promise<Response> {
     const webRoot = getWebRoot();
     let relativePath: string;
     try {
@@ -309,19 +313,26 @@ async function readStaticAsset(requestPath: string): Promise<Response> {
     const filePath = path.join(webRoot, relativePath);
     if (isOutsideDirectory(filePath, webRoot)) return new Response("Not found", { status: 404 });
     try {
+        if (relativePath === "index.html" || relativePath === "/") return indexResponse(filePath, theme);
         return new Response(await readFile(filePath), { headers: getStaticAssetHeaders(filePath) });
     } catch {
         // A path the page's router knows (a review's own address) gets the page, so a reload keeps the place.
         try {
-            return new Response(await readFile(path.join(webRoot, "index.html")), {
-                headers: getStaticAssetHeaders("index.html"),
-            });
+            return indexResponse(path.join(webRoot, "index.html"), theme);
         } catch {
             return new Response("The review page is not built: run `npm --prefix plugins/jig-review/web run build`.", {
                 status: 500,
             });
         }
     }
+}
+
+/** index.html with the configured theme put in before first paint, and no placeholder left in the served page. */
+async function indexResponse(file: string, theme: ThemeChoice): Promise<Response> {
+    const page = (await readFile(file, "utf8"))
+        .replace(' data-theme-placeholder="true"', themeAttribute(theme))
+        .replaceAll("__JIG_THEME_DEFAULT__", theme);
+    return new Response(page, { headers: getStaticAssetHeaders("index.html") });
 }
 
 function getWebRoot(): string {

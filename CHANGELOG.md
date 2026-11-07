@@ -19,6 +19,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   a replaced, abandoned, restarted or stopped review stops holding. A `review` section supplies company defaults for
   `holdAgent` and `holdAbortAfter` (default 2 refused model responses before the turn is aborted); the settings page overrides
   them. Each copy of the plugin registers its own gate name.
+- Every Jig browser page shares one graphite palette, with a System / Light / Dark choice remembered in the browser and
+  `ui.theme` in `jig.json` (`system` by default); the review page has a dark mode for diffs, syntax, comments, modals,
+  approval panels, disabled buttons and empty states, and no page flashes white before its theme is set. The single token
+  file is `plugins/jig-core/src/kit/theme.css`; the light theme keeps working.
 
 ### Changed
 

@@ -285,7 +285,13 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         approvals: createApprovals({
             now: () => Date.now(),
             openPreview:
-                options.openPreview ?? ((preview, header) => openPreview(preview, header, { server: previews, env })),
+                options.openPreview ??
+                ((preview, header) =>
+                    openPreview(preview, header, {
+                        server: previews,
+                        env,
+                        theme: state.personal.config.ui.theme,
+                    })),
             openInBrowser: () => state.personal.config.approvals.openInBrowser,
         }),
         gates: createGates(options.gateTimeoutMs === undefined ? {} : { timeoutMs: options.gateTimeoutMs }),

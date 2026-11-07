@@ -1,0 +1,161 @@
+/* The one browser palette. Graphite, not navy; light stays. Every page imports this file, or has it put in the page by
+   jig-core, so a colour is defined here once and never copied into a plugin. */
+:root {
+    color-scheme: light;
+    --jig-bg: #ffffff;
+    --jig-surface: #f6f7f9;
+    --jig-raised: #ffffff;
+    --jig-border: #d9dde3;
+    --jig-text: #1a1b1e;
+    --jig-muted: #5c626b;
+    --jig-accent: #2563eb;
+    --jig-accent-text: #ffffff;
+    --jig-link: #1d4ed8;
+    --jig-code: #f3f4f6;
+    --jig-add-bg: #e6ffec;
+    --jig-add-word: #abf2bc;
+    --jig-del-bg: #ffebe9;
+    --jig-del-word: #ffcecb;
+    --jig-hunk-bg: #ddf4ff;
+    --jig-selection: #b6d7ff;
+    --jig-focus: #2563eb;
+    --jig-scroll: #c7ccd4;
+    --jig-success: #1a7f37;
+    --jig-warning: #9a6700;
+    --jig-error: #cf222e;
+    --jig-warn-bg: #fff8c5;
+    --jig-warn-border: #d4a72c;
+    --jig-diff-widget: #eff6ff;
+    --jig-diff-edit: rgb(250 204 21 / 0.35);
+    --jig-syntax-comment: #6b7280;
+    --jig-syntax-punctuation: #475569;
+    --jig-syntax-number: #b45309;
+    --jig-syntax-string: #047857;
+    --jig-syntax-variable: #334155;
+    --jig-syntax-function: #2563eb;
+    --jig-syntax-keyword: #7c3aed;
+    --jig-syntax-regex: #be123c;
+    --jig-lane-model: #4a7bd0;
+    --jig-lane-tool: #c99a3e;
+    --jig-lane-you: #b05a8a;
+    --jig-lane-track: #e5e7eb;
+    --jig-detail-bg: #ffffff;
+    --jig-detail-border: #d9dde3;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --jig-bg: #111113;
+    --jig-surface: #18181b;
+    --jig-raised: #202024;
+    --jig-border: #2c2c31;
+    --jig-text: #e7e7ea;
+    --jig-muted: #9a9aa2;
+    --jig-accent: #7aa2f7;
+    --jig-accent-text: #111113;
+    --jig-link: #8ab4ff;
+    --jig-code: #17171a;
+    --jig-add-bg: #14251a;
+    --jig-add-word: #1f4a2d;
+    --jig-del-bg: #2a1618;
+    --jig-del-word: #4a2225;
+    --jig-hunk-bg: #15202b;
+    --jig-selection: #2a3b57;
+    --jig-focus: #7aa2f7;
+    --jig-scroll: #3a3a41;
+    --jig-success: #6ccb8a;
+    --jig-warning: #e3b341;
+    --jig-error: #ff7b72;
+    --jig-warn-bg: #2a2410;
+    --jig-warn-border: #9e6a03;
+    --jig-diff-widget: #1a2028;
+    --jig-diff-edit: rgb(227 179 65 / 0.28);
+    --jig-syntax-comment: #8b949e;
+    --jig-syntax-punctuation: #c9d1d9;
+    --jig-syntax-number: #e3b341;
+    --jig-syntax-string: #7ee787;
+    --jig-syntax-variable: #c9d1d9;
+    --jig-syntax-function: #79c0ff;
+    --jig-syntax-keyword: #d2a8ff;
+    --jig-syntax-regex: #ff7b72;
+    --jig-lane-model: #4a7bd0;
+    --jig-lane-tool: #c99a3e;
+    --jig-lane-you: #b05a8a;
+    --jig-lane-track: #262626;
+    --jig-detail-bg: #161616;
+    --jig-detail-border: #333333;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --jig-bg: #111113;
+        --jig-surface: #18181b;
+        --jig-raised: #202024;
+        --jig-border: #2c2c31;
+        --jig-text: #e7e7ea;
+        --jig-muted: #9a9aa2;
+        --jig-accent: #7aa2f7;
+        --jig-accent-text: #111113;
+        --jig-link: #8ab4ff;
+        --jig-code: #17171a;
+        --jig-add-bg: #14251a;
+        --jig-add-word: #1f4a2d;
+        --jig-del-bg: #2a1618;
+        --jig-del-word: #4a2225;
+        --jig-hunk-bg: #15202b;
+        --jig-selection: #2a3b57;
+        --jig-focus: #7aa2f7;
+        --jig-scroll: #3a3a41;
+        --jig-success: #6ccb8a;
+        --jig-warning: #e3b341;
+        --jig-error: #ff7b72;
+        --jig-warn-bg: #2a2410;
+        --jig-warn-border: #9e6a03;
+        --jig-diff-widget: #1a2028;
+        --jig-diff-edit: rgb(227 179 65 / 0.28);
+        --jig-syntax-comment: #8b949e;
+        --jig-syntax-punctuation: #c9d1d9;
+        --jig-syntax-number: #e3b341;
+        --jig-syntax-string: #7ee787;
+        --jig-syntax-variable: #c9d1d9;
+        --jig-syntax-function: #79c0ff;
+        --jig-syntax-keyword: #d2a8ff;
+        --jig-syntax-regex: #ff7b72;
+        --jig-lane-model: #4a7bd0;
+        --jig-lane-tool: #c99a3e;
+        --jig-lane-you: #b05a8a;
+        --jig-lane-track: #262626;
+        --jig-detail-bg: #161616;
+        --jig-detail-border: #333333;
+    }
+}
+
+::selection {
+    background: var(--jig-selection);
+    color: var(--jig-text);
+}
+:focus-visible {
+    outline: 2px solid var(--jig-focus);
+    outline-offset: 2px;
+}
+* {
+    scrollbar-color: var(--jig-scroll) transparent;
+}
+
+/* The selector is injected by theme-client.ts, so every page has the same one. It sits above content, not over a diff. */
+#jig-theme {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1000;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--jig-border);
+    border-radius: 0.375rem;
+    background: var(--jig-raised);
+    color: var(--jig-text);
+    font:
+        12px / 1.4 system-ui,
+        sans-serif;
+    cursor: pointer;
+}

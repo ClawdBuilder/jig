@@ -155,6 +155,7 @@ describe("the API", () => {
             "secrets",
             "spill",
             "startChecks",
+            "ui",
         ]);
     });
 
@@ -278,6 +279,9 @@ describe("what plugins import", () => {
             "sandbox-programs.ts",
             "schema.ts",
             "text.ts",
+            "theme-client.ts",
+            "theme.css",
+            "theme.ts",
             "tools.ts",
             "values.ts",
         ]);
@@ -337,6 +341,28 @@ describe("what plugins import", () => {
             ],
             "schema.ts": ["stringEnum"],
             "text.ts": ["oneLine", "printable", "shortList", "stringOf"],
+            "theme-client.ts": [
+                "THEME_CHOICES",
+                "THEME_KEY",
+                "ThemeChoice",
+                "installTheme",
+                "resolvedTheme",
+                "themeBootScript",
+                "themeChoice",
+                "themeControlScript",
+            ],
+            "theme.css": [],
+            "theme.ts": [
+                "THEME_CHOICES",
+                "THEME_KEY",
+                "ThemeChoice",
+                "resolvedTheme",
+                "themeAttribute",
+                "themeBootScript",
+                "themeChoice",
+                "themeControlScript",
+                "themeCss",
+            ],
             "tools.ts": [
                 "JigToolOptions",
                 "NOT_DEFERRABLE",
@@ -358,7 +384,9 @@ describe("what plugins import", () => {
         const modules = [
             "client.ts",
             "contract.ts",
-            ...readdirSync(path.join(CORE, "kit")).map((name) => `kit/${name}`),
+            ...readdirSync(path.join(CORE, "kit"))
+                .filter((name) => name.endsWith(".ts"))
+                .map((name) => `kit/${name}`),
         ];
         for (const module of modules) {
             const file = path.join(CORE, module);

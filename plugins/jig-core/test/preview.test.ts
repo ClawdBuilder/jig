@@ -558,3 +558,13 @@ describe("a tool's own rendered page", () => {
         assert.deepEqual(result, { invalid: "bad branch name" });
     });
 });
+
+test("a preview uses the shared palette and pins the configured theme", () => {
+    const preview = { summary: "git push", body: "diff", format: "diff" as const, fingerprint: "f" };
+    const dark = renderPreviewPage(preview, "git push", "dark");
+    assert.match(dark, /<html lang="en" data-theme="dark">/);
+    assert.match(dark, /--jig-bg: #111113;/);
+    assert.match(dark, /--jig-text: #e7e7ea;/);
+    const system = renderPreviewPage(preview, "git push");
+    assert.match(system, /<html lang="en">/);
+});

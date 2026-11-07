@@ -17,6 +17,8 @@ import { Marked } from "@earendil-works/pi-tui";
 import type { Tokens } from "@earendil-works/pi-tui";
 import type { Preview } from "./contract.ts";
 import { browserCommand } from "./kit/browser.ts";
+import { themeAttribute, themeCss } from "./kit/theme.ts";
+import type { ThemeChoice } from "./kit/theme.ts";
 import { errorMessage } from "./errors.ts";
 import { resolveProgram } from "./exec.ts";
 import { createPrivateFile, privateDir, removeOldFiles, stateDir } from "./paths.ts";
@@ -65,35 +67,23 @@ function renderDiff(text: string): string {
 }
 
 const STYLE = `
-:root {
-  color-scheme: light dark;
-  --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d0d7de;
-  --add: #dafbe1; --del: #ffebe9; --hunk: #ddf4ff; --code: #f6f8fa;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d;
-    --add: #12261e; --del: #2d1517; --hunk: #0c2d6b; --code: #161b22;
-  }
-}
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+body { margin: 0; background: var(--jig-bg); color: var(--jig-text); font: 16px/1.5 system-ui, sans-serif; }
 main { max-width: 56rem; margin: 0 auto; padding: 1.5rem 16px 4rem; }
-.note { color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: .75rem; margin: 0 0 1rem; }
-.meta { color: var(--muted); font-size: .875rem; margin: 0 0 .25rem; }
+.note { color: var(--jig-muted); border-bottom: 1px solid var(--jig-border); padding-bottom: .75rem; margin: 0 0 1rem; }
+.meta { color: var(--jig-muted); font-size: .875rem; margin: 0 0 .25rem; }
 h1 { font-size: 1.25rem; margin: 0 0 1.25rem; }
-pre, code { background: var(--code); border-radius: 6px; font: 14px/1.45 ui-monospace, monospace; }
+pre, code { background: var(--jig-code); border-radius: 6px; font: 14px/1.45 ui-monospace, monospace; }
 pre { padding: .75rem 1rem; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 code { padding: .1rem .3rem; }
 pre code { padding: 0; background: none; }
 .diff span { display: block; }
-.d-add { background: var(--add); }
-.d-del { background: var(--del); }
-.d-hunk { background: var(--hunk); }
-.d-meta { color: var(--muted); }
-blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--line); color: var(--muted); }
-table { border-collapse: collapse; } td, th { border: 1px solid var(--line); padding: .25rem .5rem; }
+.d-add { background: var(--jig-add-bg); }
+.d-del { background: var(--jig-del-bg); }
+.d-hunk { background: var(--jig-hunk-bg); }
+.d-meta { color: var(--jig-muted); }
+blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--jig-border); color: var(--jig-muted); }
+table { border-collapse: collapse; } td, th { border: 1px solid var(--jig-border); padding: .25rem .5rem; }
 `;
-
 /** The page for a preview. `header` is the line that names the tool, the action, the environment and the effect. */
 /** Tags that could run, load or navigate. The page's policy already blocks scripts and requests; removing these is
  *  the second lock, for a tool whose renderer lets one through: a `<meta http-equiv="refresh">`, for one, navigates. */
@@ -104,7 +94,7 @@ export function withoutActiveTags(html: string): string {
     return html.replace(ACTIVE_TAGS, "");
 }
 
-export function renderPreviewPage(preview: Preview, header: string): string {
+export function renderPreviewPage(preview: Preview, header: string, theme: ThemeChoice = "system"): string {
     let body = "";
     if (preview.html !== undefined) {
         body = withoutActiveTags(preview.html);
@@ -114,13 +104,13 @@ export function renderPreviewPage(preview: Preview, header: string): string {
         else body = `<pre>${escapeHtml(preview.body)}</pre>`;
     }
     return `<!doctype html>
-<html lang="en">
+<html lang="en"${themeAttribute(theme)}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="${PAGE_POLICY}">
 <title>${escapeHtml(preview.summary)}</title>
-<style>${STYLE}</style>
+<style>${themeCss()}${STYLE}</style>
 </head>
 <body>
 <main>
@@ -135,10 +125,10 @@ ${body}
 }
 
 /** Writes the page under `<state>/previews/` (0600) and returns its path. */
-export function writePreviewPage(preview: Preview, header: string): string {
+export function writePreviewPage(preview: Preview, header: string, theme: ThemeChoice = "system"): string {
     const dir = privateDir("previews");
     const file = join(dir, `${randomUUID()}.html`);
-    createPrivateFile(file, renderPreviewPage(preview, header));
+    createPrivateFile(file, renderPreviewPage(preview, header, theme));
     return file;
 }
 
@@ -214,6 +204,8 @@ export function opensInWindows(env: NodeJS.ProcessEnv, wsl: boolean): boolean {
 
 export interface OpenPreviewDeps {
     server: PreviewServer;
+    /** The configured theme for this page; system when absent. */
+    theme?: ThemeChoice;
     launch?: Launch;
     env?: NodeJS.ProcessEnv;
     /** Whether Pi runs under WSL. Default: looked up. */
@@ -231,12 +223,12 @@ export async function openPreview(preview: Preview, header: string, deps: OpenPr
     const env = deps.env ?? process.env;
     let address: string;
     try {
-        address = await deps.server.serve(renderPreviewPage(preview, header));
+        address = await deps.server.serve(renderPreviewPage(preview, header, deps.theme ?? "system"));
     } catch (serverError) {
         const why = `the local preview server could not start: ${errorMessage(serverError)}`;
         if (opensInWindows(env, deps.wsl ?? runsUnderWsl()))
             return `could not open the browser: ${why} (a file address is not tried here: a Windows browser cannot open it)`;
-        const file = pathToFileURL(writePreviewPage(preview, header)).href;
+        const file = pathToFileURL(writePreviewPage(preview, header, deps.theme ?? "system")).href;
         const failure = await launchBrowser(file, launch, env);
         return failure === undefined
             ? `opened the page as a file, not over http (${why}): ${file}`

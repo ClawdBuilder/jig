@@ -18,6 +18,7 @@ import { openUrl as open } from "./open.ts";
 import { PasskeyStore } from "./passkey/store.ts";
 import { buildApprovalPrompt, buildReviewSubmissionPrompt } from "./prompts.ts";
 import { ReviewServer } from "./server.ts";
+import { themeChoice } from "../../jig-core/src/kit/theme.ts";
 import type { CommentSubmissionMode, SubmittedCommentInput } from "./server.ts";
 import { parseReviewSettings, SettingsStore, workspaceDirFor } from "./settings.ts";
 import { formatSettingsOptions, passkeyToRemove, toggleSelectedSetting } from "./settings-options.ts";
@@ -540,6 +541,10 @@ export class ReviewCoordinator {
             submitComments: (comments, mode): Promise<void> => this.submitComments(comments, mode),
             updateSettings: (settings): Promise<void> => this.updateSettings(settings),
             approval: this.approval,
+            theme: () => {
+                const section = jig().config.section("ui") as { theme?: unknown } | undefined;
+                return themeChoice(section?.theme);
+            },
         });
         const baseUrl = await this.server.start();
         this.currentReview = review;
