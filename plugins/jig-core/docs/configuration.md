@@ -123,6 +123,31 @@ activates it, one extra step when it is needed.
 Plugins register their tools through `registerJigTool` from the kit (`kit/tools.ts`), a drop-in for `pi.registerTool`, so a
 company plugin's own tools can be deferred the same way.
 
+## Codemode
+
+Pi's `codemode` tool runs a JavaScript script that calls tools and returns only the script's output to the model. Jig
+treats the `codemode` call itself as a **local read**: the script runs on this machine, and every tool call inside it is
+classified and gated as its own call, as a direct call is.
+
+To turn it on, enable Pi's builtin in the agent's `settings.json` and keep the other tools declared:
+
+```json
+{ "defaultTools": ["+codemode"], "codemode": { "mode": "on" } }
+```
+
+`"only"` would hide the direct tools and list them inside `codemode`; Jig's docs and tests use `"on"`. Jig ships codemode
+off, and Pi never lets a package defer it.
+
+What Jig still guards inside the script:
+
+- a nested write is classified as a write; a production write is denied, and a role that may not write refuses it;
+- a nested call that needs an approval asks through Jig's dialog;
+- a production result is masked, and a secret is removed, before the script or the model sees it;
+- the role's `--tools` list limits what the script can reach; a tool outside the list is not a member of `tools`.
+
+Before this change the undeclared `codemode` call counted as an unknown write, so a read-only role could not use it and
+the first call asked. The call is now a read under the normal rules, so it does not ask; the nested calls still do.
+
 ## The `/jig` commands
 
 - **`/jig`** shows the tools governed, whether `bash` is sandboxed and in which

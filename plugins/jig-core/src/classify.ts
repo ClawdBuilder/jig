@@ -51,6 +51,8 @@ export const BUILT_IN_TOOLS: Readonly<Record<string, CallClass>> = {
     ask_user_question: LOCAL_READ,
     ask_questions: LOCAL_READ,
     tool_search: LOCAL_READ,
+    // Codemode runs a script locally; every call the script makes is classified and gated as itself.
+    codemode: LOCAL_READ,
 };
 
 /** The default for a tool nothing else classifies: it may write outside the machine, so it asks. */
