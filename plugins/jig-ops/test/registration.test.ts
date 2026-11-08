@@ -594,11 +594,12 @@ describe("what the ci tool says about itself", () => {
         }
         assert.ok(tool.promptSnippet && tool.promptSnippet.length <= 140, String(tool.promptSnippet));
         const guidelines = tool.promptGuidelines ?? [];
-        assert.ok(guidelines.length >= 1 && guidelines.length <= 2);
+        assert.ok(guidelines.length >= 1 && guidelines.length <= 3);
         assert.ok(
             guidelines.every((line) => line.length <= 160 && !line.includes("\n") && line.startsWith("ci: ")),
             guidelines.join(" | "),
         );
+        assert.match(guidelines.join(" "), /if the service is not in your context, run ci services first/);
         assert.match(guidelines.join(" "), /do not poll/);
         assert.match(guidelines.join(" "), /never send again/);
     });

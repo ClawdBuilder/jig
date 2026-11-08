@@ -15,6 +15,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- `jig-ops` tells the agent to run `ci services` first when the service is not in its context, before it guesses a name.
+
 - The Changes panel (`repo-changes`) lists the folder of the focused terminal, not the space's, and has a header toggle to
   follow the terminal or the space for each space. Each checkout shows its ahead and behind and its last commit, one line per
   checkout, with worktrees folded under their repo (remembered) and the last commit only under the focused one. It can
