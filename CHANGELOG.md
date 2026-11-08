@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-11-08
+
+A `jig` command that follows common CLI practice, and request deadlines that always fire.
+
 ### Added
 
 - `jig` now has command help (`jig help doctor`, `--help` on every command), `--json` on `update`, `--version` and
@@ -22,6 +26,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   commands are silent on Node 22.19–26.
 - Doctor output wraps to the terminal (80 columns when piped), colours only ok/warn/fail on a TTY, and respects
   `NO_COLOR`/`FORCE_COLOR`. Update confirmation is one line and does not echo the typed answer.
+
+### Fixed
+
+- A request that never answers is now always cut at its deadline: the HTTP request deadline, the Mongo call deadline and
+  the ops health-check deadline used a timer that did not keep Node running, so with nothing else alive the process could
+  end before the timeout fired. Found by testing on Node 22.19, which CI now does alongside 24 and 26.
 
 ## [0.5.2] - 2026-11-08
 
