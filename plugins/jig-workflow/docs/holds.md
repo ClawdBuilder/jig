@@ -79,7 +79,8 @@ and the question is the `bash` tool's own, asked in a nested call for that repos
 
 - **`bash`.** A sandboxed shell can change a file, which is why the sandbox tells the agent to change code
   with `edit` and `write`. Put `"bash"` in `calls` to hold every shell command; it is held everywhere,
-  not only in bound repositories, so use it with care.
+  not only in bound repositories, so use it with care. Without that, the sandbox's protected paths are the
+  guard for what bash may change; this hold does not see the command's file writes.
 - **Another session on the same ticket,** and a child agent (`jig-agents`): the gate follows the active
   ticket of the session it runs in. A child that has no active ticket is not held.
 - **A repository that is not bound.** Binding is what puts a repository in scope ([State](state.md)).

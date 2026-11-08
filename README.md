@@ -85,7 +85,7 @@ waiting time after the first calls. A write asks before it runs; a production wr
 | Systems | Jira, logs, saved API requests and MongoDB | [`jira`](plugins/jig-jira/README.md), [`logs`](plugins/jig-logs/README.md), [`api`](plugins/jig-api/README.md), [`mongo`](plugins/jig-mongo/README.md) |
 | Work and memory | Workflows with evidence; ticket notes and recall; a card when the agent closes a ticket | [`workflow`](plugins/jig-workflow/README.md), [`memory`](plugins/jig-memory/README.md) |
 | Delegation | Child agents under the same rules, with limits | [`agents`](plugins/jig-agents/README.md) |
-| Seeing | Cost, failures and waits; session state; themes and a footer | [`lens`](plugins/jig-lens/README.md), [`session`](plugins/jig-session/README.md), [`theme`](plugins/jig-theme/README.md) |
+| Seeing | Cost, failures and waits; a context breakdown; session state; themes and a footer | [`lens`](plugins/jig-lens/README.md), [`session`](plugins/jig-session/README.md), [`theme`](plugins/jig-theme/README.md) |
 
 All fifteen plugins are built. Every plugin needs `jig-core`; otherwise they work on their own, and each README is
 the specification its code follows. [jig-herdr](https://github.com/ClawdBuilder/jig-herdr) is optional: its Work and Context panels read

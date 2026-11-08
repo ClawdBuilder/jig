@@ -5,7 +5,7 @@ What the tests of `jig-jira` do not cover. Back to the
 
 Written from Jira's documentation, a fake Jira on this machine, and real sessions that reached a real Jira through a
 company transport (reads, a create, updates and a link). Still not tried:
-- the four direct sign-in forms (`basic`, `bearer`, `signIn` and `transport`) against a real gateway; the real sessions used
+- the direct sign-in forms (`basic`, `bearer`, `oauth`, `signIn` and `transport`) against a real gateway; the real sessions used
   one company transport, not these;
 - Jira Cloud: `search/jql` and the Cloud create screen, users and long comment threads; the real sessions used one site;
 - attachments and transitions on a real site;

@@ -1,4 +1,4 @@
-// The four ways to sign in, and the request itself: what goes on the wire, what never appears in a result or an error, and how
+// The five ways to sign in, and the request itself: what goes on the wire, what never appears in a result or an error, and how
 // an answer is read the same way whichever way the request travelled.
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
@@ -89,6 +89,88 @@ describe("a personal access token for Data Center", () => {
         h.jira.requireHeader = { name: "authorization", value: `Bearer ${TOKEN}` };
         ok(await h.call(GET_ISSUE));
         assert.equal(h.jira.requests[0]?.headers.authorization, `Bearer ${TOKEN}`);
+    });
+});
+
+describe("OAuth through a token command", () => {
+    let sequence = 0;
+    const oauthRef = () => `cmd:jira-oauth-${++sequence}`;
+
+    test("Data Center sends the command's token as Bearer, and reuses it for the next call", async () => {
+        const OAUTH = oauthRef();
+        h.configure({ site: SITE, auth: { oauth: OAUTH } });
+        h.jig.setSecretResolver((ref) => (ref === OAUTH ? TOKEN : undefined));
+        h.jira.requireHeader = { name: "authorization", value: `Bearer ${TOKEN}` };
+        ok(await h.call(GET_ISSUE));
+        assert.equal(h.jira.requests[0]?.headers.authorization, `Bearer ${TOKEN}`);
+        assert.deepEqual(h.jig.secretCalls, [OAUTH]);
+        ok(await h.call(GET_ISSUE));
+        assert.deepEqual(h.jig.secretCalls, [OAUTH], "the short cache spans calls");
+    });
+
+    test("Cloud uses api.atlassian.com/ex/jira/<cloudId>; Data Center uses the site", async () => {
+        const urls: string[] = [];
+        const reach = (input: string | URL | Request, init?: RequestInit) => {
+            const url = String(input);
+            urls.push(url);
+            return fetch(
+                url
+                    .replace(`${SITE}`, h.jira.origin)
+                    .replace("https://api.atlassian.com/ex/jira/cloud-123", h.jira.origin),
+                init,
+            );
+        };
+        h.jig.setFetch(reach as typeof fetch);
+        const OAUTH = oauthRef();
+        h.configure({ site: SITE, auth: { oauth: OAUTH, cloudId: "cloud-123" } });
+        h.jig.setSecretResolver(() => TOKEN);
+        h.jira.requireHeader = { name: "authorization", value: `Bearer ${TOKEN}` };
+        ok(await h.call(GET_ISSUE));
+        assert.match(urls[0] ?? "", /^https:\/\/api\.atlassian\.com\/ex\/jira\/cloud-123\/rest\/api\/2\//);
+
+        h.configure({ site: SITE, auth: { oauth: OAUTH } });
+        h.jig.setSecretResolver(() => TOKEN);
+        await h.call(GET_ISSUE);
+        assert.match(urls.at(-1) ?? "", new RegExp(`^${SITE.replaceAll(".", "\\.")}/rest/api/2/`));
+    });
+
+    test("the token is in neither the result nor the facts", async () => {
+        const OAUTH = oauthRef();
+        h.configure({ site: SITE, auth: { oauth: OAUTH } });
+        h.jig.setSecretResolver(() => "tok-never-recorded-123456");
+        h.jira.requireHeader = { name: "authorization", value: "Bearer tok-never-recorded-123456" };
+        const result = await h.call(GET_ISSUE);
+        ok(result);
+        assert.doesNotMatch(result.text, /tok-never-recorded/);
+        assert.doesNotMatch(JSON.stringify(h.jig.facts), /tok-never-recorded/);
+    });
+
+    test("a 401 runs the command once more, and only once; a second 401 is the answer", async () => {
+        const OAUTH = oauthRef();
+        h.configure({ site: SITE, auth: { oauth: OAUTH } });
+        let runs = 0;
+        h.jig.setSecretResolver(() => (++runs === 1 ? "expired" : "fresh"));
+        h.jira.misbehave({ match: () => true, status: 401, afterMs: 0 });
+        const result = await h.call(GET_ISSUE);
+        ok(result);
+        assert.equal(runs, 2, "the command ran again");
+        assert.equal(h.jira.requests.length, 2, "one retry, not a loop");
+        assert.doesNotMatch(JSON.stringify(result), /expired|fresh/);
+    });
+
+    test("two 401s stop, and the token is never in the message", async () => {
+        const OAUTH = oauthRef();
+        h.configure({ site: SITE, auth: { oauth: OAUTH } });
+        let runs = 0;
+        h.jig.setSecretResolver(() => `secret-${++runs}`);
+        h.jira.misbehave({ match: () => true, status: 401, afterMs: 0 });
+        h.jira.misbehave({ match: () => true, status: 401, afterMs: 0 });
+        const result = await h.call(GET_ISSUE);
+        assert.equal(result.error?.message.includes("secret-1"), false);
+        assert.equal(result.error?.message.includes("secret-2"), false);
+        assert.match(result.error?.message ?? "", /401|did not accept/);
+        assert.equal(runs, 2);
+        assert.equal(h.jira.requests.length, 2);
     });
 });
 

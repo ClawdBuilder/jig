@@ -225,13 +225,15 @@ describe("the README", () => {
         assert.deepEqual(validateJira({ ...valid, other: 1 }), ["jira.other: unknown field"]);
     });
 
-    test("its four forms of auth are the four the section accepts, and the defaults it states are the code's", () => {
+    test("its auth forms are the section's five modes, and the defaults it states are the code's", () => {
         const forms = table("| `auth` | Signs in with |").map((row) => (row[0] ?? "").replace(/^`|`$/g, ""));
-        assert.equal(forms.length, 4);
+        assert.equal(forms.length, 6, "two rows are the OAuth Cloud and Data Center forms");
         for (const form of forms) {
             const filled = form
                 .replace('"..."', '"jane@example.test"')
                 .replace("<secret reference>", "pass:work/jira-token")
+                .replace("cmd:<name>", "cmd:jira-oauth")
+                .replace('"<id>"', '"cloud-123"')
                 .replace("<service name>", "sso")
                 .replace("<name>", "proxy");
             const auth = JSON.parse(filled) as unknown;

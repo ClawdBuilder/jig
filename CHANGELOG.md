@@ -14,6 +14,32 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - The Herdr layout, mods and themes moved to `ClawdBuilder/jig-herdr`; Jig keeps only the contracts they read.
 
+## [0.5.1] - 2026-11-08
+
+Jira OAuth through a trusted command, `/context`, and small ops, lens and workflow clarity.
+
+### Added
+
+- `jig-jira` takes OAuth 2.0 access tokens from a command the person already trusts: `auth.oauth` names a `cmd:` secret
+  source, and jig-core caches the token briefly and runs the command once more after a 401. Cloud uses
+  `api.atlassian.com/ex/jira/<cloudId>` (`auth.cloudId`); Data Center uses the site URL. Jig never signs in or stores the
+  refresh token. Guides for [Cloud](plugins/jig-jira/docs/oauth-cloud.md) and
+  [Data Center](plugins/jig-jira/docs/oauth-data-center.md).
+
+- `/context` in `jig-session` shows what fills a Pi session's context as a grid and a list, from the same `ContextDetail`
+  the Herdr Context panel reads: the parts, the tools split into Pi's, each Jig plugin's and deferred names, and Jig's
+  ticket, recall and review messages apart from the conversation. Tokens are marked as estimates.
+
+### Changed
+
+- `jig-workflow` says plainly that a hold covers `write` and `edit` by path and `git`/`pr` by repository, not `bash`; a
+  sandboxed shell is guarded by the sandbox's protected paths, and a hold only covers `bash` when it names it.
+
+- `jig-lens` calls the loops column by what it counts: failed and refused calls, and says in the table that a refused call
+  counts too.
+
+- `jig-ops` tells the agent to run `ci services` first when the service is not in its context, before it guesses a name.
+
 ## [0.5.0] - 2026-11-08
 
 ### Added

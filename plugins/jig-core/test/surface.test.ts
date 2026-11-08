@@ -289,6 +289,7 @@ describe("what plugins import", () => {
             "git-settings.ts",
             "http-error.ts",
             "http.ts",
+            "jig-messages.ts",
             "oauth.ts",
             "pi-project-paths.ts",
             "ports.ts",
@@ -312,6 +313,15 @@ describe("what plugins import", () => {
             "files.ts": ["createFileDurably", "replaceFileDurably", "syncFolder"],
             "git-settings.ts": ["isDangerousGitSetting"],
             "http-error.ts": ["HttpError", "isHttpError"],
+            "jig-messages.ts": [
+                "MEMORY_CARD_FIX_MESSAGE",
+                "MEMORY_CARD_REQUEST_MESSAGE",
+                "MEMORY_CHECKS_MESSAGE",
+                "MEMORY_EMPTY_FILES_MESSAGE",
+                "MEMORY_NOTES_MESSAGE",
+                "MEMORY_RECALL_MESSAGE",
+                "MESSAGE_LABELS",
+            ],
             "http.ts": [
                 "DEFAULT_MAX_BYTES",
                 "DEFAULT_TIMEOUT_MS",

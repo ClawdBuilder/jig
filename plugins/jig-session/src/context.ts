@@ -130,6 +130,15 @@ export class ContextView {
         return tokens;
     }
 
+    /** Tools Pi marks deferred and the active set leaves out: names only, not in the context until `tool_search` finds them. */
+    deferred(): string[] {
+        const active = new Set(safe(() => this.host.activeTools(), []));
+        return this.declarable()
+            .filter((tool) => tool.exposure === "deferred" && !active.has(tool.name))
+            .map((tool) => tool.name)
+            .sort();
+    }
+
     /** The breakdown and the lists, as they are now. */
     detail(
         ctx: Pick<ExtensionContext, "getSystemPrompt" | "getContextUsage" | "model" | "sessionManager">,

@@ -38,9 +38,9 @@ One JSON file per workflow, named after it, such as `~/.pi/agent/workflows/featu
 }
 ```
 
-A hold denies the listed calls, with a reason that names the condition, until it holds. `write`, `edit`,
-`git` and `pr` are held only in the work's bound repositories. Three finished examples (`feature`,
-`bugfix`, `investigation`) are in [`examples/`](examples/); every field, a stage's `tools` included, is in [Files](docs/files.md).
+A hold denies the listed calls, with the reason and the condition, until it holds. `write`/`edit` by path and `git`/`pr` by
+repository are held only in bound repositories; `bash` is not held unless listed — the sandbox's protected paths guard its
+writes. Three examples are in [`examples/`](examples/); every field, a stage's `tools` included, is in [Files](docs/files.md).
 
 ## Conditions
 

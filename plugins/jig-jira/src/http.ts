@@ -8,7 +8,7 @@
 //   LostReplyError                   the request may have arrived, but no usable answer came back (a timeout, a dropped
 //                                    connection, a reply that is not JSON). For a write, whether it happened is unknown.
 //
-// There is one request function for all four ways to sign in. jig-core sends the request (`jig().http.request`) and reads
+// There is one request function for all five ways to sign in. jig-core sends the request (`jig().http.request`) and reads
 // the credential for it, so no credential is ever in this plugin's hands: this file says where the credential comes from
 // (a bearer token, Basic, a sign-in service) or that a transport carries the request, and what each failure means. The
 // answer is read the same way whichever way it came.
@@ -100,6 +100,11 @@ const HINTS: Readonly<Record<number, string>> = {
 
 export function createHttp(settings: JiraSettings, options: HttpOptions = {}): Http {
     const timeouts = options.timeouts ?? TIMEOUTS;
+    const oauth = settings.auth.kind === "oauth" ? settings.auth : undefined;
+    const base =
+        oauth?.cloudId === undefined
+            ? settings.site
+            : `https://api.atlassian.com/ex/jira/${encodeURIComponent(oauth.cloudId)}`;
     // One signal for every request of the call: jig-core reads the token once for it, and keeps it only that long. A
     // sign-in service is asked for every request, because it decides when its token has expired.
     const call = AbortSignal.any(options.signal === undefined ? [] : [options.signal]);
@@ -116,13 +121,23 @@ export function createHttp(settings: JiraSettings, options: HttpOptions = {}): H
                 return { auth: { bearer: auth.token } };
             case "basic":
                 return { auth: { basic: { user: auth.email, password: auth.token } } };
+            case "oauth":
+                // jig-core reads the command, caches its token, and resends once after a 401. This plugin never holds it.
+                return {
+                    auth: {
+                        oauth: {
+                            grant: "command",
+                            command: auth.token,
+                            cache: `jira:${auth.token}`,
+                        },
+                    },
+                };
         }
     }
-
     return {
         timeouts,
         async request(request) {
-            const url = new URL(`${settings.site}/rest/api/2${request.path}`);
+            const url = new URL(`${base}/rest/api/2${request.path}`);
             for (const [name, value] of Object.entries(request.query ?? {})) {
                 if (value !== undefined) url.searchParams.set(name, String(value));
             }
