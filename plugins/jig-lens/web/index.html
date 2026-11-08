@@ -632,7 +632,7 @@ async function tools() {
         { label: "Session", value: (r) => r.session, show: (r) => sessionLink(r.session) },
         { label: "Ticket", value: (r) => r.ticket || "", show: (r) => ticketLink(r.ticket) },
         { label: "Tool", value: (r) => toolName(r), show: (r) => h("strong", {}, toolName(r)) },
-        { label: "In a row", value: (r) => r.failures, num: true },
+        { label: "In a row", value: (r) => r.failedOrRefused, num: true },
         { label: "Last error", value: (r) => r.errorKind || "" },
         { label: "From", value: (r) => r.from, show: (r) => when(r.from) },
         { label: "For", value: (r) => r.to - r.from, show: (r) => ms((r.to - r.from) * 1000), num: true },
@@ -642,6 +642,7 @@ async function tools() {
         table(toolColumns, data.tools, { sortBy: 1, empty: "No tool was called in this range." }),
         h("h2", {}, "Loops ", h("span", { class: "sub" }, "the same tool failing 3 times or more in a row in a session")),
         table(loopColumns, data.loops, { sortBy: 3, empty: "No loops in this range." }),
+        h("p", { class: "note" }, "In a row counts failed and refused calls; a refused call never ran."),
         h("h2", {}, "Refused ", h("span", { class: "sub" }, "calls that never ran, by who decided and why")),
         table(refusedColumns, refusedRows, { sortBy: 3, empty: "Nothing was refused in this range." }),
     ];

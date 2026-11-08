@@ -15,6 +15,14 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- `jig-workflow` says plainly that a hold covers `write` and `edit` by path and `git`/`pr` by repository, not `bash`; a
+  sandboxed shell is guarded by the sandbox's protected paths, and a hold only covers `bash` when it names it.
+
+- `jig-lens` calls the loops column by what it counts: failed and refused calls, and says in the table that a refused call
+  counts too.
+
+- `jig-ops` tells the agent to run `ci services` first when the service is not in its context, before it guesses a name.
+
 - The Changes panel (`repo-changes`) lists the folder of the focused terminal, not the space's, and has a header toggle to
   follow the terminal or the space for each space. Each checkout shows its ahead and behind and its last commit, one line per
   checkout, with worktrees folded under their repo (remembered) and the last commit only under the focused one. It can

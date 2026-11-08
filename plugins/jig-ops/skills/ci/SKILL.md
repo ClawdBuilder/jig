@@ -5,7 +5,7 @@ description: How to wait for CI without polling, find out why a run failed, and 
 
 # Waiting for CI, and reading why it failed
 
-The `ci` tool works on a `service` from the ops catalog. The catalog says which CI system builds it and where, so you never type an address, a project or a job. A service the catalog does not list is refused with the ones it does. An action or a parameter the CI system of the service does not have is refused too, with what it does have.
+The `ci` tool works on a `service` from the ops catalog. If the service is not in your context, run `ci services` first; the catalog says which CI system builds it and where, so you never type an address, a project or a job. A service the catalog does not list is refused with the ones it does. An action or a parameter the CI system of the service does not have is refused too, with what it does have.
 
 ## A service's CI, and an environment's job
 
