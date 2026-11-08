@@ -222,7 +222,8 @@ adapter) and `health.test.ts` (health by address). The last needs only `openssl`
 | `JIG_IT_GITHUB_RUN_ID` | The id of one of its runs |
 | `JIG_IT_GITHUB_WORKFLOW` | Optional: the workflow file, `ci.yml` by default |
 
-- **The cluster** is made by `helm/kind-action` from a pinned kind release and the node image of `compose.yml`, and Helm (4 in the latest
+- **The cluster** is made by kind, built from the Go module proxy at a pinned version (with kubectl from dl.k8s.io, checked against
+  its SHA-256, so no GitHub release download is involved), from the node image of `compose.yml`, and Helm (4 in the latest
   line, 3 in the previous) by `azure/setup-helm`. The workflow names the context `kind-jigit`.
 - **The chart** is `plugins/jig-ops/test/it/chart`: an unprivileged nginx whose images are pinned by tag and digest. The test makes a
   namespace of its own and deletes it at the end.
