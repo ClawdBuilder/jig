@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-08
+
+Front-end contracts in the package; the Herdr panels moved to their own repository.
+
 ### Added
 
 - Front-end contracts: `contracts/requests.js` with `contracts/requests.d.ts` (the session request format),
