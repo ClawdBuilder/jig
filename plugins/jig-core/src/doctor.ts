@@ -35,6 +35,8 @@ export interface DoctorLine {
     fix?: string;
     /** A few machine-readable facts a screen does not show, such as a host and port. Never a value. */
     data?: Record<string, string | number | boolean>;
+    /** Milliseconds the check took, in --json. */
+    durationMs?: number;
 }
 
 /** What the report is about, for the JSON file. Versions that could not be read are `null`. */
@@ -134,10 +136,14 @@ export interface DoctorOptions {
 export async function runDoctor(context: DoctorContext, options: DoctorOptions = {}): Promise<DoctorReport> {
     const lines: DoctorLine[] = [];
     for (const [group, check] of DOCTOR_CHECKS) {
+        const started = Date.now();
         try {
-            lines.push(...(await check(context, options)));
+            const found = await check(context, options);
+            const durationMs = Date.now() - started;
+            lines.push(...found.map((line) => ({ ...line, durationMs })));
         } catch (error) {
             lines.push({
+                durationMs: Date.now() - started,
                 id: `${group}.crashed`,
                 group,
                 level: "fail",
@@ -167,8 +173,12 @@ export async function runDoctor(context: DoctorContext, options: DoctorOptions =
 
 /** The report as lines for Pi's screen: a summary, one section per group, and what to do about it. `quiet` keeps only
  *  the warnings and failures, with the summary of the whole report. */
-export function formatDoctor(report: DoctorReport, options: { quiet?: boolean; command?: string } = {}): string[] {
+export function formatDoctor(
+    report: DoctorReport,
+    options: { quiet?: boolean; command?: string; width?: number; color?: boolean } = {},
+): string[] {
     const { ok, warn, fail, skip } = report.counts;
+    const width = Math.max(40, options.width ?? 100);
     const shown =
         options.quiet === true
             ? report.lines.filter((line) => line.level === "warn" || line.level === "fail")
@@ -176,17 +186,45 @@ export function formatDoctor(report: DoctorReport, options: { quiet?: boolean; c
     const out = [
         `Jig doctor · ${ok} ok · ${count(warn, "warning")} · ${count(fail, "failure")}${skip === 0 ? "" : ` · ${skip} skipped`}`,
     ];
+    const colour = (level: DoctorLevel, text: string): string => {
+        if (options.color !== true) return text;
+        const code = level === "ok" ? "32" : level === "warn" ? "33" : level === "fail" ? "31" : "2";
+        return `\u001b[${code}m${text}\u001b[0m`;
+    };
     for (const group of DOCTOR_GROUPS) {
         const lines = shown.filter((line) => line.group === group.id);
         if (lines.length === 0) continue;
         out.push("", group.title);
         for (const line of lines) {
-            out.push(`  ${line.level.padEnd(4)} ${line.title}${line.detail === undefined ? "" : ` — ${line.detail}`}`);
-            if (line.fix !== undefined) out.push(`       fix: ${line.fix}`);
+            const label = line.level.padEnd(4);
+            const head = `  ${label} ${line.title}`;
+            const body = line.detail === undefined ? head : `${head} — ${line.detail}`;
+            const wrapped = wrapPlain(body, width, 7);
+            if (options.color === true) {
+                wrapped[0] = (wrapped[0] ?? "").replace(`  ${label}`, `  ${colour(line.level, label)}`);
+            }
+            out.push(...wrapped);
+            if (line.fix !== undefined) out.push(...wrapPlain(`       fix: ${line.fix}`, width, 7));
         }
     }
     out.push("", ending(report.counts, options.command ?? "/jig"));
     return out;
+}
+
+/** Greedy wrap with a hanging indent, on plain text only. */
+function wrapPlain(text: string, width: number, indent: number): string[] {
+    const leading = /^\s*/.exec(text)?.[0] ?? "";
+    const words = text.slice(leading.length).trim().split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let line = leading;
+    for (const word of words) {
+        if (line.trim() !== "" && line.length + 1 + word.length > width) {
+            lines.push(line);
+            line = `${" ".repeat(Math.max(indent, leading.length))}${word}`;
+        } else line += `${line.trim() === "" ? "" : " "}${word}`;
+    }
+    if (line.trim() !== "" || lines.length === 0) lines.push(line);
+    return lines;
 }
 
 function ending(counts: Record<DoctorLevel, number>, command: string): string {

@@ -18,8 +18,8 @@ jobs:
       # Both runs finish, so a failure that is only on one Node line is seen next to the pass on the other.
       fail-fast: false
       matrix:
-        # The current LTS line (26, since 2026-10-28) and the previous one (24). package.json says >=22.19.0.
-        node: [26, 24]
+        # Every line package.json supports: the oldest allowed (22.19.0), the previous LTS (24) and the current LTS (26).
+        node: ["22.19.0", 24, 26]
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

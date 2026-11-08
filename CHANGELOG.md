@@ -4,6 +4,25 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- `jig` now has command help (`jig help doctor`, `--help` on every command), `--json` on `update`, `--version` and
+  `doctor` with `"schema": 1`, and `--yes`/`-y` (or `CI=true`) for `update`. Help and version answer without loading Pi,
+  so they return in milliseconds.
+- Unknown commands suggest the nearest one, and every usage error exits 2 with one line and a hint. Without a terminal,
+  `update` names `--yes`; `setup` says which choices need a person.
+
+### Changed
+
+- `jig update --check` now exits 0 when it produced a plan, including when an update is available; 2 now always means a
+  usage error. Scripts that tested for 2 to mean “an update is available” must read `--json` or the plan text instead.
+- `jig update` ends with a scoped check of both copies and Pi's settings, not a folder-dependent company doctor; it prints
+  “Full check: jig doctor (run it in a project folder; company checks depend on the folder)”.
+- Installed copies strip TypeScript with `amaro` (the parser Node itself uses) instead of Node's experimental API, so CLI
+  commands are silent on Node 22.19–26.
+- Doctor output wraps to the terminal (80 columns when piped), colours only ok/warn/fail on a TTY, and respects
+  `NO_COLOR`/`FORCE_COLOR`. Update confirmation is one line and does not echo the typed answer.
+
 ## [0.5.2] - 2026-11-08
 
 Front-end contracts in the package; the Herdr panels moved to their own repository.

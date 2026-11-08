@@ -1,8 +1,17 @@
 // The `jig` command end to end, in a temporary home: a real child process, its own agent folder and settings, no Pi.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import type { ChildProcess, ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+    chmodSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -59,13 +68,15 @@ afterEach(() => {
     rmSync(home, { recursive: true, force: true });
 });
 
-function env(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-    return { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
+function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+    const merged: NodeJS.ProcessEnv = { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
+    for (const [key, value] of Object.entries(merged)) if (value === undefined) delete merged[key];
+    return merged;
 }
 
 function run(
     args: string[],
-    options: { input?: string; tty?: boolean; env?: Record<string, string>; cwd?: string } = {},
+    options: { input?: string; tty?: boolean; env?: Record<string, string | undefined>; cwd?: string } = {},
 ) {
     const command = options.tty === true ? "script" : process.execPath;
     const argv =
@@ -257,7 +268,7 @@ describe("jig doctor", () => {
         const result = await run(["doctor"]);
         assert.equal(result.code, 0, result.stdout);
         assert.match(result.stdout, /warn Jig's git tools are off in Pi's settings/);
-        assert.match(result.stdout, /remove the filter that leaves out plugins\/jig-git\/index\.ts/);
+        assert.match(result.stdout, /leaves out\s+plugins\/jig-git\/index\.ts/);
         assert.doesNotMatch(result.stdout, /is not a known field/);
     });
 
@@ -390,7 +401,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Two copies of Jig/);
         const own = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version?: string };
         assert.match(result.stdout, new RegExp(`this command is ${own.version?.replaceAll(".", "\\.")}`));
-        assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
+        assert.match(result.stdout, /copy Pi loads is\s+9\.9\.9/);
     });
 
     test("a rule that still names an old action is a warning in the terminal doctor too", {
@@ -411,8 +422,14 @@ describe("jig doctor", () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--json"]);
         assert.equal(result.code, 1);
-        const report = JSON.parse(result.stdout) as { lines: Array<{ level: string }>; counts: { fail: number } };
+        const report = JSON.parse(result.stdout) as {
+            schema?: number;
+            lines: Array<{ level: string; durationMs?: number }>;
+            counts: { fail: number };
+        };
+        assert.equal(report.schema, 1);
         assert.ok(report.lines.some((line) => line.level === "fail"));
+        assert.ok(report.lines.every((line) => Number.isFinite(line.durationMs) && (line.durationMs ?? -1) >= 0));
         assert.equal(report.counts.fail >= 1, true);
     });
 });
@@ -514,8 +531,8 @@ describe("a package installed from git", () => {
 describe("jig setup", () => {
     test("without a terminal it refuses in one line", { timeout: 60_000 }, async () => {
         const result = await run(["setup"], { input: "" });
-        assert.equal(result.code, 1);
-        assert.match(result.stderr, /^Setup needs a terminal with a screen\. Run jig setup from a terminal\./);
+        assert.equal(result.code, 2);
+        assert.match(result.stderr, /^jig setup needs a terminal/);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
@@ -783,6 +800,13 @@ describe("a real global install", () => {
         });
         assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
         assert.match(doctor.stdout, /Jig doctor/);
+        if (Number(process.versions.node.split(".")[0]) >= 24)
+            assert.equal(
+                doctor.stderr,
+                "",
+                "the installed copy is silent: no ExperimentalWarning or DeprecationWarning",
+            );
+        else assert.doesNotMatch(doctor.stderr, /DEP0205|ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING|amaro/);
         assert.doesNotMatch(doctor.stderr, /ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING/);
     });
 });
@@ -804,4 +828,199 @@ test("a package the command's loader cannot strip is not checked, not failed", {
     assert.match(result.stdout, /skip .*@acme\/param/);
     assert.match(result.stdout, /not checked: Pi can load this package/);
     assert.doesNotMatch(result.stdout, /fail .*@acme\/param/);
+});
+
+describe("CLI conventions", () => {
+    test("help and version run without Pi and exit 0", { timeout: 20_000 }, async () => {
+        for (const args of [
+            ["--help"],
+            ["help"],
+            ["help", "doctor"],
+            ["doctor", "--help"],
+            ["update", "--help"],
+            ["setup", "--help"],
+        ]) {
+            const result = await run(args, {
+                env: { PI_HOST_DIR: "/nonexistent", PATH: path.dirname(process.execPath) },
+            });
+            assert.equal(result.code, 0, args.join(" "));
+            assert.match(result.stdout, /Usage: jig/, args.join(" "));
+        }
+        const version = await run(["--version", "--json"], { env: { PI_HOST_DIR: "/nonexistent" } });
+        assert.equal(version.code, 0);
+        assert.deepEqual(JSON.parse(version.stdout), {
+            schema: 1,
+            version: (JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version: string }).version,
+        });
+    });
+
+    test("an unknown command or option is one line, a hint and exit 2", { timeout: 20_000 }, async () => {
+        const command = await run(["setpu"]);
+        assert.equal(command.code, 2);
+        assert.match(command.stderr, /Unknown command setpu\. Did you mean jig setup\?/);
+        assert.match(command.stderr, /Run jig --help/);
+        const option = await run(["doctor", "--bogus"]);
+        assert.equal(option.code, 2);
+        assert.match(option.stderr, /jig doctor: unknown option --bogus/);
+        assert.match(option.stderr, /jig doctor --help/);
+        assert.doesNotMatch(option.stderr, /Usage: jig doctor/);
+    });
+
+    test("setup without a terminal names --yes and exits 2", { timeout: 20_000 }, async () => {
+        const result = await run(["setup"], { input: "" });
+        assert.equal(result.code, 2);
+        assert.match(result.stderr, /jig setup needs a terminal/);
+    });
+
+    test("doctor --json has a schema and nothing else on stdout", { timeout: 60_000 }, async () => {
+        settingsWith();
+        const result = await run(["doctor", "--json"]);
+        assert.equal(result.code, 0, result.stderr);
+        // Node 22's Pi host warns about SQLite; Node 24+ must be silent (the DEP0205 regression).
+        if (Number(process.versions.node.split(".")[0]) >= 24) assert.equal(result.stderr, "");
+        const parsed = JSON.parse(result.stdout) as { schema?: number; counts?: unknown };
+        assert.equal(parsed.schema, 1);
+        assert.ok(parsed.counts);
+    });
+});
+
+describe("update prompt and CI matrix", () => {
+    const hasScript = spawnSync("script", ["--version"], { encoding: "utf8" }).status === 0;
+    const NAME = "@clawdbuilder/jig";
+    const RELEASE = JSON.stringify({
+        version: "0.5.1",
+        jig: { agents: { pi: { minimum: "1.5.0", tested: "1.5.0" } } },
+    });
+
+    function workspace(t: any) {
+        const root = mkdtempSync(path.join(tmpdir(), "jig-update-matrix-"));
+        const prefix = path.join(root, "prefix");
+        const bin = path.join(root, "bin");
+        const calls = path.join(root, "calls");
+        mkdirSync(bin, { recursive: true });
+        mkdirSync(path.join(prefix, "lib/node_modules/@clawdbuilder/jig"), { recursive: true });
+        const globalPkg = path.join(prefix, "lib/node_modules/@clawdbuilder/jig/package.json");
+        writeFileSync(globalPkg, JSON.stringify({ name: NAME, version: "0.5.0" }));
+        mkdirSync(path.join(agent, "npm/node_modules/@clawdbuilder/jig"), { recursive: true });
+        const agentPkg = path.join(agent, "npm/node_modules/@clawdbuilder/jig/package.json");
+        writeFileSync(agentPkg, JSON.stringify({ name: NAME, version: "0.5.0" }));
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [`npm:${NAME}@0.5.0`] }));
+        const npm = `#!/usr/bin/env node
+const fs=require("fs"),path=require("path");
+const a=process.argv.slice(2), prefix=process.env.FAKE_PREFIX, root=process.env.FAKE_ROOT;
+const rec=(line)=>fs.appendFileSync(path.join(root,"calls"),line+"\\n");
+if(a[0]==="root"){console.log(path.join(prefix,"lib/node_modules"));process.exit(0)}
+if(a[0]==="ls"){console.log('{"dependencies":{}}');process.exit(0)}
+if(a[0]==="view"){
+ if(a.includes("versions")){console.log('["0.5.0","0.5.1"]');process.exit(0)}
+ if(a[1].includes("@0.5.1")){console.log(process.env.FAKE_RELEASE);process.exit(0)}
+ console.log("{}");process.exit(0)
+}
+if(a[0]==="install"){
+ rec("npm "+a.join(" "));
+ const v=a[a.length-1].split("@").pop();
+ const dir=path.join(prefix,"lib/node_modules/@clawdbuilder/jig");
+ fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,"package.json"),JSON.stringify({name:"${NAME}",version:v}));
+ process.exit(0)
+}
+process.exit(0)
+`;
+        const pi = `#!/usr/bin/env node
+const fs=require("fs"),path=require("path");
+const a=process.argv.slice(2), agent=process.env.PI_CODING_AGENT_DIR, root=process.env.FAKE_ROOT;
+if(a[0]==="install"){
+ fs.appendFileSync(path.join(root,"calls"),"pi "+a.join(" ")+"\\n");
+ const spec=a[1]; const v=spec.split("@").pop();
+ const dir=path.join(agent,"npm/node_modules/@clawdbuilder/jig");
+ fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,"package.json"),JSON.stringify({name:"${NAME}",version:v}));
+ const file=path.join(agent,"settings.json"); let data={packages:[]};
+ try{data=JSON.parse(fs.readFileSync(file,"utf8"))}catch{}
+ data.packages=[spec]; fs.writeFileSync(file,JSON.stringify(data));
+ process.exit(0)
+}
+process.exit(0)
+`;
+        writeFileSync(path.join(bin, "npm"), npm);
+        writeFileSync(path.join(bin, "pi"), pi);
+        for (const file of ["npm", "pi"]) chmodSync(path.join(bin, file), 0o755);
+        t.after(() => rmSync(root, { recursive: true, force: true }));
+        const env = {
+            PATH: `${bin}${path.delimiter}${path.dirname(process.execPath)}${path.delimiter}/usr/bin${path.delimiter}/bin`,
+            HOME: home,
+            PI_CODING_AGENT_DIR: agent,
+            npm_config_prefix: prefix,
+            BROWSER: "true",
+            AWS_PROFILE: "",
+            PI_HOST_DIR: piHostDir,
+            FAKE_PREFIX: prefix,
+            FAKE_ROOT: root,
+            FAKE_RELEASE: RELEASE,
+        };
+        return { root, env };
+    }
+    const calls = (root: string) =>
+        existsSync(path.join(root, "calls")) ? readFileSync(path.join(root, "calls"), "utf8") : "";
+    const tty = (args: string[], input: string, extra: Record<string, string> = {}) => {
+        const result = run(args, { tty: true, input, env: extra });
+        return result;
+    };
+
+    test("TTY, answer n: nothing is installed, exit 0", {
+        skip: hasScript ? false : "script is not installed",
+    }, async (t) => {
+        const w = workspace(t);
+        const result = await run(["update", "--to", "0.5.1"], { tty: true, input: "n\n", env: w.env });
+        assert.equal(result.code, 0, result.stderr);
+        assert.match(result.stdout, /Nothing was changed/);
+        assert.equal(calls(w.root), "", "no npm or pi install ran");
+    });
+
+    test("TTY, answer y: both installs run with 0.5.1", {
+        skip: hasScript ? false : "script is not installed",
+    }, async (t) => {
+        const w = workspace(t);
+        const result = await run(["update", "--to", "0.5.1"], { tty: true, input: "y\n", env: w.env });
+        assert.equal(result.code, 0, result.stderr);
+        assert.match(calls(w.root), /npm install -g .*@clawdbuilder\/jig@0\.5\.1/);
+        assert.match(calls(w.root), /pi install npm:@clawdbuilder\/jig@0\.5\.1/);
+    });
+
+    test("TTY with CI=true still asks; n changes nothing", {
+        skip: hasScript ? false : "script is not installed",
+    }, async (t) => {
+        const w = workspace(t);
+        const result = await run(["update", "--to", "0.5.1"], {
+            tty: true,
+            input: "n\n",
+            env: { ...w.env, CI: "true" },
+        });
+        assert.equal(result.code, 0, result.stderr);
+        assert.match(result.stdout, /Nothing was changed/);
+        assert.equal(calls(w.root), "");
+    });
+
+    test("no TTY with CI=true updates without a prompt", async (t) => {
+        const w = workspace(t);
+        const result = await run(["update", "--to", "0.5.1", "--json"], { env: { ...w.env, CI: "true" } });
+        assert.equal(result.code, 0, result.stderr);
+        const parsed = JSON.parse(result.stdout) as { schema: number; action: string };
+        assert.equal(parsed.schema, 1);
+        assert.equal(parsed.action, "updated");
+        assert.match(calls(w.root), /npm install -g .*@clawdbuilder\/jig@0\.5\.1/);
+        assert.match(calls(w.root), /pi install npm:@clawdbuilder\/jig@0\.5\.1/);
+    });
+
+    for (const ci of [undefined, "false", "0"]) {
+        test(`no TTY, CI=${String(ci)}: exit 2, hint, stdout empty`, async (t) => {
+            const w = workspace(t);
+            const result = await run(["update", "--to", "0.5.1"], {
+                env: { ...w.env, CI: ci },
+            });
+            assert.equal(result.code, 2);
+            assert.equal(result.stdout, "");
+            assert.match(result.stderr, /no terminal to confirm on/);
+            assert.match(result.stderr, /--yes/);
+            assert.equal(calls(w.root), "");
+        });
+    }
 });

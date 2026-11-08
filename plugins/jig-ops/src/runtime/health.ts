@@ -106,33 +106,42 @@ export async function urlHealth(address: string, cancel: AbortSignal | undefined
     if (problem !== undefined) throw new Error(`The health address is refused (it ${problem}). Nothing was sent`);
     const where = `GET ${shownAddress(address)}`;
 
-    const stop = AbortSignal.any([AbortSignal.timeout(deps.timeoutMs), ...(cancel === undefined ? [] : [cancel])]);
-    let response: Response;
-    let body: { bytes: Uint8Array; more: boolean };
+    const controller = new AbortController();
+    const timer = setTimeout(
+        () => controller.abort(new DOMException("The operation timed out.", "TimeoutError")),
+        deps.timeoutMs,
+    );
+    const stop = AbortSignal.any([controller.signal, ...(cancel === undefined ? [] : [cancel])]);
     try {
-        const headers = { accept: "*/*", "user-agent": "jig-ops" };
-        response = await untilAborted(
-            deps.fetch(address, { method: "GET", redirect: "manual", signal: stop, headers }),
-            stop,
-        );
-        body = await untilAborted(readStart(response), stop);
-    } catch (error) {
-        throw new Error(`${where}: ${noAnswer(error, stop, cancel?.aborted === true, deps.timeoutMs)}`);
-    }
+        let response: Response;
+        let body: { bytes: Uint8Array; more: boolean };
+        try {
+            const headers = { accept: "*/*", "user-agent": "jig-ops" };
+            response = await untilAborted(
+                deps.fetch(address, { method: "GET", redirect: "manual", signal: stop, headers }),
+                stop,
+            );
+            body = await untilAborted(readStart(response), stop);
+        } catch (error) {
+            throw new Error(`${where}: ${noAnswer(error, stop, cancel?.aborted === true, deps.timeoutMs)}`);
+        }
 
-    const status = response.status;
-    const location = response.headers.get("location");
-    let redirect = "";
-    if (location !== null) redirect = ` (a redirect, not followed; it points to ${clean(location).slice(0, 200)})`;
-    const binary = body.bytes.subarray(0, SNIFF_BYTES).includes(0);
-    const text = binary ? "" : clean(new TextDecoder().decode(body.bytes));
-    const lines = [`${where} -> HTTP ${status}${redirect}`];
-    if (binary) lines.push(`(not text: ${body.bytes.byteLength} bytes read)`);
-    else lines.push(text === "" ? "(empty body)" : text);
-    if (body.more) lines.push(`[the body goes on; only the first ${BODY_BYTES} bytes are shown]`);
-    return {
-        text: lines.join("\n"),
-        facts: { status, cut: body.more },
-        details: { status, bytes: body.bytes.byteLength, cut: body.more, redirect: location !== null },
-    };
+        const status = response.status;
+        const location = response.headers.get("location");
+        let redirect = "";
+        if (location !== null) redirect = ` (a redirect, not followed; it points to ${clean(location).slice(0, 200)})`;
+        const binary = body.bytes.subarray(0, SNIFF_BYTES).includes(0);
+        const text = binary ? "" : clean(new TextDecoder().decode(body.bytes));
+        const lines = [`${where} -> HTTP ${status}${redirect}`];
+        if (binary) lines.push(`(not text: ${body.bytes.byteLength} bytes read)`);
+        else lines.push(text === "" ? "(empty body)" : text);
+        if (body.more) lines.push(`[the body goes on; only the first ${BODY_BYTES} bytes are shown]`);
+        return {
+            text: lines.join("\n"),
+            facts: { status, cut: body.more },
+            details: { status, bytes: body.bytes.byteLength, cut: body.more, redirect: location !== null },
+        };
+    } finally {
+        clearTimeout(timer);
+    }
 }

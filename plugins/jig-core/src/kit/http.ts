@@ -609,24 +609,38 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
                 throw invalid("timeoutMs and maxBytes must be numbers");
             const asked: HttpRequest = { ...request, timeoutMs, maxBytes };
 
-            // The deadline starts at the first request that goes out, after the credential is in hand.
+            // The deadline starts at the first request that goes out, after the credential is in hand. It is a referenced
+            // timer, so Node 22's test runner and short-lived programs do not end while a request is still waiting; it is
+            // cleared as soon as the exchange returns.
             let clock: AbortSignal | undefined;
+            let timer: ReturnType<typeof setTimeout> | undefined;
             const deadline = (): AbortSignal => {
-                clock ??= AbortSignal.timeout(timeoutMs);
+                if (clock === undefined) {
+                    const controller = new AbortController();
+                    timer = setTimeout(
+                        () => controller.abort(new DOMException("The operation timed out.", "TimeoutError")),
+                        timeoutMs,
+                    );
+                    clock = controller.signal;
+                }
                 return clock;
             };
 
-            let credential: Credential | undefined;
-            if (request.auth !== undefined) credential = await credentialFor(asked, request.auth, caller, deadline);
-            let reply = await exchange(asked, credential, deadline(), caller);
-            if (credential?.oauth !== undefined && reply.status === 401 && !credential.oauth.fresh) {
-                // The server turned a cached token down before it acted, so sending again cannot repeat a write.
-                credential.oauth.forget(credential.oauth.value);
-                const again = await credential.oauth.again();
-                credential = { ...again };
-                reply = await exchange(asked, credential, deadline(), caller);
+            try {
+                let credential: Credential | undefined;
+                if (request.auth !== undefined) credential = await credentialFor(asked, request.auth, caller, deadline);
+                let reply = await exchange(asked, credential, deadline(), caller);
+                if (credential?.oauth !== undefined && reply.status === 401 && !credential.oauth.fresh) {
+                    // The server turned a cached token down before it acted, so sending again cannot repeat a write.
+                    credential.oauth.forget(credential.oauth.value);
+                    const again = await credential.oauth.again();
+                    credential = { ...again };
+                    reply = await exchange(asked, credential, deadline(), caller);
+                }
+                return credential === undefined ? reply : scrubbed(reply, credential.secrets);
+            } finally {
+                if (timer !== undefined) clearTimeout(timer);
             }
-            return credential === undefined ? reply : scrubbed(reply, credential.secrets);
         },
     };
 }

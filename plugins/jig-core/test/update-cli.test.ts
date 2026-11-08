@@ -148,6 +148,8 @@ describe("discover", () => {
 describe("the update command's gate", () => {
     test("without a terminal it refuses in one line, before the registry or any change", async () => {
         const saved = process.stderr.write;
+        const savedCi = process.env.CI;
+        delete process.env.CI;
         let text = "";
         process.stderr.write = ((chunk: string | Uint8Array) => {
             text += String(chunk);
@@ -155,11 +157,13 @@ describe("the update command's gate", () => {
         }) as typeof process.stderr.write;
         try {
             const code = await update([], undefined);
-            assert.equal(code, 1);
-            assert.match(text, /Update needs a terminal with a screen/);
+            assert.equal(code, 2);
+            assert.match(text, /no terminal to confirm on/);
             assert.match(text, /jig update --check/);
         } finally {
             process.stderr.write = saved;
+            if (savedCi === undefined) delete process.env.CI;
+            else process.env.CI = savedCi;
         }
     });
 
@@ -172,7 +176,7 @@ describe("the update command's gate", () => {
         }) as typeof process.stderr.write;
         try {
             assert.equal(await update(["--nope"], undefined), 2);
-            assert.match(text, /Unknown option --nope/);
+            assert.match(text, /jig update: unknown option --nope/);
         } finally {
             process.stderr.write = saved;
         }

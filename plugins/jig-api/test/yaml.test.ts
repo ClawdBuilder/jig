@@ -89,6 +89,7 @@ describe("the dependency", () => {
         assert.deepEqual(Object.keys(manifest.dependencies).sort(), [
             "@anthropic-ai/sandbox-runtime",
             "@hono/node-server",
+            "amaro",
             "hono",
             "ignore",
             "mongodb",
@@ -96,5 +97,6 @@ describe("the dependency", () => {
             "yaml",
         ]);
         assert.match(manifest.dependencies.yaml ?? "", /^\d+\.\d+\.\d+$/);
+        assert.match(manifest.dependencies.amaro ?? "", /^\d+\.\d+\.\d+$/);
     });
 });

@@ -321,8 +321,12 @@ export function createTool(options: MongoOptions = {}): MongoTool {
             executionMode: "sequential",
             async execute(toolCallId, params, signal) {
                 const c = check(params as Record<string, unknown>);
-                const deadline = AbortSignal.timeout(deadlineMs);
-                const until = signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
+                const controller = new AbortController();
+                const timer = setTimeout(
+                    () => controller.abort(new DOMException("The operation timed out.", "TimeoutError")),
+                    deadlineMs,
+                );
+                const until = signal === undefined ? controller.signal : AbortSignal.any([signal, controller.signal]);
                 const text = (value: string, details: Record<string, unknown>) => ({
                     content: [{ type: "text" as const, text: value }],
                     details: {
@@ -333,27 +337,31 @@ export function createTool(options: MongoOptions = {}): MongoTool {
                     },
                 });
 
-                if (c.planned.effect === "read") {
-                    const run = c.planned.run;
-                    if (c.call.action === "access") {
-                        // The rules come from jig.json: this read opens no connection, so it works with Mongo down.
-                        const rendered = await raceAbort(run.run(undefined as never, until), until);
+                try {
+                    if (c.planned.effect === "read") {
+                        const run = c.planned.run;
+                        if (c.call.action === "access") {
+                            // The rules come from jig.json: this read opens no connection, so it works with Mongo down.
+                            const rendered = await raceAbort(run.run(undefined as never, until), until);
+                            jig().addFacts(toolCallId, withCluster(c, rendered.facts));
+                            return text(rendered.text, rendered.details);
+                        }
+                        const rendered = await withBackend(c, until, (backend) =>
+                            raceAbort(run.run(backend, until), until),
+                        ).catch((error: unknown) => {
+                            throw error instanceof InputError
+                                ? error
+                                : new Error(`${run.label}: ${describeFailure(error, contextOf(c, until)).message}`);
+                        });
                         jig().addFacts(toolCallId, withCluster(c, rendered.facts));
                         return text(rendered.text, rendered.details);
                     }
-                    const rendered = await withBackend(c, until, (backend) =>
-                        raceAbort(run.run(backend, until), until),
-                    ).catch((error: unknown) => {
-                        throw error instanceof InputError
-                            ? error
-                            : new Error(`${run.label}: ${describeFailure(error, contextOf(c, until)).message}`);
-                    });
-                    jig().addFacts(toolCallId, withCluster(c, rendered.facts));
-                    return text(rendered.text, rendered.details);
+                    const outcome = await runWrite(toolCallId, c, c.planned.run, until);
+                    jig().addFacts(toolCallId, withCluster(c, outcome.facts));
+                    return text(outcome.text, outcome.details);
+                } finally {
+                    clearTimeout(timer);
                 }
-                const outcome = await runWrite(toolCallId, c, c.planned.run, until);
-                jig().addFacts(toolCallId, withCluster(c, outcome.facts));
-                return text(outcome.text, outcome.details);
             },
         },
     };

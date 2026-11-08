@@ -123,7 +123,7 @@ describe("the Pi version Jig is tested with", () => {
     });
 
     test(`docs/compatibility.md: the "Tested with" row is that Pi, the Node lines of the checks job, and a date`, () => {
-        const row = /^\| (\d+\.\d+\.\d+) \| ([\d, ]+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read("docs/compatibility.md"));
+        const row = /^\| (\d+\.\d+\.\d+) \| ([\d., ]+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read("docs/compatibility.md"));
         assert.ok(row, 'docs/compatibility.md has no "Tested with" row');
         assert.equal(row[1], pinned);
         assert.deepEqual(

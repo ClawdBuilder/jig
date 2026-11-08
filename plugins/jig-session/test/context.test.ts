@@ -418,7 +418,7 @@ test("a 40-column render keeps the token and percent numbers", () => {
         rows.some((line) => line.includes("Compaction reserve")),
         rows.join("\n"),
     );
-    for (const line of rows) assert.match(line, /\d[\d,\.]*\s+\d+\.\d%/, line);
+    for (const line of rows) assert.match(line, /\d[\d,.]*\s+\d+\.\d%/, line);
 });
 
 test("a short terminal scrolls the body and keeps the hint pinned", async () => {

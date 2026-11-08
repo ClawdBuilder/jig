@@ -48,8 +48,8 @@ The first command adds Jig's plugins to Pi. The second installs the `jig` comman
 `jig setup` and `jig doctor`. Neither command starts a session.
 
 Start Pi and run `/jig`. It shows the rules in force, the plugins loaded and anything that needs fixing. For the setup
-questions in a terminal, run `jig setup`; [Setup and doctor](docs/setup-and-doctor.md) explains both commands and the
-exit codes.
+questions in a terminal, run `jig setup`; [Setup and doctor](docs/setup-and-doctor.md) explains both commands, `--json`,
+`--yes` and the exit codes (0 success, 1 failure, 2 usage).
 
 `jig update` moves both copies of Jig to one published version, so an update is one command rather than two;
 [Setup and doctor](docs/setup-and-doctor.md#updating) covers what it checks and changes. Pin a release with

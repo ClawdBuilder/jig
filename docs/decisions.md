@@ -1914,3 +1914,9 @@ Jig is built clean, beside the harness the author uses every day today:
 - **It ports what works.**
 - **That harness keeps running** until each Jig plugin can replace its part.
 
+
+## `amaro` is a runtime dependency of the CLI, not of a plugin
+
+`amaro` is the TypeScript parser/stripper used by Node itself. A globally installed `jig` lives under `node_modules`, where
+Node refuses its own type stripping; the CLI's loader (`bin/jig-strip-hooks.mjs`) uses `amaro` in-thread so an installed
+copy runs silently on Node 22.19, 24 and 26. It is pinned exactly, and no plugin imports it.
