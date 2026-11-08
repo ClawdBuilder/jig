@@ -7,20 +7,23 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Added
 
 - `jig` now has command help (`jig help doctor`, `--help` on every command), `--json` on `update`, `--version` and
-  `doctor` with `"schema": 1`, and `--yes`/`-y` (or `CI=true`) for `update`. Help and version answer without
-  loading Pi, so they return in milliseconds.
+  `doctor` with `"schema": 1`, and `--yes`/`-y` (or `CI=true`) for `update`. Help and version answer without loading Pi,
+  so they return in milliseconds.
 - Unknown commands suggest the nearest one, and every usage error exits 2 with one line and a hint. Without a terminal,
-  `update` and `setup` name `--yes` instead of a generic refusal.
+  `update` names `--yes`; `setup` says which choices need a person.
+- Front-end contracts: `contracts/requests.js` with `contracts/requests.d.ts` (the session request format),
+  `contracts/palettes.json` (the built-in palettes) and `docs/contracts.md` (the versioned surfaces and their
+  breaking-change rule). Front-ends read these from the npm package, never Jig's `src/`, and never approve.
 
 ### Changed
 
 - `jig update --check` now exits 0 when it produced a plan, including when an update is available; 2 now always means a
   usage error. Scripts that tested for 2 to mean “an update is available” must read `--json` or the plan text instead.
-
 - `jig update` ends with a scoped check of both copies and Pi's settings, not a folder-dependent company doctor; it prints
   “Full check: jig doctor (run it in a project folder; company checks depend on the folder)”.
 - Doctor output wraps to the terminal (80 columns when piped), colours only ok/warn/fail on a TTY, and respects
   `NO_COLOR`/`FORCE_COLOR`. Update confirmation is one line and does not echo the typed answer.
+- The Herdr layout, mods and themes moved to `ClawdBuilder/jig-herdr`; Jig keeps only the contracts they read.
 
 ## [0.5.1] - 2026-11-08
 

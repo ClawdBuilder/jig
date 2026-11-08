@@ -217,3 +217,31 @@ test("the packed tarball runs bash in stock Pi, from a path with a space", { tim
     assert.equal(readFileSync(path.join(work, "ran.txt"), "utf8"), "ok");
     assert.doesNotMatch(result.output, /sandbox could not start|Cannot find module/);
 });
+
+test("the front-end contracts are packed and importable without Jig's src/", { timeout: 60_000 }, async () => {
+    const result = await pack();
+    for (const file of [
+        "contracts/requests.js",
+        "contracts/requests.d.ts",
+        "contracts/palettes.json",
+        "docs/contracts.md",
+    ]) {
+        assert.ok(result.files.includes(file), file);
+    }
+    const requests = (await import("../contracts/requests.js")) as Record<string, unknown>;
+    assert.deepEqual(Object.keys(requests).sort(), [
+        "MAX_REQUEST_BYTES",
+        "REQUEST_SCHEMA",
+        "ensureRequestsDir",
+        "parseRequest",
+        "sweepRequests",
+        "takeRequest",
+    ]);
+    assert.equal(requests.REQUEST_SCHEMA, 1);
+    const parsed = (requests.parseRequest as (text: string) => { request?: { reload: boolean } })(
+        JSON.stringify({ schema: 1, reload: false }),
+    );
+    assert.equal(parsed.request?.reload, false);
+    const palettes = JSON.parse(readFileSync(path.join(ROOT, "contracts/palettes.json"), "utf8")) as object;
+    assert.equal(Object.keys(palettes).length, 6);
+});

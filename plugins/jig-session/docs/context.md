@@ -1,7 +1,7 @@
 # Context and requests
 
 How `jig-session` counts what fills a session's context (`contextDetail`), and how it handles a reader's requests: the tool
-and skill switches and the reload. A panel such as the Context panel of the [Herdr app files](../../../herdr/README.md) shows
+and skill switches and the reload. A panel such as the Context panel of the [Herdr app files](https://github.com/ClawdBuilder/jig-herdr) shows
 the first and sends the second. The fields are specified in the [jig-session overview](../README.md#the-status-file).
 
 ## The breakdown

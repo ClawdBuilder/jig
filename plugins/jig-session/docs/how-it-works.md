@@ -14,7 +14,7 @@ specified in the [jig-session overview](../README.md#the-status-file).
   model and the tool calls it asks for.
 - **The state dir** is jig-core's folder for state: `$JIG_STATE_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/jig`.
 - **A reader** is any program that reads the status files, such as the Work and Context panels of the
-  [Herdr app files](../../../herdr/README.md).
+  [Herdr app files](https://github.com/ClawdBuilder/jig-herdr).
 
 ## Writing the status file
 
