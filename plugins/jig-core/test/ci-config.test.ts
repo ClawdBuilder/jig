@@ -48,11 +48,16 @@ describe("ci.yml", () => {
         assert.match(checks.slice(last), /name: The working tree is clean[\s\S]*git status --porcelain/);
     });
 
-    test("the workflow files are linted with a pinned actionlint whose checksum is checked", () => {
+    test("the workflow files are linted with a pinned actionlint, built through the checksummed Go module proxy", () => {
         const text = read(".github/workflows/ci.yml");
         assert.match(text, /ACTIONLINT_VERSION: \d+\.\d+\.\d+/);
-        assert.match(text, /ACTIONLINT_SHA256: [0-9a-f]{64}/);
-        assert.match(text, /sha256sum --check/);
+        assert.match(text, /go install "github\.com\/rhysd\/actionlint\/cmd\/actionlint@v\$\{ACTIONLINT_VERSION\}"/);
+        assert.doesNotMatch(
+            text,
+            /GOFLAGS=.*-insecure|GONOSUMDB|GONOSUMCHECK|GOSUMDB=off/,
+            "the Go checksum database stays on",
+        );
+        assert.doesNotMatch(text, /github\.com\/[^\s"]+\/releases\/download/, "no GitHub release downloads");
     });
 
     test("npm ci never runs a dependency's install script", () => {
@@ -118,7 +123,7 @@ describe("the Pi version Jig is tested with", () => {
     });
 
     test(`docs/compatibility.md: the "Tested with" row is that Pi, the Node lines of the checks job, and a date`, () => {
-        const row = /^\| (\d+\.\d+\.\d+) \| ([\d, ]+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read("docs/compatibility.md"));
+        const row = /^\| (\d+\.\d+\.\d+) \| ([\d., ]+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read("docs/compatibility.md"));
         assert.ok(row, 'docs/compatibility.md has no "Tested with" row');
         assert.equal(row[1], pinned);
         assert.deepEqual(

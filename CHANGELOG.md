@@ -11,9 +11,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   so they return in milliseconds.
 - Unknown commands suggest the nearest one, and every usage error exits 2 with one line and a hint. Without a terminal,
   `update` names `--yes`; `setup` says which choices need a person.
-- Front-end contracts: `contracts/requests.js` with `contracts/requests.d.ts` (the session request format),
-  `contracts/palettes.json` (the built-in palettes) and `docs/contracts.md` (the versioned surfaces and their
-  breaking-change rule). Front-ends read these from the npm package, never Jig's `src/`, and never approve.
 
 ### Changed
 
@@ -23,6 +20,19 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   “Full check: jig doctor (run it in a project folder; company checks depend on the folder)”.
 - Doctor output wraps to the terminal (80 columns when piped), colours only ok/warn/fail on a TTY, and respects
   `NO_COLOR`/`FORCE_COLOR`. Update confirmation is one line and does not echo the typed answer.
+
+## [0.5.2] - 2026-11-08
+
+Front-end contracts in the package; the Herdr panels moved to their own repository.
+
+### Added
+
+- Front-end contracts: `contracts/requests.js` with `contracts/requests.d.ts` (the session request format),
+  `contracts/palettes.json` (the built-in palettes) and `docs/contracts.md` (the versioned surfaces and their breaking-change
+  rule). Front-ends read these from the npm package, never Jig's `src/`, and never approve.
+
+### Changed
+
 - The Herdr layout, mods and themes moved to `ClawdBuilder/jig-herdr`; Jig keeps only the contracts they read.
 
 ## [0.5.1] - 2026-11-08

@@ -842,7 +842,10 @@ describe("CLI conventions", () => {
         }
         const version = await run(["--version", "--json"], { env: { PI_HOST_DIR: "/nonexistent" } });
         assert.equal(version.code, 0);
-        assert.deepEqual(JSON.parse(version.stdout), { schema: 1, version: "0.5.1" });
+        assert.deepEqual(JSON.parse(version.stdout), {
+            schema: 1,
+            version: (JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version: string }).version,
+        });
     });
 
     test("an unknown command or option is one line, a hint and exit 2", { timeout: 20_000 }, async () => {

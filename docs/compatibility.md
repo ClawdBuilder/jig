@@ -5,17 +5,17 @@ public here is pinned by a test, so it cannot change by accident.
 
 ## Tested with
 
-The Checks job covers both npm majors: Node 24 runs npm 12, and Node 26 keeps its bundled npm. The Release job keeps
+The Checks job covers all three supported Node lines: Node 24 runs npm 12, and Node 26 keeps its bundled npm. The Release job keeps
 the npm its Node line provides.
 
 | Pi | Node | Checked |
 |---|---|---|
-| 1.5.0 | 24, 26 | 2026-11-02 |
+| 1.5.0 | 22.19.0, 24, 26 | 2026-11-02 |
 
-- **Every push and pull request** runs the `Checks` job on both Node lines with exactly this Pi, installed in `.github/workflows/ci.yml`.
+- **Every push and pull request** runs the `Checks` job on all three Node lines with exactly this Pi, installed in `.github/workflows/ci.yml`.
 - **Every week** the [Pi canary](../.github/workflows/pi-canary.yml) runs `npm run check`, `npm test` and `npm run check:install` on the
   newest Pi that npm has, on Node 26. It never runs on a pull request. A red canary means the next Pi would break Jig.
-- **Not tested:** other Pi versions, and Node 22.19, the lowest that `package.json` allows. `peerDependencies` say `*` because Pi
+- **Not tested:** other Pi versions. `peerDependencies` say `*` because Pi
   supplies its own packages to an extension, so the real requirement is this table.
 - **To move the Pi version,** follow "Pi version" in [AGENTS.md](../AGENTS.md): the pin, this table and the README change together.
 
