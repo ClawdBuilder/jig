@@ -67,7 +67,7 @@ and nothing changes.
 jig update [--check] [--json] [--to <version>] [--yes]
 ```
 
-`--json` prints one object with `"schema": 1` (`current`, `target`, `action`/`changed`, `pi`) on stdout. `--yes` (or
+`--json` prints one object with `"schema": 1` (`current`, `target`, `action`, `changes`, `pi`, `code`) on stdout. `--yes` (or
 `CI=true`) is required without a terminal; without it the command names the flag and exits 2. The confirmation reads
 `Update Jig <old> → <new>? [y/N]` and the confirmation itself is not echoed.
 
@@ -75,7 +75,7 @@ Jig is installed in two copies: Pi's package and the global `jig` command. `jig 
 version, in that order: Pi when the release needs a newer one, then Pi's copy, then the global command, then a check of both
 and a scoped check: both copies on the new version, the global command, Pi's settings and that Jig loads. It ends with
 “Full check: jig doctor (run it in a project folder; company checks depend on the folder)” and does not run company checks. It needs a terminal, like `jig setup`; `--check` says what would happen and changes nothing. `--to` names a
-published version instead of the newest. ``--check` needs no write access and runs no PATH check; it exits 0 when the plan was made (whether or not an update is
+published version instead of the newest. `--check` needs no write access and runs no PATH check; it exits 0 when the plan was made (whether or not an update is
 available) and 1 on an error. A normal update exits 0 on success and
 1 on failure.
 
