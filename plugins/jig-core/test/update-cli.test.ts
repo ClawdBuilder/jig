@@ -1,7 +1,7 @@
 // The facts `jig update` reads before changing anything: the installed copies and company ranges, and the exact Pi command
 // for the method Pi was installed by. Registry and command runs are faked in update-plan.test.ts and update-run.test.ts.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -93,11 +93,36 @@ describe("discover", () => {
         assert.equal(found.jigEntries.length, 2);
     });
 
+    test("does not ask npm when the agent-folder copy is already there", () => {
+        const bin = path.join(home, "lazy-bin");
+        const marker = path.join(home, "lazy-npm-ran");
+        mkdirSync(bin, { recursive: true });
+        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf ran > '${marker}'\n`, { mode: 0o755 });
+        const saved = process.env.PATH;
+        process.env.PATH = `${bin}${path.delimiter}${saved ?? ""}`;
+        try {
+            const jig = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
+            packageAt(jig, { name: "@clawdbuilder/jig", version: "0.4.1" });
+            writeFileSync(
+                path.join(agent, "settings.json"),
+                JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.4.1"] }),
+            );
+            assert.equal(discover(agent, work, "@clawdbuilder/jig").piCopy?.version, "0.4.1");
+            assert.equal(existsSync(marker), false, "a present copy never starts npm");
+        } finally {
+            if (saved === undefined) delete process.env.PATH;
+            else process.env.PATH = saved;
+        }
+    });
+
     test("finds a package by its npm name when the folder is missing, using npm's own fake global root", () => {
         const bin = path.join(home, "fake-bin");
         const fakeRoot = path.join(home, "fake-global", "lib", "node_modules");
+        const marker = path.join(home, "fake-npm-ran");
         mkdirSync(bin, { recursive: true });
-        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf '%s\\n' '${fakeRoot}'\n`, { mode: 0o755 });
+        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf ran > '${marker}'\nprintf '%s\\n' '${fakeRoot}'\n`, {
+            mode: 0o755,
+        });
         const savedPath = process.env.PATH;
         const savedRoot = process.env.FAKE_NPM_ROOT;
         process.env.PATH = `${bin}${path.delimiter}${savedPath ?? ""}`;
@@ -110,6 +135,7 @@ describe("discover", () => {
             const found = discover(agent, work, "@clawdbuilder/jig");
             assert.equal(found.piCopy?.source, "npm:@clawdbuilder/jig@0.4.1");
             assert.equal(found.piCopy?.version, undefined);
+            assert.ok(existsSync(marker), "the CLI asks npm for its global root");
         } finally {
             if (savedPath === undefined) delete process.env.PATH;
             else process.env.PATH = savedPath;

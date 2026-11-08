@@ -9,7 +9,14 @@ import { buildApi } from "../api.ts";
 import { publishJig } from "../client.ts";
 import { errorMessage } from "../errors.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
-import { manifestOf, packageIdentity, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
+import {
+    globalNpmRoot,
+    manifestOf,
+    packageIdentity,
+    parseGitSource,
+    parseNpmSource,
+    readPackages,
+} from "./packages.ts";
 import type { ListedPackage } from "./packages.ts";
 import { projectTrust, untrustedDetail, untrustedSetupLine } from "./trust.ts";
 import { applyDelta, enabledFiles } from "./package-filter.ts";
@@ -219,7 +226,7 @@ export async function loadHeadless(
     const failures: LoadFailure[] = [];
     const loaded: string[] = [];
     const timings: Array<{ name: string; ms: number }> = [];
-    const installed = readPackages(agentDir, workingDir);
+    const installed = readPackages(agentDir, workingDir, { globalRoot: () => globalNpmRoot() });
     // Project-scope packages are code from a folder the person may not have trusted: import nothing from them until Pi's
     // own saved decisions (or its global default) say Pi would load them too.
     const trust = projectTrust(agentDir, workingDir);
