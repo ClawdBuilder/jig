@@ -375,27 +375,6 @@ export async function update(args: readonly string[], host: string | undefined):
         );
         return 2;
     }
-    const fakeTarget = process.env.JIG_UPDATE_FAKE;
-    if (fakeTarget !== undefined && !check) {
-        const current = "0.5.0";
-        if (!assumeYes) {
-            const ok = await promptYes(`Update Jig ${current} → ${fakeTarget}?`);
-            if (!ok) {
-                if (json)
-                    process.stdout.write(
-                        `${JSON.stringify({ schema: 1, current, target: fakeTarget, action: "cancelled", changes: false, pi: null, code: 0 }, null, 2)}\n`,
-                    );
-                else process.stdout.write("Nothing was changed.\n");
-                return 0;
-            }
-        }
-        if (json)
-            process.stdout.write(
-                `${JSON.stringify({ schema: 1, current, target: fakeTarget, action: "updated", changes: true, pi: null, code: 0 }, null, 2)}\n`,
-            );
-        else process.stdout.write(`Updated Jig ${current} -> ${fakeTarget}.\n`);
-        return 0;
-    }
     if (host === undefined) {
         process.stderr.write("jig update needs Pi installed; install Pi first.\n");
         return 1;
