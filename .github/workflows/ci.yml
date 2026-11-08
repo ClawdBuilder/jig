@@ -69,6 +69,9 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Commit email guard
+        # The private word list is a repository secret. Fork pull requests get no secrets, so they stay warn-only.
+        env:
+          JIG_SCAN_WORDS_TEXT: ${{ secrets.SCAN_WORDS }}
         run: npm run check:emails
 
       - name: Types and Biome

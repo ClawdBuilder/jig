@@ -53,8 +53,9 @@ suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
 ### Commit emails
 
 A commit's author and committer addresses are part of the public history, so use a public identity. `npm run check:emails`
-checks every commit in `origin/main..HEAD`. CI runs it with the private word list from `JIG_SCAN_WORDS` or
-`~/.config/jig/scan-words.txt`; the list stays outside this repository. A matching address fails.
+checks every commit in `origin/main..HEAD`. CI runs it with the private word list from the `SCAN_WORDS` repository
+secret, passed as `JIG_SCAN_WORDS_TEXT`; locally, `JIG_SCAN_WORDS_TEXT`, `JIG_SCAN_WORDS` or
+`~/.config/jig/scan-words.txt` supplies it. The list stays outside this repository. A matching address fails.
 
 A fork has no private list. There the check passes `noreply@example.com`, an address at `users.noreply.github.com`, and the
 maintainer's public address; any other address prints a warning and does not fail, so a fork can still run the suite.
