@@ -160,7 +160,7 @@ only:
 - **`keychain`:** `security find-generic-password -s <service> -a <account>`, without `-w` or `-g`.
 - **`op`:** `op item list --vault <vault> --format json`, matched by item title. The field is not verified;
   `op item get` and `op read` are never run.
-- **`cmd`:** the login tool's own status (`gh auth status --no-refresh`, `glab auth status`). Other commands
+- **`cmd`:** the login tool's own status (`gh auth status`, `glab auth status`). Other commands
   are not checked, because checking them would mean reading what they print.
 
 A missing one comes with the store's own command to add it, and setup offers **Check again**. Setup asks

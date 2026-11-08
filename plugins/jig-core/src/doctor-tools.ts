@@ -29,7 +29,7 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
         {
             tool: "gh",
             word: "github",
-            args: ["auth", "status", "--no-refresh"],
+            args: ["auth", "status"],
             login: "gh auth login",
             label: "GitHub login",
         },
@@ -97,13 +97,15 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
                     detail: check.why === undefined ? "signed in." : `signed in. ${check.why}`,
                 });
             } else {
+                const said = `${result.stdout}\n${result.stderr}`;
+                const partly = /Logged in to/i.test(said);
                 lines.push({
                     id: `logins.${check.tool}`,
                     group: "logins",
                     level: "warn",
                     title: check.label,
-                    detail: "not signed in.",
-                    fix: check.login,
+                    detail: partly ? "signed in, but one account has a problem." : "not signed in.",
+                    fix: partly ? `${check.tool} auth status` : check.login,
                 });
             }
         } catch {

@@ -4,6 +4,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Fixed
+
+- `jig doctor` no longer reports “GitHub login — not signed in” when `gh` is signed in: it runs the supported
+  `gh auth status`, and a signed-in account with another account’s failure is a warning, not a missing login.
+
 ## [0.5.3] - 2026-11-08
 
 A `jig` command that follows common CLI practice, and request deadlines that always fire.
