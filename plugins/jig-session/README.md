@@ -85,6 +85,7 @@ them. **Schema 1:**
 
 | Command | What it does |
 |---|---|
+| `/context` | Shows what fills the context: a grid, each part, the tools by plugin and Jig's own messages |
 | `/session-file` | Says where this session's status file is, and the terminal it names |
 | `/session-reload` | Reloads Pi once the agent is idle; a reader's `reload` request runs it |
 

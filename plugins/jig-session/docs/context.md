@@ -30,6 +30,21 @@ uses itself. A panel marks these with `≈`.
   declaration's size; `skills` every loaded skill with `on`, its size and `listed`, false for one Pi never lists to the
   model (`disable-model-invocation`); `files` each context file with its size.
 
+## `/context`
+
+`/context` prints the same `ContextDetail` the panel reads, not a second count: the grid has one cell per percent of the
+window, coloured by part, and the list gives the model, window, total and percent, each part, the compaction reserve and free
+space. Widths below about 40 columns wrap the grid and shorten the lines; `q` or Esc closes the view. Tokens are estimates
+(characters / 4, and `messages` is the total less the parts), so the command says `estimate`.
+
+- **Tools are split three ways:** Pi's built-in tools (and any tool no Jig plugin declared), Jig's tools by the plugin in
+  `jig().tools.declared()`, and deferred tools by name only, marked `not in context` because `tool_search` has not loaded
+  them.
+- **Jig's messages are apart from the conversation:** the ticket notes, recall results and review follow-ups are listed with
+  their counts and estimated tokens; they are already included in the messages total.
+- **Same numbers:** the command and `contextDetail` call `ContextView.detail()`; the test invokes the command through a
+  captured `ui.custom` component and compares its rendered rows with the status file's `contextDetail`.
+
 ## Requests
 
 A reader writes `<state dir>/requests/<file name of the session>.json`, by a temporary file and a rename. Every 2 seconds the

@@ -15,6 +15,12 @@ import type { Stats } from "node:fs";
 import { existsSync, lstatSync } from "node:fs";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
+import {
+    MEMORY_CHECKS_MESSAGE,
+    MEMORY_EMPTY_FILES_MESSAGE,
+    MEMORY_NOTES_MESSAGE,
+    MEMORY_RECALL_MESSAGE,
+} from "../../jig-core/src/kit/jig-messages.ts";
 import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import {
     CARD_FIX,
@@ -44,13 +50,13 @@ import { finishPasted, TOOL_NAME, ticketTool } from "./tool.ts";
 /** The session entry that records the active ticket: `{ key }`, or `{ key: null }` after `/ticket off`. */
 export const TICKET_ENTRY = "jig-memory-ticket";
 /** The custom message that carries the notes into the conversation. */
-export const NOTES_MESSAGE = "jig-memory-notes";
+export const NOTES_MESSAGE = MEMORY_NOTES_MESSAGE;
 /** The custom message that carries the cards of related tickets. */
-export const RECALL_MESSAGE = "jig-memory-recall";
+export const RECALL_MESSAGE = MEMORY_RECALL_MESSAGE;
 /** The custom message that names empty files in the ticket folder. */
-export const EMPTY_FILES_MESSAGE = "jig-memory-empty-files";
+export const EMPTY_FILES_MESSAGE = MEMORY_EMPTY_FILES_MESSAGE;
 /** The custom message that lists the open checks, with every prompt while one is open. */
-export const CHECKS_MESSAGE = "jig-memory-checks";
+export const CHECKS_MESSAGE = MEMORY_CHECKS_MESSAGE;
 /** The session entry that records a close offer, so a resume does not offer the same ticket again. */
 export const CLOSE_OFFER_ENTRY = "jig-memory-close-offer";
 

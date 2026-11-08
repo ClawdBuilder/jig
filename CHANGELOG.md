@@ -19,7 +19,19 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `mods/keep-awake/config.json` (`display`), which also carries `idleMinutes`, and restarts the helper at once; the sun's
   tooltip says whether the screen is kept on. `Ctrl+Shift+Alt+K` cycles the modes.
 
+- `/context` in `jig-session` shows what fills a Pi session's context as a grid and a list, from the same `ContextDetail`
+  the Herdr Context panel reads: the parts, the tools split into Pi's, each Jig plugin's and deferred names, and Jig's
+  ticket, recall and review messages apart from the conversation. Tokens are marked as estimates.
+
 ### Changed
+
+- `jig-workflow` says plainly that a hold covers `write` and `edit` by path and `git`/`pr` by repository, not `bash`; a
+  sandboxed shell is guarded by the sandbox's protected paths, and a hold only covers `bash` when it names it.
+
+- `jig-lens` calls the loops column by what it counts: failed and refused calls, and says in the table that a refused call
+  counts too.
+
+- `jig-ops` tells the agent to run `ci services` first when the service is not in its context, before it guesses a name.
 
 - The Changes panel (`repo-changes`) lists the folder of the focused terminal, not the space's, and has a header toggle to
   follow the terminal or the space for each space. Each checkout shows its ahead and behind and its last commit, one line per
