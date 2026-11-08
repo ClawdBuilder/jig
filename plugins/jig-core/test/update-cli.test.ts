@@ -93,11 +93,21 @@ describe("discover", () => {
         assert.equal(found.jigEntries.length, 2);
     });
 
-    test("finds a package by its npm name when the folder is missing", () => {
-        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.4.1"] }));
-        const found = discover(agent, work, "@clawdbuilder/jig");
-        assert.equal(found.piCopy?.source, "npm:@clawdbuilder/jig@0.4.1");
-        assert.equal(found.piCopy?.version, undefined);
+    test("finds a package by its npm name when the folder is missing, away from the machine's global install", () => {
+        const saved = process.env.npm_config_prefix;
+        process.env.npm_config_prefix = path.join(home, "empty-npm-prefix");
+        try {
+            writeFileSync(
+                path.join(agent, "settings.json"),
+                JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.4.1"] }),
+            );
+            const found = discover(agent, work, "@clawdbuilder/jig");
+            assert.equal(found.piCopy?.source, "npm:@clawdbuilder/jig@0.4.1");
+            assert.equal(found.piCopy?.version, undefined);
+        } finally {
+            if (saved === undefined) delete process.env.npm_config_prefix;
+            else process.env.npm_config_prefix = saved;
+        }
     });
 });
 

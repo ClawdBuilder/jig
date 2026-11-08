@@ -188,11 +188,14 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                 continue;
             }
             // Pi falls back to the global npm root for a user-scope npm package it cannot find under the agent folder.
+            // `npm_config_prefix` is npm's own override, and lets a test name a prefix without touching the real one.
             const npm = parseNpmSource(source);
-            const legacy =
-                npm === undefined || scope !== "user"
-                    ? undefined
-                    : path.join(path.dirname(process.execPath), "..", "lib", "node_modules", npm.name);
+            const prefix = process.env.npm_config_prefix ?? process.env.NPM_CONFIG_PREFIX;
+            const globalRoot =
+                prefix === undefined || prefix.trim() === ""
+                    ? path.join(path.dirname(process.execPath), "..", "lib", "node_modules")
+                    : path.join(path.resolve(prefix.trim()), "lib", "node_modules");
+            const legacy = npm === undefined || scope !== "user" ? undefined : path.join(globalRoot, npm.name);
             if (!existsSync(folder) && legacy !== undefined && existsSync(legacy)) {
                 listed.push({
                     source: source.trim(),
