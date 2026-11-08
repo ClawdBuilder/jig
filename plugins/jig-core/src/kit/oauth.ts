@@ -13,6 +13,8 @@ import { isObject } from "./values.ts";
 export const REPLACE_EARLY_MS = 60_000;
 /** A command's token has no expiry the endpoint tells us; keep it briefly, and let a 401 run the command again. */
 export const COMMAND_TOKEN_MS = 5 * 60_000;
+/** The longest a command's token is kept, even when `cacheMs` asks for more. */
+export const MAX_COMMAND_TOKEN_MS = 15 * 60_000;
 /** A token answer is small. A longer one is not read. */
 const MAX_TOKEN_ANSWER_BYTES = 64 * 1024;
 /** What a token is: printable characters without a space, so that it can go into a header. */
@@ -53,8 +55,9 @@ export interface Login {
 export interface Tokens {
     /** The access token for this sign-in: the cached one while it is good, else a new one. */
     get(login: Login, oauth: HttpOAuth): Promise<Token>;
-    /** Drops a cached token, such as after a 401. */
-    forget(id: string): void;
+    /** Drops a cached token, such as after a 401. When `value` is given, only that exact token is dropped: a parallel
+     *  call that already replaced it is not disturbed. */
+    forget(id: string, value?: string): void;
 }
 
 interface Cached {
@@ -169,7 +172,7 @@ function checkSettings(oauth: HttpOAuth): void {
             throw refused("auth.oauth.command must be a secret reference");
         }
         if (oauth.cacheMs !== undefined && (!Number.isFinite(oauth.cacheMs) || oauth.cacheMs < 0)) {
-            throw refused("auth.oauth.cacheMs must be a number of milliseconds");
+            throw refused("auth.oauth.cacheMs must be a non-negative number of milliseconds");
         }
         return;
     }
@@ -219,6 +222,8 @@ export function createTokens(now: () => number): Tokens {
         return token;
     }
 
+    const pending = new Map<string, Promise<Token>>();
+
     return {
         async get(login, oauth) {
             checkSettings(oauth);
@@ -237,28 +242,42 @@ export function createTokens(now: () => number): Tokens {
                 oauth.clientAuth,
             ]);
             const kept = cache.get(id);
-            if (kept !== undefined && now() < kept.expiresAt - REPLACE_EARLY_MS) {
+            // The early replacement margin protects a token with a server-provided expiry. A command's token has none:
+            // use exactly the requested lifetime, so 0 means every call runs the command and 30 s lasts 30 s.
+            const early = oauth.grant === "command" ? 0 : REPLACE_EARLY_MS;
+            if (kept !== undefined && now() < kept.expiresAt - early) {
                 return { value: kept.value, fresh: false, id };
             }
-            let made: { value: string; expiresAt: number };
-            let fresh = true;
-            if (oauth.grant === "command") {
-                const value = await login.read(oauth.command as string);
-                if (!TOKEN.test(value)) throw refused("the token command did not print a usable bearer token");
-                login.redact(value);
-                made = { value, expiresAt: now() + (oauth.cacheMs ?? COMMAND_TOKEN_MS) };
-                // A command's token carries no expiry the endpoint told us about, so a 401 is the only signal that it
-                // was stale: let the one 401 resend run the command again, even on the first use.
-                fresh = false;
-            } else {
-                made = await request(login, oauth);
+            const running = pending.get(id);
+            if (running !== undefined) return running;
+            const work = (async (): Promise<Token> => {
+                let made: { value: string; expiresAt: number };
+                let fresh = true;
+                if (oauth.grant === "command") {
+                    const value = await login.read(oauth.command as string);
+                    if (!TOKEN.test(value)) throw refused("the token command did not print a usable bearer token");
+                    login.redact(value);
+                    const lifetime = Math.min(oauth.cacheMs ?? COMMAND_TOKEN_MS, MAX_COMMAND_TOKEN_MS);
+                    made = { value, expiresAt: now() + lifetime };
+                    // A command's token carries no expiry the endpoint told us about, so a 401 is the only signal that
+                    // it was stale: let the one 401 resend run the command again, even on the first use.
+                    fresh = false;
+                } else {
+                    made = await request(login, oauth);
+                }
+                cache.set(id, made);
+                return { value: made.value, fresh, id };
+            })();
+            pending.set(id, work);
+            try {
+                return await work;
+            } finally {
+                pending.delete(id);
             }
-            cache.set(id, made);
-            return { value: made.value, fresh, id };
         },
 
-        forget(id) {
-            cache.delete(id);
+        forget(id, value) {
+            if (value === undefined || cache.get(id)?.value === value) cache.delete(id);
         },
     };
 }

@@ -15,7 +15,8 @@ your own Cloud site. Its callback URL is the helper's own localhost callback, no
 - `read:jira-user` for the account names `me` and `commented` use;
 - `offline_access` if the helper keeps a refresh token, so it can print a new access token after this one expires.
 
-Copy the client id and secret into the helper's own configuration, never into `jig.json`.
+Copy the client id and secret into the helper's own configuration, never into `jig.json`. Atlassian rotates refresh
+tokens: the helper must save the new one on every refresh, or the next call loses the session.
 
 ## 2. The Cloud id
 
@@ -23,7 +24,8 @@ A 3LO token is for an app and a site together. Ask the site for its cloud id, fo
 `GET https://<your-site>/_edge/tenant_info`, or read it from the accessible-resources response the helper already gets.
 Put it in `auth.cloudId`. Jig then calls
 `https://api.atlassian.com/ex/jira/<cloudId>/rest/api/2/...`; without `cloudId` it uses the site address, which is the
-Data Center form.
+Data Center form. A wrong `cloudId` makes every call look expired: Jig runs the command again once per call, which is
+the cost of the mistake — fix the id rather than the helper.
 
 ## 3. The command
 
@@ -41,7 +43,7 @@ Declare it by name in `jig.json`; the name is what `jig-jira` asks for, and a co
 ```json
 {
   "secrets": {
-    "backends": ["cmd"],
+    "backends": ["pass", "cmd"],
     "commands": { "jira-oauth": ["/home/you/.local/bin/jira-token"] }
   },
   "jira": {
@@ -51,6 +53,7 @@ Declare it by name in `jig.json`; the name is what `jig-jira` asks for, and a co
 }
 ```
 
-The command sees only the short environment list Jig gives a secret command, not your whole environment. Its standard
+`secrets.backends` replaces the default, which is `pass` alone; keep `pass` in the list if you still use it. The command
+sees only the short environment list Jig gives a secret command, not your whole environment. Its standard
 output is trimmed; more than 16 KiB, an empty answer or a non-zero exit is refused. The token is registered with Jig's
 redactor and is never written to a record, a log, an error or the review page.

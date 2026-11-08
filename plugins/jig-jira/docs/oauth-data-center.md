@@ -11,13 +11,18 @@ On your Jira Data Center, add an **incoming application link** with OAuth 2.0 (3
 version that supports it are in Atlassian's Jira OAuth 2.0 provider API documentation for your release. Register the
 helper's localhost callback, not Jig's, and request the Jira REST scopes your version offers; the helper needs:
 
-- the equivalent of `read:jira-work` for issues, fields, comments and links;
-- the equivalent of `write:jira-work` for create, update and comment;
-- the equivalent of `read:jira-user` for `me` and `commented`;
-- offline access only if the helper keeps a refresh token.
+- `READ` for issues, fields, comments and links;
+- `WRITE` for create, update and comment. `WRITE` covers everything `jig-jira` writes;
+- `ADMIN` or `SYSTEM_ADMIN` only if your helper's own administration needs them; the Jira tool does not.
 
-Some Data Center versions label these scopes `READ`, `WRITE` and user-read; use the names that release's application link
-prints. Keep the client id and secret in the helper's own configuration.
+There is no user-read scope in an incoming Jira Data Center application link. Keep the client id and secret in the helper's
+own configuration.
+
+OAuth 2.0 incoming application links arrived in Jira Data Center **8.22**; the 8.22 provider API supports the authorization
+code flow with PKCE. See the [8.22 provider API](https://confluence.atlassian.com/adminjiraserver0822/jira-oauth-2-0-provider-api-1142237088.html),
+the [8.22 release notes](https://confluence.atlassian.com/jirasoftware/jira-software-8-22-x-release-notes-1115656979.html)
+and the [incoming-link scopes](https://confluence.atlassian.com/adminjiraserver/oauth-2-0-scopes-for-incoming-links-1115659069.html)
+for your version.
 
 ## 2. The command
 
@@ -35,7 +40,7 @@ Declare it by name in `jig.json`; a command not declared here cannot run:
 ```json
 {
   "secrets": {
-    "backends": ["cmd"],
+    "backends": ["pass", "cmd"],
     "commands": { "jira-oauth": ["/home/you/.local/bin/jira-dc-token"] }
   },
   "jira": {
@@ -45,6 +50,7 @@ Declare it by name in `jig.json`; a command not declared here cannot run:
 }
 ```
 
-The command sees only the short environment list Jig gives a secret command, not your whole environment. Its standard
+`secrets.backends` replaces the default, which is `pass` alone; keep `pass` in the list if you still use it. The command
+sees only the short environment list Jig gives a secret command, not your whole environment. Its standard
 output is trimmed; more than 16 KiB, an empty answer or a non-zero exit is refused. The token is registered with Jig's
 redactor and is never written to a record, a log, an error or the review page.

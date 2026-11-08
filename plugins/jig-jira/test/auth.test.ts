@@ -134,6 +134,17 @@ describe("OAuth through a token command", () => {
         assert.match(urls.at(-1) ?? "", new RegExp(`^${SITE.replaceAll(".", "\\.")}/rest/api/2/`));
     });
 
+    test("the token is in neither the result nor the facts", async () => {
+        const OAUTH = oauthRef();
+        h.configure({ site: SITE, auth: { oauth: OAUTH } });
+        h.jig.setSecretResolver(() => "tok-never-recorded-123456");
+        h.jira.requireHeader = { name: "authorization", value: "Bearer tok-never-recorded-123456" };
+        const result = await h.call(GET_ISSUE);
+        ok(result);
+        assert.doesNotMatch(result.text, /tok-never-recorded/);
+        assert.doesNotMatch(JSON.stringify(h.jig.facts), /tok-never-recorded/);
+    });
+
     test("a 401 runs the command once more, and only once; a second 401 is the answer", async () => {
         const OAUTH = oauthRef();
         h.configure({ site: SITE, auth: { oauth: OAUTH } });
