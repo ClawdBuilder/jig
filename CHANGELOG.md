@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-08
+
+Jira OAuth through a trusted command, `/context`, and small ops, lens and workflow clarity.
+
 ### Added
 
 - `jig-jira` takes OAuth 2.0 access tokens from a command the person already trusts: `auth.oauth` names a `cmd:` secret
@@ -11,13 +15,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `api.atlassian.com/ex/jira/<cloudId>` (`auth.cloudId`); Data Center uses the site URL. Jig never signs in or stores the
   refresh token. Guides for [Cloud](plugins/jig-jira/docs/oauth-cloud.md) and
   [Data Center](plugins/jig-jira/docs/oauth-data-center.md).
-
-- A **Keep awake** sun in the tab bar holds this computer awake: off, on until it is switched off or Herdr closes, or while
-  any agent is working or blocked (and `idleMinutes`, 5 by default, after the last one). A hidden PowerShell
-  (`SetThreadExecutionState`), `caffeinate` or `systemd-inhibit` holds the request, one at a time, on the computer Herdr
-  runs on; it ends with Herdr, changes no setting, and a recorded PID is killed only after it verifies as this mod's helper. A `Keep screen on` switch in its popup (on by default) writes
-  `mods/keep-awake/config.json` (`display`), which also carries `idleMinutes`, and restarts the helper at once; the sun's
-  tooltip says whether the screen is kept on. `Ctrl+Shift+Alt+K` cycles the modes.
 
 - `/context` in `jig-session` shows what fills a Pi session's context as a grid and a list, from the same `ContextDetail`
   the Herdr Context panel reads: the parts, the tools split into Pi's, each Jig plugin's and deferred names, and Jig's
@@ -32,13 +29,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   counts too.
 
 - `jig-ops` tells the agent to run `ci services` first when the service is not in its context, before it guesses a name.
-
-- The Changes panel (`repo-changes`) lists the folder of the focused terminal, not the space's, and has a header toggle to
-  follow the terminal or the space for each space. Each checkout shows its ahead and behind and its last commit, one line per
-  checkout, with worktrees folded under their repo (remembered) and the last commit only under the focused one. It can
-  fetch, pull, push or publish its branch; every send asks first in a dialog that names git's real destination
-  (`pushRemote`, `push.default`) and lists the commits, never pushes a branch onto a differently named one, and runs one
-  action at a time per checkout. `config.json` gains `remote`, `networkTimeoutSeconds` and `rowDetail`.
 
 ## [0.5.0] - 2026-11-08
 
