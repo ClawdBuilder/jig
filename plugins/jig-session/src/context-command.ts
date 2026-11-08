@@ -6,10 +6,11 @@ import { Key, matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ContextDetail } from "./context.ts";
 import { tokensOf } from "./breakdown.ts";
+import { MESSAGE_LABELS } from "../../jig-core/src/kit/jig-messages.ts";
 
 export interface ToolGroup {
     label: string;
-    tools: Array<{ name: string; tokens: number; on: boolean }>;
+    tools: Array<{ name: string; tokens: number }>;
 }
 
 export interface JigMessage {
@@ -21,6 +22,8 @@ export interface JigMessage {
 export interface ContextReport {
     detail: ContextDetail;
     model: string;
+    /** Whether jig-core's `tools.declared()` exists; without it no tool can be attributed to a plugin. */
+    jigLoaded: boolean;
     /** Jig's own messages: ticket notes, recall, review follow-ups. They are part of the messages estimate, not extra. */
     messages: JigMessage[];
     groups: ToolGroup[];
@@ -35,6 +38,7 @@ export interface ReportInput {
     declared: ReadonlyMap<string, string>;
     /** Tools Pi reports as deferred, whether or not the active set names them. */
     deferred?: readonly string[];
+    jigLoaded: boolean;
     entries?: readonly unknown[];
 }
 
@@ -45,16 +49,6 @@ const messageText = (value: unknown): string => {
     if (typeof value === "string") return value;
     if (!Array.isArray(value)) return "";
     return value.map((part) => (isRec(part) && typeof part.text === "string" ? part.text : "")).join("");
-};
-
-const CUSTOM_LABELS: Readonly<Record<string, string>> = {
-    "jig-memory-notes": "Ticket notes",
-    "jig-memory-recall": "Recall results",
-    "jig-memory-empty-files": "Ticket checks",
-    "jig-memory-checks": "Ticket checks",
-    "jig-memory-card-request": "Ticket card request",
-    "jig-memory-card-fix": "Ticket card fix",
-    "jig-memory-close-offer": "Ticket close offer",
 };
 
 /** Jig's messages, found by their custom types; review follow-ups are the two prompts jig-review sends as user messages. */
@@ -68,8 +62,9 @@ export function jigMessages(entries: readonly unknown[]): JigMessage[] {
     };
     for (const entry of entries) {
         if (!isRec(entry)) continue;
-        if (entry.type === "custom" && typeof entry.customType === "string") {
-            const label = CUSTOM_LABELS[entry.customType];
+        // Pi writes a pi.sendMessage() entry as custom_message; custom (appendEntry) has data, never content.
+        if (entry.type === "custom_message" && typeof entry.customType === "string") {
+            const label = MESSAGE_LABELS[entry.customType];
             if (label !== undefined) add(label, messageText(entry.content).length);
             continue;
         }
@@ -87,19 +82,21 @@ export function jigMessages(entries: readonly unknown[]): JigMessage[] {
 export function buildReport(input: ReportInput): ContextReport {
     const deferred = new Set(input.deferred ?? []);
     const groups = new Map<string, ToolGroup>();
-    const add = (label: string, name: string, tokens: number, on: boolean): void => {
+    const add = (label: string, name: string, tokens: number): void => {
         const group = groups.get(label) ?? { label, tools: [] };
-        group.tools.push({ name, tokens, on });
+        group.tools.push({ name, tokens });
         groups.set(label, group);
     };
+    const piLabel = input.jigLoaded ? "Pi built-in / other" : "Jig not loaded (Pi / other tools)";
     for (const tool of input.detail.tools) {
         if (deferred.has(tool.name) || !tool.on) continue;
         const plugin = input.declared.get(tool.name);
-        add(plugin === undefined ? "Pi built-in / other" : plugin, tool.name, tool.tokens, true);
+        add(plugin === undefined ? piLabel : plugin, tool.name, tool.tokens);
     }
     return {
         detail: input.detail,
         model: input.model,
+        jigLoaded: input.jigLoaded,
         messages: jigMessages(input.entries ?? []),
         groups: [...groups.values()].sort((a, b) =>
             a.label === "Pi built-in / other"
@@ -148,12 +145,20 @@ function grid(report: ContextReport, width: number, paint: (role: string, text: 
         taken += n;
     }
     const free = Math.max(0, cells - taken);
-    const row =
-        PARTS.map((part) => paint(part.role, "█".repeat(counts.get(part.key) ?? 0))).join("") +
-        paint("dim", "░".repeat(free));
+    // Wrap the cells before painting: slicing a painted string can cut an ANSI escape in half.
+    const drawn: Array<{ role: string; cell: string }> = [];
+    for (const part of PARTS)
+        for (let i = 0; i < (counts.get(part.key) ?? 0); i++) drawn.push({ role: part.role, cell: "█" });
+    for (let i = 0; i < free; i++) drawn.push({ role: "dim", cell: "░" });
     const columns = Math.max(10, Math.min(cells, width));
     const lines: string[] = [];
-    for (let at = 0; at < row.length; at += columns) lines.push(row.slice(at, at + columns));
+    for (let at = 0; at < drawn.length; at += columns)
+        lines.push(
+            drawn
+                .slice(at, at + columns)
+                .map(({ role, cell }) => paint(role, cell))
+                .join(""),
+        );
     return lines;
 }
 
@@ -162,6 +167,7 @@ export function reportLines(
     report: ContextReport,
     width: number,
     paint: (role: string, text: string) => string,
+    options: { hint?: boolean } = {},
 ): string[] {
     const { detail } = report;
     const used = detail.used;
@@ -171,7 +177,7 @@ export function reportLines(
         paint("accent", `Context · ${report.model}`),
         paint(
             "muted",
-            `Window ${window === null ? "unknown" : count(window)} · Used ${used === null ? "unknown" : count(used)} (${percent(used ?? 0, window)})${estimate ? " · estimate" : ""}`,
+            `Window ${window === null ? "unknown" : count(window)} · Used ${used === null ? "unknown" : count(used)} (${used === null ? "—" : percent(used, window)})${estimate ? " · estimate" : ""}`,
         ),
     ];
     lines.push(...grid(report, width, paint));
@@ -196,21 +202,25 @@ export function reportLines(
     if (detail.reserve > 0)
         rows.push({ role: "dim", marker: "░", label: "Compaction reserve", tokens: detail.reserve, note: "" });
     if (detail.free !== null) rows.push({ role: "dim", marker: "░", label: "Free", tokens: detail.free, note: "" });
-    const labelWidth = Math.max(...rows.map((row) => row.label.length));
     const tokenWidth = Math.max(...rows.map((row) => count(row.tokens).length));
     const percentWidth = Math.max(...rows.map((row) => percent(row.tokens, window).length));
+    // Keep the numbers at narrow widths; shorten the label instead. Four characters are the marker, the space after it,
+    // the space before the token and the two spaces before the percent.
+    const labelWidth = Math.min(
+        Math.max(...rows.map((row) => row.label.length)),
+        Math.max(1, width - tokenWidth - percentWidth - 4),
+    );
     for (const row of rows) {
+        const label = truncateToWidth(row.label, labelWidth, "…").padEnd(labelWidth);
         lines.push(
-            `${paint(row.role, row.marker)} ${row.label.padEnd(labelWidth)} ${count(row.tokens).padStart(tokenWidth)}  ${percent(row.tokens, window).padStart(percentWidth)}${row.note}`,
+            `${paint(row.role, row.marker)} ${label} ${count(row.tokens).padStart(tokenWidth)}  ${percent(row.tokens, window).padStart(percentWidth)}${row.note}`,
         );
     }
     lines.push("", paint("accent", "Tools"));
     for (const group of report.groups) {
         lines.push(paint("toolTitle", group.label));
         for (const tool of group.tools) {
-            lines.push(
-                `  ${tool.on ? "" : "off "}${tool.name.padEnd(24)} ${tool.on ? count(tool.tokens).padStart(7) : "not in context"}`,
-            );
+            lines.push(`  ${tool.name.padEnd(24)} ${count(tool.tokens).padStart(7)}`);
         }
     }
     if (report.deferred.length > 0) {
@@ -225,28 +235,46 @@ export function reportLines(
             );
         }
     }
-    lines.push("", paint("muted", "q or Esc closes · tokens are estimates"));
+    if (options.hint !== false) lines.push("", paint("muted", "q or Esc closes · tokens are estimates"));
     return lines.map((line) => truncateToWidth(line, Math.max(0, width), ""));
 }
 
 /** Shows `/context` until q/Esc, or prints it when there is no screen. */
 export async function showContext(ctx: ExtensionContext, report: ContextReport): Promise<void> {
     if (!ctx.hasUI) {
-        for (const line of reportLines(report, 100, (_role, text) => text)) ctx.ui.notify(line, "info");
+        ctx.ui.notify(reportLines(report, 100, (_role, text) => text, { hint: false }).join("\n"), "info");
         return;
     }
     await ctx.ui.custom<void>((tui, theme, _keys, done) => {
+        let offset = 0;
+        let page = 1;
+        let lastLines: string[] = [];
         const component = {
             invalidate(): void {},
             dispose(): void {},
             handleInput(data: string): void {
-                if (matchesKey(data, Key.escape) || data === "q") done();
+                if (matchesKey(data, Key.escape) || data === "q") {
+                    done();
+                    return;
+                }
+                if (matchesKey(data, Key.up)) offset = Math.max(0, offset - 1);
+                else if (matchesKey(data, Key.down)) offset++;
+                else if (matchesKey(data, Key.pageUp)) offset = Math.max(0, offset - page);
+                else if (matchesKey(data, Key.pageDown)) offset += page;
+                else return;
+                tui.requestRender();
             },
             render(width: number): string[] {
                 const paint = (role: string, text: string): string =>
                     theme.fg(role as Parameters<Theme["fg"]>[0], text);
-                const height = Math.max(1, tui.terminal?.rows ?? 24);
-                return reportLines(report, width, paint).slice(0, Math.max(1, height - 1));
+                const lines = reportLines(report, width, paint);
+                const hint = lines.at(-1) ?? "";
+                lastLines = lines.slice(0, -1);
+                const height = Math.max(2, tui.terminal?.rows ?? 24);
+                const visible = Math.max(1, height - 1);
+                page = visible;
+                offset = Math.min(offset, Math.max(0, lastLines.length - visible));
+                return [...lastLines.slice(offset, offset + visible), hint];
             },
         };
         return component;

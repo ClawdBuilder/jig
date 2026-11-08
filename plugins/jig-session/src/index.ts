@@ -93,20 +93,19 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
                 try {
                     const detail = context.detail(ctx);
                     const model = ctx.model ? (ctx.model.name ?? ctx.model.id) : "no model";
-                    const declared = new Map(
-                        (() => {
-                            try {
-                                return jig().tools?.declared() ?? [];
-                            } catch {
-                                return [];
-                            }
-                        })().map((entry) => [entry.tool, entry.plugin] as const),
-                    );
+                    let tools: ReadonlyArray<{ readonly tool: string; readonly plugin: string }> | undefined;
+                    try {
+                        tools = jig().tools?.declared();
+                    } catch {
+                        tools = undefined;
+                    }
+                    const declared = new Map((tools ?? []).map((entry) => [entry.tool, entry.plugin] as const));
                     await showContext(
                         ctx,
                         buildReport({
                             detail,
                             model,
+                            jigLoaded: tools !== undefined,
                             declared,
                             deferred: context.deferred(),
                             entries: ctx.sessionManager.getBranch(),

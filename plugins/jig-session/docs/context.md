@@ -42,7 +42,8 @@ space. Widths below about 40 columns wrap the grid and shorten the lines; `q` or
   them.
 - **Jig's messages are apart from the conversation:** the ticket notes, recall results and review follow-ups are listed with
   their counts and estimated tokens; they are already included in the messages total.
-- **Same numbers:** the command and `contextDetail` call `ContextView.detail()`; a test compares them.
+- **Same numbers:** the command and `contextDetail` call `ContextView.detail()`; the test invokes the command through a
+  captured `ui.custom` component and compares its rendered rows with the status file's `contextDetail`.
 
 ## Requests
 

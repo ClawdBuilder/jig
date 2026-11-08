@@ -16,7 +16,7 @@ import path from "node:path";
 import type { TestContext } from "node:test";
 import { test } from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { formatSkillsForPrompt } from "@earendil-works/pi-coding-agent";
+import { formatSkillsForPrompt, SessionManager } from "@earendil-works/pi-coding-agent";
 import {
     compose,
     hasReply,
@@ -28,8 +28,10 @@ import {
     toolChars,
 } from "../src/breakdown.ts";
 import { fileName, sessionsDir } from "../src/files.ts";
+import { CHECKS_MESSAGE, NOTES_MESSAGE, RECALL_MESSAGE } from "../../jig-memory/src/session.ts";
 import { RELOAD_COMMAND, session } from "../src/index.ts";
-import { buildReport, jigMessages, reportLines } from "../src/context-command.ts";
+import { buildReport, jigMessages, reportLines, showContext } from "../src/context-command.ts";
+import { Key } from "@earendil-works/pi-tui";
 import { parseRequest, requestsDir, SWITCHES_ENTRY, sweepRequests, takeRequest } from "../src/requests.ts";
 import type { SessionStatus } from "../src/status.ts";
 
@@ -366,6 +368,167 @@ test("/context shows the same breakdown the status file carries, and fits a narr
     );
 });
 
+test("the grid keeps whole ANSI cells at narrow widths", () => {
+    const report = buildReport({
+        detail: {
+            window: 1000,
+            used: 500,
+            usedFrom: "pi",
+            reserve: 100,
+            free: 400,
+            parts: { messages: 100, tools: 100, system: 200, skills: 50, contextFiles: 50 },
+            tools: [],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        jigLoaded: true,
+        declared: new Map(),
+    });
+    const paint = (_role: string, text: string): string => `\x1b[38;5;196m${text}\x1b[0m`;
+    for (const width of [40, 60, 99, 120]) {
+        for (const line of reportLines(report, width, paint)) {
+            const stripped = line.replace(/\x1b\[[0-9;]*m/g, "");
+            assert.ok(stripped.length <= width, `${width}: ${stripped.length}`);
+            assert.doesNotMatch(line.replace(/\x1b\[[0-9;]*m/g, ""), /\x1b/, `${width}: a cut escape`);
+        }
+    }
+});
+
+test("a 40-column render keeps the token and percent numbers", () => {
+    const report = buildReport({
+        detail: {
+            window: 128_000,
+            used: 105_686,
+            usedFrom: "pi",
+            reserve: 16_384,
+            free: 5_930,
+            parts: { messages: 881, tools: 5_049, system: 123_456, skills: 40, contextFiles: 60 },
+            tools: [],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        jigLoaded: true,
+        declared: new Map(),
+    });
+    const lines = reportLines(report, 40, (_role, text) => text);
+    const rows = lines.filter((line) => /^[█░] /.test(line));
+    assert.ok(
+        rows.some((line) => line.includes("Compaction reserve")),
+        rows.join("\n"),
+    );
+    for (const line of rows) assert.match(line, /\d[\d,\.]*\s+\d+\.\d%/, line);
+});
+
+test("a short terminal scrolls the body and keeps the hint pinned", async () => {
+    const tools = Array.from({ length: 40 }, (_, i) => ({ name: `tool-${i}`, on: true, tokens: 10 }));
+    const report = buildReport({
+        detail: {
+            window: 1000,
+            used: 500,
+            usedFrom: "pi",
+            reserve: 100,
+            free: 400,
+            parts: { messages: 100, tools: 400, system: 0, skills: 0, contextFiles: 0 },
+            tools,
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        jigLoaded: true,
+        declared: new Map(tools.map((tool) => [tool.name, "jig-core"])),
+    });
+    let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+    const ctx = {
+        hasUI: true,
+        ui: {
+            notify: () => {},
+            custom: async (factory: Function) => {
+                const theme = { fg: (_role: string, text: string) => text, bg: (_r: string, t: string) => t };
+                component = factory({ terminal: { rows: 10 }, requestRender: () => {} }, theme, {}, () => {});
+            },
+        },
+    };
+    await showContext(ctx as never, report);
+    assert.ok(component);
+    const before = component.render(80);
+    assert.equal(before.length, 10);
+    assert.match(before.at(-1) ?? "", /q or Esc closes/);
+    component.handleInput("\x1b[B");
+    const after = component.render(80);
+    assert.notEqual(after[0], before[0], "the body scrolled");
+    assert.match(after.at(-1) ?? "", /q or Esc closes/);
+});
+
+test("without a UI the report is one notify, without the close hint", async () => {
+    const notes: string[] = [];
+    const report = buildReport({
+        detail: {
+            window: 1000,
+            used: 100,
+            usedFrom: "pi",
+            reserve: 0,
+            free: 900,
+            parts: { messages: 0, tools: 100, system: 0, skills: 0, contextFiles: 0 },
+            tools: [],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        jigLoaded: true,
+        declared: new Map(),
+    });
+    await showContext({ hasUI: false, ui: { notify: (text: string) => notes.push(text) } } as never, report);
+    assert.equal(notes.length, 1);
+    assert.doesNotMatch(notes[0] ?? "", /q or Esc closes/);
+    assert.match(notes[0] ?? "", /Context · test/);
+});
+
+test("an unknown used total shows a dash, not zero percent", () => {
+    const report = buildReport({
+        detail: {
+            window: 1000,
+            used: null,
+            usedFrom: null,
+            reserve: 100,
+            free: null,
+            parts: { messages: null, tools: 0, system: 0, skills: 0, contextFiles: 0 },
+            tools: [],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        jigLoaded: true,
+        declared: new Map(),
+    });
+    const header = reportLines(report, 100, (_role, text) => text)[1] ?? "";
+    assert.match(header, /Used unknown \(—\)/);
+});
+
+test("without Jig loaded, the tools group says so", () => {
+    const report = buildReport({
+        detail: {
+            window: 1000,
+            used: 100,
+            usedFrom: "pi",
+            reserve: 0,
+            free: 900,
+            parts: { messages: 0, tools: 100, system: 0, skills: 0, contextFiles: 0 },
+            tools: [{ name: "read", on: true, tokens: 100 }],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        jigLoaded: false,
+        declared: new Map(),
+    });
+    assert.deepEqual(
+        report.groups.map((group) => group.label),
+        ["Jig not loaded (Pi / other tools)"],
+    );
+});
+
 test("a request turns a tool off and on again: applied, answered in the file, saved, nothing else changed", async (t) => {
     const { pi, read, ask, requestFile } = rig(t);
     await pi.fire("session_start", { reason: "startup" });
@@ -535,6 +698,7 @@ test("the report splits tools into Pi, each Jig plugin and deferred names", () =
             files: [],
         },
         model: "test",
+        jigLoaded: true,
         declared: new Map([
             ["git", "jig-git"],
             ["jira", "jig-jira"],
@@ -571,6 +735,7 @@ test("every part, reserve and free row ends its tokens and percent columns at th
             files: [],
         },
         model: "test",
+        jigLoaded: true,
         declared: new Map(),
     });
     const lines = reportLines(report, 120, (_role, text) => text);
@@ -597,19 +762,26 @@ test("every part, reserve and free row ends its tokens and percent columns at th
     assert.equal(percentEnds.size, 1, `percent columns end at ${[...percentEnds].join(", ")}`);
 });
 
-test("Jig's messages are found by custom type, apart from review follow-ups", () => {
-    const messages = jigMessages([
-        { type: "custom", customType: "jig-memory-notes", content: "notes" },
-        { type: "custom", customType: "jig-memory-recall", content: "12345678" },
-        { type: "message", message: { role: "user", content: "Interactive code review r1 was submitted." } },
-        { type: "message", message: { role: "user", content: "A conversation message." } },
-    ]);
+test("Jig's messages are found by Pi's custom_message type, apart from review follow-ups", () => {
+    // The real SessionManager writes the shape Pi stores; appendEntry's `custom` type has data and no content.
+    const manager = SessionManager.inMemory("/tmp");
+    manager.appendCustomMessageEntry(NOTES_MESSAGE, "notes", true);
+    manager.appendCustomMessageEntry(RECALL_MESSAGE, "12345678", true, { ticket: "T-1" });
+    manager.appendCustomMessageEntry(CHECKS_MESSAGE, "check", true);
+    manager.appendMessage({
+        role: "user",
+        content: "Interactive code review r1 was submitted.",
+        timestamp: Date.now(),
+    });
+    manager.appendMessage({ role: "user", content: "A conversation message.", timestamp: Date.now() });
+    const messages = jigMessages(manager.getBranch());
     assert.deepEqual(
         messages.map((m) => [m.label, m.count]),
         [
             ["Review follow-ups", 1],
             ["Ticket notes", 1],
             ["Recall results", 1],
+            ["Open ticket checks", 1],
         ],
     );
     assert.ok(messages.every((m) => m.tokens > 0));

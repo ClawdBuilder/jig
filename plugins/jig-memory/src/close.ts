@@ -16,11 +16,12 @@ import path from "node:path";
 import { lstatSync } from "node:fs";
 import { rmSync } from "node:fs";
 import { readText, replaceFile, ticketPaths } from "./store.ts";
+import { MEMORY_CARD_FIX_MESSAGE, MEMORY_CARD_REQUEST_MESSAGE } from "../../jig-core/src/kit/jig-messages.ts";
 
 /** The custom message that asks the agent to write the card. */
-export const CARD_REQUEST = "jig-memory-card-request";
+export const CARD_REQUEST = MEMORY_CARD_REQUEST_MESSAGE;
 /** The custom message that says what to change in a card that did not pass. */
-export const CARD_FIX = "jig-memory-card-fix";
+export const CARD_FIX = MEMORY_CARD_FIX_MESSAGE;
 
 /** What the plugin remembers of a close that is waiting for the agent. */
 export interface Closing {
