@@ -627,13 +627,15 @@ export async function update(args: readonly string[], host: string | undefined):
             if (globalJig === undefined) wrong.push("the global jig command is not on PATH");
             else {
                 const launched = await run(globalJig, ["--version", "--json"], cwd);
+                let reported: string | undefined;
                 try {
-                    const parsed = JSON.parse(launched.stdout) as { version?: unknown };
-                    if (launched.code !== 0 || parsed.version !== expected)
-                        wrong.push(`the global jig command reports ${String(parsed.version ?? "no version")}`);
+                    reported = (JSON.parse(launched.stdout) as { version?: string }).version;
                 } catch {
-                    wrong.push("the global jig command did not answer with JSON");
+                    const plain = await run(globalJig, ["--version"], cwd);
+                    reported = plain.code === 0 ? plain.stdout.trim() : undefined;
                 }
+                if (launched.code !== 0 || reported !== expected)
+                    wrong.push(`the global jig command reports ${reported ?? "no version"}`);
             }
             let settings = "";
             try {
