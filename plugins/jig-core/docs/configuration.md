@@ -126,8 +126,17 @@ company plugin's own tools can be deferred the same way.
 ## Codemode
 
 Pi's `codemode` tool runs a JavaScript script that calls tools and returns only the script's output to the model. Jig
-treats the `codemode` call itself as a **local read**: the script runs on this machine, and every tool call inside it is
-classified and gated as its own call, as a direct call is.
+classifies the call from the **script text**:
+
+- a script that names only tools is a **local read**. Every tool call inside it is classified and gated as its own call,
+  as a direct call is, and a read-only role can run a script of reads;
+- a script that names `models`, `globalThis`, `eval`, `Function`, `constructor`, `Reflect`, `import`, `this`, `self` or
+  `global` is an **external write**. It asks, with “the script can call outside models: ask”, and a role that may not write
+  refuses it. `models` runs classifier and image models on the session's credentials, outside every Jig record and gate;
+- a missing or unreadable script falls back to asking.
+
+The check reads text. It is conservative, not a proof: a script that can reach `models` is asked even when it does not,
+and an obfuscation Jig cannot see could get past it. That is why the fallback is ask, not allow.
 
 To turn it on, enable Pi's builtin in the agent's `settings.json` and keep the other tools declared:
 
@@ -145,8 +154,9 @@ What Jig still guards inside the script:
 - a production result is masked, and a secret is removed, before the script or the model sees it;
 - the role's `--tools` list limits what the script can reach; a tool outside the list is not a member of `tools`.
 
-Before this change the undeclared `codemode` call counted as an unknown write, so a read-only role could not use it and
-the first call asked. The call is now a read under the normal rules, so it does not ask; the nested calls still do.
+Before this change the undeclared `codemode` call counted as an unknown write, so a read-only role could not run a plain
+read script and the first call asked. A plain read script now runs without a question; a script that can reach models
+still asks, and the nested calls always do.
 
 ## The `/jig` commands
 

@@ -11,8 +11,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
-- `codemode` is a local read, not an unknown write: a read-only role can run a script of reads, every nested call is still
-  classified and gated as itself, and the first `codemode` call no longer asks.
+- A plain `codemode` script is a local read: a read-only role can run a script of reads, every nested call is still
+  classified and gated as itself, and it no longer asks. A script that names `models`, `globalThis`, `eval` or another
+  escape hatch is an external write and asks; the check is text, conservative, and falls back to asking.
 
 ## [0.5.3] - 2026-11-08
 

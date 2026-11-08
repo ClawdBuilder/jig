@@ -274,13 +274,12 @@ describe("3. Pi's built-in defaults", () => {
         }
     });
 
-    test("beat a hint, and cover exactly these twelve tools", () => {
+    test("beat a hint, and cover exactly these eleven tools", () => {
         assert.equal(classify("read", {}, deps({ hints: { read: { destructiveHint: true } } })).source, "builtin");
         assert.deepEqual(Object.keys(BUILT_IN_TOOLS).sort(), [
             "ask_questions",
             "ask_user_question",
             "bash",
-            "codemode",
             "edit",
             "find",
             "grep",
@@ -357,13 +356,6 @@ describe("tool names in rules", () => {
         assert.equal(matchesName("a.b", "axb"), false, "a dot is a dot, not any character");
         assert.equal(matchesName("a+b*", "a+bcd"), true);
     });
-});
-
-test("codemode is a local read: each script call is gated as itself", () => {
-    const result = classify("codemode", { code: "return 1" }, deps({}));
-    assert.equal(result.environment, "local");
-    assert.equal(result.effect, "read");
-    assert.equal(result.source, "builtin");
 });
 
 test("tool_search is a local read, so loading a definition never asks", () => {

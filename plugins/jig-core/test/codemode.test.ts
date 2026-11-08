@@ -8,6 +8,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { writeRolePolicy } from "../src/kit/role-policy.ts";
+import { classifyCodemode, codemodeAsk } from "../src/codemode.ts";
+import type { GateCall } from "../src/contract.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const PI_CLI = path.join(ROOT, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
@@ -115,6 +117,40 @@ function run(script: unknown[], extraFlags: string[] = []): Promise<string> {
     ]);
 }
 
+describe("the codemode classification", () => {
+    const ask = (code?: unknown) =>
+        codemodeAsk({ tool: "codemode", effect: "write", input: code === undefined ? {} : { code } } as GateCall);
+
+    test("a plain read script is a local read", () => {
+        assert.deepEqual(classifyCodemode({ code: "return await tools.read({ path: 'note.txt' });" }), {
+            environment: "local",
+            effect: "read",
+        });
+        assert.equal(ask("return 1"), undefined);
+    });
+
+    test("models, globalThis and the same word split across strings ask", () => {
+        for (const code of [
+            "return await models.classify(x, y);",
+            'return globalThis["mo" + "dels"];',
+            "return eval('1');",
+        ]) {
+            assert.deepEqual(classifyCodemode({ code }), {
+                environment: "external",
+                effect: "write",
+                atLeast: "ask",
+            });
+            assert.deepEqual(ask(code), { decision: "ask", reason: "the script can call outside models: ask" });
+        }
+    });
+
+    test("missing or unparsable input falls back to asking", () => {
+        assert.equal(classifyCodemode({}), undefined);
+        assert.deepEqual(ask(), { decision: "ask", reason: "the script could not be read: ask" });
+        assert.equal(classifyCodemode({ code: 1 }), undefined);
+    });
+});
+
 describe("codemode under Jig", () => {
     test("the codemode call is a read; a nested read runs and a nested write is refused", {
         timeout: 90_000,
@@ -152,6 +188,14 @@ describe("codemode under Jig", () => {
         assert.doesNotMatch(text, /\+1 415 555 0100/);
         assert.match(text, /email#/);
         assert.match(text, /phone#/);
+    });
+
+    test("a read-only role with a models script is refused by the role gate", { timeout: 90_000 }, async () => {
+        const text = await run([
+            { tool: "codemode", args: { code: "return await models.classify(null, {});" } },
+            { text: "done" },
+        ]);
+        assert.match(text, /may not write/);
     });
 
     test("a tool outside the --tools list is not reachable from the script", { timeout: 90_000 }, async () => {
