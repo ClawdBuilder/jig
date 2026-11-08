@@ -1,7 +1,16 @@
 // The published front-end contract must do what jig-session's engine does, input for input, and the palette file must be
 // exactly what jig-theme's theme files produce.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import {
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    statSync,
+    utimesSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -72,7 +81,9 @@ test("takeRequest and sweepRequests agree on size, stray, live, old and keep fil
 test("the palette contract is generated from jig-theme's files", () => {
     const themes = path.join(ROOT, "plugins/jig-theme/themes");
     const expected = Object.fromEntries(
-        readdirSync(themes).sort().map((name) => [name, JSON.parse(readFileSync(path.join(themes, name), "utf8"))]),
+        readdirSync(themes)
+            .sort()
+            .map((name) => [name, JSON.parse(readFileSync(path.join(themes, name), "utf8"))]),
     );
     assert.deepEqual(JSON.parse(readFileSync(path.join(ROOT, "contracts/palettes.json"), "utf8")), expected);
 });

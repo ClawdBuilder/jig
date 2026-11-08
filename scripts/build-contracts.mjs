@@ -5,7 +5,9 @@ const root = path.resolve(import.meta.dirname, "..");
 const themes = path.join(root, "plugins/jig-theme/themes");
 const file = path.join(root, "contracts/palettes.json");
 const palettes = Object.fromEntries(
-    readdirSync(themes).sort().map((name) => [name, JSON.parse(readFileSync(path.join(themes, name), "utf8"))]),
+    readdirSync(themes)
+        .sort()
+        .map((name) => [name, JSON.parse(readFileSync(path.join(themes, name), "utf8"))]),
 );
 const text = `${JSON.stringify(palettes, null, 4)}\n`;
 if (process.argv.includes("--check")) {
