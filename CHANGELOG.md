@@ -7,7 +7,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Added
 
 - `jig` now has command help (`jig help doctor`, `--help` on every command), `--json` on `update`, `--version` and
-  `doctor` with `"schema": 1`, and `--yes`/`-y` (or `CI=true`) for `update` and `setup`. Help and version answer without
+  `doctor` with `"schema": 1`, and `--yes`/`-y` (or `CI=true`) for `update`. Help and version answer without
   loading Pi, so they return in milliseconds.
 - Unknown commands suggest the nearest one, and every usage error exits 2 with one line and a hint. Without a terminal,
   `update` and `setup` name `--yes` instead of a generic refusal.

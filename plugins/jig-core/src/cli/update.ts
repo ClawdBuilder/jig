@@ -319,6 +319,18 @@ function usage(): string {
     return `Usage: jig update [--check] [--to <version>]\n\njig update moves both copies of Jig (Pi's and the global command) to one published version.\n--check  say what would happen, and change nothing.`;
 }
 
+async function promptYes(question: string): Promise<boolean> {
+    const { createInterface } = await import("node:readline/promises");
+    const readline = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+    try {
+        const answer = (await readline.question(`${question} [y/N] `)).trim().toLowerCase();
+        return answer === "y" || answer === "yes";
+    } finally {
+        process.stdout.write("\n");
+        readline.close();
+    }
+}
+
 /** The `jig update` command. Returns the process exit code; `host` is Pi's package folder. */
 /** Whether a check should say the running Jig is already the newest it may use. */
 export function upToDate(current: string, target: string, requested: string | undefined): boolean {
@@ -341,8 +353,8 @@ export async function update(args: readonly string[], host: string | undefined):
         else if (word === "--yes" || word === "-y") yes = true;
         else if (word === "--to") {
             const value = args[++index];
-            if (value === undefined || value.startsWith("--")) {
-                process.stderr.write(`--to needs a version.\n${usage()}\n`);
+            if (value === undefined || value.startsWith("-")) {
+                process.stderr.write("jig update: --to needs a version.\nRun jig update --help for usage.\n");
                 return 2;
             }
             requested = value;
@@ -351,12 +363,13 @@ export async function update(args: readonly string[], host: string | undefined):
             return 2;
         }
     }
-    const assumeYes = yes || process.env.CI === "true";
+    const nonTTY = process.stdin.isTTY !== true || process.stdout.isTTY !== true;
+    const assumeYes = yes || (process.env.CI === "true" && nonTTY);
     if (json && !check && !assumeYes) {
         process.stderr.write("jig update --json needs --check (a plan) or --yes (a result).\n");
         return 2;
     }
-    if (!check && (process.stdin.isTTY !== true || process.stdout.isTTY !== true) && !assumeYes) {
+    if (!check && nonTTY && !assumeYes) {
         process.stderr.write(
             "jig update: no terminal to confirm on. Run `jig update --check` to see the plan, or `jig update --yes` to apply it.\n",
         );
@@ -498,6 +511,7 @@ export async function update(args: readonly string[], host: string | undefined):
                     action: plan.changes ? "update" : "up-to-date",
                     changes: plan.changes,
                     pi: plan.pi ?? null,
+                    code: 0,
                 },
                 null,
                 2,
@@ -518,6 +532,12 @@ export async function update(args: readonly string[], host: string | undefined):
         }
         process.stdout.write("No changes were made.\n");
         return 0;
+    }
+    if (plan.changes && !assumeYes) {
+        if (!(await promptYes(`Update Jig ${installedCurrent} → ${plan.target}?`))) {
+            process.stdout.write("Nothing was changed.\n");
+            return 0;
+        }
     }
     if (lookup("npm") === undefined) {
         process.stderr.write("jig update needs npm on PATH to move the global command. Nothing was changed.\n");
@@ -547,27 +567,8 @@ export async function update(args: readonly string[], host: string | undefined):
     };
     const confirm = async (title: string, message: string, signal?: AbortSignal): Promise<boolean> => {
         if (signal?.aborted === true) return false;
-        const { createInterface } = await import("node:readline/promises");
-        const readline = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
-        let onAbort: (() => void) | undefined;
-        const aborted = new Promise<boolean>((resolve) => {
-            onAbort = () => {
-                readline.close();
-                resolve(false);
-            };
-            signal?.addEventListener("abort", onAbort, { once: true });
-        });
-        try {
-            if (assumeYes) return true;
-            const question = readline.question(`${title} ${message} [y/N] `).finally(() => process.stdout.write("\n"));
-            return await Promise.race([
-                question.then((answer) => answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes"),
-                aborted,
-            ]);
-        } finally {
-            if (onAbort !== undefined) signal?.removeEventListener("abort", onAbort);
-            readline.close();
-        }
+        if (assumeYes) return true;
+        return promptYes(`${title} ${message}`);
     };
     const io: UpdateIo = {
         run: (command, commandArgs, signal) => run(command, commandArgs, cwd, signal),
@@ -622,10 +623,29 @@ export async function update(args: readonly string[], host: string | undefined):
                 verify.piCopy !== expected ? `Pi's copy is ${verify.piCopy ?? "missing"}` : "",
                 verify.global !== expected ? `the jig command is ${verify.global ?? "missing"}` : "",
             ].filter(Boolean);
+            const globalJig = lookup("jig");
+            if (globalJig === undefined) wrong.push("the global jig command is not on PATH");
+            else {
+                const launched = await run(globalJig, ["--version", "--json"], cwd);
+                try {
+                    const parsed = JSON.parse(launched.stdout) as { version?: unknown };
+                    if (launched.code !== 0 || parsed.version !== expected)
+                        wrong.push(`the global jig command reports ${String(parsed.version ?? "no version")}`);
+                } catch {
+                    wrong.push("the global jig command did not answer with JSON");
+                }
+            }
+            let settings = "";
+            try {
+                settings = readFileSync(path.join(agentDir, "settings.json"), "utf8");
+            } catch {
+                // reported as not naming the version
+            }
+            if (!settings.includes(`@${expected}`)) wrong.push("Pi's settings do not name the new version");
             const output =
                 wrong.length > 0
-                    ? `Updated, but ${wrong.join(" and ")}. Run jig doctor in a project folder.`
-                    : `Checked: both Jig copies are ${expected}, the global command is installed, and Pi's settings name it.\nFull check: jig doctor (run it in a project folder; company checks depend on the folder)`;
+                    ? `Updated, but ${wrong.join("; ")}. Run jig doctor in a project folder.`
+                    : `Checked: both Jig copies are ${expected}, the global jig command answers ${expected}, and Pi's settings name it.\nFull check: jig doctor (run it in a project folder; company checks depend on the folder)`;
             return { code: wrong.length === 0 ? 0 : 1, output };
         },
     };
@@ -643,7 +663,19 @@ export async function update(args: readonly string[], host: string | undefined):
     });
     if (json) {
         process.stdout.write(
-            `${JSON.stringify({ schema: 1, current: installedCurrent, target: plan.target, changed: result.changed, code: result.code }, null, 2)}\n`,
+            `${JSON.stringify(
+                {
+                    schema: 1,
+                    current: installedCurrent,
+                    target: plan.target,
+                    action: result.changed ? "updated" : "up-to-date",
+                    changes: result.changed,
+                    pi: plan.pi ?? null,
+                    code: result.code,
+                },
+                null,
+                2,
+            )}\n`,
         );
     }
     return result.code;

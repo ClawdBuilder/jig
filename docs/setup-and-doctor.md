@@ -35,11 +35,11 @@ that does, so the installed copy behaves like a checkout. If `jig` cannot find P
 ## Setting up
 
 ```text
-jig setup [--yes]
+jig setup
 ```
 
-`--yes` (or `CI=true`) accepts the defaults it can; if a step still needs a person (the company/profile choice), it says
-which step and exits 2 instead of hanging. It starts with the company question: which installed company setup you use, or "None, just me", and for which folders
+Setup needs a terminal: its company, profile and credential choices have no safe headless default; without one it says so
+and exits 2. It starts with the company question: which installed company setup you use, or "None, just me", and for which folders
 (`everywhere` by default). That writes the `profiles` and `profile` entries a newcomer cannot be expected to know. Then
 setup asks one question at a time about the parts a company plugin or a validator says are incomplete or wrong.
 It never asks for a password or a token. For a credential it asks **where** it is kept, never what it is: choose
@@ -54,7 +54,7 @@ never changes the stores you turned off.
 
 Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
 Nothing is written until you confirm. It keeps a backup next to the file and says to start Pi again, or run `/reload`
-in it. Without a terminal it refuses in one line, names `--yes`, and exits 2; the doctor still runs. Exit code `0` is done or
+in it. Without a terminal it refuses in one line, names why it needs a terminal, and exits 2; the doctor still runs. Exit code `0` is done or
 nothing to do, `1` failed, `2` a usage error or an interactive step without a terminal, `130` cancelled.
 
 If your settings file is a link, as a dotfiles setup often makes it, setup follows the link, says which file it
