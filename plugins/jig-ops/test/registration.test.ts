@@ -418,10 +418,11 @@ describe("the package", () => {
             dependencies?: Record<string, string>;
         };
         // The packages of the repository are jig-api's `yaml`, jig-review's `hono`, `@hono/node-server` and `ignore`, and
-        // jig-mongo's driver, and jig-sandbox's runtime.
+        // jig-mongo's driver, and jig-sandbox's runtime. `amaro` is only for `bin/`'s installed-copy TypeScript loader, not for a plugin.
         assert.deepEqual(Object.keys(all.dependencies ?? {}).sort(), [
             "@anthropic-ai/sandbox-runtime",
             "@hono/node-server",
+            "amaro",
             "hono",
             "ignore",
             "mongodb",

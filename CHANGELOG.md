@@ -18,6 +18,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   usage error. Scripts that tested for 2 to mean “an update is available” must read `--json` or the plan text instead.
 - `jig update` ends with a scoped check of both copies and Pi's settings, not a folder-dependent company doctor; it prints
   “Full check: jig doctor (run it in a project folder; company checks depend on the folder)”.
+- Installed copies strip TypeScript with `amaro` (the parser Node itself uses) instead of Node's experimental API, so CLI
+  commands are silent on Node 22.19–26.
 - Doctor output wraps to the terminal (80 columns when piped), colours only ok/warn/fail on a TTY, and respects
   `NO_COLOR`/`FORCE_COLOR`. Update confirmation is one line and does not echo the typed answer.
 

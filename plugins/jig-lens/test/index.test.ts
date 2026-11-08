@@ -73,10 +73,12 @@ test("it needs nothing that is not in Node or Pi: no package of its own", () => 
         dependencies?: Record<string, string>;
     };
     // The packages of the repository are jig-api's `yaml`, jig-review's `hono`, `@hono/node-server` and `ignore`, and
-    // jig-mongo's driver, and jig-sandbox's runtime; no other plugin imports them (checked below).
+    // jig-mongo's driver, and jig-sandbox's runtime; no other plugin imports them (checked below). `amaro` is the CLI's
+    // TypeScript loader for an installed copy (`bin/`), not a plugin dependency.
     assert.deepEqual(Object.keys(manifest.dependencies ?? {}).sort(), [
         "@anthropic-ai/sandbox-runtime",
         "@hono/node-server",
+        "amaro",
         "hono",
         "ignore",
         "mongodb",
