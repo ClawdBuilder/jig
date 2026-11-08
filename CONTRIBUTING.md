@@ -50,6 +50,23 @@ Every one of them passes before a commit. CI runs all of them on every push and 
 require. A test suite for a real service skips when its address is not set, so `npm test` never needs one; the integration
 suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
 
+### Commit emails
+
+A commit's author and committer addresses are part of the public history, so use a public identity. `npm run check:emails`
+checks every commit in `origin/main..HEAD`. CI runs it with the private word list from the `SCAN_WORDS` repository
+secret, passed as `JIG_SCAN_WORDS_TEXT`; locally, `JIG_SCAN_WORDS_TEXT`, `JIG_SCAN_WORDS` or
+`~/.config/jig/scan-words.txt` supplies it. The list stays outside this repository. A matching address fails.
+
+A fork has no private list. There the check passes `noreply@example.com`, an address at `users.noreply.github.com`, and the
+maintainer's public address; any other address prints a warning and does not fail, so a fork can still run the suite.
+
+The optional local hook runs the same check before a push. It is not installed for you:
+
+```bash
+cp scripts/pre-push-commit-emails.sh .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
+
 ## What a change needs
 
 - **A test that fails without it.** Most of this repository is behaviour a reader cannot see, such as a decision, a mask or
