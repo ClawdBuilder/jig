@@ -617,7 +617,8 @@ and the Claude Agent SDK keep themselves honest. The code is ours.
   in either lockfile has an install script. `npm run check` fails on a version that is not exact.
 - **One name to require.** `ci-ok` needs every other job and fails unless all succeeded, so the Node matrix can change without
   touching branch protection; a test fails when a job is not in its `needs`. The checks job ends by requiring a clean working tree.
-  actionlint runs from a pinned release whose checksum is checked, and not from a third-party action.
+  actionlint runs at a pinned version built from the Go module proxy (checked against the Go checksum database), and not
+  from a third-party action or a GitHub release download.
 - **Tests start in a world of their own.** A temporary home, git configuration with a test identity, Pi agent and state folders, no
   cloud or forge credentials, Pi offline. CI no longer sets a global git identity; the tests bring theirs. The integration suites keep
   their `JIG_IT_*` variables, the GitHub token and the kubeconfig they name.
