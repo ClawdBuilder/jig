@@ -68,8 +68,10 @@ afterEach(() => {
     rmSync(home, { recursive: true, force: true });
 });
 
-function env(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-    return { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
+function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+    const merged: NodeJS.ProcessEnv = { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
+    for (const [key, value] of Object.entries(merged)) if (value === undefined) delete merged[key];
+    return merged;
 }
 
 function run(
@@ -1001,7 +1003,7 @@ process.exit(0)
         test(`no TTY, CI=${String(ci)}: exit 2, hint, stdout empty`, async (t) => {
             const w = workspace(t);
             const result = await run(["update", "--to", "0.5.1"], {
-                env: { ...w.env, ...(ci === undefined ? {} : { CI: ci }) },
+                env: { ...w.env, CI: ci },
             });
             assert.equal(result.code, 2);
             assert.equal(result.stdout, "");

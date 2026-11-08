@@ -148,6 +148,8 @@ describe("discover", () => {
 describe("the update command's gate", () => {
     test("without a terminal it refuses in one line, before the registry or any change", async () => {
         const saved = process.stderr.write;
+        const savedCi = process.env.CI;
+        delete process.env.CI;
         let text = "";
         process.stderr.write = ((chunk: string | Uint8Array) => {
             text += String(chunk);
@@ -160,6 +162,8 @@ describe("the update command's gate", () => {
             assert.match(text, /jig update --check/);
         } finally {
             process.stderr.write = saved;
+            if (savedCi === undefined) delete process.env.CI;
+            else process.env.CI = savedCi;
         }
     });
 
