@@ -164,6 +164,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `kit/http.ts` | One HTTP request with the credential read for it: address checks, sign-in, transport, limits | `state.ts` |
+| `kit/jig-messages.ts` | The custom message types Jig's plugins put in Pi's conversation, and the label `/context` gives each | `jig-memory`, `jig-session` |
 | `kit/oauth.ts` | OAuth 2.0 without a browser: client credentials or a password, token kept in memory | `kit/http.ts` |
 | `kit/http-error.ts` | The one error a request throws | `kit/http.ts`, `kit/oauth.ts` |
 | `kit/abort.ts` | Waiting for work that may ignore its signal | `kit/http.ts` |
