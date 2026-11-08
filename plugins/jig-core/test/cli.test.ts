@@ -1,6 +1,6 @@
 // The `jig` command end to end, in a temporary home: a real child process, its own agent folder and settings, no Pi.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import type { ChildProcess, ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -860,4 +860,62 @@ describe("CLI conventions", () => {
         assert.equal(parsed.schema, 1);
         assert.ok(parsed.counts);
     });
+});
+
+describe("update prompt and CI matrix", () => {
+    const fake = { JIG_UPDATE_FAKE: "0.5.1" };
+    const hasScript = spawnSync("script", ["--version"], { encoding: "utf8" }).status === 0;
+    const tty = (args: string[], input: string, env: Record<string, string> = {}) => {
+        const result = runProbe(args, { tty: true, input, env: { ...fake, ...env } });
+        return result;
+    };
+    // runProbe is run() with stdin: run() already accepts input and tty.
+    const runProbe = (args: string[], options: Parameters<typeof run>[1]) => run(args, options);
+
+    test("TTY, answer n: nothing changes, exit 0", {
+        skip: hasScript ? false : "script is not installed",
+    }, async () => {
+        const result = await tty(["update", "--to", "0.5.1"], "n\n");
+        assert.equal(result.code, 0);
+        assert.match(result.stdout, /Nothing was changed/);
+        assert.doesNotMatch(result.stdout, /Updated Jig/);
+    });
+
+    test("TTY, answer y: updates", { skip: hasScript ? false : "script is not installed" }, async () => {
+        const result = await tty(["update", "--to", "0.5.1"], "y\n");
+        assert.equal(result.code, 0);
+        assert.match(result.stdout, /Updated Jig 0\.5\.0 -> 0\.5\.1/);
+    });
+
+    test("TTY with CI=true still asks", { skip: hasScript ? false : "script is not installed" }, async () => {
+        const result = await tty(["update", "--to", "0.5.1"], "n\n", { CI: "true" });
+        assert.equal(result.code, 0);
+        assert.match(result.stdout, /Nothing was changed/);
+    });
+
+    test("no TTY with CI=true needs no prompt and updates", async () => {
+        const result = await run(["update", "--to", "0.5.1", "--json"], { env: { ...fake, CI: "true" } });
+        assert.equal(result.code, 0);
+        assert.deepEqual(JSON.parse(result.stdout), {
+            schema: 1,
+            current: "0.5.0",
+            target: "0.5.1",
+            action: "updated",
+            changes: true,
+            pi: null,
+            code: 0,
+        });
+    });
+
+    for (const ci of [undefined, "false", "0"]) {
+        test(`no TTY, CI=${String(ci)}: exit 2, hint, stdout empty`, async () => {
+            const result = await run(["update", "--to", "0.5.1"], {
+                env: { ...fake, ...(ci === undefined ? {} : { CI: ci }) },
+            });
+            assert.equal(result.code, 2);
+            assert.equal(result.stdout, "");
+            assert.match(result.stderr, /no terminal to confirm on/);
+            assert.match(result.stderr, /--yes/);
+        });
+    }
 });

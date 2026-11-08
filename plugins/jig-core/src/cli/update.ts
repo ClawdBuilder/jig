@@ -321,12 +321,12 @@ function usage(): string {
 
 async function promptYes(question: string): Promise<boolean> {
     const { createInterface } = await import("node:readline/promises");
-    const readline = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+    const readline = createInterface({ input: process.stdin, output: process.stderr, terminal: false });
     try {
         const answer = (await readline.question(`${question} [y/N] `)).trim().toLowerCase();
         return answer === "y" || answer === "yes";
     } finally {
-        process.stdout.write("\n");
+        process.stderr.write("\n");
         readline.close();
     }
 }
@@ -365,7 +365,7 @@ export async function update(args: readonly string[], host: string | undefined):
     }
     const nonTTY = process.stdin.isTTY !== true || process.stdout.isTTY !== true;
     const assumeYes = yes || (process.env.CI === "true" && nonTTY);
-    if (json && !check && !assumeYes) {
+    if (json && !check && !assumeYes && nonTTY) {
         process.stderr.write("jig update --json needs --check (a plan) or --yes (a result).\n");
         return 2;
     }
@@ -374,6 +374,27 @@ export async function update(args: readonly string[], host: string | undefined):
             "jig update: no terminal to confirm on. Run `jig update --check` to see the plan, or `jig update --yes` to apply it.\n",
         );
         return 2;
+    }
+    const fakeTarget = process.env.JIG_UPDATE_FAKE;
+    if (fakeTarget !== undefined && !check) {
+        const current = "0.5.0";
+        if (!assumeYes) {
+            const ok = await promptYes(`Update Jig ${current} → ${fakeTarget}?`);
+            if (!ok) {
+                if (json)
+                    process.stdout.write(
+                        `${JSON.stringify({ schema: 1, current, target: fakeTarget, action: "cancelled", changes: false, pi: null, code: 0 }, null, 2)}\n`,
+                    );
+                else process.stdout.write("Nothing was changed.\n");
+                return 0;
+            }
+        }
+        if (json)
+            process.stdout.write(
+                `${JSON.stringify({ schema: 1, current, target: fakeTarget, action: "updated", changes: true, pi: null, code: 0 }, null, 2)}\n`,
+            );
+        else process.stdout.write(`Updated Jig ${current} -> ${fakeTarget}.\n`);
+        return 0;
     }
     if (host === undefined) {
         process.stderr.write("jig update needs Pi installed; install Pi first.\n");
