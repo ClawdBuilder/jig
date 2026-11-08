@@ -533,6 +533,32 @@ describe("/jig doctor logins and sandbox", () => {
         assert.equal(line?.fix, "gh auth login");
     });
 
+    test("gh is asked without --no-refresh, and a signed-in account with another failing is not 'not signed in'", async () => {
+        let asked: readonly string[] | undefined;
+        const report = await runDoctor(
+            context({
+                sections: new Map([["git", { remote: "git@github.com:example/repo" }]]),
+            }),
+            options({
+                pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
+                run: async (_file, args) => {
+                    asked = args;
+                    return {
+                        code: 1,
+                        stdout: "github.com\n  ✓ Logged in to github.com account acme (keyring)\n  X Failed to log in to github.com account old\n",
+                        stderr: "",
+                        timedOut: false,
+                    };
+                },
+            }),
+        );
+        assert.deepEqual(asked, ["auth", "status"]);
+        const line = report.lines.find((entry) => entry.id === "logins.gh");
+        assert.equal(line?.level, "warn");
+        assert.match(line?.detail ?? "", /signed in/);
+        assert.doesNotMatch(line?.detail ?? "", /^not signed in\.$/);
+    });
+
     test("a tool nobody uses is skipped, not warned about", async () => {
         const report = await runDoctor(context(), options({ pathLookup: () => undefined }));
         assert.equal(report.lines.find((entry) => entry.id === "logins.gh")?.level, "skip");

@@ -42,7 +42,7 @@ export const ACME_ONBOARDING: OnboardingEntry = {
         {
             kind: "login",
             tool: "gh",
-            status: ["gh", "auth", "status", "--no-refresh"],
+            status: ["gh", "auth", "status"],
             login: "gh auth login",
             label: "GitHub login",
             why: "Pull requests, reviews and the release notes.",
