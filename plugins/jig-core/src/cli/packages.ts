@@ -2,6 +2,7 @@
 // a local folder, an npm package under <scope>/npm/node_modules, or a git clone under <scope>/git/<host>/<path>. The
 // @ref of a git source is not in the folder name, and .git is stripped. Project scope lives under <cwd>/.pi and is listed
 // in <cwd>/.pi/settings.json; user scope lives in the agent folder and is listed in its settings.json.
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { filterOf } from "./package-filter.ts";
@@ -154,8 +155,50 @@ function readSettings(file: string, problems: ReadPackages["settingsProblems"]):
     }
 }
 
+let npmRootCache: { key: string; root: string } | undefined;
+
+/** The global root from npm's `.npmrc`/environment prefix and the platform rule, without starting npm. */
+export function configuredGlobalNpmRoot(env: NodeJS.ProcessEnv = process.env): string {
+    const prefix = env.npm_config_prefix ?? env.NPM_CONFIG_PREFIX;
+    return prefix !== undefined && prefix.trim() !== ""
+        ? path.join(path.resolve(prefix.trim()), process.platform === "win32" ? "node_modules" : "lib/node_modules")
+        : path.join(
+              path.dirname(process.execPath),
+              "..",
+              process.platform === "win32" ? "node_modules" : "lib/node_modules",
+          );
+}
+
+/** npm's global root, as npm itself reports it; cached once per PATH and prefix, and short enough to fail over. */
+export function globalNpmRoot(env: NodeJS.ProcessEnv = process.env): string {
+    const key = `${env.PATH ?? ""}\0${env.npm_config_prefix ?? env.NPM_CONFIG_PREFIX ?? ""}`;
+    if (npmRootCache?.key === key) return npmRootCache.root;
+    let root: string | undefined;
+    try {
+        const text = execFileSync("npm", ["root", "-g"], {
+            encoding: "utf8",
+            env,
+            timeout: 3_000,
+            stdio: ["ignore", "pipe", "ignore"],
+            windowsHide: true,
+        }).trim();
+        if (text !== "") root = text;
+    } catch {
+        // No npm, a bad npmrc, or too slow: fall back to the path next to this Node.
+    }
+    root ??= configuredGlobalNpmRoot(env);
+    npmRootCache = { key, root };
+    return root;
+}
+
 /** Every package Pi lists, in both scopes, with its folder or the reason it cannot be found. */
-export function readPackages(agentDir: string, workingDir: string): ReadPackages {
+export interface ReadPackagesOptions {
+    /** The global npm root to try only when a user-scope npm package's agent-folder copy is missing. Default: no spawn. */
+    globalRoot?: () => string;
+}
+
+export function readPackages(agentDir: string, workingDir: string, options: ReadPackagesOptions = {}): ReadPackages {
+    const globalRoot = options.globalRoot ?? configuredGlobalNpmRoot;
     const settingsProblems: ReadPackages["settingsProblems"] = [];
     const listed: ListedPackage[] = [];
     const scopes: Array<{ scope: PackageScope; base: string; settings: string }> = [
@@ -188,12 +231,11 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                 continue;
             }
             // Pi falls back to the global npm root for a user-scope npm package it cannot find under the agent folder.
-            const npm = parseNpmSource(source);
-            const legacy =
-                npm === undefined || scope !== "user"
-                    ? undefined
-                    : path.join(path.dirname(process.execPath), "..", "lib", "node_modules", npm.name);
-            if (!existsSync(folder) && legacy !== undefined && existsSync(legacy)) {
+            // The root is resolved only here; a present copy never starts npm, and the default resolver starts nothing.
+            const missing = !existsSync(folder);
+            const npm = missing ? parseNpmSource(source) : undefined;
+            const legacy = npm === undefined || scope !== "user" ? undefined : path.join(globalRoot(), npm.name);
+            if (missing && legacy !== undefined && existsSync(legacy)) {
                 listed.push({
                     source: source.trim(),
                     scope,
@@ -202,7 +244,7 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
                 });
                 continue;
             }
-            if (!existsSync(folder)) {
+            if (missing) {
                 listed.push({
                     source: source.trim(),
                     scope,

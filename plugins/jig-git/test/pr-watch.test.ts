@@ -826,12 +826,25 @@ describe("through jig-core's watch engine", () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
+    /** Waits for the engine's asynchronous poll to reach a condition, instead of racing a fixed clock advance. */
+    async function until(condition: () => boolean, ms = 5_000): Promise<void> {
+        const start = Date.now();
+        while (!condition()) {
+            if (Date.now() - start > ms) throw new Error("the watch did not reach the expected state in time");
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+    }
+
     test("new comments wake the agent once, the watch polls on without saying them again, and the end is one more message", async () => {
         const clock = fakeClock();
         const sent: WatchMessage[] = [];
+        let polls = 0;
         const engine = createWatchEngine({
             now: clock.now,
             timers: clock.timers,
+            onPoll: () => {
+                polls++;
+            },
             store: createWatchStore(),
             protect: { redact: (text) => text, mask: (text) => text },
             notify: () => false,
@@ -852,6 +865,7 @@ describe("through jig-core's watch engine", () => {
         await clock.advance(2_000);
         await untilCalls(5);
         await clock.advance(1_000);
+        await until(() => sent.length >= 1);
         assert.equal(sent.length, 1);
         assert.equal(sent[0]?.customType, "jig-watch");
         assert.deepEqual(
@@ -889,6 +903,7 @@ describe("through jig-core's watch engine", () => {
         await clock.advance(60_000);
         await untilCalls(afterwards + 4);
         await clock.advance(10_000);
+        await until(() => sent.length >= 2);
         assert.equal(sent.length, 2);
         const last = sent[1]?.content ?? "";
         assert.ok(last.indexOf("comment 5002 by gina: Merging") < last.indexOf("was merged into main"));

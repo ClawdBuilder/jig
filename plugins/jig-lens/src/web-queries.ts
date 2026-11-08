@@ -16,7 +16,7 @@ export const TIMELINE_LINES = 5000;
 /** How deep child agents are followed under a session. */
 export const CHILD_DEPTH = 4;
 
-/** The failures in a row, of one tool and action within a session, that make a loop. */
+/** The failed or refused calls in a row, of one tool and action within a session, that make a loop. */
 export const LOOP_LENGTH = 3;
 
 function where(scope: Scope): { sql: string; params: SQLInputValue[] } {
@@ -569,12 +569,12 @@ export const refusedOf = (db: DatabaseSync, scope: Scope): BlockedFigures | unde
 export interface Loop extends ToolName {
     session: string;
     ticket: string | undefined;
-    /** Failures in the run. */
-    failures: number;
-    /** The first and the last failure of the run. */
+    /** Failed or refused calls in the run. */
+    failedOrRefused: number;
+    /** The first and the last failed or refused call of the run. */
     from: number;
     to: number;
-    /** The error kind of the last failure. */
+    /** The error kind of the last failed or refused call. */
     errorKind: string | undefined;
 }
 
@@ -594,7 +594,7 @@ export function loopsOf(db: DatabaseSync, scope: Scope, limit = ROWS): Loop[] {
     const runs = new Map<string, Loop>();
     let current: string | undefined;
     const close = (run: Loop | undefined) => {
-        if (run !== undefined && run.failures >= LOOP_LENGTH) loops.push(run);
+        if (run !== undefined && run.failedOrRefused >= LOOP_LENGTH) loops.push(run);
     };
     for (const [session, ticket, tool, action, outcome, errorKind, time] of statement.all(
         ...params,
@@ -615,18 +615,18 @@ export function loopsOf(db: DatabaseSync, scope: Scope, limit = ROWS): Loop[] {
             ...name,
             session,
             ticket: ticket ?? undefined,
-            failures: 0,
+            failedOrRefused: 0,
             from: time,
             to: time,
             errorKind: undefined,
         };
-        run.failures++;
+        run.failedOrRefused++;
         run.to = time;
         run.errorKind = errorKind ?? undefined;
         runs.set(key, run);
     }
     for (const run of runs.values()) close(run);
-    return loops.sort((a, b) => b.failures - a.failures || b.to - a.to).slice(0, limit);
+    return loops.sort((a, b) => b.failedOrRefused - a.failedOrRefused || b.to - a.to).slice(0, limit);
 }
 
 // ---- your time ------------------------------------------------------------------------------------------------------

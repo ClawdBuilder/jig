@@ -181,6 +181,7 @@ export function createCiTool(options: CiWatchOptions & { announce: Announce }): 
             promptSnippet:
                 "ci: services, status, runs, log, rerun, trigger and watch for a service's CI (GitHub Actions, GitLab, Jenkins, Concourse)",
             promptGuidelines: [
+                "ci: if the service is not in your context, run ci services first.",
                 "ci: a push or pull request starts a watch by itself for a catalog service; do not poll with status.",
                 "ci: rerun and trigger ask the user. When a reply is lost, check once and never send again.",
             ],

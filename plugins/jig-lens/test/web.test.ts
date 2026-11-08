@@ -273,6 +273,13 @@ test("the session timeline shows a model's name or short form, and keeps the ful
     for (const line of turnsOf(named.body)) assert.equal(line?.model, "Claude Sonnet");
 });
 
+test("the loops table counts refused calls and says so", () => {
+    const page = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
+    assert.match(page, /failedOrRefused/);
+    assert.doesNotMatch(page, /r\.failures/);
+    assert.match(page, /In a row counts failed and refused calls/);
+});
+
 test("the page shows the model it is given and puts the id in a tooltip only", () => {
     const page = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
     assert.match(page, /h\("span", \{ title: line\.modelId \}, line\.model\)/);

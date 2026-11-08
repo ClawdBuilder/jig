@@ -1,7 +1,7 @@
 // The background update notice: once a day, only to the person, silent offline or when updates.check is false, with the
 // company's cap and a stronger line when the running version is deprecated.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -147,6 +147,26 @@ describe("checkUpdateAtStart", () => {
         assert.deepEqual(notes, []);
         const cache = JSON.parse(readFileSync(path.join(dir, "update-check.json"), "utf8"));
         assert.equal(typeof cache.failedAt, "number");
+    });
+
+    test("does not start npm for a package's global fallback", async () => {
+        const bin = path.join(dir, "fake-bin");
+        const marker = path.join(dir, "npm-ran");
+        mkdirSync(bin, { recursive: true });
+        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf ran > '${marker}'\n`, { mode: 0o755 });
+        const saved = process.env.PATH;
+        process.env.PATH = `${bin}${path.delimiter}${saved ?? ""}`;
+        try {
+            writeFileSync(
+                path.join(agent, "settings.json"),
+                JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.5.0"] }),
+            );
+            await checkUpdateAtStart(state(), () => {}, { fetchJson: async () => registry });
+            assert.equal(existsSync(marker), false, "the session path starts no npm");
+        } finally {
+            if (saved === undefined) delete process.env.PATH;
+            else process.env.PATH = saved;
+        }
     });
 
     test("uses the company's cap and names it", () => {
