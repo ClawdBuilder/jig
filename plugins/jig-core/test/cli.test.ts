@@ -257,7 +257,7 @@ describe("jig doctor", () => {
         const result = await run(["doctor"]);
         assert.equal(result.code, 0, result.stdout);
         assert.match(result.stdout, /warn Jig's git tools are off in Pi's settings/);
-        assert.match(result.stdout, /remove the filter that leaves out plugins\/jig-git\/index\.ts/);
+        assert.match(result.stdout, /leaves out\s+plugins\/jig-git\/index\.ts/);
         assert.doesNotMatch(result.stdout, /is not a known field/);
     });
 
@@ -390,7 +390,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Two copies of Jig/);
         const own = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version?: string };
         assert.match(result.stdout, new RegExp(`this command is ${own.version?.replaceAll(".", "\\.")}`));
-        assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
+        assert.match(result.stdout, /copy Pi loads is\s+9\.9\.9/);
     });
 
     test("a rule that still names an old action is a warning in the terminal doctor too", {
@@ -514,8 +514,8 @@ describe("a package installed from git", () => {
 describe("jig setup", () => {
     test("without a terminal it refuses in one line", { timeout: 60_000 }, async () => {
         const result = await run(["setup"], { input: "" });
-        assert.equal(result.code, 1);
-        assert.match(result.stderr, /^Setup needs a terminal with a screen\. Run jig setup from a terminal\./);
+        assert.equal(result.code, 2);
+        assert.match(result.stderr, /^jig setup: no terminal to ask on\./);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
@@ -804,4 +804,53 @@ test("a package the command's loader cannot strip is not checked, not failed", {
     assert.match(result.stdout, /skip .*@acme\/param/);
     assert.match(result.stdout, /not checked: Pi can load this package/);
     assert.doesNotMatch(result.stdout, /fail .*@acme\/param/);
+});
+
+describe("CLI conventions", () => {
+    test("help and version run without Pi and exit 0", { timeout: 20_000 }, async () => {
+        for (const args of [
+            ["--help"],
+            ["help"],
+            ["help", "doctor"],
+            ["doctor", "--help"],
+            ["update", "--help"],
+            ["setup", "--help"],
+        ]) {
+            const result = await run(args, { env: { PI_HOST_DIR: "/nonexistent" } });
+            assert.equal(result.code, 0, args.join(" "));
+            assert.match(result.stdout, /Usage: jig/, args.join(" "));
+        }
+        const version = await run(["--version", "--json"], { env: { PI_HOST_DIR: "/nonexistent" } });
+        assert.equal(version.code, 0);
+        assert.deepEqual(JSON.parse(version.stdout), { schema: 1, version: "0.5.1" });
+    });
+
+    test("an unknown command or option is one line, a hint and exit 2", { timeout: 20_000 }, async () => {
+        const command = await run(["setpu"]);
+        assert.equal(command.code, 2);
+        assert.match(command.stderr, /Unknown command setpu\. Did you mean jig setup\?/);
+        assert.match(command.stderr, /Run jig --help/);
+        const option = await run(["doctor", "--bogus"]);
+        assert.equal(option.code, 2);
+        assert.match(option.stderr, /jig doctor: unknown option --bogus/);
+        assert.match(option.stderr, /jig doctor --help/);
+        assert.doesNotMatch(option.stderr, /Usage: jig doctor/);
+    });
+
+    test("setup without a terminal names --yes and exits 2", { timeout: 20_000 }, async () => {
+        const result = await run(["setup"], { input: "" });
+        assert.equal(result.code, 2);
+        assert.match(result.stderr, /no terminal to ask on/);
+        assert.match(result.stderr, /--yes/);
+    });
+
+    test("doctor --json has a schema and nothing else on stdout", { timeout: 60_000 }, async () => {
+        settingsWith();
+        const result = await run(["doctor", "--json"]);
+        assert.equal(result.code, 0, result.stderr);
+        assert.equal(result.stderr, "");
+        const parsed = JSON.parse(result.stdout) as { schema?: number; counts?: unknown };
+        assert.equal(parsed.schema, 1);
+        assert.ok(parsed.counts);
+    });
 });

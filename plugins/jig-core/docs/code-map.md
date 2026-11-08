@@ -106,7 +106,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
-| `cli/main.ts` | The `jig` command: arguments, the doctor's exit code and report, setup's company step and exit codes, and the update word | `bin/jig.mjs` |
+| `cli/main.ts` | The `jig` command: arguments, help dispatch, the doctor's exit code and report, setup's company step and exit codes, and the update word | `bin/jig.mjs` |
+| `cli/help.ts` | The command help, exit-code line, and nearest-command suggestion, with no Pi import so help stays fast | `bin/jig.mjs`, `cli/main.ts` |
 | `cli/update.ts` | `jig update`: reads the registry, Pi's copy, the global npm copy and company ranges, builds Pi's exact install command, then runs or checks the plan | `cli/main.ts` |
 | `cli/headless.ts` | The packages Pi would load, their extension files loaded into a host that only records, and the person's settings read against their sections and defaults | `cli/main.ts` |
 | `cli/packages.ts` | Where Pi puts a package: local, npm and git layouts for user and project scope, and the entries listed but not found | `cli/headless.ts` |

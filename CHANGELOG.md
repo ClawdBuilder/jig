@@ -4,6 +4,21 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- `jig` now has command help (`jig help doctor`, `--help` on every command), `--json` on `update`, `--version` and
+  `doctor` with `"schema": 1`, and `--yes`/`-y` (or `CI=true`) for `update` and `setup`. Help and version answer without
+  loading Pi, so they return in milliseconds.
+- Unknown commands suggest the nearest one, and every usage error exits 2 with one line and a hint. Without a terminal,
+  `update` and `setup` name `--yes` instead of a generic refusal.
+
+### Changed
+
+- `jig update` ends with a scoped check of both copies and Pi's settings, not a folder-dependent company doctor; it prints
+  “Full check: jig doctor (run it in a project folder; company checks depend on the folder)”.
+- Doctor output wraps to the terminal (80 columns when piped), colours only ok/warn/fail on a TTY, and respects
+  `NO_COLOR`/`FORCE_COLOR`. Update confirmation is one line and does not echo the typed answer.
+
 ## [0.5.1] - 2026-11-08
 
 Jira OAuth through a trusted command, `/context`, and small ops, lens and workflow clarity.

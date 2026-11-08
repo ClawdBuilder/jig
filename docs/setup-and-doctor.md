@@ -15,8 +15,9 @@ jig doctor [--json] [--network] [--quiet]
 It says "Checking your setup…" at once, then loads the same packages Pi loads. The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
 the network, the sandbox and the records folder.
 
-Exit code `0` means no failures, `1` means at least one; `--json` prints the report itself, for a script (and nothing
-else on stdout). It works when `jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not
+Exit code `0` means no failures, `1` means at least one; `--json` prints one JSON report with `"schema": 1` on stdout and
+nothing else (failures still exit 1). The exit codes are the same for every command: 0 success, 1 a failure, 2 a usage error
+or a missing required flag. It works when `jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not
 a crash, because that is exactly when you need it. If Jig is not installed in Pi, or Pi itself is not found, the machine
 group has a failure with the command to install it: the doctor does not give an all-clear for a Jig Pi will not load.
 Two copies with different versions are a warning.
@@ -34,10 +35,11 @@ that does, so the installed copy behaves like a checkout. If `jig` cannot find P
 ## Setting up
 
 ```text
-jig setup
+jig setup [--yes]
 ```
 
-It starts with the company question: which installed company setup you use, or "None, just me", and for which folders
+`--yes` (or `CI=true`) accepts the defaults it can; if a step still needs a person (the company/profile choice), it says
+which step and exits 2 instead of hanging. It starts with the company question: which installed company setup you use, or "None, just me", and for which folders
 (`everywhere` by default). That writes the `profiles` and `profile` entries a newcomer cannot be expected to know. Then
 setup asks one question at a time about the parts a company plugin or a validator says are incomplete or wrong.
 It never asks for a password or a token. For a credential it asks **where** it is kept, never what it is: choose
@@ -52,8 +54,8 @@ never changes the stores you turned off.
 
 Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
 Nothing is written until you confirm. It keeps a backup next to the file and says to start Pi again, or run `/reload`
-in it. Without a terminal it refuses in one line and writes nothing; the doctor still runs. Exit code `0` is done or
-nothing to do, `1` failed, `130` cancelled.
+in it. Without a terminal it refuses in one line, names `--yes`, and exits 2; the doctor still runs. Exit code `0` is done or
+nothing to do, `1` failed, `2` a usage error or an interactive step without a terminal, `130` cancelled.
 
 If your settings file is a link, as a dotfiles setup often makes it, setup follows the link, says which file it
 will change, and writes that file. The link stays a link. A link that points nowhere, or to a folder, is refused
@@ -62,14 +64,19 @@ and nothing changes.
 ## Updating
 
 ```text
-jig update [--check] [--to <version>]
+jig update [--check] [--json] [--to <version>] [--yes]
 ```
+
+`--json` prints one object with `"schema": 1` (`current`, `target`, `action`/`changed`, `pi`) on stdout. `--yes` (or
+`CI=true`) is required without a terminal; without it the command names the flag and exits 2. The confirmation reads
+`Update Jig <old> → <new>? [y/N]` and the confirmation itself is not echoed.
 
 Jig is installed in two copies: Pi's package and the global `jig` command. `jig update` moves both to one published stable
 version, in that order: Pi when the release needs a newer one, then Pi's copy, then the global command, then a check of both
-and the doctor. It needs a terminal, like `jig setup`; `--check` says what would happen and changes nothing. `--to` names a
-published version instead of the newest. `--check` needs no write access and runs no PATH check; its exit codes are 0
-when both copies are current, **2** when an update is available, and 1 on an error. A normal update exits 0 on success and
+and a scoped check: both copies on the new version, the global command, Pi's settings and that Jig loads. It ends with
+“Full check: jig doctor (run it in a project folder; company checks depend on the folder)” and does not run company checks. It needs a terminal, like `jig setup`; `--check` says what would happen and changes nothing. `--to` names a
+published version instead of the newest. ``--check` needs no write access and runs no PATH check; it exits 0 when the plan was made (whether or not an update is
+available) and 1 on an error. A normal update exits 0 on success and
 1 on failure.
 
 A release states the oldest Pi it runs with and the one it is tested with, in `jig.agents.pi`. If the installed Pi is older
