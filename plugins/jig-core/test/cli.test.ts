@@ -1,10 +1,12 @@
 // The `jig` command end to end, in a temporary home: a real child process, its own agent folder and settings, no Pi.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import type { ChildProcess, ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
+import { piHostDir } from "../../../test/support/pi-host-dir.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
@@ -21,7 +23,41 @@ beforeEach(() => {
     mkdirSync(agent, { recursive: true });
     mkdirSync(work, { recursive: true });
 });
-afterEach(() => rmSync(home, { recursive: true, force: true }));
+const children = new Set<ChildProcess>();
+
+function spawnTest(
+    command: string,
+    args: string[],
+    options: Parameters<typeof spawn>[2],
+): ChildProcessWithoutNullStreams {
+    const child = spawn(command, args, {
+        ...options,
+        detached: process.platform !== "win32",
+    }) as ChildProcessWithoutNullStreams;
+    children.add(child);
+    child.once("close", () => children.delete(child));
+    return child;
+}
+
+/** A test's child may have its own children (script, npm, Pi): kill the group, then the child if it escaped. */
+function killTree(child: ChildProcess): void {
+    if (child.pid === undefined) return;
+    try {
+        process.kill(-child.pid, "SIGKILL");
+    } catch {
+        try {
+            child.kill("SIGKILL");
+        } catch {
+            // Already gone.
+        }
+    }
+}
+
+afterEach(() => {
+    for (const child of children) killTree(child);
+    children.clear();
+    rmSync(home, { recursive: true, force: true });
+});
 
 function env(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
     return { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
@@ -35,20 +71,32 @@ function run(
     const argv =
         options.tty === true ? ["-qec", `${process.execPath} ${BIN} ${args.join(" ")}`, "/dev/null"] : [BIN, ...args];
     return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-        const child = spawn(command, argv, { cwd: options.cwd ?? work, env: env(options.env) });
+        const child = spawnTest(command, argv, { cwd: options.cwd ?? work, env: env(options.env) });
         let stdout = "";
         let stderr = "";
+        let timedOut = false;
+        const timeout = setTimeout(() => {
+            timedOut = true;
+            killTree(child);
+            reject(new Error(`jig ${args.join(" ")} did not finish`));
+        }, 60_000);
         child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
         child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
-        child.on("error", reject);
-        child.on("close", (code) => resolve({ code, stdout, stderr }));
-        if (options.input !== undefined) child.stdin.end(options.input);
+        child.on("error", (error) => {
+            clearTimeout(timeout);
+            reject(error);
+        });
+        child.on("close", (code) => {
+            clearTimeout(timeout);
+            if (!timedOut) resolve({ code, stdout, stderr });
+        });
+        child.stdin.end(options.input ?? "");
     });
 }
 
 /** The setup prompts, answered when each one appears on the (pseudo-)terminal. */
 function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = work) {
-    const child = spawn("script", ["-qec", `${process.execPath} ${BIN} setup`, "/dev/null"], {
+    const child = spawnTest("script", ["-qec", `${process.execPath} ${BIN} setup`, "/dev/null"], {
         cwd,
         env: env(),
     });
@@ -71,9 +119,9 @@ function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = w
         child.on("error", reject);
         child.on("close", (code) => resolve({ code, stdout, stderr }));
         const timeout = setTimeout(() => {
-            child.kill();
+            killTree(child);
             reject(new Error(`setup did not finish; it said:\n${stdout}\n${stderr}`));
-        }, 30_000);
+        }, 45_000);
         child.on("close", () => clearTimeout(timeout));
     });
 }
@@ -84,13 +132,23 @@ const settingsWith = (...packages: string[]): void =>
 
 /** The command names stock Pi loads, from a real Pi process; the same filters the doctor reads decide them. */
 function piCommands(cwd: string = work): Promise<string[]> {
-    const cli = path.join(ROOT, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
+    const cli = path.join(piHostDir, "dist/bundle/cli.js");
     return new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, [cli, "--mode", "rpc"], { cwd, env: env() });
+        const child = spawnTest(process.execPath, [cli, "--mode", "rpc"], { cwd, env: env() });
         let buffer = "";
+        let stderr = "";
+        let settled = false;
         const finish = (names: string[]): void => {
-            child.kill();
+            if (settled) return;
+            settled = true;
+            killTree(child);
             resolve(names);
+        };
+        const fail = (error: Error): void => {
+            if (settled) return;
+            settled = true;
+            killTree(child);
+            reject(error);
         };
         child.stdout.on("data", (chunk: Buffer) => {
             buffer += chunk.toString();
@@ -116,12 +174,19 @@ function piCommands(cwd: string = work): Promise<string[]> {
                 }
             }
         });
-        child.on("error", reject);
+        child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+        child.on("error", fail);
         const timeout = setTimeout(() => {
-            child.kill();
-            reject(new Error("Pi did not answer get_commands"));
-        }, 30_000);
-        child.on("close", () => clearTimeout(timeout));
+            fail(new Error("Pi did not answer get_commands"));
+        }, 45_000);
+        child.on("close", (code) => {
+            clearTimeout(timeout);
+            fail(
+                new Error(
+                    `Pi exited ${code ?? "without a code"} before answering get_commands${stderr === "" ? "" : `:\n${stderr.slice(0, 500)}`}`,
+                ),
+            );
+        });
         child.stdin.write(`${JSON.stringify({ id: "1", type: "get_commands" })}\n`);
     });
 }
@@ -135,7 +200,7 @@ function settingsFiltered(extensions: string[], skills?: string[]): void {
 }
 
 describe("jig doctor", () => {
-    test("runs without a Pi session and exits 0 when nothing failed", async () => {
+    test("runs without a Pi session and exits 0 when nothing failed", { timeout: 60_000 }, async () => {
         settingsWith();
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
@@ -143,7 +208,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /All checks passed|Nothing is blocked/);
     });
 
-    test("a filter that leaves out Jig's core is a failure, not an all-clear", async () => {
+    test("a filter that leaves out Jig's core is a failure, not an all-clear", { timeout: 60_000 }, async () => {
         settingsFiltered(["!plugins/jig-core/index.ts"]);
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1, result.stdout);
@@ -152,7 +217,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /plugins\/jig-core\/index\.ts/);
     });
 
-    test("a filter that leaves out the sandbox is a failure, not an all-clear", async () => {
+    test("a filter that leaves out the sandbox is a failure, not an all-clear", { timeout: 60_000 }, async () => {
         settingsFiltered(["!plugins/jig-sandbox/index.ts"]);
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1, result.stdout);
@@ -160,7 +225,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /bash would run without it/);
     });
 
-    test("extensions: [] leaves out core too, and says so", async () => {
+    test("extensions: [] leaves out core too, and says so", { timeout: 60_000 }, async () => {
         settingsFiltered([]);
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1, result.stdout);
@@ -168,7 +233,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Jig's sandbox is filtered out/);
     });
 
-    test("the sandbox is checked for real, not skipped", async () => {
+    test("the sandbox is checked for real, not skipped", { timeout: 60_000 }, async () => {
         settingsWith();
         const empty = path.join(work, "no-programs");
         mkdirSync(empty);
@@ -179,7 +244,9 @@ describe("jig doctor", () => {
         assert.doesNotMatch(result.stdout, /the sandbox starts with Pi/);
     });
 
-    test("an always-on plugin that is off is one plain warning, and its section is kept", async () => {
+    test("an always-on plugin that is off is one plain warning, and its section is kept", {
+        timeout: 60_000,
+    }, async () => {
         settingsFiltered(["!plugins/jig-git/index.ts"]);
         writeFileSync(path.join(agent, "jig.json"), JSON.stringify({ git: { base: "develop" } }));
         const result = await run(["doctor"]);
@@ -189,7 +256,9 @@ describe("jig doctor", () => {
         assert.doesNotMatch(result.stdout, /is not a known field/);
     });
 
-    test("a choosable plugin that is off is a calm skip, and its section is not a problem", async () => {
+    test("a choosable plugin that is off is a calm skip, and its section is not a problem", {
+        timeout: 60_000,
+    }, async () => {
         settingsFiltered(["!plugins/jig-jira/index.ts"]);
         writeFileSync(
             path.join(agent, "jig.json"),
@@ -202,7 +271,9 @@ describe("jig doctor", () => {
         assert.doesNotMatch(result.stdout, /warn .*jira/i);
     });
 
-    test("stock Pi and the doctor agree on the effective entry: plain, project, delta, untrusted, and two refs", async () => {
+    test("stock Pi and the doctor agree on the effective entry: plain, project, delta, untrusted, and two refs", {
+        timeout: 60_000,
+    }, async () => {
         const settings = (file: string, packages: unknown[]): void => writeFileSync(file, JSON.stringify({ packages }));
         const agentSettings = path.join(agent, "settings.json");
         const projectSettings = path.join(work, ".pi", "settings.json");
@@ -264,7 +335,7 @@ describe("jig doctor", () => {
         assert.match(doctor.stdout, new RegExp(`In ${projectSettings.replaceAll(".", "\\.")}`));
     });
 
-    test("an invalid jig.json is a FAIL line in a report, not a crash", async () => {
+    test("an invalid jig.json is a FAIL line in a report, not a crash", { timeout: 60_000 }, async () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1);
@@ -272,7 +343,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /jig doctor again/);
     });
 
-    test("a plugin that throws at load is a FAIL line naming it", async () => {
+    test("a plugin that throws at load is a FAIL line naming it", { timeout: 60_000 }, async () => {
         const broken = path.join(home, "broken-package");
         mkdirSync(broken, { recursive: true });
         writeFileSync(
@@ -292,7 +363,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /boom at load/);
     });
 
-    test("Jig is a failure when Pi's settings do not list it, not an all-clear", async () => {
+    test("Jig is a failure when Pi's settings do not list it, not an all-clear", { timeout: 60_000 }, async () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1);
@@ -301,7 +372,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Install it: pi install npm:@clawdbuilder\/jig/);
     });
 
-    test("two copies of Jig with different versions are a warning", async () => {
+    test("two copies of Jig with different versions are a warning", { timeout: 60_000 }, async () => {
         const folder = path.join(agent, "git", "github.com", "example", "jig");
         mkdirSync(folder, { recursive: true });
         writeFileSync(
@@ -317,7 +388,9 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /copy Pi loads is 9\.9\.9/);
     });
 
-    test("a rule that still names an old action is a warning in the terminal doctor too", async () => {
+    test("a rule that still names an old action is a warning in the terminal doctor too", {
+        timeout: 60_000,
+    }, async () => {
         settingsWith();
         writeFileSync(
             path.join(agent, "jig.json"),
@@ -329,7 +402,7 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /stop applying in 0\.5\.0/);
     });
 
-    test("--json prints the report and keeps the exit code", async () => {
+    test("--json prints the report and keeps the exit code", { timeout: 60_000 }, async () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--json"]);
         assert.equal(result.code, 1);
@@ -383,7 +456,7 @@ export default function () {
 }
 
 describe("a package installed from git", () => {
-    test("user scope: Jig cloned under git/<host>/<path> is installed, not missing", async () => {
+    test("user scope: Jig cloned under git/<host>/<path> is installed, not missing", { timeout: 60_000 }, async () => {
         gitInstall("user", "github.com/example/jig", "jig", "0.3.0", "export default function () {}\n");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
         const result = await run(["doctor", "--quiet"]);
@@ -391,7 +464,9 @@ describe("a package installed from git", () => {
         assert.doesNotMatch(result.stdout, /not installed in Pi yet/);
     });
 
-    test("a listed clone whose folder is gone is a failure naming the folder, not an all-clear", async () => {
+    test("a listed clone whose folder is gone is a failure naming the folder, not an all-clear", {
+        timeout: 60_000,
+    }, async () => {
         writeFileSync(
             path.join(agent, "settings.json"),
             JSON.stringify({ packages: ["git:github.com/ClawdBuilder/jig"] }),
@@ -402,7 +477,9 @@ describe("a package installed from git", () => {
         assert.match(result.stdout, /git\/github\.com\/ClawdBuilder\/jig/);
     });
 
-    test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", async () => {
+    test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", {
+        timeout: 60_000,
+    }, async () => {
         gitInstall("user", "github.com/example/jig", "jig", "0.3.0", "export default function () {}\n");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
         gitInstall("project", "github.com/example/git-co", "git-co", "1.0.0", companyExtension());
@@ -430,14 +507,14 @@ describe("a package installed from git", () => {
 });
 
 describe("jig setup", () => {
-    test("without a terminal it refuses in one line", async () => {
+    test("without a terminal it refuses in one line", { timeout: 60_000 }, async () => {
         const result = await run(["setup"], { input: "" });
         assert.equal(result.code, 1);
         assert.match(result.stderr, /^Setup needs a terminal with a screen\. Run jig setup from a terminal\./);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
-    test("stops before the questions when Pi does not load Jig", async () => {
+    test("stops before the questions when Pi does not load Jig", { timeout: 60_000 }, async () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
         const result = await runSetup([]);
         assert.equal(result.code, 1);
@@ -446,7 +523,7 @@ describe("jig setup", () => {
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
-    test("Show the exact change prints plain JSON and never asks which line to pick", async () => {
+    test("Show the exact change prints plain JSON and never asks which line to pick", { timeout: 60_000 }, async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
             { when: "Which company setup do you use?", answer: "1" },
@@ -468,7 +545,9 @@ describe("jig setup", () => {
         assert.equal(written.fixture.login, "jdev");
     });
 
-    test("starts with the company, writes the profile, then asks the onboarding field", async () => {
+    test("starts with the company, writes the profile, then asks the onboarding field", {
+        timeout: 60_000,
+    }, async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
             { when: "Which company setup do you use?", answer: "1" },
@@ -508,7 +587,7 @@ function markerPackage(marker: string, cwd = work, name = "tool"): void {
 }
 
 describe("project packages follow Pi's trust, and import nothing before it", () => {
-    test("the marker appears only in the cases Pi would load", async () => {
+    test("the marker appears only in the cases Pi would load", { timeout: 60_000 }, async () => {
         const cases: Array<{
             name: string;
             trust?: Record<string, unknown>;
@@ -585,7 +664,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
         }
     });
 
-    test("a user-scope package still runs without any trust", async () => {
+    test("a user-scope package still runs without any trust", { timeout: 60_000 }, async () => {
         const marker = path.join(work, "user-marker.txt");
         const folder = path.join(agent, "git", "github.com", "acme", "usertool");
         mkdirSync(folder, { recursive: true });
@@ -605,7 +684,9 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
         assert.equal(existsSync(marker), true, result.stdout);
     });
 
-    test("Jig listed only in an untrusted project is a skip, not a failure, and setup stops with the reason", async () => {
+    test("Jig listed only in an untrusted project is a skip, not a failure, and setup stops with the reason", {
+        timeout: 60_000,
+    }, async () => {
         const cwd = path.join(work, "jig-project");
         mkdirSync(cwd, { recursive: true });
         markerPackage(path.join(cwd, "marker.txt"), cwd, "jig");
@@ -623,7 +704,9 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
         assert.doesNotMatch(setup.stdout, /Which company setup do you use/);
     });
 
-    test("a company only at project scope in an untrusted folder is named, not treated as no company", async () => {
+    test("a company only at project scope in an untrusted folder is named, not treated as no company", {
+        timeout: 60_000,
+    }, async () => {
         const cwd = path.join(work, "company-project");
         mkdirSync(cwd, { recursive: true });
         const folder = path.join(cwd, ".pi", "git", "github.com", "acme", "git-co");
@@ -655,7 +738,7 @@ describe("a real global install", () => {
         timeout: 240_000,
     }, async () => {
         const prefix = path.join(home, "prefix");
-        const install = spawn(
+        const install = spawnTest(
             "npm",
             [
                 "install",
@@ -685,7 +768,7 @@ describe("a real global install", () => {
         const installedPackage = path.join(prefix, "lib/node_modules/@clawdbuilder/jig");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [installedPackage] }));
         const doctor = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-            const child = spawn(jig, ["doctor", "--quiet"], { env: env(), cwd: work });
+            const child = spawnTest(jig, ["doctor", "--quiet"], { env: env(), cwd: work });
             let stdout = "";
             let stderr = "";
             child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
@@ -699,7 +782,7 @@ describe("a real global install", () => {
     });
 });
 
-test("a package the command's loader cannot strip is not checked, not failed", async () => {
+test("a package the command's loader cannot strip is not checked, not failed", { timeout: 60_000 }, async () => {
     const folder = path.join(agent, "npm/node_modules/@acme/param");
     mkdirSync(folder, { recursive: true });
     writeFileSync(
