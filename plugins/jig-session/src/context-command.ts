@@ -175,21 +175,33 @@ export function reportLines(
         ),
     ];
     lines.push(...grid(report, width, paint));
-    for (const part of PARTS) {
-        const tokens = detail.parts[part.key];
-        if (tokens === null) continue;
+    // The mode marker, the longest label, the widest token and the widest percent line up every row. The labels include
+    // "Compaction reserve", so a fixed 15 is too narrow.
+    const rows: Array<{ role: string; marker: string; label: string; tokens: number; note: string }> = PARTS.flatMap(
+        (part) => {
+            const tokens = detail.parts[part.key];
+            return tokens === null
+                ? []
+                : [
+                      {
+                          role: part.role,
+                          marker: "█",
+                          label: part.label,
+                          tokens,
+                          note: part.key === "messages" ? "  estimate" : "",
+                      },
+                  ];
+        },
+    );
+    if (detail.reserve > 0)
+        rows.push({ role: "dim", marker: "░", label: "Compaction reserve", tokens: detail.reserve, note: "" });
+    if (detail.free !== null) rows.push({ role: "dim", marker: "░", label: "Free", tokens: detail.free, note: "" });
+    const labelWidth = Math.max(...rows.map((row) => row.label.length));
+    const tokenWidth = Math.max(...rows.map((row) => count(row.tokens).length));
+    const percentWidth = Math.max(...rows.map((row) => percent(row.tokens, window).length));
+    for (const row of rows) {
         lines.push(
-            `${paint(part.role, "█")} ${part.label.padEnd(15)} ${count(tokens).padStart(8)}  ${percent(tokens, window).padStart(6)}${part.key === "messages" ? "  estimate" : ""}`,
-        );
-    }
-    if (detail.reserve > 0) {
-        lines.push(
-            `${paint("dim", "░")} ${"Compaction reserve".padEnd(15)} ${count(detail.reserve).padStart(8)}  ${percent(detail.reserve, window).padStart(6)}`,
-        );
-    }
-    if (detail.free !== null) {
-        lines.push(
-            `${paint("dim", "░")} ${"Free".padEnd(15)} ${count(detail.free).padStart(8)}  ${percent(detail.free, window).padStart(6)}`,
+            `${paint(row.role, row.marker)} ${row.label.padEnd(labelWidth)} ${count(row.tokens).padStart(tokenWidth)}  ${percent(row.tokens, window).padStart(percentWidth)}${row.note}`,
         );
     }
     lines.push("", paint("accent", "Tools"));

@@ -557,6 +557,46 @@ test("the report splits tools into Pi, each Jig plugin and deferred names", () =
     assert.doesNotMatch(lines, /jig-mongo/);
 });
 
+test("every part, reserve and free row ends its tokens and percent columns at the same index", () => {
+    const report = buildReport({
+        detail: {
+            window: 1_000_000,
+            used: 123_456,
+            usedFrom: "pi",
+            reserve: 16_000,
+            free: 700_000,
+            parts: { messages: 881, tools: 5_049, system: 123_456, skills: 40, contextFiles: 60 },
+            tools: [],
+            skills: [],
+            files: [],
+        },
+        model: "test",
+        declared: new Map(),
+    });
+    const lines = reportLines(report, 120, (_role, text) => text);
+    assert.ok(
+        lines.some((line) => line.includes("123,456")),
+        "a six-digit number is shown",
+    );
+    assert.ok(
+        lines.some((line) => line.includes(" 881 ")),
+        "a three-digit number is shown",
+    );
+    const tokenEnds = new Set<number>();
+    const percentEnds = new Set<number>();
+    for (const line of lines) {
+        const match = /^[█░] (.*?) +([\d,]+) +([\d.]+%)(?:  estimate)?$/.exec(line);
+        if (match === null) continue;
+        const token = match[2] ?? "";
+        const pct = match[3] ?? "";
+        tokenEnds.add((match.index ?? 0) + match[0].indexOf(token) + token.length);
+        percentEnds.add((match.index ?? 0) + match[0].lastIndexOf(pct) + pct.length);
+    }
+    assert.ok(tokenEnds.size > 0, "the rows were found");
+    assert.equal(tokenEnds.size, 1, `token columns end at ${[...tokenEnds].join(", ")}`);
+    assert.equal(percentEnds.size, 1, `percent columns end at ${[...percentEnds].join(", ")}`);
+});
+
 test("Jig's messages are found by custom type, apart from review follow-ups", () => {
     const messages = jigMessages([
         { type: "custom", customType: "jig-memory-notes", content: "notes" },
