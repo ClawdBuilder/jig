@@ -12,9 +12,9 @@ import { isObject } from "./values.ts";
 /** A token is replaced this long before it expires, so that it does not run out on the way. */
 export const REPLACE_EARLY_MS = 60_000;
 /** A command's token has no expiry the endpoint tells us; keep it briefly, and let a 401 run the command again. */
-export const COMMAND_TOKEN_MS = 5 * 60_000;
+const COMMAND_TOKEN_MS = 5 * 60_000;
 /** The longest a command's token is kept, even when `cacheMs` asks for more. */
-export const MAX_COMMAND_TOKEN_MS = 15 * 60_000;
+const MAX_COMMAND_TOKEN_MS = 15 * 60_000;
 /** A token answer is small. A longer one is not read. */
 const MAX_TOKEN_ANSWER_BYTES = 64 * 1024;
 /** What a token is: printable characters without a space, so that it can go into a header. */
