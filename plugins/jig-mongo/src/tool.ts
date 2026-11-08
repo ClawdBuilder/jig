@@ -314,8 +314,7 @@ export function createTool(options: MongoOptions = {}): MongoTool {
             name: "mongo",
             label: "MongoDB",
             description: DESCRIPTION,
-            promptSnippet:
-                "mongo: explore, query, explain and (in test environments) change MongoDB; count before find",
+            promptSnippet: "explore, query, explain and (in test environments) change MongoDB; count before find",
             parameters,
             // One call at a time and in order: a write must be done before the read that checks it.
             executionMode: "sequential",

@@ -1,6 +1,6 @@
 ---
 name: api
-description: Running the team's saved API requests with the api tool - list and show them, run a read first, change one thing at a time, and check each answer. Use when the user asks to call, test or check an API, reproduce a request from a ticket, check a deploy, or smoke-test an environment.
+description: Running the team's saved API requests with the api tool - list and show them, run a read first, change one thing at a time, and check each answer. Use when the user asks to call, test or check an API, reproduce a request from a ticket, check a deploy’s API, or smoke-test an environment. Not for a pod’s health; use runtime.
 ---
 
 # Running saved API requests
@@ -58,3 +58,10 @@ To map a Postman environment in the configuration, use `api postman_environments
 ## When a write gets no answer
 
 A write that times out or loses its connection may still have gone through. The tool then says the outcome is unknown, and it never sends the write again. Run a read of the resource to see whether the change is there. Do not repeat the write until you have read the result.
+
+## Example
+
+```json
+{"action":"run","request":"orders","environment":"staging","variables":{"orderId":"123"}}
+{"action":"list","text":"orders"}
+```

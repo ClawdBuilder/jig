@@ -382,7 +382,8 @@ function createView(rules: AccessRules, namespaces: readonly Ns[]): View {
                 const lead = partial
                     ? `${JSON.stringify(text)} is only partly allowed in ${owner}`
                     : `${JSON.stringify(text)} is not allowed in ${owner}`;
-                return `${lead}; allowed: ${shortList(listed, ", ", 80)}`;
+                const allowed = shortList(listed, ", ", 80);
+                return `${lead}; allowed: ${allowed}${allowed.endsWith("more)") ? ". Omit the field, or name only an allowed one" : ""}`;
             }
             if (visibility(path) === "partial")
                 return `${JSON.stringify(text)} holds a denied field; name the fields you need instead`;

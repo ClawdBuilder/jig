@@ -1,13 +1,12 @@
 ---
 name: logs
-description: How to search logs with the logs tool - start from an exact identifier in a narrow window, widen the window step by step, and read the lines that matter. Use whenever a ticket, an error report or a question needs evidence from the logs.
+description: How to search logs with the logs tool - start from an exact identifier in a narrow window, widen the window step by step, and read the lines that matter. Use whenever a ticket, an error report or a question needs evidence from the logs. Not for a code search; use the file tools.
 ---
 
 # Searching logs
 
-The `logs` tool reads one backend (Elasticsearch, OpenSearch or Loki) and never changes anything. A call names an
-`environment` from the configuration, what to find, and a time window. The result is a header (window, status, hits
-found, fetched and shown, buckets) and one line per hit.
+The `logs` tool reads one backend and never changes anything. A call names an `environment`, what to find, and a time
+window; the result is a header (window, status, hits found, fetched and shown, buckets) and one line per hit.
 
 ## The order of work
 
@@ -26,8 +25,7 @@ found, fetched and shown, buckets) and one line per hit.
 ## Reading the lines
 
 - `size` is how many hits are fetched (50 by default, at most 200); a page shows up to 20. `order: "asc"` fetches the
-  oldest hits of the window, `"desc"` the newest. To see later events, use `desc` or narrow the window: raising `size`
-  alone does not help.
+  oldest hits of the window, `"desc"` the newest.
 - `match` keeps the hits that contain all its texts, `exclude` drops the ones that contain any. On Elasticsearch both
   look only at the hits already fetched; Loki also gets them as line filters, with the case you give. To find a line by
   an identifier, put the identifier in `phrase`.
@@ -47,3 +45,9 @@ found, fetched and shown, buckets) and one line per hit.
   the user something is unavailable because it is masked. The same value gets the same token all day, so you can follow
   it across searches.
 - Quote the time of a line with any conclusion, so the user can check it.
+
+## Example
+
+```json
+{"environment":"staging","phrase":"order 123","window":"2h"}
+```
