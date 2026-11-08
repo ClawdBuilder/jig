@@ -19,7 +19,7 @@ import type { UpdateCopy } from "../update-plan.ts";
 import { executeUpdate } from "../update-run.ts";
 import type { CommandResult, InstallCommand, UpdateIo } from "../update-run.ts";
 import { agentDirFor, ownPackage } from "./headless.ts";
-import { manifestOf, packageFolder, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
+import { globalNpmRoot, manifestOf, packageFolder, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
 
 const PI = "@earendil-works/pi-coding-agent";
 const MAX_OUTPUT = 512 * 1024;
@@ -201,7 +201,7 @@ export function discover(
     jigEntries: JigEntry[];
     listed: ReturnType<typeof readPackages>["listed"];
 } {
-    const listed = readPackages(agentDir, cwd).listed;
+    const listed = readPackages(agentDir, cwd, { globalRoot: () => globalNpmRoot() }).listed;
     const jigEntries: JigEntry[] = [];
     const looksLikeJig = (source: string): boolean => {
         const npm = parseNpmSource(source)?.name;
