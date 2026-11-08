@@ -155,8 +155,8 @@ describe("the update command's gate", () => {
         }) as typeof process.stderr.write;
         try {
             const code = await update([], undefined);
-            assert.equal(code, 1);
-            assert.match(text, /Update needs a terminal with a screen/);
+            assert.equal(code, 2);
+            assert.match(text, /no terminal to confirm on/);
             assert.match(text, /jig update --check/);
         } finally {
             process.stderr.write = saved;
@@ -172,7 +172,7 @@ describe("the update command's gate", () => {
         }) as typeof process.stderr.write;
         try {
             assert.equal(await update(["--nope"], undefined), 2);
-            assert.match(text, /Unknown option --nope/);
+            assert.match(text, /jig update: unknown option --nope/);
         } finally {
             process.stderr.write = saved;
         }

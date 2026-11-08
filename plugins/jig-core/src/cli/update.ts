@@ -7,6 +7,7 @@ import { accessSync, constants, existsSync, lstatSync, readFileSync, realpathSyn
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { errorMessage } from "../errors.ts";
+import { helpFor } from "./help.ts";
 import { jigPackage, piVersion } from "../pi-version.ts";
 
 import { compareVersions } from "../pi-version.ts";
@@ -325,11 +326,19 @@ export function upToDate(current: string, target: string, requested: string | un
 }
 
 export async function update(args: readonly string[], host: string | undefined): Promise<number> {
+    if (args.includes("--help") || args.includes("-h")) {
+        process.stdout.write(`${helpFor("update")}\n`);
+        return 0;
+    }
     let check = false;
+    let json = false;
+    let yes = false;
     let requested: string | undefined;
     for (let index = 0; index < args.length; index++) {
         const word = args[index];
         if (word === "--check") check = true;
+        else if (word === "--json") json = true;
+        else if (word === "--yes" || word === "-y") yes = true;
         else if (word === "--to") {
             const value = args[++index];
             if (value === undefined || value.startsWith("--")) {
@@ -338,15 +347,20 @@ export async function update(args: readonly string[], host: string | undefined):
             }
             requested = value;
         } else {
-            process.stderr.write(`Unknown option ${word}\n${usage()}\n`);
+            process.stderr.write(`jig update: unknown option ${word}.\nRun jig update --help for usage.\n`);
             return 2;
         }
     }
-    if (!check && (process.stdin.isTTY !== true || process.stdout.isTTY !== true)) {
+    const assumeYes = yes || process.env.CI === "true";
+    if (json && !check && !assumeYes) {
+        process.stderr.write("jig update --json needs --check (a plan) or --yes (a result).\n");
+        return 2;
+    }
+    if (!check && (process.stdin.isTTY !== true || process.stdout.isTTY !== true) && !assumeYes) {
         process.stderr.write(
-            "Update needs a terminal with a screen. Run jig update --check to see what it would do.\n",
+            "jig update: no terminal to confirm on. Run `jig update --check` to see the plan, or `jig update --yes` to apply it.\n",
         );
-        return 1;
+        return 2;
     }
     if (host === undefined) {
         process.stderr.write("jig update needs Pi installed; install Pi first.\n");
@@ -395,7 +409,11 @@ export async function update(args: readonly string[], host: string | undefined):
         return 1;
     }
     if (upToDate(current, chosen.target.version, requested)) {
-        process.stdout.write(`Jig ${current} is up to date.\n`);
+        if (json)
+            process.stdout.write(
+                `${JSON.stringify({ schema: 1, current, target: chosen.target.version, action: "up-to-date", changes: false }, null, 2)}\n`,
+            );
+        else process.stdout.write(`Jig ${current} is up to date.\n`);
         return 0;
     }
     try {
@@ -468,6 +486,23 @@ export async function update(args: readonly string[], host: string | undefined):
             return 1;
         }
     }
+    if (check && json) {
+        process.stdout.write(
+            `${JSON.stringify(
+                {
+                    schema: 1,
+                    current,
+                    target: plan.target,
+                    action: plan.changes ? "update" : "up-to-date",
+                    changes: plan.changes,
+                    pi: plan.pi ?? null,
+                },
+                null,
+                2,
+            )}\n`,
+        );
+        return 0;
+    }
     if (check) {
         for (const line of describePlan(plan)) process.stdout.write(`${line}\n`);
         if (piTarget !== undefined && !("problem" in piTarget)) {
@@ -480,7 +515,7 @@ export async function update(args: readonly string[], host: string | undefined):
             );
         }
         process.stdout.write("No changes were made.\n");
-        return plan.changes ? 2 : 0;
+        return 0;
     }
     if (lookup("npm") === undefined) {
         process.stderr.write("jig update needs npm on PATH to move the global command. Nothing was changed.\n");
@@ -500,7 +535,7 @@ export async function update(args: readonly string[], host: string | undefined):
         process.stderr.write(`Jig cannot write its package list in ${agentDir}. Nothing was changed.\n`);
         return 1;
     }
-    if (plan.changes) {
+    if (plan.changes && !json) {
         for (const line of describePlan(plan)) process.stdout.write(`${line}\n`);
     }
     const piFolder = discovered.piCopy?.folder;
@@ -511,7 +546,7 @@ export async function update(args: readonly string[], host: string | undefined):
     const confirm = async (title: string, message: string, signal?: AbortSignal): Promise<boolean> => {
         if (signal?.aborted === true) return false;
         const { createInterface } = await import("node:readline/promises");
-        const readline = createInterface({ input: process.stdin, output: process.stdout });
+        const readline = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
         let onAbort: (() => void) | undefined;
         const aborted = new Promise<boolean>((resolve) => {
             onAbort = () => {
@@ -521,7 +556,8 @@ export async function update(args: readonly string[], host: string | undefined):
             signal?.addEventListener("abort", onAbort, { once: true });
         });
         try {
-            const question = readline.question(`${title}\n${message}\n(y/N) `);
+            if (assumeYes) return true;
+            const question = readline.question(`${title} ${message} [y/N] `).finally(() => process.stdout.write("\n"));
             return await Promise.race([
                 question.then((answer) => answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes"),
                 aborted,
@@ -534,6 +570,10 @@ export async function update(args: readonly string[], host: string | undefined):
     const io: UpdateIo = {
         run: (command, commandArgs, signal) => run(command, commandArgs, cwd, signal),
         notify: (text, level) => {
+            if (json) {
+                if (level === "error") process.stderr.write(`${text}\n`);
+                return;
+            }
             (level === "error" ? process.stderr : process.stdout).write(`${text}\n`);
         },
         confirm,
@@ -574,12 +614,17 @@ export async function update(args: readonly string[], host: string | undefined):
             };
         },
         async doctor() {
-            const launcher = process.argv[1];
-            const result =
-                launcher === undefined
-                    ? { code: 1, stdout: "", stderr: "the jig launcher is unknown" }
-                    : await run(process.execPath, [launcher, "doctor", "--quiet"], cwd);
-            return { code: result.code, output: outputOf(result) };
+            const verify = await this.verify();
+            const expected = plan.target;
+            const wrong = [
+                verify.piCopy !== expected ? `Pi's copy is ${verify.piCopy ?? "missing"}` : "",
+                verify.global !== expected ? `the jig command is ${verify.global ?? "missing"}` : "",
+            ].filter(Boolean);
+            const output =
+                wrong.length > 0
+                    ? `Updated, but ${wrong.join(" and ")}. Run jig doctor in a project folder.`
+                    : `Checked: both Jig copies are ${expected}, the global command runs, and Pi's settings name it.\nFull check: jig doctor (run it in a project folder; company checks depend on the folder)`;
+            return { code: wrong.length === 0 ? 0 : 1, output };
         },
     };
     const controller = new AbortController();
@@ -594,5 +639,10 @@ export async function update(args: readonly string[], host: string | undefined):
         process.removeListener("SIGINT", interrupt);
         process.removeListener("SIGTERM", interrupt);
     });
+    if (json) {
+        process.stdout.write(
+            `${JSON.stringify({ schema: 1, current, target: plan.target, changed: result.changed, code: result.code }, null, 2)}\n`,
+        );
+    }
     return result.code;
 }
