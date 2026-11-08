@@ -11,6 +11,8 @@ import { isObject } from "./values.ts";
 
 /** A token is replaced this long before it expires, so that it does not run out on the way. */
 export const REPLACE_EARLY_MS = 60_000;
+/** A command's token has no expiry the endpoint tells us; keep it briefly, and let a 401 run the command again. */
+export const COMMAND_TOKEN_MS = 5 * 60_000;
 /** A token answer is small. A longer one is not read. */
 const MAX_TOKEN_ANSWER_BYTES = 64 * 1024;
 /** What a token is: printable characters without a space, so that it can go into a header. */
@@ -122,7 +124,7 @@ function tokenRequest(login: Login, oauth: HttpOAuth, account: Account): HttpReq
     return {
         system: login.system,
         method: "POST",
-        url: oauth.tokenUrl,
+        url: oauth.tokenUrl ?? "",
         headers,
         body: form.toString(),
         maxBytes: MAX_TOKEN_ANSWER_BYTES,
@@ -157,14 +159,23 @@ function tokenFrom(answer: HttpResponse, now: number): { value: string; expiresA
 /** What the sign-in settings say, checked before anything is read or sent. Throws an error with a bare reason. */
 function checkSettings(oauth: HttpOAuth): void {
     if (!isObject(oauth)) throw refused("auth.oauth must be an object");
-    if (oauth.grant !== "client_credentials" && oauth.grant !== "password") {
-        throw refused("auth.oauth.grant must be client_credentials or password");
+    if (!["client_credentials", "password", "command"].includes(oauth.grant)) {
+        throw refused("auth.oauth.grant must be client_credentials, password or command");
+    }
+    const value = (item: HttpValue | undefined): boolean =>
+        item === undefined || typeof item === "string" || (isObject(item) && typeof item.ref === "string");
+    if (oauth.grant === "command") {
+        if (typeof oauth.command !== "string" || oauth.command === "") {
+            throw refused("auth.oauth.command must be a secret reference");
+        }
+        if (oauth.cacheMs !== undefined && (!Number.isFinite(oauth.cacheMs) || oauth.cacheMs < 0)) {
+            throw refused("auth.oauth.cacheMs must be a number of milliseconds");
+        }
+        return;
     }
     if (typeof oauth.tokenUrl !== "string" || !/^https?:\/\//i.test(oauth.tokenUrl)) {
         throw refused("auth.oauth.tokenUrl must be an http or https address");
     }
-    const value = (item: HttpValue | undefined): boolean =>
-        item === undefined || typeof item === "string" || (isObject(item) && typeof item.ref === "string");
     if (!value(oauth.clientId) || oauth.clientId === undefined) throw refused("auth.oauth.clientId is needed");
     for (const name of ["clientSecret", "username", "password"] as const) {
         if (!value(oauth[name])) throw refused(`auth.oauth.${name} must be text or a { ref }`);
@@ -216,6 +227,8 @@ export function createTokens(now: () => number): Tokens {
                 login.cache,
                 oauth.grant,
                 oauth.tokenUrl,
+                oauth.command,
+                oauth.cacheMs,
                 oauth.clientId,
                 oauth.clientSecret,
                 oauth.username,
@@ -227,9 +240,21 @@ export function createTokens(now: () => number): Tokens {
             if (kept !== undefined && now() < kept.expiresAt - REPLACE_EARLY_MS) {
                 return { value: kept.value, fresh: false, id };
             }
-            const made = await request(login, oauth);
+            let made: { value: string; expiresAt: number };
+            let fresh = true;
+            if (oauth.grant === "command") {
+                const value = await login.read(oauth.command as string);
+                if (!TOKEN.test(value)) throw refused("the token command did not print a usable bearer token");
+                login.redact(value);
+                made = { value, expiresAt: now() + (oauth.cacheMs ?? COMMAND_TOKEN_MS) };
+                // A command's token carries no expiry the endpoint told us about, so a 401 is the only signal that it
+                // was stale: let the one 401 resend run the command again, even on the first use.
+                fresh = false;
+            } else {
+                made = await request(login, oauth);
+            }
             cache.set(id, made);
-            return { value: made.value, fresh: true, id };
+            return { value: made.value, fresh, id };
         },
 
         forget(id) {

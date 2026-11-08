@@ -6,6 +6,12 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- `jig-jira` takes OAuth 2.0 access tokens from a command the person already trusts: `auth.oauth` names a `cmd:` secret
+  source, and jig-core caches the token briefly and runs the command once more after a 401. Cloud uses
+  `api.atlassian.com/ex/jira/<cloudId>` (`auth.cloudId`); Data Center uses the site URL. Jig never signs in or stores the
+  refresh token. Guides for [Cloud](plugins/jig-jira/docs/oauth-cloud.md) and
+  [Data Center](plugins/jig-jira/docs/oauth-data-center.md).
+
 - A **Keep awake** sun in the tab bar holds this computer awake: off, on until it is switched off or Herdr closes, or while
   any agent is working or blocked (and `idleMinutes`, 5 by default, after the last one). A hidden PowerShell
   (`SetThreadExecutionState`), `caffeinate` or `systemd-inhibit` holds the request, one at a time, on the computer Herdr

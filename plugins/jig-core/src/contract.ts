@@ -330,9 +330,14 @@ export type HttpValue = string | { ref: string };
  * before it expires, and sends it as a bearer token. The token is never written anywhere.
  */
 export interface HttpOAuth {
-    grant: "client_credentials" | "password";
-    tokenUrl: string;
-    clientId: HttpValue;
+    /** A command source reads a token the person's own tool printed; no browser and no token endpoint. */
+    grant: "client_credentials" | "password" | "command";
+    tokenUrl?: string;
+    clientId?: HttpValue;
+    /** For `grant: "command"`: the secret reference whose command prints the access token. */
+    command?: HttpValue;
+    /** How long a command's token is kept, in ms, when the command does not say. Default five minutes. */
+    cacheMs?: number;
     /** A client with a secret signs in with HTTP Basic unless `clientAuth` is `body`. */
     clientSecret?: HttpValue;
     /** For the password grant. */

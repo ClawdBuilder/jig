@@ -427,7 +427,14 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
                 const login = {
                     cache: oauth?.cache ?? "",
                     system: request.system,
-                    read: (reference: string) => secret(reference, caller),
+                    // A command is the source of the token, not a value to reuse: after a 401 the one resend must run it
+                    // again. Other grants' secrets stay cached for this call.
+                    read: (reference: string) =>
+                        oauth?.grant === "command"
+                            ? deps.secrets.resolve(reference, caller).catch((error: unknown) => {
+                                  throw credentialFailure(error, caller);
+                              })
+                            : secret(reference, caller),
                     redact,
                     send: (tokenRequest: HttpRequest, signal: AbortSignal) =>
                         exchange(tokenRequest, undefined, signal, caller),
