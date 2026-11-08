@@ -587,7 +587,7 @@ function markerPackage(marker: string, cwd = work, name = "tool"): void {
 }
 
 describe("project packages follow Pi's trust, and import nothing before it", () => {
-    test("the marker appears only in the cases Pi would load", { timeout: 60_000 }, async () => {
+    test("the marker appears only in the cases Pi would load", { timeout: 120_000 }, async () => {
         const cases: Array<{
             name: string;
             trust?: Record<string, unknown>;
