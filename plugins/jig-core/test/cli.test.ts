@@ -76,7 +76,7 @@ function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv 
 
 function run(
     args: string[],
-    options: { input?: string; tty?: boolean; env?: Record<string, string>; cwd?: string } = {},
+    options: { input?: string; tty?: boolean; env?: Record<string, string | undefined>; cwd?: string } = {},
 ) {
     const command = options.tty === true ? "script" : process.execPath;
     const argv =
