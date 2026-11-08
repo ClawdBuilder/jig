@@ -14,13 +14,14 @@
     "scripts": {
         "test": "node --import ./test/support/host.mjs --test \"test/*.test.ts\" \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\"",
         "test:it": "node --import ./test/support/host.mjs --test \"plugins/*/test/it/*.test.ts\"",
-        "check": "node test/support/link-host.mjs && node scripts/check-pinned-deps.mjs && node scripts/check-runtime-deps.mjs && node scripts/check-docs.mjs && node scripts/check-version-pins.mjs && node scripts/check-released-changelog.mjs && tsc -p tsconfig.json && biome ci .",
+        "check": "node test/support/link-host.mjs && node scripts/check-pinned-deps.mjs && node scripts/check-runtime-deps.mjs && node scripts/check-docs.mjs && node scripts/check-version-pins.mjs && node scripts/check-released-changelog.mjs && node scripts/build-contracts.mjs --check && tsc -p tsconfig.json && biome ci .",
         "check:install": "node scripts/check-install.mjs",
         "format": "biome format --write .",
         "lint": "biome lint .",
         "check:web": "npm --prefix plugins/jig-review/web run check",
         "test:web": "npm --prefix plugins/jig-review/web test",
-        "check:dist": "node test/support/check-web-dist.mjs"
+        "check:dist": "node test/support/check-web-dist.mjs",
+        "check:contracts": "node scripts/build-contracts.mjs --check"
     },
     "dependencies": {
         "@anthropic-ai/sandbox-runtime": "0.0.81",
