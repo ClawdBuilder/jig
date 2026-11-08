@@ -1,7 +1,7 @@
 # jig-jira: Jira issues
 
 **Status: built.** Tested against a fake Jira on this machine and used in real sessions against a real Jira through a
-company transport: reads, a create, updates and a link. Not tried: the four direct auth forms, Jira Cloud, ScriptRunner,
+company transport: reads, a create, updates and a link. Not tried: the direct auth forms, Jira Cloud, ScriptRunner,
 attachments and transitions (see [Not verified yet](docs/not-verified.md)).
 
 `jig-jira` gives the agent one tool, `jira`, over Jira's REST API version 2,
@@ -92,7 +92,7 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | Field | Default | Meaning |
 |---|---|---|
 | `site` | required | The https address of the Jira, such as `https://example.atlassian.net` |
-| `auth` | required | How requests are signed in: exactly one of the four forms below |
+| `auth` | required | How requests are signed in: exactly one of the five forms below |
 | `projects` | none | Project keys, such as `["PROJ"]`: `search` with no JQL looks in them, and `create` accepts only them |
 | `updateFields` | `summary`, `description`, `labels`, `priority`, `assignee` | The fields `update` may set, by name or id |
 | `fields` | none | Friendly names for field ids, such as `"Story Points": "customfield_10016"` |
@@ -112,8 +112,11 @@ The fields in detail are in [Configuration](docs/configuration.md).
 | `{ "token": "<secret reference>" }` | A personal access token, sent as a Bearer token | Jira Data Center |
 | `{ "signIn": "<service name>" }` | The headers of a company sign-in service, asked for on every request | A company's single sign-on |
 | `{ "transport": "<name>" }` | A company transport: every request goes through it, and the tool holds no token | A company that reaches Jira only through a local sign-in proxy |
+| `{ "oauth": "cmd:<name>", "cloudId": "<id>" }` | An OAuth access token printed by a declared command, sent as Bearer; `cloudId` selects the Cloud API address | Cloud 3LO ([guide](docs/oauth-cloud.md)) |
+| `{ "oauth": "cmd:<name>" }` | The same Bearer token, sent to the site URL | Data Center OAuth ([guide](docs/oauth-data-center.md)) |
 
-The token is a secret reference such as `pass:work/jira-token` (see
+The `oauth` value is a secret reference to a command, and the command is declared in `secrets.commands`. The other tokens
+are secret references such as `pass:work/jira-token` (see
 [Secrets](../../docs/secrets.md)); a token written into the file is refused, and
 the error does not repeat it.
 

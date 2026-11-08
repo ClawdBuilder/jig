@@ -5,8 +5,9 @@ The fields of the `jira` section of `jig.json`, in detail. The tables are in the
 
 - **`site`** may have a path, but no user name, password, query or fragment.
   Plain `http` is refused.
-- **`auth`** is exactly one of the four forms in the overview. A token is a
-  secret reference, never the token itself.
+- **`auth`** is exactly one of the five forms in the overview. A token or an
+  `oauth` command is a secret reference, never the token itself. `cloudId` is
+  only for OAuth on Jira Cloud; without it the token goes to the site address.
 - **`projects`:** up to 50 project keys, such as `["PROJ", "OPS"]`, written in any
   case and kept in upper case. A key is a letter, then letters, digits and `_`, up
   to 20 characters. Yours replaces a company's list whole.

@@ -155,7 +155,7 @@ interface Credential {
     query: Array<[string, string]>;
     secrets: string[];
     /** Set for an OAuth token: how to send the request again with a new one after a 401 for a cached token. */
-    oauth?: { fresh: boolean; forget(): void; again(): Promise<Credential> };
+    oauth?: { fresh: boolean; value: string; forget(value: string): void; again(): Promise<Credential> };
 }
 
 /** The credentials in a set of request headers: each value, and the token inside `Scheme token`, because a server may
@@ -427,7 +427,14 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
                 const login = {
                     cache: oauth?.cache ?? "",
                     system: request.system,
-                    read: (reference: string) => secret(reference, caller),
+                    // A command is the source of the token, not a value to reuse: after a 401 the one resend must run it
+                    // again. Other grants' secrets stay cached for this call.
+                    read: (reference: string) =>
+                        oauth?.grant === "command"
+                            ? deps.secrets.resolve(reference, caller).catch((error: unknown) => {
+                                  throw credentialFailure(error, caller);
+                              })
+                            : secret(reference, caller),
                     redact,
                     send: (tokenRequest: HttpRequest, signal: AbortSignal) =>
                         exchange(tokenRequest, undefined, signal, caller),
@@ -440,7 +447,8 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
                     secrets: [token.value],
                     oauth: {
                         fresh: token.fresh,
-                        forget: () => tokens.forget(token.id),
+                        value: token.value,
+                        forget: (rejected) => tokens.forget(token.id, rejected),
                         again: async () => {
                             const next = await tokens.get(login, oauth);
                             return {
@@ -613,7 +621,7 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
             let reply = await exchange(asked, credential, deadline(), caller);
             if (credential?.oauth !== undefined && reply.status === 401 && !credential.oauth.fresh) {
                 // The server turned a cached token down before it acted, so sending again cannot repeat a write.
-                credential.oauth.forget();
+                credential.oauth.forget(credential.oauth.value);
                 const again = await credential.oauth.again();
                 credential = { ...again };
                 reply = await exchange(asked, credential, deadline(), caller);

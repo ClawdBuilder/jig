@@ -630,6 +630,97 @@ describe("oauth", () => {
         assert.equal(t.sent.filter((call) => call.url === grant.tokenUrl).length, 3);
     });
 
+    test("command token shapes are refused before a request", async () => {
+        for (const value of ["", "two words", "line one\nline two", "has space"]) {
+            const t = rig();
+            t.secrets.set("cmd:jira-oauth", value);
+            const error = await failure(
+                t.http.request({ ...base, auth: { oauth: { grant: "command", command: "cmd:jira-oauth" } } }),
+            );
+            assert.equal(error.code, "auth_failed");
+            assert.equal(t.sent.length, 0);
+        }
+    });
+
+    test("a command that cannot be read is auth_failed and sends nothing", async () => {
+        const t = rig();
+        // jig-core's secret layer turns a timeout or exit into this failure; the HTTP layer must not send the API request.
+        const error = await failure(
+            t.http.request({ ...base, auth: { oauth: { grant: "command", command: "cmd:jira-oauth" } } }),
+        );
+        assert.equal(error.code, "auth_failed");
+        assert.equal(t.sent.length, 0);
+    });
+
+    test("command cache boundaries: 0, 30 s, default five minutes, and a 15-minute cap", async () => {
+        const check = async (cacheMs: number | undefined, at: number, reads: number) => {
+            let now = 0;
+            const t = rig({ now: () => now });
+            t.secrets.set("cmd:jira-oauth", `tok-${reads}-123456`);
+            const auth = {
+                oauth: {
+                    grant: "command" as const,
+                    command: "cmd:jira-oauth",
+                    ...(cacheMs === undefined ? {} : { cacheMs }),
+                },
+            };
+            t.replies.push(t.ok(), t.ok());
+            await t.http.request({ ...base, auth });
+            now = at;
+            await t.http.request({ ...base, auth });
+            assert.equal(t.asked.length, reads, `${cacheMs ?? "default"} at ${at}`);
+        };
+        await check(0, 0, 2);
+        await check(30_000, 29_000, 1);
+        await check(30_000, 30_000, 2);
+        await check(undefined, 299_000, 1);
+        await check(undefined, 300_000, 2);
+        await check(60 * 60_000, 14 * 60_000, 1);
+        await check(60 * 60_000, 15 * 60_000, 2);
+    });
+
+    test("five parallel 401s on one stale command token run the command exactly once more", async () => {
+        const t = rig();
+        t.secrets.set("cmd:jira-oauth", "tok-one-123456");
+        const auth = { oauth: { grant: "command" as const, command: "cmd:jira-oauth" } };
+        t.replies.push(t.ok());
+        await t.http.request({ ...base, auth });
+        assert.equal(t.asked.length, 1);
+        t.secrets.set("cmd:jira-oauth", "tok-two-123456");
+        for (let i = 0; i < 5; i++) t.replies.push(t.ok("expired", 401));
+        for (let i = 0; i < 5; i++) t.replies.push(t.ok());
+        await Promise.all(Array.from({ length: 5 }, () => t.http.request({ ...base, auth })));
+        assert.equal(t.asked.length, 2, "the first 401's retry ran the command; the rest used its token");
+        assert.equal(t.sent.filter((call) => call.headers.authorization === "Bearer tok-two-123456").length, 5);
+    });
+
+    test("a command grant reads the command, keeps its token briefly, and reruns it once after a 401", async () => {
+        const t = rig();
+        let runs = 0;
+        t.secrets.set("cmd:jira-oauth", "tok-one-123456");
+        t.replies.push(t.ok('{"ok":true}'));
+        const auth = { oauth: { grant: "command" as const, command: "cmd:jira-oauth", cacheMs: 120_000 } };
+        await t.http.request({ ...base, auth });
+        assert.equal(t.sent[0]?.headers.authorization, "Bearer tok-one-123456");
+        // The cache holds it: a second request reads no secret again.
+        const askedBefore = t.asked.length;
+        t.replies.push(t.ok('{"ok":true}'));
+        await t.http.request({ ...base, auth });
+        assert.equal(t.asked.length, askedBefore, "the cached command token was reused");
+
+        // A 401 forgets it and runs the command once more; the second 401 is returned.
+        t.secrets.set("cmd:jira-oauth", "tok-two-123456");
+        t.replies.push(t.ok("expired", 401), t.ok('{"ok":true}'));
+        const retried = await t.http.request({ ...base, auth });
+        assert.equal(retried.status, 200);
+        assert.equal(t.sent.at(-1)?.headers.authorization, "Bearer tok-two-123456");
+        assert.equal(t.asked.length, 2, "initial and the retry read; the cached request read nothing");
+        t.replies.push(t.ok("nope", 401), t.ok("nope", 401));
+        const denied = await t.http.request({ ...base, auth });
+        assert.equal(denied.status, 401);
+        assert.equal(t.sent.length, 6, "one retry only");
+    });
+
     test("a 401 for a token from the cache gets a new token and one more try; a 401 for a new one is returned", async () => {
         const t = rig();
         t.secrets.set("env:CLIENT_SECRET", "s3cret");

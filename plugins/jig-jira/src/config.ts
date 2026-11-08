@@ -4,7 +4,7 @@ import { isObject } from "../../jig-core/src/kit/values.ts";
 import { builtInField, checkJson, isFieldId, isFieldReference } from "./fields.ts";
 import { InputError } from "./values.ts";
 
-/** How requests are signed in. Exactly one of four, as the section's `auth` object says. */
+/** How requests are signed in. Exactly one of these, as the section's `auth` object says. */
 export type Auth =
     /** Jira Cloud: the account's email and an API token (a secret reference), sent as Basic authentication. */
     | { kind: "basic"; email: string; token: string }
@@ -14,7 +14,10 @@ export type Auth =
     | { kind: "signIn"; name: string }
     /** A company transport that carries each request through a local sign-in proxy. The proxy holds the session, so the
      *  tool holds no token and adds no header. */
-    | { kind: "transport"; name: string };
+    | { kind: "transport"; name: string }
+    /** OAuth 2.0 (3LO Cloud, or PKCE Data Center): a token printed by a command the person trusts. `cloudId` selects
+     *  api.atlassian.com/ex/jira/<cloudId>; without it the token goes to the site URL, as Data Center takes it. */
+    | { kind: "oauth"; token: string; cloudId?: string };
 
 export interface JiraSettings {
     /** The base address: https, no trailing slash. It may have a path, for a Jira served below one. */
@@ -61,7 +64,7 @@ const SECTION_FIELDS: ReadonlySet<string> = new Set([
     "me",
     "commentSearch",
 ]);
-const AUTH_FIELDS: ReadonlySet<string> = new Set(["email", "token", "signIn", "transport"]);
+const AUTH_FIELDS: ReadonlySet<string> = new Set(["email", "token", "oauth", "cloudId", "signIn", "transport"]);
 
 /** A secret reference has a scheme and a name (`pass:work/jira-token`, `env:JIRA_TOKEN`, `op://vault/item/field`). A
  *  token pasted here instead has neither, and is refused without being repeated. */
@@ -109,7 +112,7 @@ function checkSite(value: unknown, errors: string[]): string | undefined {
 }
 
 const AUTH_CHOICES =
-    'one of { "email", "token" } for Jira Cloud, { "token" } for Data Center, { "signIn" } or { "transport" }';
+    'one of { "email", "token" } for Jira Cloud, { "token" } for Data Center, { "oauth" } (with "cloudId" on Cloud), { "signIn" } or { "transport" }';
 
 function checkAuth(value: unknown, errors: string[]): Auth | undefined {
     if (value === undefined || (isObject(value) && Object.keys(value).length === 0)) {
@@ -122,9 +125,30 @@ function checkAuth(value: unknown, errors: string[]): Auth | undefined {
     }
     const before = errors.length;
     for (const name of Object.keys(value)) if (!AUTH_FIELDS.has(name)) errors.push(`jira.auth.${name}: unknown field`);
-    const { email, token, signIn, transport } = value;
+    const { email, token, oauth, cloudId, signIn, transport } = value;
 
     // A sign-in service and a transport each stand alone: they hold the session, so there is no token or email to give.
+    if (oauth !== undefined) {
+        if (email !== undefined || token !== undefined || signIn !== undefined || transport !== undefined) {
+            errors.push("jira.auth: use exactly one of oauth, email/token, signIn or transport");
+        }
+        if (typeof oauth !== "string" || !SECRET_REFERENCE.test(oauth)) {
+            errors.push(
+                "jira.auth.oauth: must be a secret reference to the token command, such as cmd:jira-oauth, not the token itself",
+            );
+        }
+        if (cloudId !== undefined && (typeof cloudId !== "string" || !/^[A-Za-z0-9-]{1,128}$/.test(cloudId))) {
+            errors.push("jira.auth.cloudId: must be the Cloud site's id, letters, digits and hyphens");
+        }
+        if (errors.length > before) return undefined;
+        return {
+            kind: "oauth",
+            token: String(oauth),
+            ...(cloudId === undefined ? {} : { cloudId: String(cloudId) }),
+        };
+    }
+    if (cloudId !== undefined) errors.push("jira.auth.cloudId: only for OAuth on Jira Cloud");
+
     if (signIn !== undefined || transport !== undefined) {
         if (email !== undefined || token !== undefined || (signIn !== undefined && transport !== undefined)) {
             errors.push("jira.auth: use exactly one of signIn, transport, or token (with an email for Jira Cloud)");

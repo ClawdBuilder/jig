@@ -24,7 +24,7 @@ function settings(section: Record<string, unknown>) {
 }
 
 describe("a valid section", () => {
-    test("the four ways to sign in", () => {
+    test("the five ways to sign in", () => {
         assert.deepEqual(settings(cloud).auth, {
             kind: "basic",
             email: "jane@example.test",
@@ -41,6 +41,15 @@ describe("a valid section", () => {
         assert.deepEqual(settings({ site: SITE, auth: { transport: "company-proxy" } }).auth, {
             kind: "transport",
             name: "company-proxy",
+        });
+        assert.deepEqual(settings({ site: SITE, auth: { oauth: "cmd:jira-oauth" } }).auth, {
+            kind: "oauth",
+            token: "cmd:jira-oauth",
+        });
+        assert.deepEqual(settings({ site: SITE, auth: { oauth: "cmd:jira-oauth", cloudId: "cloud-123" } }).auth, {
+            kind: "oauth",
+            token: "cmd:jira-oauth",
+            cloudId: "cloud-123",
         });
     });
 
@@ -179,6 +188,25 @@ describe("auth is exactly one way", () => {
         assert.match(
             validateJira({ site: SITE, auth: { email: "jane@example.test" } })[0] ?? "",
             /^jira\.auth\.token: required/,
+        );
+    });
+
+    test("the OAuth token is a secret reference, and cloudId is only for OAuth", () => {
+        assert.match(
+            validateJira({ site: SITE, auth: { oauth: "Bearer raw" } })[0] ?? "",
+            /^jira.auth.oauth: must be a secret reference/,
+        );
+        assert.match(
+            validateJira({ site: SITE, auth: { oauth: "cmd:jira-oauth", cloudId: "../site" } })[0] ?? "",
+            /^jira.auth.cloudId/,
+        );
+        assert.match(
+            validateJira({ site: SITE, auth: { token: "pass:x/y", cloudId: "cloud-123" } })[0] ?? "",
+            /^jira.auth.cloudId: only for OAuth/,
+        );
+        assert.match(
+            validateJira({ site: SITE, auth: { oauth: "cmd:jira-oauth", token: "pass:x/y" } })[0] ?? "",
+            /^jira.auth: use exactly one of oauth/,
         );
     });
 

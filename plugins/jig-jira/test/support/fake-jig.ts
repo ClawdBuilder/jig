@@ -24,6 +24,8 @@ export interface FakeJig {
     facts: Map<string, Facts[]>;
     /** Secret values by reference. Every reference resolved is recorded. */
     secrets: Map<string, string>;
+    /** When set, answers a reference instead of `secrets`; a test can count token-command runs. */
+    setSecretResolver(resolver?: (reference: string) => string | undefined): void;
     secretCalls: string[];
     /** Sign-in services by name: the headers for a request. Every request asked about is recorded. */
     signIn: Map<string, (request: SignInRequest) => Record<string, string>>;
@@ -57,6 +59,7 @@ export function installFakeJig(): FakeJig {
     const approved = new Map<string, Preview>();
     const facts = new Map<string, Facts[]>();
     const secrets = new Map<string, string>();
+    let secretResolver: ((reference: string) => string | undefined) | undefined;
     const secretCalls: string[] = [];
     const signIn = new Map<string, (request: SignInRequest) => Record<string, string>>();
     const signInCalls: FakeJig["signInCalls"] = [];
@@ -73,7 +76,7 @@ export function installFakeJig(): FakeJig {
         secrets: {
             resolve: async (ref) => {
                 secretCalls.push(ref);
-                const value = secrets.get(ref);
+                const value = secretResolver?.(ref) ?? secrets.get(ref);
                 if (value === undefined) throw new Error("the secret could not be read: no such entry");
                 return value;
             },
@@ -191,6 +194,9 @@ export function installFakeJig(): FakeJig {
         transportCalls,
         setFetch: (replacement) => {
             fetchImpl = replacement;
+        },
+        setSecretResolver: (resolver) => {
+            secretResolver = resolver;
         },
         setSection: (name, value) => void values.set(name, value),
         publish: () => void publishJig(api),
