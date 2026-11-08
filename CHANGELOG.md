@@ -15,6 +15,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- `jig-lens` calls the loops column by what it counts: failed and refused calls, and says in the table that a refused call
+  counts too.
+
 - `jig-ops` tells the agent to run `ci services` first when the service is not in its context, before it guesses a name.
 
 - The Changes panel (`repo-changes`) lists the folder of the focused terminal, not the space's, and has a header toggle to
