@@ -10,6 +10,7 @@ import { doctorContext } from "../doctor-checks.ts";
 import { formatDoctor, runDoctor } from "../doctor.ts";
 import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
+import { helpFor, nearestCommand, USAGE } from "./help.ts";
 import { npmInstall, piVersion, jigPackage } from "../pi-version.ts";
 import { loadPersonalConfig } from "../state.ts";
 import type { JigState } from "../state.ts";
@@ -19,14 +20,6 @@ import { terminalUi } from "./terminal.ts";
 import { update as updateCommand } from "./update.ts";
 import { writeSetup } from "../setup-write.ts";
 import type { SetupChange } from "../setup-plan.ts";
-
-const USAGE = `Usage: jig doctor [--json] [--network] [--quiet]
-       jig setup
-       jig update [--check] [--to <version>]
-
-jig doctor checks this machine, the settings and the secret stores, and changes nothing.
-jig setup asks only what is missing, then writes your settings file once, with a backup.
-jig update moves both copies of Jig to one published version; --check changes nothing.`;
 
 /** A package whose syntax this Node cannot strip is not a broken package: Pi's loader reads it, the command's does not. */
 function unreadableByThisLoader(reason: string): boolean {
@@ -58,10 +51,14 @@ function failureLines(failures: readonly LoadFailure[]): DoctorLine[] {
 
 /** Runs the doctor and returns its exit code: 0 with no failures, 1 with a failure, 2 for bad arguments. */
 async function doctor(args: readonly string[]): Promise<number> {
+    if (args.includes("--help") || args.includes("-h")) {
+        process.stdout.write(`${helpFor("doctor")}\n`);
+        return 0;
+    }
     const flags = new Set(args);
     const unknown = args.filter((word) => !["--json", "--network", "--quiet"].includes(word));
     if (unknown.length > 0) {
-        process.stderr.write(`Unknown option ${unknown[0]}\n${USAGE}\n`);
+        process.stderr.write(`jig doctor: unknown option ${unknown[0]}.\nRun jig doctor --help for usage.\n`);
         return 2;
     }
     if (process.stdout.isTTY === true && !flags.has("--json")) {
@@ -134,9 +131,18 @@ async function doctor(args: readonly string[]): Promise<number> {
     for (const line of lines) counts[line.level]++;
     report = { ...report, lines, counts };
     if (flags.has("--json")) {
-        process.stdout.write(`${JSON.stringify({ ...report, failures: failed }, null, 2)}\n`);
+        process.stdout.write(`${JSON.stringify({ schema: 1, ...report, failures: failed }, null, 2)}\n`);
     } else {
-        const shown = formatDoctor(report, { quiet: flags.has("--quiet"), command: "jig" });
+        const colour =
+            process.stdout.isTTY === true &&
+            process.env.NO_COLOR === undefined &&
+            (process.env.FORCE_COLOR !== undefined || process.env.TERM !== "dumb");
+        const shown = formatDoctor(report, {
+            quiet: flags.has("--quiet"),
+            command: "jig",
+            color: colour,
+            width: process.stdout.isTTY === true ? (process.stdout.columns ?? 80) : 80,
+        });
         process.stdout.write(`${shown.join("\n")}\n`);
     }
     return failed > 0 ? 1 : 0;
@@ -219,10 +225,24 @@ async function writeProfile(
 }
 
 /** Runs the setup and returns its exit code: 0 done or nothing to do, 1 failed, 130 cancelled. */
-async function setup(): Promise<number> {
+async function setup(args: readonly string[]): Promise<number> {
+    if (args.includes("--help") || args.includes("-h")) {
+        process.stdout.write(`${helpFor("setup")}\n`);
+        return 0;
+    }
+    const unknown = args.filter((word) => word !== "--yes" && word !== "-y");
+    if (unknown.length > 0) {
+        process.stderr.write(`jig setup: unknown option ${unknown[0]}.\nRun jig setup --help for usage.\n`);
+        return 2;
+    }
+    const yes = args.includes("--yes") || args.includes("-y") || process.env.CI === "true";
     if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) {
-        process.stderr.write("Setup needs a terminal with a screen. Run jig setup from a terminal.\n");
-        return 1;
+        process.stderr.write(
+            yes
+                ? "jig setup --yes cannot run without a terminal: the profile and company choice need a person. Run jig setup in a terminal.\n"
+                : "jig setup: no terminal to ask on. Add --yes for defaults (profile/company still need a terminal), or run jig setup in a terminal.\n",
+        );
+        return 2;
     }
     const ui = terminalUi();
     ui.notify("Starting jig setup…", "info");
@@ -275,23 +295,50 @@ async function setup(): Promise<number> {
 /** `jig`: the word picks the command. Returns the process exit code. */
 export async function main(argv: readonly string[], piHost?: string): Promise<number> {
     const [word, ...rest] = argv;
-    if (word === undefined || word === "--help" || word === "-h" || word === "help") {
+    if (word === undefined) {
         process.stdout.write(`${USAGE}\n`);
-        return word === undefined ? 2 : 0;
+        return 2;
+    }
+    if (word === "--help" || word === "-h") {
+        process.stdout.write(`${USAGE}\n`);
+        return 0;
+    }
+    if (word === "help") {
+        const topic = rest[0];
+        if (rest.length > 1) {
+            process.stderr.write("jig help takes one command name.\nRun jig --help for the commands.\n");
+            return 2;
+        }
+        const text = helpFor(topic);
+        if (text !== undefined) {
+            process.stdout.write(`${text}\n`);
+            return 0;
+        }
+        const near = topic === undefined ? undefined : nearestCommand(topic);
+        process.stderr.write(
+            topic === undefined
+                ? "jig help needs a command.\nRun jig --help for the commands.\n"
+                : `Unknown command ${topic}.${near === undefined ? "" : ` Did you mean jig ${near}?`}\nRun jig --help for the commands.\n`,
+        );
+        return 2;
     }
     if (word === "--version" || word === "-v") {
-        process.stdout.write(`${jigPackage().version ?? "unknown"}\n`);
+        const json = rest.includes("--json");
+        const extra = rest.filter((word) => word !== "--json");
+        if (extra.length > 0) {
+            process.stderr.write("jig --version takes no arguments except --json.\nRun jig --help for usage.\n");
+            return 2;
+        }
+        const version = jigPackage().version ?? "unknown";
+        process.stdout.write(json ? `${JSON.stringify({ schema: 1, version })}\n` : `${version}\n`);
         return 0;
     }
     if (word === "doctor") return doctor(rest);
     if (word === "update") return updateCommand(rest, piHost);
-    if (word === "setup") {
-        if (rest.length > 0) {
-            process.stderr.write(`jig setup takes no options.\n${USAGE}\n`);
-            return 2;
-        }
-        return setup();
-    }
-    process.stderr.write(`Unknown command ${word}\n${USAGE}\n`);
+    if (word === "setup") return setup(rest);
+    const near = nearestCommand(word);
+    process.stderr.write(
+        `Unknown command ${word}.${near === undefined ? "" : ` Did you mean jig ${near}?`}\nRun jig --help for the commands.\n`,
+    );
     return 2;
 }

@@ -1,96 +1,104 @@
 #!/usr/bin/env node
-// The `jig` command: doctor and setup from a terminal, with no Pi session. The implementation is TypeScript in the package,
-// which Node runs directly (the same way Pi runs the plugins). Pi's own packages are found beside the installed `pi`
-// program when the jig package does not carry them, as a package installed by `pi install` does not.
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+// The `jig` command. Help and version are answered before Pi or any plugin is imported, so they stay fast and work without Pi.
+import { readFileSync } from "node:fs";
 import { register } from "node:module";
-import { delimiter, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
-// A globally installed package lives under node_modules, where Node will not strip TypeScript itself. The hook below does
-// it, and says so without the experimental warning Node prints for the API it uses.
-process.removeAllListeners("warning");
-process.on("warning", (warning) => {
-    if (/stripTypeScriptTypes|Type Stripping|type stripping/i.test(warning.message)) return;
-    process.stderr.write(`${warning.stack ?? warning.message}\n`);
-});
-register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
-
-const PI = "@earendil-works/pi-coding-agent";
-
-/** The package.json of a folder that is Pi, or undefined. */
-function isPi(folder) {
-    const manifest = join(folder, "package.json");
-    if (!existsSync(manifest)) return false;
+const args = process.argv.slice(2);
+const first = args[0];
+const packageVersion = (() => {
     try {
-        return JSON.parse(readFileSync(manifest, "utf8")).name === PI;
+        return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version ?? "unknown";
     } catch {
-        return false;
+        return "unknown";
     }
-}
+})();
 
-function piHostDir() {
-    const named = process.env.JIG_PI_HOST ?? process.env.PI_HOST_DIR;
-    if (named !== undefined && isPi(named)) return named;
-    // Next to the node this runs on: npm's global folder, where `npm install -g` puts Pi (nvm, the usual mac and Linux
-    // layouts). This is the common case and does not depend on PATH holding anything but `pi`'s name.
-    const globalRoot = join(dirname(process.execPath), "..", "lib", "node_modules", PI);
-    if (isPi(globalRoot)) return globalRoot;
-    for (const folder of (process.env.PATH ?? "").split(delimiter)) {
-        const candidate = join(folder, "pi");
-        if (!existsSync(candidate)) continue;
-        let real;
+if (first === "--version" || first === "-v") {
+    const json = args.includes("--json");
+    const extra = args.filter((word) => word !== "--json");
+    if (extra.length > 1) {
+        process.stderr.write(`jig --version takes no arguments except --json.\nRun jig --help for usage.\n`);
+        process.exitCode = 2;
+    } else {
+        process.stdout.write(
+            json ? `${JSON.stringify({ schema: 1, version: packageVersion })}\n` : `${packageVersion}\n`,
+        );
+    }
+} else if (first === undefined || first === "--help" || first === "-h" || first === "help") {
+    register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+    const { helpFor, nearestCommand, USAGE } = await import("../plugins/jig-core/src/cli/help.ts");
+    const topic = first === "help" ? args[1] : undefined;
+    if (topic === undefined) {
+        process.stdout.write(`${USAGE}\n`);
+        process.exitCode = first === undefined ? 2 : 0;
+    } else {
+        const text = helpFor(topic);
+        if (text === undefined) {
+            const near = nearestCommand(topic);
+            process.stderr.write(
+                `Unknown command ${topic}.${near ? ` Did you mean jig ${near}?` : ""}\nRun jig --help for the commands.\n`,
+            );
+            process.exitCode = 2;
+        } else {
+            process.stdout.write(`${text}\n`);
+        }
+    }
+} else {
+    const { register: registerHook } = await import("node:module");
+    registerHook(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+    const PI = "@earendil-works/pi-coding-agent";
+    const { existsSync } = await import("node:fs");
+    const { delimiter, dirname, join } = await import("node:path");
+    const { realpathSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    function isPi(folder) {
+        const manifest = join(folder, "package.json");
+        if (!existsSync(manifest)) return false;
         try {
-            real = realpathSync(candidate);
+            return JSON.parse(readFileSync(manifest, "utf8")).name === PI;
         } catch {
-            continue;
+            return false;
         }
-        let dir = dirname(real);
-        for (let level = 0; level < 8; level++) {
-            const manifest = join(dir, "package.json");
-            if (existsSync(manifest)) {
-                try {
-                    if (JSON.parse(readFileSync(manifest, "utf8")).name === PI) return dir;
-                } catch {
-                    // Keep walking.
-                }
+    }
+    function piHostDir() {
+        const named = process.env.JIG_PI_HOST ?? process.env.PI_HOST_DIR;
+        if (named !== undefined && isPi(named)) return named;
+        const globalRoot = join(dirname(process.execPath), "..", "lib", "node_modules", PI);
+        if (isPi(globalRoot)) return globalRoot;
+        for (const folder of (process.env.PATH ?? "").split(delimiter)) {
+            const candidate = join(folder, "pi");
+            if (!existsSync(candidate)) continue;
+            let real;
+            try {
+                real = realpathSync(candidate);
+            } catch {
+                continue;
             }
-            const parent = dirname(dir);
-            if (parent === dir) break;
-            dir = parent;
+            let dir = dirname(real);
+            for (let level = 0; level < 8; level++) {
+                const manifest = join(dir, "package.json");
+                if (existsSync(manifest)) {
+                    try {
+                        if (JSON.parse(readFileSync(manifest, "utf8")).name === PI) return dir;
+                    } catch {
+                        // Keep walking.
+                    }
+                }
+                const parent = dirname(dir);
+                if (parent === dir) break;
+                dir = parent;
+            }
         }
+        return undefined;
     }
-    return undefined;
-}
-
-/** Pi's package folder, found from this package's own resolution when it carries Pi (a checkout with node_modules). */
-function resolvedPiDir() {
-    try {
-        const entry = import.meta.resolve(PI);
-        let dir = dirname(fileURLToPath(entry));
-        for (let level = 0; level < 8; level++) {
-            if (isPi(dir)) return dir;
-            const parent = dirname(dir);
-            if (parent === dir) break;
-            dir = parent;
-        }
-    } catch {
-        // Not resolvable from here; piHostDir tries the global folder and PATH.
+    const host = piHostDir();
+    if (host === undefined) {
+        process.stderr.write(
+            "jig needs Pi installed: install it with npm install -g @earendil-works/pi-coding-agent, or set PI_HOST_DIR to its package folder.\n",
+        );
+        process.exit(1);
     }
-    return undefined;
+    registerHook(new URL(`./jig-host-hooks.mjs?host=${encodeURIComponent(host)}`, import.meta.url), import.meta.url);
+    const { main } = await import("../plugins/jig-core/src/cli/main.ts");
+    process.exitCode = await main(args, host);
 }
-
-// The plugins Pi loads import Pi's own packages, which they find through Pi's loader and not through a checkout's
-// node_modules. Map them here for every import, whether or not this package itself can resolve Pi.
-const host = piHostDir() ?? resolvedPiDir();
-if (host === undefined) {
-    process.stderr.write(
-        "jig needs Pi installed: install it with npm install -g @earendil-works/pi-coding-agent, or set PI_HOST_DIR to its package folder.\n",
-    );
-    process.exit(1);
-}
-// The hook runs on Node's loader thread, which does not see a variable set now: the folder travels in its URL.
-register(new URL(`./jig-host-hooks.mjs?host=${encodeURIComponent(host)}`, import.meta.url), import.meta.url);
-
-const { main } = await import("../plugins/jig-core/src/cli/main.ts");
-process.exitCode = await main(process.argv.slice(2), host);
