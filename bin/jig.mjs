@@ -13,7 +13,24 @@ const packageVersion = (() => {
     }
 })();
 
-if (first === "--version" || first === "-v") {
+if (args.includes("--help") || args.includes("-h")) {
+    register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+    const { helpFor, nearestCommand, USAGE } = await import("../plugins/jig-core/src/cli/help.ts");
+    const topic = first !== undefined && !first.startsWith("-") && first !== "help" ? first : undefined;
+    if (topic === undefined) {
+        process.stdout.write(`${USAGE}\n`);
+    } else {
+        const text = helpFor(topic);
+        if (text !== undefined) process.stdout.write(`${text}\n`);
+        else {
+            const near = nearestCommand(topic);
+            process.stderr.write(
+                `Unknown command ${topic}.${near ? ` Did you mean jig ${near}?` : ""}\nRun jig --help for the commands.\n`,
+            );
+            process.exitCode = 2;
+        }
+    }
+} else if (first === "--version" || first === "-v") {
     const json = args.includes("--json");
     const extra = args.filter((word) => word !== "--json");
     if (extra.length > 1) {
@@ -31,6 +48,9 @@ if (first === "--version" || first === "-v") {
     if (topic === undefined) {
         process.stdout.write(`${USAGE}\n`);
         process.exitCode = first === undefined ? 2 : 0;
+    } else if (args.length > 2) {
+        process.stderr.write("jig help takes one command name.\nRun jig --help for the commands.\n");
+        process.exitCode = 2;
     } else {
         const text = helpFor(topic);
         if (text === undefined) {
@@ -62,7 +82,7 @@ if (first === "--version" || first === "-v") {
     }
     function piHostDir() {
         const named = process.env.JIG_PI_HOST ?? process.env.PI_HOST_DIR;
-        if (named !== undefined && isPi(named)) return named;
+        if (named !== undefined) return isPi(named) ? named : undefined;
         const globalRoot = join(dirname(process.execPath), "..", "lib", "node_modules", PI);
         if (isPi(globalRoot)) return globalRoot;
         for (const folder of (process.env.PATH ?? "").split(delimiter)) {

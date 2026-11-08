@@ -30,17 +30,17 @@ Examples:
   jig doctor
   jig doctor --json > doctor.json
 ${EXIT_CODES}`,
-    setup: `Usage: jig setup [--yes]
+    setup: `Usage: jig setup
 
 Ask only what is missing, then write your settings file once, with a backup.
+Setup needs a terminal: its company, profile and credential choices have no safe
+headless default.
 
 Options:
-  --yes, -y  accept the defaults and do not ask; for scripts (also CI=true)
   -h, --help show this help
 
 Examples:
   jig setup
-  CI=true jig setup --yes
 ${EXIT_CODES}`,
     update: `Usage: jig update [--check] [--json] [--to <version>] [--yes]
 

@@ -133,15 +133,16 @@ async function doctor(args: readonly string[]): Promise<number> {
     if (flags.has("--json")) {
         process.stdout.write(`${JSON.stringify({ schema: 1, ...report, failures: failed }, null, 2)}\n`);
     } else {
-        const colour =
-            process.stdout.isTTY === true &&
-            process.env.NO_COLOR === undefined &&
-            (process.env.FORCE_COLOR !== undefined || process.env.TERM !== "dumb");
+        const noColor = process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== "";
+        const force = process.env.FORCE_COLOR;
+        const forced = force !== undefined && force !== "" && force !== "0";
+        const colour = !noColor && (forced || (process.stdout.isTTY === true && process.env.TERM !== "dumb"));
+        const columns = process.stdout.columns ?? Number(process.env.COLUMNS ?? 0);
         const shown = formatDoctor(report, {
             quiet: flags.has("--quiet"),
             command: "jig",
             color: colour,
-            width: process.stdout.isTTY === true ? (process.stdout.columns ?? 80) : 80,
+            width: columns > 0 ? columns : 80,
         });
         process.stdout.write(`${shown.join("\n")}\n`);
     }
@@ -230,17 +231,13 @@ async function setup(args: readonly string[]): Promise<number> {
         process.stdout.write(`${helpFor("setup")}\n`);
         return 0;
     }
-    const unknown = args.filter((word) => word !== "--yes" && word !== "-y");
-    if (unknown.length > 0) {
-        process.stderr.write(`jig setup: unknown option ${unknown[0]}.\nRun jig setup --help for usage.\n`);
+    if (args.length > 0) {
+        process.stderr.write(`jig setup: unknown option ${args[0]}.\nRun jig setup --help for usage.\n`);
         return 2;
     }
-    const yes = args.includes("--yes") || args.includes("-y") || process.env.CI === "true";
     if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) {
         process.stderr.write(
-            yes
-                ? "jig setup --yes cannot run without a terminal: the profile and company choice need a person. Run jig setup in a terminal.\n"
-                : "jig setup: no terminal to ask on. Add --yes for defaults (profile/company still need a terminal), or run jig setup in a terminal.\n",
+            "jig setup needs a terminal: its company, profile and credential choices have no safe headless default.\n",
         );
         return 2;
     }
