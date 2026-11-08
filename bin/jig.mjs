@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The `jig` command. Help and version are answered before Pi or any plugin is imported, so they stay fast and work without Pi.
 import { readFileSync } from "node:fs";
-import { register } from "node:module";
+import { register, registerHooks } from "node:module";
 
 const args = process.argv.slice(2);
 const first = args[0];
@@ -14,7 +14,9 @@ const packageVersion = (() => {
 })();
 
 if (args.includes("--help") || args.includes("-h")) {
-    register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+    const hooks = await import("./jig-strip-hooks.mjs");
+    if (typeof registerHooks === "function") registerHooks({ load: hooks.loadTypescript });
+    else register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
     const { helpFor, nearestCommand, USAGE } = await import("../plugins/jig-core/src/cli/help.ts");
     const topic = first !== undefined && !first.startsWith("-") && first !== "help" ? first : undefined;
     if (topic === undefined) {
@@ -42,7 +44,9 @@ if (args.includes("--help") || args.includes("-h")) {
         );
     }
 } else if (first === undefined || first === "--help" || first === "-h" || first === "help") {
-    register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+    const hooks = await import("./jig-strip-hooks.mjs");
+    if (typeof registerHooks === "function") registerHooks({ load: hooks.loadTypescript });
+    else register(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
     const { helpFor, nearestCommand, USAGE } = await import("../plugins/jig-core/src/cli/help.ts");
     const topic = first === "help" ? args[1] : undefined;
     if (topic === undefined) {
@@ -65,7 +69,6 @@ if (args.includes("--help") || args.includes("-h")) {
     }
 } else {
     const { register: registerHook } = await import("node:module");
-    registerHook(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
     const PI = "@earendil-works/pi-coding-agent";
     const { existsSync } = await import("node:fs");
     const { delimiter, dirname, join } = await import("node:path");
@@ -118,7 +121,15 @@ if (args.includes("--help") || args.includes("-h")) {
         );
         process.exit(1);
     }
-    registerHook(new URL(`./jig-host-hooks.mjs?host=${encodeURIComponent(host)}`, import.meta.url), import.meta.url);
+    const strip = await import("./jig-strip-hooks.mjs");
+    const hostUrl = new URL(`./jig-host-hooks.mjs?host=${encodeURIComponent(host)}`, import.meta.url);
+    if (typeof registerHooks === "function") {
+        const hostHooks = await import(hostUrl.href);
+        registerHooks({ resolve: hostHooks.resolve, load: strip.loadTypescript });
+    } else {
+        registerHook(new URL("./jig-strip-hooks.mjs", import.meta.url), import.meta.url);
+        registerHook(hostUrl, import.meta.url);
+    }
     const { main } = await import("../plugins/jig-core/src/cli/main.ts");
     process.exitCode = await main(args, host);
 }

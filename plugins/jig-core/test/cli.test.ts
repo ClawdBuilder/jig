@@ -866,7 +866,8 @@ describe("CLI conventions", () => {
         settingsWith();
         const result = await run(["doctor", "--json"]);
         assert.equal(result.code, 0, result.stderr);
-        assert.equal(result.stderr, "");
+        // Node 22's Pi host warns about SQLite; Node 24+ must be silent (the DEP0205 regression).
+        if (Number(process.versions.node.split(".")[0]) >= 24) assert.equal(result.stderr, "");
         const parsed = JSON.parse(result.stdout) as { schema?: number; counts?: unknown };
         assert.equal(parsed.schema, 1);
         assert.ok(parsed.counts);
