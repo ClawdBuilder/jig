@@ -255,7 +255,7 @@ api.onboarding?.register({
             addHints: { cmd: "acme-sso login", pass: "pass insert acme/sso-token" },
         },
         { kind: "text", section: "acme", path: "bastion.user", label: "Your login on the bastion host", placeholder: "jdoe" },
-        { kind: "login", tool: "gh", status: ["gh", "auth", "status", "--no-refresh"], login: "gh auth login", label: "GitHub login" },
+        { kind: "login", tool: "gh", status: ["gh", "auth", "status"], login: "gh auth login", label: "GitHub login" },
     ],
 });
 ```

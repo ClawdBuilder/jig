@@ -184,7 +184,7 @@ describe("probeSecret", () => {
     test("a login command is checked with its own status, and no token", async () => {
         const fake = runner(() => result({ code: 0 }));
         assert.equal((await probeSecret("cmd:gh", { ...options, run: fake.run })).status, "found");
-        assert.deepEqual(fake.calls[0], { file: "gh", args: ["auth", "status", "--no-refresh"] });
+        assert.deepEqual(fake.calls[0], { file: "gh", args: ["auth", "status"] });
 
         const missing = await probeSecret("cmd:glab", {
             ...options,
@@ -192,6 +192,18 @@ describe("probeSecret", () => {
         });
         assert.equal(missing.status, "missing");
         assert.equal(missing.fix, "glab auth login");
+
+        const partly = await probeSecret("cmd:gh", {
+            ...options,
+            run: runner(() =>
+                result({
+                    code: 1,
+                    stdout: "github.com\n  ✓ Logged in to github.com account acme (keyring)\n  X Failed to log in to github.com account old\n",
+                }),
+            ).run,
+        });
+        assert.equal(partly.status, "found");
+        assert.match(partly.detail ?? "", /one account has a problem/);
 
         const unknown = await probeSecret("cmd:acme-sso", { ...options, run: fake.run });
         assert.equal(unknown.status, "unknown");

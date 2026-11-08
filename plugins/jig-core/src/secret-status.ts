@@ -370,7 +370,7 @@ async function probeCommand(name: string, options: SecretProbeOptions): Promise<
     if (options.run === undefined) {
         return { status: "unknown", backend: "cmd", store: STORE.cmd, detail: "no login check was run" };
     }
-    const args = name === "gh" ? ["auth", "status", "--no-refresh"] : ["auth", "status"];
+    const args = ["auth", "status"];
     try {
         const result = await options.run(name, args, runOptions(options, 8192));
         if (result.timedOut) {
@@ -378,6 +378,14 @@ async function probeCommand(name: string, options: SecretProbeOptions): Promise<
         }
         if (result.code === 0) {
             return { status: "found", backend: "cmd", store: STORE.cmd, detail: "signed in" };
+        }
+        if (/Logged in to/i.test(`${result.stdout}\n${result.stderr}`)) {
+            return {
+                status: "found",
+                backend: "cmd",
+                store: STORE.cmd,
+                detail: "signed in, but one account has a problem",
+            };
         }
         return {
             status: "missing",
