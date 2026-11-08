@@ -52,7 +52,11 @@ describe("ci.yml", () => {
         const text = read(".github/workflows/ci.yml");
         assert.match(text, /ACTIONLINT_VERSION: \d+\.\d+\.\d+/);
         assert.match(text, /go install "github\.com\/rhysd\/actionlint\/cmd\/actionlint@v\$\{ACTIONLINT_VERSION\}"/);
-        assert.doesNotMatch(text, /GOFLAGS=.*-insecure|GONOSUMDB|GONOSUMCHECK|GOSUMDB=off/, "the Go checksum database stays on");
+        assert.doesNotMatch(
+            text,
+            /GOFLAGS=.*-insecure|GONOSUMDB|GONOSUMCHECK|GOSUMDB=off/,
+            "the Go checksum database stays on",
+        );
         assert.doesNotMatch(text, /github\.com\/[^\s"]+\/releases\/download/, "no GitHub release downloads");
     });
 
