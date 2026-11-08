@@ -79,7 +79,7 @@ function run(
             timedOut = true;
             killTree(child);
             reject(new Error(`jig ${args.join(" ")} did not finish`));
-        }, 60_000);
+        }, 45_000);
         child.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
         child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
         child.on("error", (error) => {
@@ -90,7 +90,9 @@ function run(
             clearTimeout(timeout);
             if (!timedOut) resolve({ code, stdout, stderr });
         });
-        child.stdin.end(options.input ?? "");
+        // A tty test feeds its own prompts through script; closing its stdin would end the pty. Non-tty commands get EOF,
+        // so a command that reads stdin can never wait for a terminal that is not there.
+        if (options.tty !== true || options.input !== undefined) child.stdin.end(options.input ?? "");
     });
 }
 
@@ -116,7 +118,10 @@ function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = w
             next();
         });
         child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
-        child.on("error", reject);
+        child.on("error", (error) => {
+            clearTimeout(timeout);
+            reject(error);
+        });
         child.on("close", (code) => resolve({ code, stdout, stderr }));
         const timeout = setTimeout(() => {
             killTree(child);

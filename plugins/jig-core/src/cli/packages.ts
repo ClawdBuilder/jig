@@ -2,6 +2,7 @@
 // a local folder, an npm package under <scope>/npm/node_modules, or a git clone under <scope>/git/<host>/<path>. The
 // @ref of a git source is not in the folder name, and .git is stripped. Project scope lives under <cwd>/.pi and is listed
 // in <cwd>/.pi/settings.json; user scope lives in the agent folder and is listed in its settings.json.
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { filterOf } from "./package-filter.ts";
@@ -154,6 +155,38 @@ function readSettings(file: string, problems: ReadPackages["settingsProblems"]):
     }
 }
 
+let npmRootCache: { key: string; root: string } | undefined;
+
+/** npm's global root, as npm itself reports it; cached once per PATH and prefix, and short enough to fail over. */
+export function globalNpmRoot(env: NodeJS.ProcessEnv = process.env): string {
+    const key = `${env.PATH ?? ""}\0${env.npm_config_prefix ?? env.NPM_CONFIG_PREFIX ?? ""}`;
+    if (npmRootCache?.key === key) return npmRootCache.root;
+    let root: string | undefined;
+    try {
+        const text = execFileSync("npm", ["root", "-g"], {
+            encoding: "utf8",
+            env,
+            timeout: 3_000,
+            stdio: ["ignore", "pipe", "ignore"],
+            windowsHide: true,
+        }).trim();
+        if (text !== "") root = text;
+    } catch {
+        // No npm, a bad npmrc, or too slow: fall back to the path next to this Node.
+    }
+    const prefix = env.npm_config_prefix ?? env.NPM_CONFIG_PREFIX;
+    root ??=
+        prefix !== undefined && prefix.trim() !== ""
+            ? path.join(path.resolve(prefix.trim()), process.platform === "win32" ? "node_modules" : "lib/node_modules")
+            : path.join(
+                  path.dirname(process.execPath),
+                  "..",
+                  process.platform === "win32" ? "node_modules" : "lib/node_modules",
+              );
+    npmRootCache = { key, root };
+    return root;
+}
+
 /** Every package Pi lists, in both scopes, with its folder or the reason it cannot be found. */
 export function readPackages(agentDir: string, workingDir: string): ReadPackages {
     const settingsProblems: ReadPackages["settingsProblems"] = [];
@@ -190,12 +223,7 @@ export function readPackages(agentDir: string, workingDir: string): ReadPackages
             // Pi falls back to the global npm root for a user-scope npm package it cannot find under the agent folder.
             // `npm_config_prefix` is npm's own override, and lets a test name a prefix without touching the real one.
             const npm = parseNpmSource(source);
-            const prefix = process.env.npm_config_prefix ?? process.env.NPM_CONFIG_PREFIX;
-            const globalRoot =
-                prefix === undefined || prefix.trim() === ""
-                    ? path.join(path.dirname(process.execPath), "..", "lib", "node_modules")
-                    : path.join(path.resolve(prefix.trim()), "lib", "node_modules");
-            const legacy = npm === undefined || scope !== "user" ? undefined : path.join(globalRoot, npm.name);
+            const legacy = npm === undefined || scope !== "user" ? undefined : path.join(globalNpmRoot(), npm.name);
             if (!existsSync(folder) && legacy !== undefined && existsSync(legacy)) {
                 listed.push({
                     source: source.trim(),

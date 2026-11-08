@@ -86,6 +86,8 @@ export interface WatchEngineOptions {
     emit(event: WatchDoneEvent): void;
     /** Tells the agent. */
     send(message: WatchMessage): void;
+    /** Called after each poll has been applied; a test uses it to await the asynchronous poll deterministically. */
+    onPoll?: () => void;
 }
 
 /** A watch that is held in memory. */
@@ -298,6 +300,7 @@ export function createWatchEngine(options: WatchEngineOptions): WatchEngine {
         } catch (error) {
             problem = `watch ${saved.id} could not be updated: ${errorMessage(error)}`;
         }
+        options.onPoll?.();
     }
 
     /** What follows a poll: finish, pause, or schedule the next one. */

@@ -93,9 +93,15 @@ describe("discover", () => {
         assert.equal(found.jigEntries.length, 2);
     });
 
-    test("finds a package by its npm name when the folder is missing, away from the machine's global install", () => {
-        const saved = process.env.npm_config_prefix;
-        process.env.npm_config_prefix = path.join(home, "empty-npm-prefix");
+    test("finds a package by its npm name when the folder is missing, using npm's own fake global root", () => {
+        const bin = path.join(home, "fake-bin");
+        const fakeRoot = path.join(home, "fake-global", "lib", "node_modules");
+        mkdirSync(bin, { recursive: true });
+        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf '%s\\n' '${fakeRoot}'\n`, { mode: 0o755 });
+        const savedPath = process.env.PATH;
+        const savedRoot = process.env.FAKE_NPM_ROOT;
+        process.env.PATH = `${bin}${path.delimiter}${savedPath ?? ""}`;
+        process.env.FAKE_NPM_ROOT = fakeRoot;
         try {
             writeFileSync(
                 path.join(agent, "settings.json"),
@@ -105,8 +111,10 @@ describe("discover", () => {
             assert.equal(found.piCopy?.source, "npm:@clawdbuilder/jig@0.4.1");
             assert.equal(found.piCopy?.version, undefined);
         } finally {
-            if (saved === undefined) delete process.env.npm_config_prefix;
-            else process.env.npm_config_prefix = saved;
+            if (savedPath === undefined) delete process.env.PATH;
+            else process.env.PATH = savedPath;
+            if (savedRoot === undefined) delete process.env.FAKE_NPM_ROOT;
+            else process.env.FAKE_NPM_ROOT = savedRoot;
         }
     });
 });
