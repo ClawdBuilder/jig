@@ -35,6 +35,8 @@ export interface DoctorLine {
     fix?: string;
     /** A few machine-readable facts a screen does not show, such as a host and port. Never a value. */
     data?: Record<string, string | number | boolean>;
+    /** Milliseconds the check took, in --json. */
+    durationMs?: number;
 }
 
 /** What the report is about, for the JSON file. Versions that could not be read are `null`. */
@@ -134,10 +136,14 @@ export interface DoctorOptions {
 export async function runDoctor(context: DoctorContext, options: DoctorOptions = {}): Promise<DoctorReport> {
     const lines: DoctorLine[] = [];
     for (const [group, check] of DOCTOR_CHECKS) {
+        const started = Date.now();
         try {
-            lines.push(...(await check(context, options)));
+            const found = await check(context, options);
+            const durationMs = Date.now() - started;
+            lines.push(...found.map((line) => ({ ...line, durationMs })));
         } catch (error) {
             lines.push({
+                durationMs: Date.now() - started,
                 id: `${group}.crashed`,
                 group,
                 level: "fail",

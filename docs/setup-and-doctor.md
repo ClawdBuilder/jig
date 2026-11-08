@@ -16,7 +16,7 @@ It says "Checking your setup…" at once, then loads the same packages Pi loads.
 the network, the sandbox and the records folder.
 
 Exit code `0` means no failures, `1` means at least one; `--json` prints one JSON report with `"schema": 1` on stdout and
-nothing else (failures still exit 1). The exit codes are the same for every command: 0 success, 1 a failure, 2 a usage error
+nothing else (failures still exit 1); every line carries `durationMs`, the milliseconds its check took. The exit codes are the same for every command: 0 success, 1 a failure, 2 a usage error
 or a missing required flag. It works when `jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not
 a crash, because that is exactly when you need it. If Jig is not installed in Pi, or Pi itself is not found, the machine
 group has a failure with the command to install it: the doctor does not give an all-clear for a Jig Pi will not load.

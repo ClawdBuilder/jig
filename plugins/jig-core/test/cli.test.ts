@@ -411,8 +411,14 @@ describe("jig doctor", () => {
         writeFileSync(path.join(agent, "jig.json"), "{ not json");
         const result = await run(["doctor", "--json"]);
         assert.equal(result.code, 1);
-        const report = JSON.parse(result.stdout) as { lines: Array<{ level: string }>; counts: { fail: number } };
+        const report = JSON.parse(result.stdout) as {
+            schema?: number;
+            lines: Array<{ level: string; durationMs?: number }>;
+            counts: { fail: number };
+        };
+        assert.equal(report.schema, 1);
         assert.ok(report.lines.some((line) => line.level === "fail"));
+        assert.ok(report.lines.every((line) => Number.isFinite(line.durationMs) && (line.durationMs ?? -1) >= 0));
         assert.equal(report.counts.fail >= 1, true);
     });
 });
