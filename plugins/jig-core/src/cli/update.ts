@@ -390,6 +390,8 @@ export async function update(args: readonly string[], host: string | undefined):
     };
 
     const discovered = discover(agentDir, cwd, name);
+    // The CLI may be a checkout newer than the copy being moved; the installed copy is what "current" means.
+    const installedCurrent = discovered.piCopy?.version ?? current;
     if (discovered.problem !== undefined) {
         process.stderr.write(`${discovered.problem}\nNothing was changed.\n`);
         return 1;
@@ -408,12 +410,12 @@ export async function update(args: readonly string[], host: string | undefined):
         process.stderr.write(`${chosen.problem} Nothing was changed.\n`);
         return 1;
     }
-    if (upToDate(current, chosen.target.version, requested)) {
+    if (upToDate(installedCurrent, chosen.target.version, requested)) {
         if (json)
             process.stdout.write(
-                `${JSON.stringify({ schema: 1, current, target: chosen.target.version, action: "up-to-date", changes: false }, null, 2)}\n`,
+                `${JSON.stringify({ schema: 1, current: installedCurrent, target: chosen.target.version, action: "up-to-date", changes: false }, null, 2)}\n`,
             );
-        else process.stdout.write(`Jig ${current} is up to date.\n`);
+        else process.stdout.write(`Jig ${installedCurrent} is up to date.\n`);
         return 0;
     }
     try {
@@ -451,7 +453,7 @@ export async function update(args: readonly string[], host: string | undefined):
     const prefix = npmPrefix(root);
     const built = planUpdate({
         name,
-        current,
+        current: installedCurrent,
         target: chosen.target,
         piVersion: piVersion(),
         ...(discovered.piCopy === undefined ? {} : { piCopy: discovered.piCopy }),
@@ -491,7 +493,7 @@ export async function update(args: readonly string[], host: string | undefined):
             `${JSON.stringify(
                 {
                     schema: 1,
-                    current,
+                    current: installedCurrent,
                     target: plan.target,
                     action: plan.changes ? "update" : "up-to-date",
                     changes: plan.changes,
@@ -623,7 +625,7 @@ export async function update(args: readonly string[], host: string | undefined):
             const output =
                 wrong.length > 0
                     ? `Updated, but ${wrong.join(" and ")}. Run jig doctor in a project folder.`
-                    : `Checked: both Jig copies are ${expected}, the global command runs, and Pi's settings name it.\nFull check: jig doctor (run it in a project folder; company checks depend on the folder)`;
+                    : `Checked: both Jig copies are ${expected}, the global command is installed, and Pi's settings name it.\nFull check: jig doctor (run it in a project folder; company checks depend on the folder)`;
             return { code: wrong.length === 0 ? 0 : 1, output };
         },
     };
@@ -641,7 +643,7 @@ export async function update(args: readonly string[], host: string | undefined):
     });
     if (json) {
         process.stdout.write(
-            `${JSON.stringify({ schema: 1, current, target: plan.target, changed: result.changed, code: result.code }, null, 2)}\n`,
+            `${JSON.stringify({ schema: 1, current: installedCurrent, target: plan.target, changed: result.changed, code: result.code }, null, 2)}\n`,
         );
     }
     return result.code;
