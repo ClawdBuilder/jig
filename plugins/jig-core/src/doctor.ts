@@ -167,8 +167,12 @@ export async function runDoctor(context: DoctorContext, options: DoctorOptions =
 
 /** The report as lines for Pi's screen: a summary, one section per group, and what to do about it. `quiet` keeps only
  *  the warnings and failures, with the summary of the whole report. */
-export function formatDoctor(report: DoctorReport, options: { quiet?: boolean; command?: string } = {}): string[] {
+export function formatDoctor(
+    report: DoctorReport,
+    options: { quiet?: boolean; command?: string; width?: number; color?: boolean } = {},
+): string[] {
     const { ok, warn, fail, skip } = report.counts;
+    const width = Math.max(40, options.width ?? 100);
     const shown =
         options.quiet === true
             ? report.lines.filter((line) => line.level === "warn" || line.level === "fail")
@@ -176,17 +180,50 @@ export function formatDoctor(report: DoctorReport, options: { quiet?: boolean; c
     const out = [
         `Jig doctor · ${ok} ok · ${count(warn, "warning")} · ${count(fail, "failure")}${skip === 0 ? "" : ` · ${skip} skipped`}`,
     ];
+    const colour = (level: DoctorLevel, text: string): string => {
+        if (options.color !== true) return text;
+        const code = level === "ok" ? "32" : level === "warn" ? "33" : level === "fail" ? "31" : "2";
+        return `\u001b[${code}m${text}\u001b[0m`;
+    };
     for (const group of DOCTOR_GROUPS) {
         const lines = shown.filter((line) => line.group === group.id);
         if (lines.length === 0) continue;
         out.push("", group.title);
         for (const line of lines) {
-            out.push(`  ${line.level.padEnd(4)} ${line.title}${line.detail === undefined ? "" : ` — ${line.detail}`}`);
-            if (line.fix !== undefined) out.push(`       fix: ${line.fix}`);
+            const head = `  ${line.level.padEnd(4)} ${line.title}`;
+            if (line.detail === undefined)
+                out.push(`${head.slice(0, 2)}${colour(line.level, line.level.padEnd(4))} ${line.title}`);
+            else
+                out.push(
+                    ...wrap(
+                        `${head} — ${line.detail}`,
+                        width,
+                        7,
+                        `${head.slice(0, 2)}${colour(line.level, line.level.padEnd(4))} ${line.title} — `,
+                    ),
+                );
+            if (line.fix !== undefined) out.push(...wrap(`       fix: ${line.fix}`, width, 7, "       fix: "));
         }
     }
     out.push("", ending(report.counts, options.command ?? "/jig"));
     return out;
+}
+
+/** Greedy wrap with a hanging indent; `first` is the prefix of the first line when it carries colour codes. */
+function wrap(text: string, width: number, indent: number, plainPrefix?: string): string[] {
+    const plain = plainPrefix ?? text.slice(0, text.length - text.trimStart().length);
+    const prefix = plain;
+    const words = text.slice(plain.length).split(/\s+/);
+    const lines: string[] = [];
+    let line = prefix;
+    for (const word of words) {
+        if (line !== prefix && line.length + 1 + word.length > width) {
+            lines.push(line);
+            line = `${" ".repeat(indent)}${word}`;
+        } else line += `${line === prefix || line.endsWith(" ") ? "" : " "}${word}`;
+    }
+    lines.push(line);
+    return lines;
 }
 
 function ending(counts: Record<DoctorLevel, number>, command: string): string {
