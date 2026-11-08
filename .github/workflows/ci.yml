@@ -324,22 +324,32 @@ jobs:
         if: ${{ !cancelled() }}
         run: echo "kind_node=$(docker compose --profile tools config --format json | jq -r '.services["kind-node"].image')" >> "$GITHUB_OUTPUT"
 
-      # A Kubernetes cluster in Docker, and Helm. The actions download kind, kubectl and Helm at the versions given here.
+      # A Kubernetes cluster in Docker, and Helm, at the versions given here.
       - name: Set up Helm
         if: ${{ !cancelled() }}
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: ${{ matrix.helm }}
 
+      # kind comes from the Go module proxy and kubectl from dl.k8s.io (checked against its published SHA-256), not from
+      # GitHub release downloads: those answered 504 for hours on 2026-11-08 and blocked every run.
       - name: Create a kind cluster
         if: ${{ !cancelled() }}
-        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
-        with:
-          version: v0.33.0
-          kubectl_version: v1.37.2
-          node_image: ${{ steps.images.outputs.kind_node }}
-          cluster_name: jigit
-          wait: 120s
+        env:
+          KIND_VERSION: v0.33.0
+          KUBECTL_VERSION: v1.37.2
+          KIND_NODE: ${{ steps.images.outputs.kind_node }}
+        run: |
+          bin="$RUNNER_TEMP/bin"
+          mkdir -p "$bin"
+          GOBIN="$bin" go install "sigs.k8s.io/kind@${KIND_VERSION}"
+          retry=(--retry 5 --retry-delay 5 --retry-all-errors)
+          base="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64"
+          curl -fsSL "${retry[@]}" -o "$bin/kubectl" "$base/kubectl"
+          echo "$(curl -fsSL "${retry[@]}" "$base/kubectl.sha256")  $bin/kubectl" | sha256sum --check --strict
+          chmod +x "$bin/kubectl"
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/kind" create cluster --name jigit --image "$KIND_NODE" --wait 120s
 
       - name: Show the cluster
         if: ${{ !cancelled() }}
