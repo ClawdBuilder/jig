@@ -800,6 +800,7 @@ describe("a real global install", () => {
         });
         assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
         assert.match(doctor.stdout, /Jig doctor/);
+        assert.equal(doctor.stderr, "", "the installed copy is silent: no ExperimentalWarning or DeprecationWarning");
         assert.doesNotMatch(doctor.stderr, /ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING/);
     });
 });
