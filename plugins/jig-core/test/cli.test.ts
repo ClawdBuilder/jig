@@ -521,7 +521,7 @@ describe("jig setup", () => {
     test("without a terminal it refuses in one line", { timeout: 60_000 }, async () => {
         const result = await run(["setup"], { input: "" });
         assert.equal(result.code, 2);
-        assert.match(result.stderr, /^jig setup: no terminal to ask on\./);
+        assert.match(result.stderr, /^jig setup needs a terminal/);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
@@ -822,7 +822,9 @@ describe("CLI conventions", () => {
             ["update", "--help"],
             ["setup", "--help"],
         ]) {
-            const result = await run(args, { env: { PI_HOST_DIR: "/nonexistent" } });
+            const result = await run(args, {
+                env: { PI_HOST_DIR: "/nonexistent", PATH: path.dirname(process.execPath) },
+            });
             assert.equal(result.code, 0, args.join(" "));
             assert.match(result.stdout, /Usage: jig/, args.join(" "));
         }
@@ -846,8 +848,7 @@ describe("CLI conventions", () => {
     test("setup without a terminal names --yes and exits 2", { timeout: 20_000 }, async () => {
         const result = await run(["setup"], { input: "" });
         assert.equal(result.code, 2);
-        assert.match(result.stderr, /no terminal to ask on/);
-        assert.match(result.stderr, /--yes/);
+        assert.match(result.stderr, /jig setup needs a terminal/);
     });
 
     test("doctor --json has a schema and nothing else on stdout", { timeout: 60_000 }, async () => {

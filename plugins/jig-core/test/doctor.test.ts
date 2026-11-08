@@ -619,3 +619,24 @@ test("an absolute program is checked as a path, not looked up on PATH", () => {
     assert.equal(findOnPath(process.execPath, { PATH: "" }), process.execPath);
     assert.equal(findOnPath(path.join(home, "missing-program"), { PATH: "" }), undefined);
 });
+
+test("coloured doctor output wraps the plain text and colours only the label", () => {
+    const lines = formatDoctor(
+        {
+            lines: [
+                {
+                    id: "x",
+                    group: "machine",
+                    level: "warn",
+                    title: "T",
+                    detail: "abcdefghij klmnopqrstuvwxyz0123456789",
+                },
+            ],
+            counts: { ok: 0, warn: 1, fail: 0, skip: 0 },
+            meta: { jig: "0.5.1", pi: "1.5.0", node: "24", platform: "linux", network: false },
+        },
+        { width: 30, color: true },
+    ).join("\n");
+    assert.match(lines, /\u001b\[33mwarn\u001b\[0m T — abcdefghij/);
+    assert.doesNotMatch(lines, /warn T — j /);
+});

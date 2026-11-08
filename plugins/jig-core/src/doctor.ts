@@ -196,39 +196,34 @@ export function formatDoctor(
         if (lines.length === 0) continue;
         out.push("", group.title);
         for (const line of lines) {
-            const head = `  ${line.level.padEnd(4)} ${line.title}`;
-            if (line.detail === undefined)
-                out.push(`${head.slice(0, 2)}${colour(line.level, line.level.padEnd(4))} ${line.title}`);
-            else
-                out.push(
-                    ...wrap(
-                        `${head} — ${line.detail}`,
-                        width,
-                        7,
-                        `${head.slice(0, 2)}${colour(line.level, line.level.padEnd(4))} ${line.title} — `,
-                    ),
-                );
-            if (line.fix !== undefined) out.push(...wrap(`       fix: ${line.fix}`, width, 7, "       fix: "));
+            const label = line.level.padEnd(4);
+            const head = `  ${label} ${line.title}`;
+            const body = line.detail === undefined ? head : `${head} — ${line.detail}`;
+            const wrapped = wrapPlain(body, width, 7);
+            if (options.color === true) {
+                wrapped[0] = (wrapped[0] ?? "").replace(`  ${label}`, `  ${colour(line.level, label)}`);
+            }
+            out.push(...wrapped);
+            if (line.fix !== undefined) out.push(...wrapPlain(`       fix: ${line.fix}`, width, 7));
         }
     }
     out.push("", ending(report.counts, options.command ?? "/jig"));
     return out;
 }
 
-/** Greedy wrap with a hanging indent; `first` is the prefix of the first line when it carries colour codes. */
-function wrap(text: string, width: number, indent: number, plainPrefix?: string): string[] {
-    const plain = plainPrefix ?? text.slice(0, text.length - text.trimStart().length);
-    const prefix = plain;
-    const words = text.slice(plain.length).split(/\s+/);
+/** Greedy wrap with a hanging indent, on plain text only. */
+function wrapPlain(text: string, width: number, indent: number): string[] {
+    const leading = /^\s*/.exec(text)?.[0] ?? "";
+    const words = text.slice(leading.length).trim().split(/\s+/).filter(Boolean);
     const lines: string[] = [];
-    let line = prefix;
+    let line = leading;
     for (const word of words) {
-        if (line !== prefix && line.length + 1 + word.length > width) {
+        if (line.trim() !== "" && line.length + 1 + word.length > width) {
             lines.push(line);
-            line = `${" ".repeat(indent)}${word}`;
-        } else line += `${line === prefix || line.endsWith(" ") ? "" : " "}${word}`;
+            line = `${" ".repeat(Math.max(indent, leading.length))}${word}`;
+        } else line += `${line.trim() === "" ? "" : " "}${word}`;
     }
-    lines.push(line);
+    if (line.trim() !== "" || lines.length === 0) lines.push(line);
     return lines;
 }
 
