@@ -1,7 +1,7 @@
 # jig-session: the live session's state, as a file other programs read
 
 **Status: built.** Tested with a stand-in for Pi, and seen working with Pi 1.4.0 in a real session in WSL, read by the Work
-panel of the [Herdr app files](../../herdr/README.md). Not tried: macOS, Windows without WSL.
+panel of the [Herdr app files](https://github.com/ClawdBuilder/jig-herdr). Not tried: macOS, Windows without WSL.
 
 <img src="../../docs/assets/jig.svg" width="48" alt="Jig logo: a set-square">
 
@@ -13,7 +13,7 @@ A reader may also send one kind of request, through a file: turn a tool or a ski
 Pi when it is idle. The session answers in its status file. A request never approves a call.
 
 For example, a session in a herdr-core terminal writes `~/.local/state/jig/sessions/<session id>.json` with
-`"terminal": "t7"`, and the Work panel of Jig's [Herdr app files](../../herdr/README.md) shows it while that terminal has the focus.
+`"terminal": "t7"`, and the Work panel of Jig's [Herdr app files](https://github.com/ClawdBuilder/jig-herdr) shows it while that terminal has the focus.
 
 ## How it works
 
@@ -111,7 +111,7 @@ the `memory` and `workflow` sections, and the Jira address from the `jira` secti
 - **`jig-core`:** `recent` takes each call's decision from the `jig:decision` event; its rules decide every call.
 - **`jig-memory`, `jig-workflow`, `jig-jira`:** read only, for `ticket` and `workflow`.
 - **Readers:** any program that can read the folder, on this machine or through a link to it, as the
-  [Herdr app files](../../herdr/README.md) do for their Work and Context panels.
+  [Herdr app files](https://github.com/ClawdBuilder/jig-herdr) do for their Work and Context panels.
 
 ## Company part (in the company plugin)
 

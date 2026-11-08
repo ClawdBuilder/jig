@@ -4,6 +4,16 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- Front-end contracts: `contracts/requests.js` with `contracts/requests.d.ts` (the session request format),
+  `contracts/palettes.json` (the built-in palettes) and `docs/contracts.md` (the versioned surfaces and their breaking-change
+  rule). Front-ends read these from the npm package, never Jig's `src/`, and never approve.
+
+### Changed
+
+- The Herdr layout, mods and themes moved to `ClawdBuilder/jig-herdr`; Jig keeps only the contracts they read.
+
 ## [0.5.1] - 2026-11-08
 
 Jira OAuth through a trusted command, `/context`, and small ops, lens and workflow clarity.

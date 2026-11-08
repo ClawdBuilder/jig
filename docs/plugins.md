@@ -156,7 +156,7 @@ The numbers in the table above follow this order:
 ## The Herdr app
 
 
-[`herdr/`](../herdr/README.md) is not a plugin: it is a layout and mods for the [Herdr](https://herdr.dev) desktop app, copied
+[jig-herdr](https://github.com/ClawdBuilder/jig-herdr) is optional and not a plugin: it is a layout and mods for the [Herdr](https://herdr.dev) desktop app, copied
 into the app's folder by a script. Its Work and Context panels show the Pi session in focus from `jig-session`'s file (ticket,
 stages, pull requests, changed files, recent calls, what fills the context), beside the changes, history, pull requests and
-worktrees of every repository, and the window follows the Jig palette. [How it works](../herdr/docs/how-it-works.md).
+worktrees of every repository, and the window follows the Jig palette. [How it works](https://github.com/ClawdBuilder/jig-herdr/blob/main/docs/how-it-works.md).
