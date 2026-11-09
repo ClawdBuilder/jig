@@ -1,11 +1,12 @@
-// The plans for the three writes on a comment: add, replace and delete.
+// The plans for the three writes on a comment: add, replace and delete. Replace and delete change only your own comments,
+// unless `othersComments` allows the rest.
 import { getComment, issueHead, newestComments, notFoundAsInvalid, whoAmI } from "./api.ts";
-import type { Comment, Env } from "./api.ts";
+import type { Comment, Env, Identity } from "./api.ts";
 import { JiraError } from "./http.ts";
 import { about } from "./plan.ts";
 import type { CallOf, Plan } from "./plan.ts";
 import { pointersIn } from "./pointers.ts";
-import { minute, obj, sameUser, str, userId } from "./values.ts";
+import { InputError, minute, obj, oneLine, sameUser, str, userId, userNamed } from "./values.ts";
 
 /** How many of the newest comments the re-read after a lost reply looks through. */
 const RECHECK_COMMENTS = 50;
@@ -93,8 +94,48 @@ async function existingComment(env: Env, key: string, id: string): Promise<Comme
     }
 }
 
+/** `GET /myself`, unless `othersComments` makes who is signed in beside the point. */
+const whoAmIUnlessAllowed = (env: Env): Promise<Identity | undefined> =>
+    env.settings.othersComments ? Promise.resolve(undefined) : whoAmI(env);
+
+/**
+ * Refuses a change to someone else's comment, before anyone is asked. Who you are is what `GET /myself` says, or else
+ * `jira.me`; when neither says, the comment cannot be told to be yours, and that is refused too. `who` is undefined
+ * when `othersComments` allows every comment.
+ */
+function checkOwnComment(
+    env: Env,
+    call: CallOf<"edit_comment" | "delete_comment">,
+    old: Comment,
+    who?: Identity,
+): void {
+    if (who === undefined) return;
+    const what = `jira ${call.action}: comment ${call.commentId} on ${call.key}`;
+    const signedIn = who.user !== undefined && userId(who.user) !== "" ? who.user : undefined;
+    const me = signedIn ?? (env.settings.me === undefined ? undefined : userNamed(env.settings.me));
+    if (me === undefined) {
+        const why = who.user === undefined ? who.why : "it named no account";
+        throw new InputError(
+            `${what} is not known to be yours (${why}). ` +
+                "Set jira.me in jig.json: your account id (Cloud) or user name (Data Center)",
+        );
+    }
+    if (!sameUser(old.author, me)) {
+        const author = oneLine(old.author.displayName, 30) || "someone Jira does not name";
+        throw new InputError(
+            `${what} is by ${author}, not by you. Only your own comments are changed; ` +
+                "jira.othersComments: true in jig.json allows others'",
+        );
+    }
+}
+
 export async function planEditComment(env: Env, call: CallOf<"edit_comment">): Promise<Plan> {
-    const [head, old] = await Promise.all([issueHead(env, call.key), existingComment(env, call.key, call.commentId)]);
+    const [head, old, who] = await Promise.all([
+        issueHead(env, call.key),
+        existingComment(env, call.key, call.commentId),
+        whoAmIUnlessAllowed(env),
+    ]);
+    checkOwnComment(env, call, old, who);
     return {
         key: call.key,
         shown: {
@@ -121,7 +162,12 @@ export async function planEditComment(env: Env, call: CallOf<"edit_comment">): P
 }
 
 export async function planDeleteComment(env: Env, call: CallOf<"delete_comment">): Promise<Plan> {
-    const [head, old] = await Promise.all([issueHead(env, call.key), existingComment(env, call.key, call.commentId)]);
+    const [head, old, who] = await Promise.all([
+        issueHead(env, call.key),
+        existingComment(env, call.key, call.commentId),
+        whoAmIUnlessAllowed(env),
+    ]);
+    checkOwnComment(env, call, old, who);
     return {
         key: call.key,
         shown: {

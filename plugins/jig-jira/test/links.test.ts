@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 import type { FakeIssue, Recorded } from "./support/fake-jira.ts";
-import { ok, setupHarness, SHORT_TIMEOUTS } from "./support/harness.ts";
+import { cloudSection, ok, setupHarness, SHORT_TIMEOUTS } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
 
 let h: Harness;
@@ -315,6 +315,69 @@ describe("unlink", () => {
         );
         assert.match(result.error?.message ?? "", /PROJ-1 has no link to PROJ-3/);
         assert.equal(writes(h).length, 0);
+    });
+});
+
+describe("jira.projects limits links to the user's projects", () => {
+    const withProjects = (projects: string[]): void => h.configure({ ...cloudSection(), projects });
+    /** OPS-5, an issue in another project, linked from PROJ-1 as PROJ-1 "relates to" OPS-5. */
+    function addOps(): void {
+        const ops = structuredClone(issue(h, "PROJ-2"));
+        ops.key = "OPS-5";
+        ops.fields.summary = "Rotate the certificates";
+        h.jira.issues.set("OPS-5", ops);
+        (issue(h, "PROJ-1").fields.issuelinks as unknown[]).push({
+            id: "10180",
+            type: h.jira.linkTypes[1],
+            outwardIssue: { key: "OPS-5", fields: { summary: "Rotate the certificates", status: { name: "Open" } } },
+        });
+    }
+
+    test("a link and an unlink with both ends in the projects go ahead, as before", async () => {
+        withProjects(["OPS", "PROJ"]);
+        assert.equal(ok(await h.call(BLOCKS)), "Linked: PROJ-1 blocks PROJ-2 (Blocks).");
+        addOps();
+        assert.match(ok(await h.call({ action: "unlink", key: "PROJ-1", to: "OPS-5" })), /^Removed the link/);
+    });
+
+    test("a link with one end outside is refused before anyone is asked, naming the project and the setting", async () => {
+        withProjects(["PROJ"]);
+        addOps();
+        for (const call of [
+            { ...BLOCKS, to: "OPS-5" },
+            { ...BLOCKS, key: "OPS-5", to: "PROJ-2" },
+        ]) {
+            const result = await h.call(call);
+            assert.equal(
+                result.blocked,
+                "Blocked by jig-core: jira cannot run with this input: jira link: OPS-5 is in OPS, which is not one of " +
+                    "your projects (PROJ); jira.projects in jig.json lists the projects link may use",
+            );
+            assert.equal(result.preview, undefined, "nobody was asked");
+        }
+        assert.equal(writes(h).length, 0);
+    });
+
+    test("an unlink of a link that leaves the projects is refused the same way", async () => {
+        withProjects(["PROJ"]);
+        addOps();
+        const result = await h.call({ action: "unlink", key: "PROJ-1", to: "OPS-5" });
+        assert.equal(
+            result.blocked,
+            "Blocked by jig-core: jira cannot run with this input: jira unlink: OPS-5 is in OPS, which is not one of " +
+                "your projects (PROJ); jira.projects in jig.json lists the projects unlink may use",
+        );
+        assert.equal(writes(h).length, 0);
+        assert.equal(linksOf(h, "PROJ-1").length, 2, "the link is still there");
+    });
+
+    test("with no projects set, any two issues are linked and unlinked", async () => {
+        addOps();
+        assert.equal(ok(await h.call({ ...BLOCKS, to: "OPS-5" })), "Linked: PROJ-1 blocks OPS-5 (Blocks).");
+        assert.match(
+            ok(await h.call({ action: "unlink", key: "PROJ-1", to: "OPS-5", linkType: "Relates" })),
+            /^Removed the link/,
+        );
     });
 });
 

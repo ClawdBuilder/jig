@@ -3,7 +3,7 @@
 The fields of `logs` in `~/.pi/agent/jig.json`, with their defaults and limits.
 Back to the [jig-logs overview](../README.md).
 
-`backend` and `environments` are both needed. `jig-core` reports an unknown or
+`backend` and `environments` are both needed, and `maxWindow` is optional. `jig-core` reports an unknown or
 invalid field, and the tool then says it is not configured instead of running half
 set up.
 
@@ -63,6 +63,23 @@ one and at most 50. A name has up to 64 letters, digits and `.`, `_` and `-`.
   has a value. It names the streams of the environment, and comes from here and
   never from the model.
 - **`jigEnvironment`** decides masking and rules.
+
+## The longest window
+
+`maxWindow` is the longest window one call searches, written like the tool's
+`window`: a whole number, then `m`, `h` or `d`. The default is `7d`. A backend
+that keeps logs longer may allow more, so that one call reaches the oldest of them:
+
+```json
+{ "logs": { "maxWindow": "45d", "backend": { "url": "https://logs.example.com:9200", "auth": { "apiKey": "pass:logs/api-key" } }, "environments": { "staging": { "index": "app-logs-*" } } } }
+```
+
+- **Limits:** from `1h` to `90d`. Another value is an error that names the key and
+  not the value, and the tool is then not configured.
+- **What it changes:** `window`, `from` and `to` may span up to it, and a refusal
+  names it. A window over 2 days is still one request a day, so `45d` is 45
+  requests (see [Windows and buckets](windows-and-buckets.md#budgets)).
+- **The default window** stays `2h`, or the longest window when that is shorter.
 
 ## Examples
 

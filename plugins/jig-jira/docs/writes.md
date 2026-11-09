@@ -25,6 +25,12 @@ The rules for writes in full, and what each preview shows. Back to the
   the text limit.
   - A mistake blocks the call with a message that says what to change.
   - Nobody is asked about a call that cannot run.
+- **Your own comments only.** `edit_comment` and `delete_comment` read the
+  comment and `GET /myself` (or `jira.me`), and refuse a comment by someone
+  else before anyone is asked. `othersComments` allows other people's (see
+  [Configuration](configuration.md)).
+- **Links stay in your projects.** With `projects` set, `link` and `unlink`
+  refuse a link with an issue outside them.
 - **Changed since the preview.** The plan is made again right before the write
   is sent. If what would be sent now differs from the preview you approved (a
   status moved, a comment was edited, a field changed), the write is refused:

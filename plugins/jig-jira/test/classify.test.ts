@@ -211,6 +211,7 @@ describe("the README", () => {
             "privateNames",
             "environment",
             "me",
+            "othersComments",
             "commentSearch",
         ]);
         const valid = { site: "https://example.test", auth: { token: "pass:x/y" } };
