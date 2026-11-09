@@ -696,7 +696,6 @@ describe("oauth", () => {
 
     test("a command grant reads the command, keeps its token briefly, and reruns it once after a 401", async () => {
         const t = rig();
-        const runs = 0;
         t.secrets.set("cmd:jira-oauth", "tok-one-123456");
         t.replies.push(t.ok('{"ok":true}'));
         const auth = { oauth: { grant: "command" as const, command: "cmd:jira-oauth", cacheMs: 120_000 } };

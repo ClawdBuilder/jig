@@ -1,8 +1,6 @@
 // Everything that runs later outside the sandbox: the sandbox locks it for bash, and Pi's file tools ask before writing it.
 // One table, shared by both, so a path added to one is not forgotten by the other. Paths start with `~/` or are relative
 // to a project. Groups say the reason; `ask` paths put a program on PATH instead, so a person may allow the write.
-import type { GateVerdict } from "../contract.ts";
-
 export interface RunsLaterPath {
     /** `~/...` in the home folder, or relative to a project folder. */
     path: string;

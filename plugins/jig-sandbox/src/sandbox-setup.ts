@@ -2,7 +2,7 @@
 // and the base configuration given to the runtime. Both are plain functions of what they are given, so they are apart from the class
 // that holds the session's state.
 import { execFileSync } from "node:child_process";
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { NetworkMode } from "./config.ts";
 import type { FoundPrograms } from "./programs.ts";

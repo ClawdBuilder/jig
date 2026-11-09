@@ -5,7 +5,6 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import {
     guardedChanges,
-    guardedPathsFor,
     guardedStashChanges,
     guardedTargets,
     guardedRelative,
