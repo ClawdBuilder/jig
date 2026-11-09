@@ -171,7 +171,7 @@ export function createDeployTool(options: DeployOptions = {}): DeployTool {
             label: "Deploy",
             description: DESCRIPTION,
             promptSnippet:
-                "deploy: plan, run (asks the user), status, rollback and watch a service's rollout; never production",
+                "plan, run (asks the user), status, rollback and watch a service's rollout; never production",
             promptGuidelines: [
                 "deploy: plan first, then run; run asks the user. Then watch with the same version instead of polling.",
                 "deploy: when run says the outcome is unknown, do not run it again. " +

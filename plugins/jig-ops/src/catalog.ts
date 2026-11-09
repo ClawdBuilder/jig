@@ -382,6 +382,7 @@ export function findCiService(catalog: Catalog, who: string, name: unknown, envi
                 : undefined;
         throw new InputError(
             `${who}: no service named ${shown(name, 30)}. Services with a ci entry: ${known}` +
+                (known.endsWith("more)") ? ". Run ci services to list them all" : "") +
                 (near === undefined ? "" : `. Did you mean ${near}?`),
         );
     }

@@ -315,10 +315,6 @@ async function fetchRelease(name: string, version: string, cwd: string): Promise
     return (value ?? {}) as RegistryRelease;
 }
 
-function usage(): string {
-    return `Usage: jig update [--check] [--to <version>]\n\njig update moves both copies of Jig (Pi's and the global command) to one published version.\n--check  say what would happen, and change nothing.`;
-}
-
 async function promptYes(question: string): Promise<boolean> {
     const { createInterface } = await import("node:readline/promises");
     const readline = createInterface({ input: process.stdin, output: process.stderr, terminal: false });

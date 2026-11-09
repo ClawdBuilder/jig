@@ -25,6 +25,7 @@ import { gate } from "./gate.ts";
 import { configFile } from "./paths.ts";
 import { cleanupPreviews } from "./preview-html.ts";
 import { cleanupRecords, conditionProblem } from "./records.ts";
+import { classifyCodemode, codemodeAsk } from "./codemode.ts";
 import { finishCall, finishTurn, toolResult } from "./results.ts";
 import { beforeTurn, loadedSkills, syncSkills } from "./profile-state.ts";
 import { registerProfileCommand, restoreSessionProfile } from "./profile-command.ts";
@@ -53,7 +54,23 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
         const badCondition = conditionProblem(process.env);
         if (badCondition !== undefined) state.startupProblems.push(badCondition);
 
-        pi.on("session_start", (_event, ctx) => startSession(state, ctx));
+        let codemodeReady = false;
+        const installCodemode = (): void => {
+            if (codemodeReady) return;
+            try {
+                if (!pi.getAllTools().some((tool) => tool.name === "codemode")) return;
+            } catch {
+                return;
+            }
+            // The script decides whether the call is a plain read or can reach models; the gate says why it asks.
+            api.declareTool({ tool: "codemode", plugin: "jig-core", classify: classifyCodemode });
+            api.gates.register({ name: "codemode-models", plugin: "jig-core", check: codemodeAsk });
+            codemodeReady = true;
+        };
+        pi.on("session_start", (_event, ctx) => {
+            installCodemode();
+            startSession(state, ctx);
+        });
         pi.on("before_agent_start", (event) => {
             beforeTurn(state, event.systemPromptOptions);
         });

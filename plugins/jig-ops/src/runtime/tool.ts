@@ -130,7 +130,7 @@ export function createRuntimeTool(options: RuntimeOptions = {}): RuntimeTool {
             name: "runtime",
             label: "Runtime",
             description: DESCRIPTION,
-            promptSnippet: "runtime: read a service's pods, rollout, logs, events and health from the ops catalog",
+            promptSnippet: "read a service's pods, rollout, logs, events and health from the ops catalog",
             promptGuidelines: [
                 "runtime: run pods first; after a deploy call rollout with waitFor once instead of polling pods.",
                 "runtime: read the ops skill. A health check in a pod runs in test environments only; " +

@@ -16,10 +16,19 @@ import type { SearchPage, Source } from "./response.ts";
 import { halve, iso, planBuckets } from "./time.ts";
 import type { Bucket } from "./time.ts";
 
-/** The most requests one call makes: searches and the check for data together. */
+/** The most requests one call makes, searches and the check for data together, unless its window has many buckets. */
 export const MAX_REQUESTS = 64;
-/** One request is kept back, so that a search that finds nothing can always check whether the window holds any data. */
-const SEARCH_REQUESTS = MAX_REQUESTS - 1;
+/** A window with more buckets than MAX_REQUESTS leaves room for has this many requests beyond one a bucket. */
+const SPARE_REQUESTS = 16;
+/**
+ * The requests a call of so many buckets may make. A window of up to 7 days has at most 48 and gets MAX_REQUESTS. A
+ * longer one, which `logs.maxWindow` allows, gets one a bucket and the spare ones for halving, so a 90-day call can
+ * reach its last day.
+ */
+export function requestBudget(buckets: number): number {
+    return Math.max(MAX_REQUESTS, buckets + SPARE_REQUESTS);
+}
+
 /** No new request starts after this; the windows that are left are reported as missing. */
 const TIME_BUDGET_MS = 80_000;
 
@@ -77,6 +86,9 @@ export async function runSearch(query: LogQuery, environment: SearchEnvironment)
     const now = environment.now ?? Date.now;
     const deadline = now() + TIME_BUDGET_MS;
     const queue = planBuckets(query.range, backend.limits.maxWindowMs);
+    const budget = requestBudget(queue.length);
+    // One request is kept back, so that a search that finds nothing can always check whether the window holds any data.
+    const searchRequests = budget - 1;
     // The hits wanted come from the end of the window that the order names, so that end is searched first.
     const newestFirst = query.order === "desc";
     if (newestFirst) queue.reverse();
@@ -105,7 +117,7 @@ export async function runSearch(query: LogQuery, environment: SearchEnvironment)
         signal?.throwIfAborted();
         const bucket = queue.shift() as Bucket;
         const skip =
-            halted ?? (requests >= SEARCH_REQUESTS ? "request_budget" : now() >= deadline ? "time_budget" : undefined);
+            halted ?? (requests >= searchRequests ? "request_budget" : now() >= deadline ? "time_budget" : undefined);
         if (skip !== undefined) {
             windows.push(report(bucket, "missing", { reason: skip }));
             lowerBound = true;
@@ -126,7 +138,7 @@ export async function runSearch(query: LogQuery, environment: SearchEnvironment)
 
         if (failure?.split === true) {
             const halves = halve(bucket);
-            if (halves !== undefined && requests < SEARCH_REQUESTS) {
+            if (halves !== undefined && requests < searchRequests) {
                 // The halves cover the same time and are counted again, so a partial answer is thrown away.
                 queue.unshift(...(newestFirst ? [halves[1], halves[0]] : halves));
                 splits += 1;
@@ -182,7 +194,7 @@ export async function runSearch(query: LogQuery, environment: SearchEnvironment)
     };
     if (covered && hits.length === 0 && total === 0) {
         outcome.availability =
-            requests >= MAX_REQUESTS
+            requests >= budget
                 ? { state: "unknown", reason: "request_budget" }
                 : now() >= deadline
                   ? { state: "unknown", reason: "time_budget" }

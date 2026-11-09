@@ -73,7 +73,7 @@ const PrParams = Type.Object(
                 minLength: 1,
                 maxLength: 1000,
                 description:
-                    "A folder in the workspace, or an absolute path inside a work tree. Omit it for the repo Pi runs in.",
+                    "A folder in the workspace, or an absolute path inside a work tree — not owner/name. Omit it for the repo Pi runs in; use number or branch to select a pull request.",
             }),
         ),
         number: Type.Optional(Type.Integer({ minimum: 1, description: "The pull request (merge request) number." })),

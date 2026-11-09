@@ -35,16 +35,17 @@ cut to 40 characters. No secret is read and no request is made.
   - `logs: a Loki query cannot hold { outside quotes: the stream selector is set in jig.json`
   - `logs: a Loki query has a quote that is never closed`
   - `logs: a Loki query must be one line of printable characters`
-- **A `window` that is not `30m`, `2h` or `1d`, or is over 7 days:** `logs: window
-  must look like 30m, 2h or 1d and be at most 7d; for older logs pass from and to in
-  slices of at most 7 days (got "9d")`
+- **A `window` that is not `30m`, `2h` or `1d`, or is over the longest window:**
+  `logs: window must look like 30m, 2h or 1d and be at most 7d (logs.maxWindow); for
+  older logs pass from and to in slices of at most 7 days (got "9d")`. The two
+  values are those of `logs.maxWindow`, 7 days by default.
 - **`from` and `to`:** one of
   - `logs: to needs from; give from as well, or use window`
   - `logs: give either window or from and to, not both`
   - `logs: to must be after from`
-  - `logs: from..to must span at most 7 days; search older logs in slices of at most 7 days`
+  - `logs: from..to must span at most 7 days (logs.maxWindow); search older logs in slices of at most 7 days`
   - `logs: from must be before now when to is not given`
-  - `logs: from must be within 7 days of now; search older logs in slices of at most 7 days`
+  - `logs: from must be within 7 days of now (logs.maxWindow); search older logs in slices of at most 7 days`
   - `logs: from must be ISO 8601 with a timezone, such as 2026-10-13T09:30:00Z (got "2026-10-13")`
 - **An `order` that is not `asc` or `desc`:** `logs: order must be asc or desc (got
   "sideways")`

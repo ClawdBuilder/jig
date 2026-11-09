@@ -36,7 +36,8 @@ export function createLogsTool(deps: LogsDeps = {}): JigTool {
         name: "logs",
         label: "Logs",
         description:
-            "Search logs by exact phrase, or by a Lucene or LogQL query, over at most 7 days: the number of hits, " +
+            "Search logs by exact phrase, or by a Lucene or LogQL query, over at most the configured longest window " +
+            "(7 days by default): the number of hits, " +
             "then one line per hit. match, exclude and around choose and shape the lines. It only reads.",
         promptSnippet: "Search logs by phrase or query in a time window",
         promptGuidelines: [
@@ -49,7 +50,7 @@ export function createLogsTool(deps: LogsDeps = {}): JigTool {
             checkParams(input);
             const settings = requireSettings();
             const target = targetFor(settings, input.environment);
-            const query = resolveQuery(input, input.environment as string, target, now());
+            const query = resolveQuery(input, input.environment as string, target, now(), settings.maxWindowMs);
             const view = resolveView(input);
 
             const send = sender(settings.backend, backendOf(target).wire(target, settings.backend), {

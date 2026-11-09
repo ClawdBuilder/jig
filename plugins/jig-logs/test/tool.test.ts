@@ -164,6 +164,35 @@ test("a 7-day window is searched in 7 day buckets, and 8 days is refused before 
     assert.equal(w.requests.length, before);
 });
 
+test("logs.maxWindow lets one call search 45 days, one request a day, and refuses past it by name", async (t) => {
+    const w = await world(t, { docs: docs(10), section: { ...logsSection(), maxWindow: "45d" } });
+    ok(await w.call({ ...ask, window: "45d" }));
+    assert.equal(w.requests.length, 45);
+    const span = (r: (typeof w.requests)[number]) => {
+        const range = r.body.query.bool.filter[0].range["@timestamp"];
+        return Date.parse(range.lt) - Date.parse(range.gte);
+    };
+    assert.ok(
+        w.requests.every((r) => span(r) === 86_400_000),
+        "each request is one day",
+    );
+    const before = w.requests.length;
+    ok(await w.call({ ...ask, window: undefined, from: "2026-08-29T12:00:00Z", to: "2026-10-13T12:00:00Z" }));
+    assert.equal(w.requests.length - before, 45);
+    const after = w.requests.length;
+    const over = await w.call({ ...ask, window: "46d" });
+    assert.match(over.error?.message ?? "", /at most 45d \(logs\.maxWindow\)/);
+    const long = await w.call({ ...ask, window: undefined, from: "2026-08-29T11:59:59Z", to: "2026-10-13T12:00:00Z" });
+    assert.match(long.error?.message ?? "", /at most 45 days \(logs\.maxWindow\)/);
+    assert.equal(w.requests.length, after);
+});
+
+test("a maxWindow outside 1h to 90d leaves the tool not configured", async (t) => {
+    const w = await world(t, { section: { ...logsSection(), maxWindow: "120d" } });
+    assert.match((await w.call({ ...ask })).error?.message ?? "", /^logs is not configured/);
+    assert.equal(w.requests.length, 0);
+});
+
 test("exactly 7 days with from and to is allowed, and the end is exclusive", async (t) => {
     const w = await world(t, { docs: docs(4) });
     ok(await w.call({ ...ask, window: undefined, from: "2026-10-06T12:00:00Z", to: "2026-10-13T12:00:00Z" }));

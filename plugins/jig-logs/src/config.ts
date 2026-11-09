@@ -10,6 +10,7 @@
 import { jig } from "../../jig-core/src/client.ts";
 import { backends } from "./backends/index.ts";
 import type { LogBackend } from "./backends/index.ts";
+import { LONGEST_WINDOW, MAX_RANGE_MS, windowSpan } from "./time.ts";
 import { CONTROL, isObject, printable, refuse, shown } from "./values.ts";
 
 /** A value a `filter` entry may equal. */
@@ -77,6 +78,8 @@ export interface LogsSettings {
     backend: Backend;
     /** By the name the tool's `environment` parameter uses. */
     environments: ReadonlyMap<string, Target>;
+    /** The longest window one call searches, from `maxWindow`. 7 days by default. */
+    maxWindowMs: number;
 }
 
 const MAX_ENVIRONMENTS = 50;
@@ -268,16 +271,25 @@ function checkEnvironments(raw: unknown, backend: LogBackend | undefined, errors
     }
 }
 
+/** `maxWindow` is written like the tool's `window`. The value is not repeated, as no value in this section is. */
+function checkMaxWindow(raw: unknown, errors: string[]): void {
+    const span = typeof raw === "string" ? windowSpan(raw) : undefined;
+    if (span === undefined || span < LONGEST_WINDOW.min || span > LONGEST_WINDOW.max) {
+        errors.push("logs.maxWindow must be a whole number and m, h or d, from 1h to 90d, such as 30d");
+    }
+}
+
 /** The error messages for a `logs` section, each naming the key. Empty when the section is fine. */
 export function validateLogsSection(raw: unknown): string[] {
     if (!isObject(raw)) return ["logs must be an object"];
     const errors: string[] = [];
-    unknownFields(raw, ["backend", "environments"], "logs", errors);
+    unknownFields(raw, ["backend", "environments", "maxWindow"], "logs", errors);
     const backend = backendFor(raw.backend, errors);
     if (raw.backend === undefined) errors.push("logs.backend is needed: where the search backend is");
     else checkBackend(raw.backend, backend, errors);
     if (raw.environments === undefined) errors.push("logs.environments is needed: at least one environment to search");
     else checkEnvironments(raw.environments, backend, errors);
+    if (raw.maxWindow !== undefined) checkMaxWindow(raw.maxWindow, errors);
     return errors;
 }
 
@@ -306,7 +318,12 @@ export function settingsFrom(raw: unknown): LogsSettings | undefined {
     for (const [name, environment] of Object.entries(raw.environments as Record<string, Record<string, unknown>>)) {
         environments.set(name, backend.environment(name, environment));
     }
-    return { type: backend.type, backend: backendFrom(raw.backend as Record<string, unknown>), environments };
+    return {
+        type: backend.type,
+        backend: backendFrom(raw.backend as Record<string, unknown>),
+        environments,
+        maxWindowMs: raw.maxWindow === undefined ? MAX_RANGE_MS : (windowSpan(raw.maxWindow as string) as number),
+    };
 }
 
 /** The settings as jig-core loaded them at the last session start. Read per call, never kept. */

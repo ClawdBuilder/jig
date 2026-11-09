@@ -173,3 +173,4 @@ jig-ops/
 - [Runtime](docs/runtime.md): the parameters, the results, health, and the Kubernetes adapter's rules
 - [Deploy](docs/deploy.md): the commands, previews, the fingerprint, no resend, rollback and watch
 - [Not verified yet](docs/not-verified.md): what needs a real CI system, cluster, Helm or address
+- [CI platforms](docs/ci-platforms.md): which actions each system supports
