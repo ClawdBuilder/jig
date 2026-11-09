@@ -7,6 +7,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
 import type { OnboardingEntry, OnboardingItem, OnboardingMethod } from "./contract.ts";
+import { inferredMethod } from "./onboarding.ts";
 import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
 import { layered } from "./section-defaults.ts";
@@ -89,6 +90,8 @@ export interface SetupMethod {
     who?: string;
     /** The company's choice, or the first visible method. */
     default: boolean;
+    /** The method the section's current values select, by required path set. */
+    current?: boolean;
     fields: SetupField[];
     /** Why a wildcard produced no fields, when the plan cannot ask for a name yet. */
     notes?: string[];
@@ -292,7 +295,7 @@ function requiredPaths(method: OnboardingMethod): string {
 
 /** A dynamic name that is safe to put in a dotted path. */
 function safeSegment(name: string): boolean {
-    return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && name !== "__proto__";
+    return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && !["__proto__", "constructor", "prototype"].includes(name);
 }
 
 /** Expands one `*` path segment against the configured objects: `services.*.ci.auth` -> each service name.
@@ -318,7 +321,11 @@ function expandMethodPath(path: string, root: unknown): string[] {
     if (!dynamic) return paths;
     return paths.filter((path) => {
         const parent = path.split(".").slice(0, -1).join(".");
-        return parent === "" || isObject(getPath(root, parent));
+        if (isObject(getPath(root, parent))) return true;
+        // A CI method may create ci.auth, but only when the service already has ci.
+        const ci = path.indexOf(".ci.");
+        if (ci === -1) return false;
+        return isObject(getPath(root, `${path.slice(0, ci)}.ci`));
     });
 }
 
@@ -350,6 +357,7 @@ function setupMethods(
     const visible = all.filter((method) => !hidden.has(method.id));
     if (visible.length === 0) return [];
     const chosen = choice?.default ?? visible[0]?.id;
+    const current = inferredMethod(visible, merged)?.id;
     return visible.map((method) => {
         const fields: SetupField[] = [];
         const notes: string[] = [];
@@ -428,6 +436,7 @@ function setupMethods(
             label: method.label,
             ...(method.who === undefined ? {} : { who: method.who }),
             default: method.id === chosen,
+            ...(current === undefined ? {} : { current: method.id === current }),
             fields,
             ...(notes.length === 0 ? {} : { notes }),
         };

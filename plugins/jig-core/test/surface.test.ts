@@ -127,7 +127,6 @@ describe("the API", () => {
             "mask.text()",
             "mask.value()",
             "onboarding.register()",
-            "onboarding.registerMethods()",
             "profiles.active()",
             "profiles.register()",
             "protectedPaths.list()",
@@ -278,7 +277,7 @@ describe("what plugins import", () => {
     });
 
     test("client.ts exports these names", () => {
-        assert.deepEqual(exportedNames(path.join(CORE, "client.ts")), ["jig", "publishJig", "registrationOwner", "withJig", "withdrawJig"]);
+        assert.deepEqual(exportedNames(path.join(CORE, "client.ts")), ["jig", "publishJig", "withJig", "withdrawJig"]);
     });
 
     test("the kit is these modules, and each exports these names", () => {

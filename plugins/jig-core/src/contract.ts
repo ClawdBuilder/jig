@@ -699,6 +699,8 @@ export interface JigApi {
                 oneOf?: readonly (readonly string[])[];
                 union?: readonly string[];
                 first?: readonly string[];
+                /** The section's sign-in methods. Declared with the section, so ownership is structural. */
+                methods?: readonly OnboardingMethod[];
             },
         ): void;
         /** A company plugin's defaults for a plugin's section, such as its log backend or its service catalog. Your own
@@ -764,10 +766,6 @@ export interface JigApi {
     readonly onboarding?: {
         /** Registers the list. Registering again replaces it; one company plugin's list applies, the active one's. */
         register(entry: OnboardingEntry): void;
-        /** Registers the sign-in methods a plugin's section accepts. The plugin owns the fields; a company only refers
-         *  to the ids (`default`, `hide`) and may add a fixed transport/sign-in method. Registering a section again
-         *  replaces its methods. */
-        registerMethods(section: string, methods: readonly OnboardingMethod[]): void;
     };
 
     /**

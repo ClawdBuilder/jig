@@ -212,12 +212,10 @@ describe("through the API", () => {
         assert.throws(() => api.config.registerSection("x", undefined as never), TypeError);
     });
 
-    test("registering a section again replaces the check", () => {
-        const { state, api, file } = setup({ x: 1 });
+    test("registering a section again is refused", () => {
+        const { api } = setup({ x: 1 });
         api.config.registerSection("x", () => ["first check"]);
-        api.config.registerSection("x", () => []);
-        loadPersonalConfig(state, file);
-        assert.equal(api.config.section("x"), 1);
+        assert.throws(() => api.config.registerSection("x", () => []), /already registered by another plugin/);
     });
 
     test("a section registered after the file was read is checked at once", () => {

@@ -166,10 +166,9 @@ function checkMethodField(
 
 /** Throws when a plugin's methods for one section are not a list setup can use. */
 export function checkOnboardingMethods(section: string, raw: unknown): readonly OnboardingMethod[] {
-    if (!SECTION.test(section))
-        throw new TypeError(`onboarding.registerMethods: ${JSON.stringify(section)} is not a section`);
+    if (!SECTION.test(section)) throw new TypeError(`onboarding methods: ${JSON.stringify(section)} is not a section`);
     if (!Array.isArray(raw) || raw.length === 0) {
-        throw new TypeError(`onboarding.registerMethods(${section}): methods must be a non-empty list`);
+        throw new TypeError(`onboarding methods(${section}): methods must be a non-empty list`);
     }
     const errors: string[] = [];
     const methods: OnboardingMethod[] = [];
@@ -212,7 +211,7 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
         else shapes.set(paths, String(method.id));
         methods.push(complete as OnboardingMethod);
     }
-    if (errors.length > 0) throw new TypeError(`onboarding.registerMethods(${section}): ${errors.join("; ")}`);
+    if (errors.length > 0) throw new TypeError(`onboarding methods(${section}): ${errors.join("; ")}`);
     return methods;
 }
 

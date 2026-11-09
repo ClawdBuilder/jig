@@ -47,8 +47,7 @@ export default function (pi: ExtensionAPI) {
         api.config.registerSection("logs", validateLogsSection, {
             replace: ["backend.auth"],
             oneOf: [["backend.auth", "backend.transport"]],
+            methods: LOGS_METHODS,
         });
-
-        api.onboarding?.registerMethods("logs", LOGS_METHODS);
     });
 }

@@ -117,7 +117,9 @@ closed instead of running ungoverned.
     object of the user's replaces the company's whole, such as `auth`,
     `backend.auth` or `services.*.ci.auth`. `{ union }` names lists that add
     up instead, such as `folders`: the company's entries first, then the
-    user's, each once.
+    user's, each once. `{ methods }` declares the section's sign-in methods in
+    the same call, so ownership is structural. A section is registered once;
+    a second registration is refused.
   - Defaults that are not valid alone, with no section of the user's, leave the
     plugin unconfigured and are shown by `/jig`, not reported as a problem.
 - **`protectedPaths.list()`** gives every protected path with its `kind`

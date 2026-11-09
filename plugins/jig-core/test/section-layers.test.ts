@@ -49,12 +49,23 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 /** A jig-core state whose file holds `personal`, a fake Jira plugin registered, and nothing loaded yet. */
-function setup(personal: unknown, options: { replace?: boolean } = { replace: true }) {
+function setup(
+    personal: unknown,
+    options: { replace?: boolean; union?: string[]; check?: (raw: unknown) => string[] } = { replace: true },
+) {
     const file = path.join(dir, `jig-${counter++}.json`);
     writeFileSync(file, typeof personal === "string" ? personal : JSON.stringify(personal));
     const state = createState({} as ExtensionAPI);
     const api = buildApi(state);
-    api.config.registerSection("jira", jiraCheck, options.replace === false ? undefined : REPLACE);
+    const sectionOptions = {
+        ...(options.replace === false ? {} : REPLACE),
+        ...(options.union === undefined ? {} : { union: options.union }),
+    };
+    api.config.registerSection(
+        "jira",
+        options.check ?? jiraCheck,
+        Object.keys(sectionOptions).length === 0 ? undefined : sectionOptions,
+    );
     const load = () => loadPersonalConfig(state, file);
     const problems = () => state.policy().problems.map((problem) => describeProblem(problem));
     return { state, api, file, load, problems };
@@ -294,17 +305,13 @@ describe("keys that replace the company's instead of merging into it", () => {
         assert.deepEqual((api.config.section("jira") as { auth: unknown }).auth, { transport: "corp-proxy" });
     });
 
-    test("registering the section again replaces the keys, and a plugin that names none merges as before", () => {
+    test("registering the section again is refused, and the first keys stay", () => {
         const { state, api, load } = setup({
             jira: { site: "https://jira.example.com", auth: { token: "pass:work/jira" } },
         });
-        api.config.registerSection("jira", jiraCheck, REPLACE);
         assert.deepEqual(state.sectionReplace.get("jira"), ["auth"]);
-        api.config.registerSection("jira", jiraCheck);
-        assert.equal(state.sectionReplace.has("jira"), false);
-        api.config.registerSection("jira", jiraCheck, { replace: [] });
-        assert.equal(state.sectionReplace.has("jira"), false);
-        api.config.registerSection("jira", jiraCheck, REPLACE);
+        assert.throws(() => api.config.registerSection("jira", jiraCheck), /already registered by another plugin/);
+        assert.deepEqual(state.sectionReplace.get("jira"), ["auth"]);
         api.config.addSectionDefaults("jira", COMPANY_AUTH);
         load();
         assert.ok(api.config.section("jira"));
@@ -507,7 +514,7 @@ describe("lists that add up (union)", () => {
         assert.deepEqual(mine, { folders: ["/b"] });
     });
 
-    test("registering checks the list, and registering again replaces it", () => {
+    test("registering checks the list, and a second registration is refused", () => {
         const state = createState(undefined as unknown as ExtensionAPI);
         const api: JigApi = buildApi(state);
         const check = () => [];
@@ -518,15 +525,15 @@ describe("lists that add up (union)", () => {
         assert.throws(() => api.config.registerSection("logs", check, { union: [""] }), /union must be a list/);
         api.config.registerSection("logs", check, { union: ["folders"] });
         assert.deepEqual(state.sectionUnion.get("logs"), ["folders"]);
-        api.config.registerSection("logs", check);
-        assert.equal(state.sectionUnion.has("logs"), false);
+        assert.throws(() => api.config.registerSection("logs", check), /already registered by another plugin/);
+        assert.deepEqual(state.sectionUnion.get("logs"), ["folders"]);
     });
 
     test("through the loader: the company's list and yours are one list in what the plugin gets", () => {
-        const { api, load, problems } = setup({
-            jira: { site: "https://jira.example.com", hosts: ["mine.example.com"] },
-        });
-        api.config.registerSection("jira", () => [], { union: ["hosts"] });
+        const { api, load, problems } = setup(
+            { jira: { site: "https://jira.example.com", hosts: ["mine.example.com"] } },
+            { union: ["hosts"], check: () => [] },
+        );
         api.config.addSectionDefaults("jira", { ...COMPANY_AUTH, hosts: ["company.example.com"] });
         load();
         assert.deepEqual(api.config.section("jira"), {
@@ -538,8 +545,10 @@ describe("lists that add up (union)", () => {
     });
 
     test("without the option the same files replace, which is what every plugin had", () => {
-        const { api, load } = setup({ jira: { site: "https://jira.example.com", hosts: ["mine.example.com"] } });
-        api.config.registerSection("jira", () => [], undefined);
+        const { api, load } = setup(
+            { jira: { site: "https://jira.example.com", hosts: ["mine.example.com"] } },
+            { replace: false, check: () => [] },
+        );
         api.config.addSectionDefaults("jira", { ...COMPANY_AUTH, hosts: ["company.example.com"] });
         load();
         assert.deepEqual((api.config.section("jira") as { hosts: string[] }).hosts, ["mine.example.com"]);

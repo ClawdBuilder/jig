@@ -394,8 +394,9 @@ date.
 The file is shared. Each Jig plugin keeps its settings in a section of its own,
 such as `git`, `lens` or `memory`.
 - **A plugin registers its section** with `config.registerSection(name,
-  validate)`, from `withJig()` in its factory, and reads it back with
+  validate, options)`, from `withJig()` in its factory, and reads it back with
   `config.section(name)`. `validate` returns error messages that name the key.
+  A section is registered once; the call also declares its sign-in `methods`.
 - **At session start,** jig-core checks each registered section that is in the
   file. A section that fails is reported with the file and the key, `section()`
   returns `undefined`, and the plugin uses its defaults. The rest of the file

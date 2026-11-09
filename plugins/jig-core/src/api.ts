@@ -11,7 +11,6 @@ import {
 } from "./config.ts";
 import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
 import { git, run, setCredentialRegistrar } from "./exec.ts";
-import { registrationOwner } from "./client.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import { UPDATES_SECTION } from "./updates-section.ts";
 import type { ExecGuard } from "./exec.ts";
@@ -258,8 +257,30 @@ export function buildApi(state: JigState): JigApi {
                 ) {
                     throw new Error(`registerSection: "${name}" is jig-core's section, so a plugin cannot use it`);
                 }
+                if (state.sectionChecks.has(name))
+                    throw new Error(`registerSection: "${name}" is already registered by another plugin`);
                 state.sectionChecks.set(name, validate);
-                state.sectionOwners.set(name, registrationOwner());
+                const declared = options?.methods;
+                if (declared !== undefined) {
+                    const checked = checkOnboardingMethods(name, declared);
+                    state.onboardingMethods.set(name, checked);
+                    // Validate any company entry that arrived before this section's methods, without rolling them back.
+                    if (state.onboarding !== undefined) {
+                        try {
+                            state.onboarding = checkOnboarding(state.onboarding, state.onboardingMethods);
+                        } catch (error) {
+                            throw new Error(`company onboarding: ${(error as Error).message}`);
+                        }
+                    }
+                    for (const [company, entry] of state.companies) {
+                        if (entry.onboarding === undefined) continue;
+                        try {
+                            entry.onboarding = checkOnboarding(entry.onboarding, state.onboardingMethods);
+                        } catch (error) {
+                            throw new Error(`company ${company} onboarding: ${(error as Error).message}`);
+                        }
+                    }
+                }
                 if (oneOf === undefined || oneOf.length === 0) state.sectionOneOf.delete(name);
                 else
                     state.sectionOneOf.set(
@@ -357,38 +378,6 @@ export function buildApi(state: JigState): JigApi {
         onboarding: {
             register: (entry) => {
                 state.onboarding = checkOnboarding(entry, state.onboardingMethods);
-            },
-            registerMethods: (section, methods) => {
-                if (registrationOwner() === undefined || state.sectionOwners.get(section) !== registrationOwner()) {
-                    throw new TypeError(
-                        `onboarding.registerMethods(${section}): only the plugin that registered ${section} may declare its methods`,
-                    );
-                }
-                const checked = checkOnboardingMethods(section, methods);
-                const before = state.onboardingMethods.get(section);
-                state.onboardingMethods.set(section, checked);
-                try {
-                    // The entry may have arrived first; both registrations now exist, so check the company's ids.
-                    if (state.onboarding !== undefined) {
-                        try {
-                            state.onboarding = checkOnboarding(state.onboarding, state.onboardingMethods);
-                        } catch (error) {
-                            throw new Error(`company onboarding: ${(error as Error).message}`);
-                        }
-                    }
-                    for (const [name, entry] of state.companies) {
-                        if (entry.onboarding === undefined) continue;
-                        try {
-                            entry.onboarding = checkOnboarding(entry.onboarding, state.onboardingMethods);
-                        } catch (error) {
-                            throw new Error(`company ${name} onboarding: ${(error as Error).message}`);
-                        }
-                    }
-                } catch (error) {
-                    if (before === undefined) state.onboardingMethods.delete(section);
-                    else state.onboardingMethods.set(section, before);
-                    throw error;
-                }
             },
         },
 
@@ -490,38 +479,6 @@ function scoped(api: JigApi, state: JigState, entry: CompanyEntry): JigApi {
                     entry.onboarding = checkOnboarding(list, state.onboardingMethods);
                 } catch (error) {
                     throw new Error(`company ${entry.name} onboarding: ${(error as Error).message}`);
-                }
-            },
-            registerMethods: (section, methods) => {
-                if (registrationOwner() === undefined || state.sectionOwners.get(section) !== registrationOwner()) {
-                    throw new TypeError(
-                        `onboarding.registerMethods(${section}): only the plugin that registered ${section} may declare its methods`,
-                    );
-                }
-                const checked = checkOnboardingMethods(section, methods);
-                const before = state.onboardingMethods.get(section);
-                state.onboardingMethods.set(section, checked);
-                try {
-                    // The entry may have arrived first; both registrations now exist, so check the company's ids.
-                    if (state.onboarding !== undefined) {
-                        try {
-                            state.onboarding = checkOnboarding(state.onboarding, state.onboardingMethods);
-                        } catch (error) {
-                            throw new Error(`company onboarding: ${(error as Error).message}`);
-                        }
-                    }
-                    for (const [name, entry] of state.companies) {
-                        if (entry.onboarding === undefined) continue;
-                        try {
-                            entry.onboarding = checkOnboarding(entry.onboarding, state.onboardingMethods);
-                        } catch (error) {
-                            throw new Error(`company ${name} onboarding: ${(error as Error).message}`);
-                        }
-                    }
-                } catch (error) {
-                    if (before === undefined) state.onboardingMethods.delete(section);
-                    else state.onboardingMethods.set(section, before);
-                    throw error;
                 }
             },
         },

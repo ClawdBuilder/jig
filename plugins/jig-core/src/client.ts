@@ -7,31 +7,13 @@ import type { JigApi } from "./contract.ts";
 
 const API = Symbol.for("jig.core.api/v1");
 const PENDING = Symbol.for("jig.core.pending/v1");
-const OWNER = Symbol.for("jig.core.registration.owner/v1");
 
 type Slot = typeof globalThis & {
     [API]?: JigApi;
     [PENDING]?: Array<(api: JigApi) => void>;
-    [OWNER]?: symbol;
 };
 
 const slot = globalThis as Slot;
-
-/** The token for the plugin callback running now; `registerSection` records it and `registerMethods` compares it. */
-export function registrationOwner(): symbol | undefined {
-    return slot[OWNER];
-}
-
-function asOwner<T>(use: () => T): T {
-    const previous = slot[OWNER];
-    slot[OWNER] = Symbol("jig-plugin");
-    try {
-        return use();
-    } finally {
-        if (previous === undefined) delete slot[OWNER];
-        else slot[OWNER] = previous;
-    }
-}
 
 /** jig-core's API. Throws when jig-core is not loaded, so a Jig tool fails closed instead of running
  *  ungoverned. */
@@ -45,7 +27,7 @@ export function jig(): JigApi {
 export function withJig(use: (api: JigApi) => void): void {
     const api = slot[API];
     if (api !== undefined) {
-        asOwner(() => use(api));
+        use(api);
         return;
     }
     const pending = slot[PENDING] ?? [];
@@ -62,7 +44,7 @@ export function publishJig(api: JigApi): unknown[] {
     const errors: unknown[] = [];
     for (const use of pending) {
         try {
-            asOwner(() => use(api));
+            use(api);
         } catch (error) {
             errors.push(error);
         }

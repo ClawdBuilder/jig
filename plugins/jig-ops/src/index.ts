@@ -57,9 +57,7 @@ export function jigOps(options: OpsOptions = {}): ExtensionFactory {
         // jig-core may load after this plugin; withJig waits for it.
         // What the tools declare is how jig-core classifies them.
         withJig((api) => {
-            api.config.registerSection("ops", validateOps, { replace: OPS_REPLACE });
-
-            api.onboarding?.registerMethods("ops", OPS_METHODS);
+            api.config.registerSection("ops", validateOps, { replace: OPS_REPLACE, methods: OPS_METHODS });
 
             api.declareTool({ tool: "runtime", plugin: "jig-ops", classify: runtime.classify });
             api.declareTool({ tool: "deploy", plugin: "jig-ops", classify: deploy.classify, preview: deploy.preview });

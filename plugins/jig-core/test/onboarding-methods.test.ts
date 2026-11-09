@@ -113,21 +113,14 @@ describe("the company's method choice", () => {
 });
 
 describe("registration ownership and order", () => {
-    test("only the section registrant may declare its methods", async () => {
+    test("a section is registered once, with its methods", async () => {
         const { start } = await import("./support/harness.ts");
         const h = await start({ ui: false });
         try {
-            withJig((api) => {
-                api.config.registerSection("jira", () => []);
-                api.onboarding?.registerMethods("jira", methods);
-            });
+            withJig((api) => api.config.registerSection("jira", () => [], { methods }));
             assert.throws(
-                () =>
-                    withJig((api) => {
-                        api.config.registerSection("other", () => []);
-                        api.onboarding?.registerMethods("jira", methods);
-                    }),
-                /only the plugin that registered jira/,
+                () => withJig((api) => api.config.registerSection("jira", () => [])),
+                /already registered by another plugin/,
             );
         } finally {
             await h.shutdown();
@@ -142,14 +135,12 @@ describe("registration ownership and order", () => {
         const { start } = await import("./support/harness.ts");
         const h = await start({ ui: false });
         try {
-            withJig((api) => {
-                api.config.registerSection("jira", () => []);
-                api.onboarding?.registerMethods("jira", methods);
-            });
+            withJig((api) => api.config.registerSection("jira", () => [], { methods }));
             assert.throws(
                 () => withJig((api) => api.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } })),
                 /not a method of this section/,
             );
+            withJig((api) => api.onboarding?.register({ items: [], methods: { jira: { default: "transport" } } }));
         } finally {
             await h.shutdown();
         }
@@ -159,18 +150,13 @@ describe("registration ownership and order", () => {
         const { start } = await import("./support/harness.ts");
         const h = await start({ ui: false });
         try {
+            withJig((api) => api.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } }));
             assert.throws(
-                () =>
-                    withJig((api) => {
-                        api.config.registerSection("jira", () => []);
-                        api.onboarding?.register({
-                            items: [],
-                            methods: { jira: { default: "nope" } },
-                        });
-                        api.onboarding?.registerMethods("jira", methods);
-                    }),
-                /not a method of this section/,
+                () => withJig((api) => api.config.registerSection("jira", () => [], { methods })),
+                /company onboarding:.*not a method of this section/,
             );
+            // The methods stay registered, so a valid company entry now works.
+            withJig((api) => api.onboarding?.register({ items: [], methods: { jira: { default: "transport" } } }));
         } finally {
             await h.shutdown();
         }
@@ -203,10 +189,7 @@ test("a bad company entry names the company and keeps the plugin's methods", asy
     const { start } = await import("./support/harness.ts");
     const h = await start({ ui: false });
     try {
-        withJig((api) => {
-            api.config.registerSection("jira", () => []);
-            api.onboarding?.registerMethods("jira", methods);
-        });
+        withJig((api) => api.config.registerSection("jira", () => [], { methods }));
         assert.throws(
             () =>
                 withJig((api) => {

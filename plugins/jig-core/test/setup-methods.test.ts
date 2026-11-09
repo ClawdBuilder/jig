@@ -245,6 +245,15 @@ describe("fallbacks, wildcards and unknown sections", () => {
         assert.equal(section?.methods?.[0]?.default, true);
     });
 
+    test("the plan marks the method the current values use", () => {
+        writeFileSync(file, JSON.stringify({ jira: { auth: { email: "dev@example.com", token: "pass:jira" } } }));
+        const onboarding = checkOnboarding({ items: [] }, new Map([["jira", methods]]));
+        const built = buildSetupPlan({ ...state(onboarding), requestedSection: "jira" });
+        assert.ok("plan" in built, JSON.stringify(built));
+        const section = built.plan.sections.find((one) => one.name === "jira");
+        assert.equal(section?.methods?.find((one) => one.id === "cloud-basic")?.current, true);
+    });
+
     test("a prefill and a new company method both survive", () => {
         const add = [
             {
