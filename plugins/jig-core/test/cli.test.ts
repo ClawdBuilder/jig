@@ -896,7 +896,6 @@ describe("update prompt and CI matrix", () => {
         const root = mkdtempSync(path.join(tmpdir(), "jig-update-matrix-"));
         const prefix = path.join(root, "prefix");
         const bin = path.join(root, "bin");
-        const calls = path.join(root, "calls");
         mkdirSync(bin, { recursive: true });
         mkdirSync(path.join(prefix, "lib/node_modules/@clawdbuilder/jig"), { recursive: true });
         const globalPkg = path.join(prefix, "lib/node_modules/@clawdbuilder/jig/package.json");
@@ -960,11 +959,6 @@ process.exit(0)
     }
     const calls = (root: string) =>
         existsSync(path.join(root, "calls")) ? readFileSync(path.join(root, "calls"), "utf8") : "";
-    const tty = (args: string[], input: string, extra: Record<string, string> = {}) => {
-        const result = run(args, { tty: true, input, env: extra });
-        return result;
-    };
-
     test("TTY, answer n: nothing is installed, exit 0", {
         skip: hasScript ? false : "script is not installed",
     }, async (t) => {

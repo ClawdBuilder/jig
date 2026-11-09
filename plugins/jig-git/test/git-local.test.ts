@@ -607,7 +607,7 @@ test("log: pickaxe searches the diff and a range is still accepted", async () =>
 
 test("repo: owner/name resolves when exactly one workspace folder has that origin", async () => {
     const name = `acme${++counter}`;
-    const r = makeRepo(h.sb, name, "acme");
+    makeRepo(h.sb, name, "acme");
     const text = ok(await h.call("git", { action: "status", repo: `acme/${name}` }));
     assert.match(text, new RegExp(name));
 });

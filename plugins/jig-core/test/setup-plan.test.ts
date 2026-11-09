@@ -62,7 +62,7 @@ const rawConfig = {
     lens: { port: "high" },
 };
 
-function stateFor(raw: unknown, path = file): SetupState {
+function stateFor(path = file): SetupState {
     return {
         personal: loadConfigFile(path, checks, {
             defaults,
@@ -129,7 +129,7 @@ function credentialState(path = file): SetupState {
     };
 }
 
-function planFor(raw: unknown = rawConfig, path = file, state: SetupState = stateFor(raw, path)): SetupPlan {
+function planFor(_raw: unknown = rawConfig, path = file, state: SetupState = stateFor(path)): SetupPlan {
     const built = buildSetupPlan(state);
     if ("problem" in built) throw new Error(`expected a plan, got: ${built.problem}`);
     return built.plan;
@@ -277,7 +277,7 @@ describe("the plan", () => {
 
     test("refuses a file that is not valid JSON, without repeating its text", () => {
         writeFileSync(file, "{ not json");
-        const built = buildSetupPlan(stateFor(rawConfig));
+        const built = buildSetupPlan(stateFor());
         assert.ok("problem" in built);
         assert.match(built.problem, /not valid JSON/);
         assert.ok(!built.problem.includes("{ not json"));
@@ -537,7 +537,7 @@ describe("a linked settings file", () => {
     test("a broken link refuses, and changes nothing", { skip }, () => {
         const link = path.join(home, "agent", "jig.json");
         symlinkSync(path.join(home, "missing.json"), link);
-        const built = buildSetupPlan(stateFor({}, link));
+        const built = buildSetupPlan(stateFor(link));
         assert.ok("problem" in built);
         assert.match(built.problem, /is a link to/);
         assert.match(built.problem, /does not exist/);
@@ -550,7 +550,7 @@ describe("a linked settings file", () => {
         mkdirSync(folder, { recursive: true });
         const link = path.join(home, "agent", "jig.json");
         symlinkSync(folder, link);
-        const built = buildSetupPlan(stateFor({}, link));
+        const built = buildSetupPlan(stateFor(link));
         assert.ok("problem" in built);
         assert.match(built.problem, /which is not a file/);
     });

@@ -7,7 +7,7 @@ import { planBranch } from "../src/git-branch.ts";
 import { planMerge, planRebase, planSync } from "../src/git-integrate.ts";
 import { setWorkingDirectory } from "../src/repo.ts";
 import { git } from "./support/repos.ts";
-import { makeRepo, teammateCommit, writeFile } from "./support/repos.ts";
+import { makeRepo, teammateCommit } from "./support/repos.ts";
 import type { Fixture } from "./support/repos.ts";
 import { setupHarness } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
@@ -39,7 +39,7 @@ function setup(action: "sync" | "merge" | "rebase" | "branch"): Fixture {
     return r;
 }
 
-const fresh = (action: "sync" | "merge" | "rebase" | "branch", r: Fixture) => {
+const fresh = (action: "sync" | "merge" | "rebase" | "branch") => {
     switch (action) {
         case "sync":
             return planSync({}, call());
@@ -57,10 +57,10 @@ for (const action of ["sync", "merge", "rebase", "branch"] as const) {
         const r = setup(action);
         setWorkingDirectory(r.dir);
         const before = git(r.dir, "rev-parse", "HEAD");
-        const first = await fresh(action, r);
+        const first = await fresh(action);
         await assert.rejects(first.run(), /fetch brought changes to files Pi loads|nothing was applied/);
         assert.equal(git(r.dir, "rev-parse", "HEAD"), before, "nothing was applied");
-        const second = await fresh(action, r);
+        const second = await fresh(action);
         await second.run();
         assert.notEqual(git(r.dir, "rev-parse", "HEAD"), before, "the second call applied it");
     });

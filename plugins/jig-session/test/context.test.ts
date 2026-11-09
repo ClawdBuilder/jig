@@ -31,7 +31,6 @@ import { fileName, sessionsDir } from "../src/files.ts";
 import { CHECKS_MESSAGE, NOTES_MESSAGE, RECALL_MESSAGE } from "../../jig-memory/src/session.ts";
 import { RELOAD_COMMAND, session } from "../src/index.ts";
 import { buildReport, jigMessages, reportLines, showContext } from "../src/context-command.ts";
-import { Key } from "@earendil-works/pi-tui";
 import { parseRequest, requestsDir, SWITCHES_ENTRY, sweepRequests, takeRequest } from "../src/requests.ts";
 import type { SessionStatus } from "../src/status.ts";
 
