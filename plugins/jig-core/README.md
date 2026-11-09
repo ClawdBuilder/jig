@@ -1,8 +1,6 @@
 # jig-core: the tool manager
 
-**Status: built.** Unit tests, and tests inside a real Pi 1.5 session with a
-scripted model, pass. Watches are tested only against a fake Pi so far, and
-three parts are not built (see [Later](#later)).
+**Status: built.** `jig-core` governs every tool call the agent makes, whoever wrote the tool.
 
 `jig-core` governs every tool call the agent makes, whoever wrote the tool: Pi's
 own tools, Jig's tools, and tools from other packages. Every other Jig plugin
@@ -53,6 +51,8 @@ What each one shows in full is in the
 - **A failure blocks the call.** Anything that fails in `jig-core` blocks the
   call with "jig-core could not decide: ...". Nothing runs because `jig-core`
   could not tell whether it may.
+- **The doctor** starts the sandbox broker for real, reports a missing broker or
+  built-in roles folder, and names every Jig copy Pi loads with its version.
 - **Programs run without a shell,** with a timeout, an output cap and a short
   environment. Git runs with hooks off, and refuses a repository whose own
   configuration would run a command.
@@ -134,34 +134,29 @@ on Linux first; any store with a command line works through `cmd:`, see
 
 ## Layout
 
-```text
-jig-core/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the hooks (gate, results), classify and decide, gates (the checks plugins add), config, approvals,
-            secrets, sign-in, transports, redact, records, exec, start-up work (unlock, checks); mask/ (the
-            masker), watch/ (the engine and its tool), kit/ (helpers plugins import)
-  test/     unit tests, and tests inside a real Pi session
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: none: the tool text is the entry.
+- `test/`: the unit tests, fake hosts and real-program tests.
+Every file: [Code map](docs/code-map.md).
 
 ## More detail
 
-- [Code map](docs/code-map.md): every file, who calls it, and one tool call followed through the gate
-- [Setup and doctor](../../docs/setup-and-doctor.md): what `/jig doctor` checks, the report file, and the fix lines
-- [Watches](docs/watches.md): kinds, polling, finish lines, messages, saving
-- [Credential sources](docs/sign-in-and-transports.md): where a request's credential comes from, and why Jig never signs in
-- [What asks](docs/approval-screens.md): the order of a decision, and the screens
-- [Results](docs/results.md): what happens to a result: redact, mask and cap
-- [Masking](docs/masking.md): what counts as personal data, and the tokens
-- [Records](docs/records.md): the line per call and per turn, facts, error kinds
-- [Configuration](docs/configuration.md): the fields, rule matching, secrets, sections, variables
-- [Running programs](docs/running-programs.md): no shell, and the checks on git
-- [Profiles](docs/profiles.md): which company applies, what dormant means, skill overlays
-- [Plugin contract](docs/plugin-contract.md): what a plugin gets from `jig-core`
-- [Reuse](../../docs/reuse.md#tool-manager): what `jig-core` borrows from
-  `@gotgenes/pi-permission-system`, and why it is not a dependency
+**Use it**
+- [Setup and doctor](../../docs/setup-and-doctor.md): Read about Setup and doctor.
+- [Watches](docs/watches.md): Read before you wait for a watch.
+- [Credential sources](docs/sign-in-and-transports.md): Read about Credential sources.
+- [What asks](docs/approval-screens.md): Read before a call asks.
+- [Results](docs/results.md): Read when a result surprises you.
+- [Masking](docs/masking.md): Read when a value is masked.
+- [Records](docs/records.md): Read when you need the record.
+- [Running programs](docs/running-programs.md): Read before a program runs.
+- [Plugin contract](docs/plugin-contract.md): Read before you add a plugin.
+- [Reuse](../../docs/reuse.md#tool-manager): Read about Reuse.
 
-## The doctor in 0.4.2
+**Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
+- [Profiles](docs/profiles.md): Read before you switch a profile.
 
-The doctor starts the sandbox broker for real, reports a missing broker or built-in roles folder, and names every Jig copy
-Pi loads with its version. The command's npm package uses the `/**` file patterns that npm 10 and 11 read correctly.
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.

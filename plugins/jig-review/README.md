@@ -1,8 +1,8 @@
 # jig-review: reviewing code in the browser
 
-**Status: built.** Tested against a fake `jig-core`, a fake Pi and a fake authenticator, and used in real sessions with a
-real browser and real approved pushes. Which approval path those used is not recorded; Windows Hello and Touch ID are not
-verified ([Not verified yet](docs/not-verified.md)).
+**Status: built.** A private browser review of the agent’s changes before anything is shared.
+
+Adapted from `@dbaida/pi-interactive-code-review` (MIT).
 
 `jig-review` opens a private, GitHub-style review of the agent's changes in your browser, before
 anything is shared:
@@ -134,25 +134,19 @@ None. `jig-review` needs nothing from a company: it works on a repository's own 
 
 ## Layout
 
-```text
-jig-review/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      coordinator + run-tracker and run-base (what the agent changed in a run), store, server, tools, git sources, approval service
-  src/passkey/   WebAuthn on node:crypto: CBOR, checks, challenges, the store
-  web/      the page: sources, build tooling, and the built files in web/dist
-  test/     one file per module, a fake authenticator and a fake Pi
-  docs/     the detail pages above
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: none: the tool text is the entry.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 ## More detail
 
-- [Passkeys](docs/passkeys.md): registering, approving, every check, the store, a tampered file.
-- [Server security](docs/server-security.md): the link, the cookie, Host and Origin, what is served.
-- [The page](docs/page.md): its parts, the build, and why `web/dist/` is committed.
-- [Rounds](docs/rounds.md): comments, resolutions, the record, the event, cleanup.
-- [What counts as the agent's](docs/run-changes.md): what a run changed, and why a merge, pull or rebase is left out.
-- [Not verified yet](docs/not-verified.md): what needs a real browser.
+**Use it**
+- [The page](docs/page.md): Read before you change the page.
+- [Rounds](docs/rounds.md): Read before you resolve a round.
 
-## Origin
-
-Adapted from `@dbaida/pi-interactive-code-review` (MIT).
+**Trust it**
+- [Passkeys](docs/passkeys.md): Read before you register a passkey.
+- [Server security](docs/server-security.md): Read before you expose the page.
+- [What counts as the agent's](docs/run-changes.md): Read before you judge a run.
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.

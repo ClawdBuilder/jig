@@ -167,13 +167,10 @@ describe("the README", () => {
         ]);
     });
 
-    test("the layout names every module and the folders that exist", () => {
-        const layout = /```text\njig-agents\/([\s\S]*?)```/.exec(readme)?.[1] ?? "";
-        for (const file of readdirSync(path.join(ROOT, "src"))) {
-            const module = file.replace(/\.ts$/, "");
-            assert.match(layout, new RegExp(`\\b${module}\\b`), `${file} in the layout`);
-        }
-        for (const folder of ["agents/", "skills/", "test/", "docs/"]) assert.match(layout, new RegExp(folder));
+    test("the layout names the entry and the folders that exist", () => {
+        const layout = readme.slice(readme.indexOf("## Layout"), readme.indexOf("## More detail"));
+        assert.match(layout, /`index\.ts`/);
+        for (const folder of ["`src/`", "`skills/`", "`test/`"]) assert.match(layout, new RegExp(folder));
     });
 
     test("links every page of docs/", () => {

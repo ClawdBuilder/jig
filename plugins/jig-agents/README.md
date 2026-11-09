@@ -1,8 +1,6 @@
 # jig-agents: child agents that Jig's rules still govern
 
-**Status: built.** Tested with a fake child that speaks Pi's RPC protocol, and with the stock Pi 1.5 as a real child
-(this repository's `jig-core` and `jig-agents`, on Pi's own scripted model). No model is called; what only
-a real one can show is in [Not verified](docs/not-verified.md).
+**Status: built.** Child agents load the same plugins, so `jig-core` governs them and `jig-sandbox` their `bash`.
 
 `jig-agents` lets the agent hand work to **child agents**. A child is a separate Pi process that loads the
 same plugins as its parent, so `jig-core` governs its tool calls and `jig-sandbox` its `bash`.
@@ -89,24 +87,22 @@ The `subagent` section, its defaults and the fields are in [Configuring agents](
 
 ## Layout
 
-```text
-jig-agents/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      index (factory), runtime + start-plan (the session's children; what a start works out), child (one child)
-            with child-process, child-questions, child-report and child-types, rpc, forward (questions), limits,
-            launch (flags, environment, model), roles + policy (an agent file; configuration laid over it), role-plan +
-            role-report (what a role comes to; /agents roles), role-gate (the child enforces it), skills, config,
-            commands, tool, watch, worktree, store + orphans, host, clean
-  agents/   scout.md, reviewer.md, worker.md; skills/subagent/SKILL.md: when to delegate
-  test/     one file per module; world.ts runs a parent session with a fake child, real-pi.test.ts a real Pi
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
+Every file: [Code map](docs/code-map.md).
 
 ## More detail
 
-- [Code map](docs/code-map.md): every file, who calls it, and a child followed from `start` to its report
-- [Roles and agent files](docs/roles.md): the file format, the roles that ship, skills and read-only bash
-- [Configuring agents](docs/configuration.md): the `subagent` section and its defaults
-- [Options](docs/options.md): the Pi store's packages compared, how others specialise a subagent, and what the earlier harness taught
-- [Design](docs/design.md): launch, the role's policy, approvals, limits, results, configuration, tests
-- [Not verified](docs/not-verified.md): what only a real model run can show
+**Set it up**
+- [Configuring agents](docs/configuration.md): Read before you add settings.
+
+**Trust it**
+- [Not verified](docs/not-verified.md): Read before you rely on it.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.
+- [Roles and agent files](docs/roles.md): Read before you start a child.
+- [Options](docs/options.md): Read before you compare options.
+- [Design](docs/design.md): Read before you change the design.

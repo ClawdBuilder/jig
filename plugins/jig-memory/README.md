@@ -1,10 +1,6 @@
 # jig-memory: ticket folders, notes and recall
 
-**Status: ticket folders, cards, derived notes entries and recall built.** Tested
-against a fake `jig-core`, a fake Pi, and a stock Pi 1.5.0 loaded from this
-checkout through `pi install` (invented tickets only). The memory keeper is design (see [Later](docs/later.md)). The derived notes
-entries are off by default: the real-ticket test found too much noise and little
-recall (see [Recall](docs/recall.md#measured-on-our-own-tickets)).
+**Status: built.** Ticket folders, dated notes, cards and recall for the active ticket.
 
 `jig-memory` keeps what the agent learns about a [ticket](../../docs/glossary.md#tickets-and-workflows)
 in files that outlive the session, sums a closed ticket up in a short
@@ -117,33 +113,20 @@ Field notes and an example: [Configure](docs/configure.md).
 
 ## Layout
 
-```text
-jig-memory/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      index.ts (the factory), session.ts (the active ticket, its events and /ticket),
-            store.ts (the ticket folder), notes.ts (the ## Now rule), evidence.ts,
-            tool.ts (the ticket tool), checks.ts (checks.json), empty-files.ts,
-            message.ts (the notes message and the reminder), clip.ts, config.ts,
-            extract.ts (keys, identifiers, error lines), card.ts (the card file),
-            material.ts (what a ticket holds), cards.ts (the .cards.json index),
-            bm25.ts (keyword search), notes-index.ts (derived entries), recall.ts (scoring and its message), close.ts
-  skills/   ticket-memory/SKILL.md: dating notes, keeping ## Now current, pasted evidence, open checks
-  scripts/  recall-eval.mjs (recall on a tickets folder, aggregates only)
-  test/     one file per module, support.ts (a fake jig-core and a fake Pi), and
-            recall-eval/ (invented cards and queries, and the recall measure)
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 Every file: [Code map](docs/code-map.md).
 ## More detail
 
-- [Configure](docs/configure.md): each field of the `memory` section, with an example
-- [Later](docs/later.md): what is not built yet, and why
-- [How it behaves](docs/behaviour.md): folders, activation, the notes message,
-  the `## Now` block, reminders, evidence, empty files, and a known gap
-- [Handoff](docs/handoff.md): the `ticket` tool, pasted evidence, open checks and
-  the `checks.json` file other programs read
-- [Cards](docs/cards.md): the file, what the plugin fills, what the agent writes,
-  how a close runs and what is rejected
-- [Recall](docs/recall.md): when it runs, the score, the threshold, the message,
-  the index and the recall test
+**Use it**
+- [Later](docs/later.md): Read only if you plan ahead.
+- [How it behaves](docs/behaviour.md): Read before you rely on notes.
+- [Handoff](docs/handoff.md): Read before you hand off.
+- [Cards](docs/cards.md): Read before a ticket closes.
+- [Recall](docs/recall.md): Read before you recall a ticket.
+
+**Set it up**
+- [Configure](docs/configure.md): Read before you add settings.

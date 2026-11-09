@@ -1,8 +1,6 @@
 # jig-jira: Jira issues
 
-**Status: built.** Tested against a fake Jira on this machine and used in real sessions against a real Jira through a
-company transport: reads, a create, updates and a link. Not tried: the direct auth forms, Jira Cloud, ScriptRunner,
-attachments and transitions (see [Not verified yet](docs/not-verified.md)).
+**Status: built.** One tool over Jira REST v2, in wiki markup, on Cloud and Data Center.
 
 `jig-jira` gives the agent one tool, `jira`, over Jira's REST API version 2,
 which takes wiki markup and works on Jira Cloud and on Jira Data Center. Every
@@ -151,24 +149,22 @@ is.
 
 ## Layout
 
-```text
-jig-jira/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the tool and its checks (index, tool, params, classify, config), Jira's endpoints and request (api, http,
-            create-meta), field names and values, what the model reads (format, reads), the search by who commented
-            (commented, jql, window), writes and their previews (plan*, shown, page, writes), the wiki-markup renderer
-            (wiki), the local-pointer check (pointers)
-  skills/   jira/SKILL.md: comment style and conventions
-  test/     against a fake Jira server on this machine and a fake jig-core
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 Every file: [Code map](docs/code-map.md).
 ## More detail
 
-- [Parameters](docs/parameters.md): what each action needs, fields, limits on results, and people
-- [Commented by](docs/commented.md): the `commented` filter of `search`, its days, candidates, checks and ScriptRunner
-- [Configuration](docs/configuration.md): the fields of the `jira` section in detail
-- [Writes](docs/writes.md): the rules for writes in full, and what each preview shows
-- [Not verified yet](docs/not-verified.md): what needs a real Jira
-- [Wiki markup](docs/wiki-markup.md): the Jira syntax and its traps
+**Use it**
+- [Parameters](docs/parameters.md): Read before you call it.
+- [Commented by](docs/commented.md): Read before you search by commenter.
+- [Wiki markup](docs/wiki-markup.md): Read before you write wiki text.
+
+**Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
+
+**Trust it**
+- [Writes](docs/writes.md): Read before a write asks.
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.

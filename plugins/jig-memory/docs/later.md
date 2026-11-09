@@ -17,3 +17,5 @@ What is not built yet, and why.
 ![Memory in five steps: write, consolidate, index, retrieve and use, with bands for protecting every write, keeping it small and measuring recall](../../../docs/img/memory-steps.svg)
 
 *Memory in five steps, from notes while the agent works to a short message at the start of a later ticket. Lookup is keys and keyword search over plain files; embeddings or a graph wait for a measured miss. In this plugin the agent writes the card, not a memory keeper.*
+
+Back to the [jig-memory overview](../README.md).
