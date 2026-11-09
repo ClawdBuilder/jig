@@ -47,6 +47,37 @@ function methodFieldPaths(method: OnboardingMethod): Set<string> {
     return new Set(method.fields.map((field) => field.path));
 }
 
+/** The method a section value uses: the most specific required path set, or undefined on a tie or no match. */
+export function inferredMethod(methods: readonly OnboardingMethod[], value: unknown): OnboardingMethod | undefined {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+    const at = (path: string): unknown => {
+        let current: unknown = value;
+        for (const segment of path.split(".")) {
+            if (typeof current !== "object" || current === null || Array.isArray(current)) return undefined;
+            current = (current as Record<string, unknown>)[segment];
+        }
+        return current;
+    };
+    let best: OnboardingMethod | undefined;
+    let size = -1;
+    let tie = false;
+    for (const method of methods) {
+        const required = method.fields.filter(
+            (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
+        );
+        if (!required.every((field) => at(field.path) !== undefined)) continue;
+        const count = required.length;
+        if (count > size) {
+            best = method;
+            size = count;
+            tie = false;
+        } else if (count === size) {
+            tie = true;
+        }
+    }
+    return tie ? undefined : best;
+}
+
 /** One field of a plugin method, or of a company-only fixed method. */
 function checkMethodField(
     raw: unknown,
@@ -263,6 +294,7 @@ function checkMethodChoice(
                     }
                     // A matching path set with the plugin's id is a default value for that method, kept in `add`
                     // so the plan can prefill it without writing an id.
+                    add.push(complete);
                     continue;
                 }
                 if (known !== undefined) {

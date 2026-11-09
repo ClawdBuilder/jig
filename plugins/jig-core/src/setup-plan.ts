@@ -90,6 +90,8 @@ export interface SetupMethod {
     /** The company's choice, or the first visible method. */
     default: boolean;
     fields: SetupField[];
+    /** Why a wildcard produced no fields, when the plan cannot ask for a name yet. */
+    notes?: string[];
 }
 
 export interface SetupSection {
@@ -288,8 +290,15 @@ function requiredPaths(method: OnboardingMethod): string {
         .join("|");
 }
 
-/** Expands one `*` path segment against the configured objects: `services.*.ci.auth` -> each service name. */
+/** A dynamic name that is safe to put in a dotted path. */
+function safeSegment(name: string): boolean {
+    return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && name !== "__proto__";
+}
+
+/** Expands one `*` path segment against the configured objects: `services.*.ci.auth` -> each service name.
+ *  Only object parents are expanded; a string mapping and a dotted key are left for a person to name. */
 function expandMethodPath(path: string, root: unknown): string[] {
+    const dynamic = path.includes("*");
     let paths = [""];
     for (const segment of path.split(".")) {
         if (segment !== "*") {
@@ -300,11 +309,17 @@ function expandMethodPath(path: string, root: unknown): string[] {
         for (const prefix of paths) {
             const value = prefix === "" ? root : getPath(root, prefix);
             if (!isObject(value)) continue;
-            for (const name of Object.keys(value)) next.push(prefix === "" ? name : `${prefix}.${name}`);
+            for (const name of Object.keys(value)) {
+                if (safeSegment(name)) next.push(prefix === "" ? name : `${prefix}.${name}`);
+            }
         }
         paths = next;
     }
-    return paths;
+    if (!dynamic) return paths;
+    return paths.filter((path) => {
+        const parent = path.split(".").slice(0, -1).join(".");
+        return parent === "" || isObject(getPath(root, parent));
+    });
 }
 
 /** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
@@ -337,9 +352,12 @@ function setupMethods(
     const chosen = choice?.default ?? visible[0]?.id;
     return visible.map((method) => {
         const fields: SetupField[] = [];
+        const notes: string[] = [];
         const fixed = prefill.get(method.id);
         for (const field of method.fields) {
-            for (const path of expandMethodPath(field.path, merged)) {
+            const paths = expandMethodPath(field.path, merged);
+            if (paths.length === 0) notes.push(`No match for ${field.path}; name it first.`);
+            for (const path of paths) {
                 const at = getPath(merged, path);
                 const current =
                     typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
@@ -411,6 +429,7 @@ function setupMethods(
             ...(method.who === undefined ? {} : { who: method.who }),
             default: method.id === chosen,
             fields,
+            ...(notes.length === 0 ? {} : { notes }),
         };
     });
 }

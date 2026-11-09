@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { OnboardingEntry, OnboardingMethod } from "../src/contract.ts";
-import { checkOnboarding, checkOnboardingMethods } from "../src/onboarding.ts";
+import { checkOnboarding, checkOnboardingMethods, inferredMethod } from "../src/onboarding.ts";
+import { withJig } from "../src/client.ts";
 
 const methods: readonly OnboardingMethod[] = [
     {
@@ -116,12 +117,17 @@ describe("registration ownership and order", () => {
         const { start } = await import("./support/harness.ts");
         const h = await start({ ui: false });
         try {
-            h.api.config.registerSection("jira", () => []);
-            h.api.onboarding?.registerMethods("jira", methods);
-            h.api.config.registerSection("other", () => []);
+            withJig((api) => {
+                api.config.registerSection("jira", () => []);
+                api.onboarding?.registerMethods("jira", methods);
+            });
             assert.throws(
-                () => h.api.onboarding?.registerMethods("jira", methods),
-                /only the plugin that just registered jira/,
+                () =>
+                    withJig((api) => {
+                        api.config.registerSection("other", () => []);
+                        api.onboarding?.registerMethods("jira", methods);
+                    }),
+                /only the plugin that registered jira/,
             );
         } finally {
             await h.shutdown();
@@ -136,10 +142,12 @@ describe("registration ownership and order", () => {
         const { start } = await import("./support/harness.ts");
         const h = await start({ ui: false });
         try {
-            h.api.config.registerSection("jira", () => []);
-            h.api.onboarding?.registerMethods("jira", methods);
+            withJig((api) => {
+                api.config.registerSection("jira", () => []);
+                api.onboarding?.registerMethods("jira", methods);
+            });
             assert.throws(
-                () => h.api.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } }),
+                () => withJig((api) => api.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } })),
                 /not a method of this section/,
             );
         } finally {
@@ -151,14 +159,68 @@ describe("registration ownership and order", () => {
         const { start } = await import("./support/harness.ts");
         const h = await start({ ui: false });
         try {
-            h.api.config.registerSection("jira", () => []);
-            h.api.onboarding?.register({
-                items: [],
-                methods: { jira: { default: "nope" } },
-            });
-            assert.throws(() => h.api.onboarding?.registerMethods("jira", methods), /not a method of this section/);
+            assert.throws(
+                () =>
+                    withJig((api) => {
+                        api.config.registerSection("jira", () => []);
+                        api.onboarding?.register({
+                            items: [],
+                            methods: { jira: { default: "nope" } },
+                        });
+                        api.onboarding?.registerMethods("jira", methods);
+                    }),
+                /not a method of this section/,
+            );
         } finally {
             await h.shutdown();
         }
     });
+});
+
+test("the method in use is inferred by the most specific required path set", () => {
+    const narrow = {
+        id: "data-center",
+        label: "Data Center",
+        fields: [{ kind: "reference" as const, path: "auth.token", label: "Token" }],
+    };
+    const wide = {
+        id: "cloud",
+        label: "Cloud",
+        fields: [
+            { kind: "text" as const, path: "auth.email", label: "Email" },
+            { kind: "reference" as const, path: "auth.token", label: "Token" },
+        ],
+    };
+    assert.equal(inferredMethod([narrow, wide], { auth: { token: "pass:t" } })?.id, "data-center");
+    assert.equal(inferredMethod([narrow, wide], { auth: { email: "e", token: "pass:t" } })?.id, "cloud");
+    assert.equal(
+        inferredMethod([narrow, wide, { ...wide, id: "cloud-2" }], { auth: { email: "e", token: "pass:t" } }),
+        undefined,
+    );
+});
+
+test("a bad company entry names the company and keeps the plugin's methods", async () => {
+    const { start } = await import("./support/harness.ts");
+    const h = await start({ ui: false });
+    try {
+        withJig((api) => {
+            api.config.registerSection("jira", () => []);
+            api.onboarding?.registerMethods("jira", methods);
+        });
+        assert.throws(
+            () =>
+                withJig((api) => {
+                    const company = api.profiles?.register("acme", { displayName: "Acme" });
+                    company?.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } });
+                }),
+            /company acme onboarding:.*not a method of this section/,
+        );
+        // The failed company entry did not remove the plugin's methods.
+        withJig((api) => {
+            const company = api.profiles?.register("acme", { displayName: "Acme" });
+            company?.onboarding?.register({ items: [], methods: { jira: { default: "transport" } } });
+        });
+    } finally {
+        await h.shutdown();
+    }
 });

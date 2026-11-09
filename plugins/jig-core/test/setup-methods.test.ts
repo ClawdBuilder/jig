@@ -10,8 +10,10 @@ import type { SectionCheck } from "../src/config.ts";
 import type { OnboardingEntry, OnboardingMethod } from "../src/contract.ts";
 import { checkOnboarding } from "../src/onboarding.ts";
 import { buildSetupPlan } from "../src/setup-plan.ts";
-import { setupStateFrom } from "../src/setup.ts";
-import type { JigState } from "../src/state.ts";
+import { runSetup, setupStateFrom } from "../src/setup.ts";
+import type { SetupUi } from "../src/setup.ts";
+import { createState } from "../src/state.ts";
+import { fakePi } from "./support/fake-pi.ts";
 import type { SetupState } from "../src/setup-plan.ts";
 
 let home: string;
@@ -92,7 +94,7 @@ describe("the setup plan's sign-in methods", () => {
         );
     });
 
-    test("a company-only method's field is fixed, and the method id is not among the fields", () => {
+    test("a company prefill fixes the plugin method's field", () => {
         const broker = {
             id: "transport",
             label: "Company broker",
@@ -167,27 +169,10 @@ describe("the production setup state and wildcard methods", () => {
         return state as unknown as SetupState;
     }
 
-    test("setupStateFrom passes the registered methods through", () => {
-        const state = apiState({ api: {} });
-        const jigState = {
-            personal: state.personal,
-            sectionChecks: state.sectionChecks,
-            sectionDefaults: new Map(),
-            sectionReplace: new Map(),
-            sectionOneOf: new Map(),
-            sectionUnion: new Map(),
-            company: { secretBackends: [] },
-            onboarding: undefined,
-            onboardingMethods: state.onboardingMethods,
-            profile: { selection: { reason: "none" } },
-            companies: new Map(),
-            configPath: () => file,
-            env: {},
-            workingDir: home,
-            secrets: { passStoreDir: () => home },
-            agentDir: () => home,
-        } as unknown as JigState;
-        assert.equal(setupStateFrom(jigState).onboardingMethods, state.onboardingMethods);
+    test("setupStateFrom passes the registered methods through a real state", () => {
+        const state = createState(fakePi().pi, { env: {} });
+        state.onboardingMethods.set("api", apiMethods);
+        assert.equal(setupStateFrom(state).onboardingMethods, state.onboardingMethods);
     });
 
     test("wildcard paths are expanded to the configured environment names", () => {
@@ -223,5 +208,94 @@ describe("the production setup state and wildcard methods", () => {
             built.plan.sections.some((one) => one.name === "api"),
             false,
         );
+    });
+});
+
+describe("fallbacks, wildcards and unknown sections", () => {
+    function wildcardState(section: string, config: unknown, methods: readonly OnboardingMethod[]): SetupState {
+        writeFileSync(file, JSON.stringify(config));
+        return {
+            personal: loadConfigFile(file, new Map([[section, () => []]])),
+            sectionChecks: new Map([[section, () => []]]),
+            defaults: new Map(),
+            replace: new Map(),
+            oneOf: new Map(),
+            union: new Map(),
+            configPath: file,
+            env: {},
+            platform: "linux",
+            pathLookup: () => undefined,
+            enabledBackends: [],
+            disabledBackends: [],
+            companyBackends: [],
+            commands: {},
+            onboardingMethods: new Map([[section, methods]]),
+        };
+    }
+
+    test("hiding the default falls back to the first visible method", () => {
+        const onboarding = checkOnboarding(
+            { items: [], methods: { jira: { hide: ["cloud-basic"] } } },
+            new Map([["jira", methods]]),
+        );
+        const built = buildSetupPlan({ ...state(onboarding), requestedSection: "jira" });
+        assert.ok("plan" in built, JSON.stringify(built));
+        const section = built.plan.sections.find((one) => one.name === "jira");
+        assert.equal(section?.methods?.[0]?.id, "transport");
+        assert.equal(section?.methods?.[0]?.default, true);
+    });
+
+    test("a prefill and a new company method both survive", () => {
+        const add = [
+            {
+                id: "transport",
+                label: "Company broker",
+                fields: [{ kind: "text" as const, path: "auth.transport", label: "Broker", value: "acme-broker" }],
+            },
+            {
+                id: "own-sign-in",
+                label: "Own sign-in",
+                fields: [{ kind: "text" as const, path: "auth.signIn", label: "Service", value: "acme-sso" }],
+            },
+        ];
+        const onboarding = checkOnboarding(
+            { items: [], methods: { jira: { default: "transport", add } } },
+            new Map([["jira", methods]]),
+        );
+        const built = buildSetupPlan({ ...state(onboarding), requestedSection: "jira" });
+        assert.ok("plan" in built, JSON.stringify(built));
+        const section = built.plan.sections.find((one) => one.name === "jira");
+        assert.equal(section?.methods?.find((one) => one.id === "transport")?.fields[0]?.fixed, "acme-broker");
+        assert.equal(section?.methods?.find((one) => one.id === "own-sign-in")?.fields[0]?.fixed, "acme-sso");
+    });
+
+    test("a string mapping and a dotted key produce a method with a reason, not an unsafe path", () => {
+        const method = {
+            id: "environment",
+            label: "Environment",
+            fields: [{ kind: "text" as const, path: "environments.*.signIn", label: "Sign-in" }],
+        };
+        const state = wildcardState("api", { api: { environments: { staging: "staging", "a.b": "production" } } }, [
+            method,
+        ]);
+        state.requestedSection = "api";
+        const built = buildSetupPlan(state);
+        assert.ok("plan" in built, JSON.stringify(built));
+        const section = built.plan.sections.find((one) => one.name === "api");
+        assert.deepEqual(section?.methods?.[0]?.fields, []);
+        assert.match(section?.methods?.[0]?.notes?.[0] ?? "", /No match/);
+    });
+
+    test("an unknown setup section is a usage error listing the known names", async () => {
+        writeFileSync(file, "{}");
+        const seen: string[] = [];
+        const ui = {
+            notify: (text: string) => void seen.push(text),
+        } as unknown as SetupUi;
+        const state = {
+            sectionChecks: new Map([["jira", () => []]]),
+        } as unknown as Parameters<typeof runSetup>[0];
+        assert.equal(await runSetup(state, ui, "nope"), 2);
+        assert.match(seen.join("\n"), /Unknown section "nope".*jira/);
     });
 });

@@ -27,6 +27,14 @@ export interface SetupUi {
 }
 
 export async function runSetup(state: JigState, ui: SetupUi, requestedSection?: string): Promise<number> {
+    if (requestedSection !== undefined && !state.sectionChecks.has(requestedSection)) {
+        const known = [...state.sectionChecks.keys()].sort();
+        ui.notify(
+            `Unknown section ${JSON.stringify(requestedSection)}. Known sections: ${known.join(", ") || "none"}.`,
+            "error",
+        );
+        return 2;
+    }
     const planState = setupStateFrom(state);
     if (requestedSection !== undefined) planState.requestedSection = requestedSection;
     const built = buildSetupPlan(planState);
