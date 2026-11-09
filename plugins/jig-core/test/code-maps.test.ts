@@ -8,7 +8,20 @@ import { describe, test } from "node:test";
 
 const PLUGINS = path.resolve(import.meta.dirname, "../..");
 /** The plugins that have a code map. A plugin that gets one is added here, and the last test below fails until it is. */
-const MAPPED = ["jig-agents", "jig-api", "jig-core", "jig-ops", "jig-sandbox", "jig-workflow"];
+const MAPPED = [
+    "jig-agents",
+    "jig-api",
+    "jig-core",
+    "jig-git",
+    "jig-jira",
+    "jig-lens",
+    "jig-logs",
+    "jig-memory",
+    "jig-mongo",
+    "jig-ops",
+    "jig-sandbox",
+    "jig-workflow",
+];
 
 /** Every `.ts` file under a folder, as a path relative to it with `/` separators. */
 function sourceFiles(dir: string, base = dir): string[] {

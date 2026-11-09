@@ -28,7 +28,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
   and [the README shape](docs/writing.md#the-readme-shape); the audit test fails until the README, `TABLE` and a test
   agree (`plugins/jig-core/test/audit.test.ts`).
 - **Adding, renaming or removing a source file:** update its plugin's `docs/code-map.md`; a test fails when they
-  disagree. A source file over 500 lines is reported as a warning: split it by job.
+  disagree. The maps: `jig-core`, `jig-api`, `jig-ops`, `jig-sandbox`, `jig-agents`, `jig-workflow`, `jig-git`,
+  `jig-jira`, `jig-logs`, `jig-mongo`, `jig-memory` and `jig-lens`. A source file over 500 lines is reported as a warning: split it by job.
 - **Writing or running tests:** read [Tests that run real programs](CONTRIBUTING.md#tests-that-run-real-programs) (the
   sandbox, a real Pi, the launcher) and [Integration tests](docs/integration-tests.md) (real services).
 - **Releasing or editing the changelog:** read [Releases](docs/releases.md). A change a user would notice adds one line

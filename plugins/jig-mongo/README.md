@@ -135,6 +135,7 @@ jig-mongo/
   docs/     the detail pages below
 ```
 
+Every file: [Code map](docs/code-map.md).
 ## More detail
 
 - [Access](docs/access.md): the lists, the always-denied names, how a pipeline is walked, what is refused and why
