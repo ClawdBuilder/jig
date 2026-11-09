@@ -116,3 +116,5 @@ recall on. A run you aborted gets a notice and no correction.
 `/ticket KEY` makes a closed ticket active again, with its notes and evidence as
 they were. Its card stays, and still serves recall, until the next
 `/ticket close` replaces it with a fresh draft.
+
+Only a person's `/ticket close` writes a card; nothing writes one automatically.

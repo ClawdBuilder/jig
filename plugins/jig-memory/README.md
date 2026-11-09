@@ -104,7 +104,7 @@ plugin's rules. An error names the key, and the plugin then uses its defaults.
 | `recall.notes` | `false` | Search entries derived from notes in **automatic** recall; off because it missed the half-noise bar (0.818 to 0.455). `/ticket recall` and `ticket recall` always search notes |
 | `recall.maxNotes` | `1` | Most derived notes entries in one manual result, from 0 to `max`; automatic recall is always capped at one whatever this says |
 
-Field notes and an example: [Configure](docs/configure.md).
+Field notes and an example: [Configure](docs/configuration.md).
 
 ## Company part (in the company plugin)
 
@@ -122,11 +122,10 @@ Every file: [Code map](docs/code-map.md).
 ## More detail
 
 **Use it**
-- [Later](docs/later.md): Read only if you plan ahead.
 - [How it behaves](docs/behaviour.md): Read before you rely on notes.
 - [Handoff](docs/handoff.md): Read before you hand off.
 - [Cards](docs/cards.md): Read before a ticket closes.
 - [Recall](docs/recall.md): Read before you recall a ticket.
 
 **Set it up**
-- [Configure](docs/configure.md): Read before you add settings.
+- [Configuration](docs/configuration.md): Read before you add settings.

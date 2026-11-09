@@ -1,6 +1,6 @@
 // A task's output on disk: a rotating writer with offsets that stay valid after old output is dropped. The layout (a private
 // folder per session, files made with `wx` and mode 0600, two segments) and the way a read spans them are adapted from
-// gvanderclay/pi-bg-bash (MIT, see docs/background.md, "Credit").
+// gvanderclay/pi-bg-bash (MIT, see docs/background-tasks.md, "Credit").
 import { closeSync, openSync, readSync, renameSync, unlinkSync, writeSync } from "node:fs";
 import path from "node:path";
 

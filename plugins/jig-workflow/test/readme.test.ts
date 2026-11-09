@@ -67,7 +67,9 @@ describe("the README", () => {
     });
 
     test("the configuration table lists the fields of the section", () => {
-        assert.deepEqual(firstColumn(readme, "Configure"), [...SECTION_FIELDS]);
+        assert.deepEqual(firstColumn(readFileSync(path.join(ROOT, "docs/configuration.md"), "utf8"), "The fields"), [
+            ...SECTION_FIELDS,
+        ]);
     });
 
     test("the commands table lists the words the command understands", () => {

@@ -31,7 +31,7 @@ The `watch` tool lists and stops watches.
 
 `ci rerun` runs the failed jobs again (or the whole run, on GitHub). `ci trigger` creates a GitLab pipeline on a `ref`, queues a Jenkins build with `parameters`, or starts a Concourse job (no `ref`, no `parameters`; a paused job is refused). Both ask the user first and show exactly what they send. If the call says the plan changed since the preview, read the new one with the user. If a reply is lost, the tool checks once and says what happened; read it and never send it again.
 
-Which actions each system supports: [CI platforms](../../docs/ci-platforms.md).
+Which actions each system supports: [CI platforms](../../docs/ci.md).
 
 ## Reading the results
 

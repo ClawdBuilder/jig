@@ -2,7 +2,7 @@
 //
 // A task is a command run exactly as a foreground one is, wrapped by the sandbox's broker with the same rules, and started
 // here instead of by Pi's bash tool so that Pi's side owns its process group and its pipes. The registry, the launch gate and
-// the order of the group kill follow gvanderclay/pi-bg-bash (MIT, see docs/background.md, "Credit"), reworked for bubblewrap
+// the order of the group kill follow gvanderclay/pi-bg-bash (MIT, see docs/background-tasks.md, "Credit"), reworked for bubblewrap
 // and for tasks that end with the session.
 import { spawn } from "node:child_process";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";

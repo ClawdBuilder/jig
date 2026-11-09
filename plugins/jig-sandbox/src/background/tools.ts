@@ -1,6 +1,6 @@
 // What the agent sees of background tasks: `bash` gains `background`, `name` and `notifyOn`, and three tools read and stop
 // the tasks. The idea (a flag on Pi's own bash plus output, list and kill tools) is adapted from gvanderclay/pi-bg-bash (MIT,
-// see docs/background.md, "Credit"); the meaning of the parameters is this plugin's own.
+// see docs/background-tasks.md, "Credit"); the meaning of the parameters is this plugin's own.
 import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { formatMinutes, slashed, taskLine } from "./format.ts";

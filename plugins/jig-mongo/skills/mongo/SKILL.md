@@ -60,7 +60,7 @@ A write, an index change, `$out` and `$merge` are refused in production before a
 
 ## When the tool refuses
 
-The reason names what to change. [Refusals](../../docs/refusals.md) lists the common ones.
+The reason names what to change. [Refusals](../../docs/access.md) lists the common ones.
 
 ## Example
 

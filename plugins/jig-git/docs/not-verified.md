@@ -1,4 +1,4 @@
-# Not verified yet
+# Not verified
 
 What the tests of `jig-git` do not cover. Back to the
 [jig-git overview](../README.md).
@@ -12,7 +12,7 @@ no pull request, no comment, no release.
 
 ## Verified in CI
 
-| What | Proved by |
+| Area | How |
 |---|---|
 | `fetch`, `log`, `branches` and `status` of a clone of a small public repository, made with git over https | `github.test.ts` |
 | `release tags` from the tags that came with that clone | `github.test.ts` |
@@ -25,7 +25,7 @@ no pull request, no comment, no release.
 `clone` over ssh to a repository the key can read was run once, by hand, on a developer machine: it cloned a small public repository and
 put it in place. A test run has no key GitHub knows, so CI runs only the refusal.
 
-## What is still not verified
+## Not verified
 
 - **`ssh -G` against a real `~/.ssh/config`.** The tests answer it with a fake `ssh` on `PATH`, so they prove what `jig-git` does with
   a `hostname` line, not what the real program prints for `Include`, `Match` or a token in your file. A real alias is the thing to try:
@@ -61,7 +61,7 @@ put it in place. A test run has no key GitHub knows, so CI runs only the refusal
   (usually `HOME`). For git calls that reach a remote, `jig-git` passes the ssh
   agent socket, which is a path and not a secret.
 
-## GitLab, not verified
+### GitLab, not verified
 
 Everything about GitLab was written from its documentation and tested against a fake `glab` that answers from recorded JSON. The
 answers have the fields of GitLab's REST API (v4); a merge request was recorded once from a public project, and trimmed.

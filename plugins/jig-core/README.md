@@ -87,12 +87,9 @@ All fields are optional.
 | `profile` | `"auto"` | Which profile applies: `"auto"` (the first whose folder or remote matches), `"none"`, or a name |
 | `startChecks` | none | Up to 16 TCP checks made when a session starts: `name`, `tcp` (`host:port`), `hint` |
 
-What each field means, with its limits, is in the
-[configuration reference](docs/configuration.md#the-fields), and [Deferred tools](docs/configuration.md#deferred-tools) says
-how `tools.deferred` works; the two that run when a session starts,
-with an example, are under [At session start](docs/configuration.md#at-session-start). An unknown field is
-an error. It names the file and the key, and the plugin starts with the defaults
-rather than guessing. So is a wrong type or value.
+[Configuration](docs/configuration.md) has every field, its limits and the two checks that run when a session starts;
+[Tools and codemode](docs/tools-and-codemode.md) has deferred tools. An unknown field is an error. It names the file
+and the key, and the plugin starts with the defaults rather than guessing. So is a wrong type or value.
 
 ```json
 {

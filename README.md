@@ -92,8 +92,6 @@ show how; [Plugins](docs/plugins.md) is the map of every tool.
 
 Work with a page behind it, not a promise:
 
-- [jig-lens](plugins/jig-lens/docs/later.md): OpenTelemetry export to MLflow, and Datasette charts.
-- [jig-memory](plugins/jig-memory/docs/later.md): a memory keeper for organizational and personal facts, ticket text
   from `jig-jira`, and embeddings or a graph only after real-ticket recall shows misses.
 
 ## Learn more

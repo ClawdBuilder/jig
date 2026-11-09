@@ -1,4 +1,4 @@
-# Not verified yet
+# Not verified
 
 What the tests of `jig-mongo` do not cover. Back to the [jig-mongo overview](../README.md).
 
@@ -18,7 +18,7 @@ A three-member MongoDB replica set with authentication (9.0 in one run, 8.0 in t
 Docker network. The members are
 named `mongo1` to `mongo3`, which only that network can look up, so the routes are the only way to them.
 
-| What | Proved by |
+| Area | How |
 |---|---|
 | Every action through the tool and the driver, with what a write did read back by a client of the test's own | `mongo.test.ts` |
 | Typed values both ways: a decimal, a 64-bit integer beyond 2^53, a date and an ObjectId | `mongo.test.ts` |
@@ -36,7 +36,7 @@ named `mongo1` to `mongo3`, which only that network can look up, so the routes a
 | This machine cannot look up the members, and the tool without a route fails | `tunnel.test.ts` |
 | The tunnel ending with the session, and a tunnel that cannot open told in a line | `tunnel.test.ts` |
 
-## What is still not verified
+## Not verified
 
 Not tried:
 
@@ -65,16 +65,3 @@ Not tried:
 - **A lost reply.** The driver's retries are off, but no test cuts the connection in the middle of a write.
 - **The review screen:** the preview was checked as data, and not seen in the terminal.
 - **Large results:** the output limit was tried with documents of tens of kilobytes, not with a real cursor of thousands.
-
-## Facts the code relies on
-
-- The driver's relaxed Extended JSON writes a 64-bit integer as a number, which loses digits beyond 2^53, so `bson.ts` writes `$numberLong` itself.
-  - *Source:* tried against the driver's `Long`.
-- Converting an object that has `$regex` to BSON drops its other operators, so `driver.ts` converts typed values one at a time.
-  - *Source:* tried against `EJSON.deserialize`.
-- A listener that was just closed can go on accepting connections for a few milliseconds, so a free port is handed out only once it refuses.
-  - *Source:* seen on WSL2.
-- `servername` and `checkServerIdentity` are accepted as client options.
-  - *Source:* the driver's `connection_string.js`.
-- `retryWrites: false` is what stops the driver from sending a write again.
-  - *Source:* the driver's documentation of retryable writes.

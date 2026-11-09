@@ -1,6 +1,6 @@
 // What the agent and the `/ps` log view read of a task's log: paged, filtered and capped. The log already holds cleaned text
 // with credential values taken out, so nothing here cleans. The paging helpers (takeLines, wholeCharacters, fitPrefix) are
-// adapted from gvanderclay/pi-bg-bash (MIT, see docs/background.md, "Credit").
+// adapted from gvanderclay/pi-bg-bash (MIT, see docs/background-tasks.md, "Credit").
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateTail } from "@earendil-works/pi-coding-agent";
 import { formatRuntime, runtimeMs, stateText } from "./format.ts";
 import { countLines } from "./logfile.ts";

@@ -6,7 +6,17 @@ platform can. Back to the [jig-agents overview](../README.md).
 Everything here was run against the fake child, or against the stock Pi 1.4 on Pi's own scripted model,
 on Linux. No model was called.
 
-## Needs a real model
+## Verified in CI
+
+| Area | How |
+|---|---|
+| The test suite and fakes | `test/`; real services where CI has them |
+
+## Not verified
+
+Each item says what to try.
+
+### Needs a real model
 
 - **That a model delegates well.** The tool's description and the skill say when to start a scout or a
   reviewer. Whether a real parent agent starts one at the right time, writes a task a child can act on,
@@ -25,7 +35,7 @@ on Linux. No model was called.
   provider reports a cost of zero, so the real Pi runs show "cost unknown". A priced model counting
   against `maxCost` through `get_session_stats` is read from Pi's documents and not run.
 
-## Needs another part of the stack
+### Needs another part of the stack
 
 - **`bash` in `jig-sandbox` against the child's input.** The first defence is tested: the child's pipes are
   sockets that `/proc/<pid>/fd` cannot reopen, and a request's id is random and never reaches the model.
@@ -48,14 +58,14 @@ on Linux. No model was called.
 - **Secrets that prompt.** A child has no terminal, so a secret backend that asks for a passphrase would
   hang. Working with an already unlocked backend is assumed.
 
-## Needs another platform
+### Needs another platform
 
 - **macOS.** The identity of a process, which keeps the sweep from touching a reused process id, is read
   from `/proc` on Linux and from `ps -o lstart=` elsewhere. The second is not run.
 - **Windows.** Process groups do not exist there, so a child's descendants are not ended with it. The
   plugin is not meant for Windows; `jig-sandbox` does not support it either.
 
-## Open choices
+### Open choices
 
 - **Unpriced models.** Whether to cap by tokens instead is open. Only turns and minutes bound a child
   whose model has no price.

@@ -66,7 +66,7 @@ any tool call
 
 Each is small, and each plugin's own documentation describes it.
 
-## What the design settled
+## Decisions
 
 | Question | Decision | Why |
 |---|---|---|
@@ -112,18 +112,6 @@ and you on an acceptance environment.
 ![How the full run decides: no test report fails, new tests that did not run fail, and only failures that are new compared with the main branch block](../../../docs/img/check-full.svg)
 
 *How the full run decides, once check tiers exist. Each question answers a failure seen in real sessions; a failure that already exists on the main branch never blocks a stage.*
-
-## What building it changed
-
-| The design said | What is so |
-|---|---|
-| The state file is guarded for the ticket the session works on | It is guarded the first time the session looks at a ticket that has one, whichever way the ticket became active |
-| Remote conditions are read by `status` and `advance`, and cached for holds | The same: `status`, `advance` and the question to move on read the pull request fresh and save the reading for the holds |
-| `bind` asks `jig-git` for a worktree | It runs the `git` tool through `ctx.executeTool`, so `jig-core` governs it as a nested call, and it reads the path from the tool's details |
-| A plan that fails the check is refused | The check runs in the preview, so it is refused before anyone is asked, with every problem listed |
-| `workflow test` asks when there is no sandbox | The gate asks, and the tool checks again when it runs: a sandbox that went away in between is a refusal, never an unasked run |
-| A test outside the sandbox asks by itself | It calls `bash` with `outside: true` through `ctx.executeTool`, with the line `cd <repository> && ...`, because `bash` runs in Pi's folder and has no folder of its own |
-| A hold is scoped by the repository a call acts in | `write` and `edit` by their paths, `git` and `pr` by the repository they name (worked out as `jig-git` does), any other tool for the work as a whole; a repository that cannot be worked out is not held |
 
 ## Tests
 

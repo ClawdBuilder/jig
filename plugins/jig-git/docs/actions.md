@@ -37,3 +37,29 @@ title prefix, and `merge` with `method: rebase` is refused ([GitLab](gitlab.md))
 - **`release_create`** takes the notes on standard input and creates the tag from `target` (default: the head of the base branch)
   when it is not on the remote yet; an existing remote tag keeps its commit. `draft`, `prerelease` and `generate_notes` are GitHub's:
   on GitLab each is refused in one line ([GitLab](gitlab.md#what-gitlab-has-no-equivalent-for)).
+
+## Scope: what jig-git leaves out
+
+## Left out on purpose
+
+| Not offered | Why |
+|---|---|
+| Starting a workflow by hand | A workflow can deploy; deploys belong to the `deploy` tool of `jig-ops`, with its own rules |
+| A raw GitHub or GitLab API tool | Its writes cannot be classified |
+| Approving a pull request | Approval stays human |
+| Deleting tags, `reset --hard`, `clean` | They destroy work and are rarely needed; you can run them yourself |
+
+## Not in this plugin
+
+- **CI,** on any system: checks, runs, logs, reruns and watches. They are the
+  `ci` tool of [`jig-ops`](../../jig-ops/README.md), which has GitHub Actions,
+  GitLab CI and Jenkins. Only the one-line roll-up in `pr view` stays here, and
+  the one watch that is not CI: the comments of a pull request.
+- **Deploy tools** and container registry checks. They belong to `jig-ops` or a
+  company plugin.
+- **Gates on commit and push,** such as "no push without a review". They are
+  `jig-workflow` rules, not git code.
+- **A company's conventions,** such as branch names, protected branches and the
+  pull request template. They are the settings under
+  [Configure](../README.md#configure), set by the company plugin.
+

@@ -288,24 +288,6 @@ simple patterns that only add to the removal.
 | A preview's `answers` | The words on the three buttons, so the dialog says `Run once` and not `Allow` |
 | A declaration's `extendsDefaults` and `examples` | `bash` is classified only for `outside`; the rest stays with the user's rules and the built-in default. `/jig rules` shows the action |
 
-## What the earlier sandbox and the spike taught
-
-| What happened | What this design does |
-|---|---|
-| A `PATH` folder that did not exist made bubblewrap stop every command | Rules only for paths that exist; nothing mounted or created in other programs' folders; a start-up probe runs a real command with your real environment |
-| Hiding the Windows drive broke name resolution on WSL | `open` keeps plain DNS; `/mnt/wsl/resolv.conf` stays readable; the doctor resolves a name |
-| A read-only `.git/config` broke `git config` and `git remote add` | Writable, with program-running settings audited away |
-| A protected `.pi` stopped the agent keeping `.pi/docs` current | Only what Pi loads is locked |
-| Read-only toolchain folders stopped JDK and Node installs | They ask first |
-| Gradle could not lock its wrapper download | Gradle's folders are writable; only its init scripts and credentials are not. A Gradle build ran in the spike, with its proxy agent |
-| The agent rewrote code with scripts in bash, out of sight of reviews | The bash description says to change code with `edit` and `write` |
-| October audit: project `.pi/extensions` and git hooks were writable | Both locked, plus the audit for repositories made during a command |
-| Spike: the runtime's placeholders appeared in the project | The broker |
-| Spike: `HOME` does not redirect `ssh`, which used the real keys | Hidden paths come from the real home folder |
-| Spike: an approved IP address skips the runtime's address checks | The callback refuses private and local addresses itself |
-| Spike: a separate network per command | `open` shares the machine's; the bridge in `filtered` |
-| Spike: file refusals are not recorded | Explained from the command's error lines |
-
 ## Performance
 
 From the spike on WSL2: starting the runtime takes about 130 ms, once per session.
@@ -378,41 +360,6 @@ in a small folder:
   on a machine without them they skip with the reason.
 - **Locally,** `JIG_SANDBOX_TEST_BWRAP`, `JIG_SANDBOX_TEST_SOCAT` and `JIG_SANDBOX_TEST_RG`
   name the programs when they are not on `PATH`. The network tests also need `python3`.
-
-## Build order
-
-1. **Built:** the broker, rules, bash tool, environment, explanations, `/sandbox`, the
-   doctor, the `jig-core` additions, and the `open` and `off` network modes.
-2. **Built:** the audit, and asking you (writes). Running one command outside is built
-   with it.
-3. **Built:** background tasks and `/ps`.
-4. **Built:** `filtered` and `ask`, with the callback and the `localhost` bridge.
-
-Each step ships with its escape and keep-working tests.
-
-## What building it changed
-
-| The design said | What is so |
-|---|---|
-| `docker: true` opens the Docker socket | The runtime cannot allow one Unix socket by path on Linux, and `allowAllUnixSockets` is never set. `docker` is reserved; the agent runs Docker through `outside` |
-| A spawn hook wraps the command | Pi's hook is synchronous; the tool is Pi's own definition with operations that wrap first |
-| macOS needs `brew install ripgrep` | The runtime uses ripgrep on Linux only; macOS needs nothing |
-| `filtered` and `ask` are modes | Built on Linux and WSL2. On macOS they mean `off` and `/sandbox` says so, since the bridge is untried there |
-| A moved-aside folder could replace a locked file | The kernel refuses to move a folder that holds a mounted path; what can be replaced is a locked link, which the audit puts back |
-| `PATH` folders are locked | Those in your home folder, outside the working folder |
-| The question about a host shares `jig-core`'s queue | Done through a new `jig-core` call, `approvals.inTurn`; the question about a write uses it too, so nothing overlaps |
-| A server started by a command is reachable by the next one | A command ends with its processes. A server that must outlive it is a [background task](background.md) |
-| Task logs are in a private folder of the session | They are under `<agent folder>/jig-sandbox/background`, which the sandbox cannot write: in `/tmp` a command could swap a log for a link to a file Pi can read and it cannot, and `bg_output` would show it |
-| Background tasks start through the same path as `bash` | Pi's side starts them itself, to own the process group and the pipes, and wraps them with the same rules; a task's output is cleaned and its credential values taken out before it is written |
-| A task wakes the agent on text it prints | The patterns are regular expressions, checked first for the constructs that make matching slow |
-| A Unix socket per carried port, through the runtime's option for named sockets | The runtime ignores that option on Linux. A forwarder asks the proxy for `127.0.0.1:<port>` over TCP; the callback allows the carried ports |
-| `network.localhost` opens loopback, link-local, private and the machine's own addresses | It opens loopback and the machine's own addresses at that port. Other private hosts, link-local and carrier addresses stay refused |
-| Entering a task's network from the host | `nsenter` fails: no process is in the user namespace that owns it. A `python3` helper joins that one, then the network |
-| `Once` allows the connection | It allows that host and port for 15 seconds, since a command opens several connections |
-| `allow` and `deny` go to the runtime | They are read by the callback, so a listed address is still checked for a private range |
-
-Since 0.4.2, session folders are removed only when their owner is gone; a missing folder is recreated on restart, and an
-unsafe root is refused. Toolchain folders remain ask-first.
 
 ## Session folders
 

@@ -71,20 +71,7 @@ does nothing: `Usage: /lens [ticket KEY | session [id] | days N | compare [days 
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `lens`. The field is optional. `jig-core` checks
-the section when a session starts; a mistake names the key, and the defaults apply.
-
-| Field | Default | Meaning |
-|---|---|---|
-| `port` | 3300 | The port of Grafana or Datasette on `127.0.0.1`. `/lens web` takes a free port of its own |
-
-```json
-{ "lens": { "port": 3300 } }
-```
-
-`viewer` is gone: the command names the viewer now (see
-[Viewer settings](docs/viewer-settings.md#the-viewer-setting-is-gone)).
-
+In `~/.pi/agent/jig.json`, under `lens`. [Configuration](docs/configuration.md) has every field.
 ## Company part (in the company plugin)
 
 None. Nothing here is specific to a company.
@@ -114,11 +101,10 @@ Every file: [Code map](docs/code-map.md).
 - [The index](docs/index-schema.md): Read before you query the index.
 - [The web page](docs/web.md): Read before you open the page.
 - [Viewers](docs/viewers.md): Read before you choose a viewer.
-- [Later](docs/later.md): Read only if you plan ahead.
+- [Viewer settings](docs/viewer-settings.md): Read before you change a viewer.
 
 **Set it up**
-- [Viewer settings](docs/viewer-settings.md): Read before you change a viewer.
-- [Starting Grafana](docs/starting-grafana.md): Read before you start Grafana.
+- [Configuration](docs/configuration.md): Read before you add settings.
 
 **Change it**
 - [Code map](docs/code-map.md): Read before you change the code.

@@ -97,8 +97,8 @@ Jira OAuth through a trusted command, `/context`, and small ops, lens and workfl
 - `jig-jira` takes OAuth 2.0 access tokens from a command the person already trusts: `auth.oauth` names a `cmd:` secret
   source, and jig-core caches the token briefly and runs the command once more after a 401. Cloud uses
   `api.atlassian.com/ex/jira/<cloudId>` (`auth.cloudId`); Data Center uses the site URL. Jig never signs in or stores the
-  refresh token. Guides for [Cloud](plugins/jig-jira/docs/oauth-cloud.md) and
-  [Data Center](plugins/jig-jira/docs/oauth-data-center.md).
+  refresh token. Guides for [Cloud](plugins/jig-jira/docs/oauth.md) and
+  [Data Center](plugins/jig-jira/docs/oauth.md).
 
 - `/context` in `jig-session` shows what fills a Pi session's context as a grid and a list, from the same `ContextDetail`
   the Herdr Context panel reads: the parts, the tools split into Pi's, each Jig plugin's and deferred names, and Jig's

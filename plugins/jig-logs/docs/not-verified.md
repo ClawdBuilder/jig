@@ -1,4 +1,4 @@
-# Not verified yet
+# Not verified
 
 What the tests of `jig-logs` do not cover. Back to the
 [jig-logs overview](../README.md).
@@ -15,7 +15,7 @@ version printed in the log. The suites run once on each line: Elasticsearch 9 an
 latest run, Elasticsearch 8 and OpenSearch 2 in the previous one (see [Integration
 tests](../../../docs/integration-tests.md#the-matrix)). `test/it/suite.ts` holds the tests every backend must pass.
 
-| What | Proved by |
+| Area | How |
 |---|---|
 | Phrase and `query` search; the window and its exclusive end; relative windows | `suite.ts`, all three |
 | Windows cut into hour and day buckets, searched from either end | `suite.ts`, all three |
@@ -34,9 +34,9 @@ tests](../../../docs/integration-tests.md#the-matrix)). `test/it/suite.ts` holds
 | A query Loki rejects, and one the check refuses before it is sent | `suite.ts`, `loki.test.ts` |
 | Requests carried by a transport to a node that speaks plain HTTP | `opensearch.test.ts`, `loki.test.ts` |
 
-## What is still not verified
+## Not verified
 
-## Every backend
+### Every backend
 
 - **A bearer token against a real server.** Elasticsearch's token service needs a
   licence above the free one, so only Basic, an API key and a sign-in service were
@@ -58,7 +58,7 @@ tests](../../../docs/integration-tests.md#the-matrix)). `test/it/suite.ts` holds
     session. `execute` refuses the same call the same way.
   - The message the model reads names the environments that exist.
 
-## Elasticsearch and OpenSearch
+### Elasticsearch and OpenSearch
 
 - **Managed services and other versions.** Elasticsearch 9.5 and 8.19, and OpenSearch 3.9 and 2.19, were
   run in CI. Amazon OpenSearch Service, Elastic Cloud, Elasticsearch 7 and OpenSearch 1 were
@@ -67,7 +67,7 @@ tests](../../../docs/integration-tests.md#the-matrix)). `test/it/suite.ts` holds
   search API; a single node never times out or loses a shard, so the halving for them
   is tried only against the fake.
 
-## Loki
+### Loki
 
 The fake Loki was written from Loki's documentation as it stood on 2026-10-30
 (the `latest` pages, a Loki 3 release). Loki 3.7 now runs in CI, which settled most of

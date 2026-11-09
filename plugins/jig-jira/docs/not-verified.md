@@ -1,10 +1,21 @@
-# Not verified yet
+# Not verified
 
 What the tests of `jig-jira` do not cover. Back to the
 [jig-jira overview](../README.md).
 
 Written from Jira's documentation, a fake Jira on this machine, and real sessions that reached a real Jira through a
-company transport (reads, a create, updates and a link). Still not tried:
+company transport (reads, a create, updates and a link).
+
+## Verified in CI
+
+| Area | How |
+|---|---|
+| The test suite and fakes | `test/`; real services where CI has them |
+
+## Not verified
+
+Each item says what to try.
+
 - the direct sign-in forms (`basic`, `bearer`, `oauth`, `signIn` and `transport`) against a real gateway; the real sessions used
   one company transport, not these;
 - Jira Cloud: `search/jql` and the Cloud create screen, users and long comment threads; the real sessions used one site;
@@ -22,7 +33,7 @@ company transport (reads, a create, updates and a link). Still not tried:
 - a transition whose screen asks for a field (`resolution`, for example): the
   tool sends no field with a transition, and Jira's refusal is shown.
 
-## The `commented` filter
+### The `commented` filter
 
 What the filter of `search` (see [Commented by](commented.md)) needs a real Jira for. The fake Jira plays what the
 documentation says, so the tests cannot show any of this. Try it once on a real Data Center and a real Cloud site.
@@ -41,3 +52,4 @@ documentation says, so the tests cannot show any of this. Try it once on a real 
 - **`GET /myself` behind a real sign-in proxy,** and the account id or user name that `jira.me` should hold on each edition.
 - **Comments an account cannot see** (restricted by role or group). A real Jira leaves them out of the thread, so a person who
   wrote only such comments is not found by an account that cannot read them.
+
