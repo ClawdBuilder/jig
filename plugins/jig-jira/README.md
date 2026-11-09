@@ -90,15 +90,13 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | Field | Default | Meaning |
 |---|---|---|
 | `site` | required | The https address of the Jira |
-| `auth` | required | How requests are signed in ([five forms](docs/configuration.md#auth-forms)) |
+| `auth` | required | How requests are signed in: five forms |
 | `projects` | none | Project keys for `search` without JQL, `create` and links |
 | `updateFields` | five common fields | The fields `update` may set |
 
-[Configuration](docs/configuration.md) has every field and auth form.
-
 A screen field whose schema says `array` takes one value as a one-item list; the preview says when it wrapped one.
 
-The fields in detail are in [Configuration](docs/configuration.md).
+[Configuration](docs/configuration.md) has every field and auth form.
 
 ```json
 {
