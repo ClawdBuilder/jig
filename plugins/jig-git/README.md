@@ -171,6 +171,7 @@ jig-git/
   docs/     the detail pages below
 ```
 
+Every file: [Code map](docs/code-map.md).
 ## More detail
 
 - [Events](docs/events.md): `jig-git:pushed`, who publishes it, and what a listener can rely on

@@ -163,6 +163,7 @@ jig-jira/
   docs/     the detail pages below
 ```
 
+Every file: [Code map](docs/code-map.md).
 ## More detail
 
 - [Parameters](docs/parameters.md): what each action needs, fields, limits on results, and people

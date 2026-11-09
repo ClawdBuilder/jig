@@ -134,6 +134,7 @@ jig-memory/
   docs/     the detail pages below
 ```
 
+Every file: [Code map](docs/code-map.md).
 ## More detail
 
 - [Configure](docs/configure.md): each field of the `memory` section, with an example

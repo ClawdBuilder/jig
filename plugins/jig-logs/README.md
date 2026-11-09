@@ -133,6 +133,7 @@ jig-logs/
   docs/     the detail pages below
 ```
 
+Every file: [Code map](docs/code-map.md).
 ## More detail
 
 - [Parameters](docs/parameters.md): every parameter of `logs`, with its limits

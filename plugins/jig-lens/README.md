@@ -1,11 +1,8 @@
 # jig-lens: what happened, and what it cost
 
-**Status: built.** The summary is tested with sample records, a fake Pi and a real
-Pi session on a scripted model, and was seen in Pi 1.4.0's terminal on Linux; the
-RPC notification is tested with a fake screen only.
+**Status: built.** The summary is tested with sample records, a fake Pi and a real Pi session on a scripted model; the RPC notification has a fake screen only.
 
-`/lens usage` is tested with session files and a fake screen, and was seen in the same terminal. `/lens web` was
-tried in Edge against a real index; Grafana 13.3 with its SQLite data source 4.0.6 on Linux. macOS is not tried yet.
+`/lens usage` was seen with session files and a fake screen; `/lens web` in Edge with a real index. macOS is not tried yet.
 
 `jig-lens` shows what `jig-core` [records](../jig-core/docs/records.md): cost, tool
 failures, and time spent waiting for you. `/lens` prints a summary inside Pi, with
@@ -110,6 +107,7 @@ jig-lens/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows 
   docs/     the detail pages below
 ```
 
+Every file: [Code map](docs/code-map.md).
 ## More detail
 
 - [The summary](docs/summary.md): scopes, sections, how it is shown, the commands
@@ -121,4 +119,5 @@ jig-lens/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows 
 - [Viewers](docs/viewers.md): the page by default, Grafana and Datasette as extras, what to install
 - [Viewer settings](docs/viewer-settings.md): how they run, and why the sign-in stays on
 - [Starting Grafana](docs/starting-grafana.md): what `/lens grafana` does, step by step
+- [Code map](docs/code-map.md): every file, who calls it, and `/lens usage` followed through
 - [Later](docs/later.md): the export to MLflow, Datasette charts, the harness watching itself
