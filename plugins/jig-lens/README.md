@@ -2,12 +2,9 @@
 
 **Status: built.** The summary is tested with sample records, a fake Pi and a real Pi session on a scripted model; the RPC notification has a fake screen only.
 
-`/lens usage` was seen with session files and a fake screen; `/lens web` in Edge with a real index. macOS is not tried yet.
-
-`jig-lens` shows what `jig-core` [records](../jig-core/docs/records.md): cost, tool
-failures, and time spent waiting for you. `/lens` prints a summary inside Pi, with
-no server and no install; `/lens web` opens charts, sessions and tools in your browser, with no
-install either. Grafana or Datasette are optional extras. It never changes the records, and nothing leaves the machine.
+`jig-lens` shows what `jig-core` [records](../jig-core/docs/records.md): cost, tool failures and time spent waiting.
+`/lens` prints a summary inside Pi; `/lens web` opens charts, sessions and tools in your browser. Grafana or Datasette
+are optional extras. It never changes the records, and nothing leaves the machine.
 
 `/lens usage` is a quick view of cost and tokens from Pi's own session files;
 TokenTelemetry goes further (see [Reuse](../../docs/reuse.md)). `jig-lens` adds what only
@@ -88,6 +85,10 @@ the section when a session starts; a mistake names the key, and the defaults app
 `viewer` is gone: the command names the viewer now (see
 [Viewer settings](docs/viewer-settings.md#the-viewer-setting-is-gone)).
 
+## Company part (in the company plugin)
+
+None. Nothing here is specific to a company.
+
 ## Later
 
 - **OpenTelemetry export to MLflow,** for trace waterfalls, and **Datasette
@@ -97,27 +98,27 @@ the section when a session starts; a mistake names the key, and the defaults app
 
 ## Layout
 
-```text
-jig-lens/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the import and /lens (lens, command, scopes), the figures (queries, summary, format, period),
-            the viewers (start, viewer), the page (web, web-queries), the index (store, import, parse), usage-*.ts
-  web/      the page of /lens web: one HTML file with its styles and script
-  viewer/   Grafana provisioning and dashboards, as files; Datasette's metadata and queries
-  test/     sample records, a fake Pi and a real Pi session, 100 000 calls timed, every dashboard query
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: none: the tool text is the entry.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 Every file: [Code map](docs/code-map.md).
 ## More detail
 
-- [The summary](docs/summary.md): scopes, sections, how it is shown, the commands
-- [Comparing conditions](docs/compare.md): `/lens compare`, the `condition` tag, side calls
-- [The usage view](docs/usage.md): `/lens usage`, its keys, what it reads, naming the models
-- [From the records to the index](docs/import.md): imports, retention, one viewer process
-- [The index](docs/index-schema.md): tables, SQL indexes, how fast
-- [The web page](docs/web.md): `/lens web`, its views and endpoints, how it starts and stops, why it is safe
-- [Viewers](docs/viewers.md): the page by default, Grafana and Datasette as extras, what to install
-- [Viewer settings](docs/viewer-settings.md): how they run, and why the sign-in stays on
-- [Starting Grafana](docs/starting-grafana.md): what `/lens grafana` does, step by step
-- [Code map](docs/code-map.md): every file, who calls it, and `/lens usage` followed through
-- [Later](docs/later.md): the export to MLflow, Datasette charts, the harness watching itself
+**Use it**
+- [The summary](docs/summary.md): Read before you read the summary.
+- [Comparing conditions](docs/compare.md): Read before you compare a run.
+- [The usage view](docs/usage.md): Read before you read usage.
+- [From the records to the index](docs/import.md): Read before you import records.
+- [The index](docs/index-schema.md): Read before you query the index.
+- [The web page](docs/web.md): Read before you open the page.
+- [Viewers](docs/viewers.md): Read before you choose a viewer.
+- [Later](docs/later.md): Read only if you plan ahead.
+
+**Set it up**
+- [Viewer settings](docs/viewer-settings.md): Read before you change a viewer.
+- [Starting Grafana](docs/starting-grafana.md): Read before you start Grafana.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.

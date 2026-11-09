@@ -1,8 +1,6 @@
 # jig-logs: searching logs
 
-**Status: built.** Tested against fakes, and in CI against real Elasticsearch 9 and 8,
-OpenSearch 3 and 2, and Grafana Loki 3. What is still unproved is in
-[Not verified yet](docs/not-verified.md).
+**Status: built.** One `logs` tool searches one backend over a time window.
 
 `jig-logs` gives the agent one tool, `logs`, that searches the logs of one
 backend over a time window. It only reads, and `jig-core` governs every call and
@@ -122,27 +120,26 @@ limits, and has an example for each type.
 
 ## Layout
 
-```text
-jig-logs/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the tool and its checks (index, tool, params, config), the search (search, time, query, request, response,
-            failure), what the model reads (summary, line, clip), helpers (values), backends/ (the interface, a file each)
-  skills/   logs/SKILL.md: how to search (an identifier first, a narrow window, then wider)
-  test/     against fake servers, a fake transport and a fake jig-core; golden requests in test/golden;
-            test/it/ against real backends (see the repository's docs/integration-tests.md)
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 Every file: [Code map](docs/code-map.md).
 ## More detail
 
-- [Parameters](docs/parameters.md): every parameter of `logs`, with its limits
-- [Backends](docs/backends.md): what an adapter does, and how to write one
-- [Configuration](docs/configuration.md): every field, with its default and limits
-- [Loki](docs/loki.md): what a call becomes, its limits and its errors
-- [Query grammar](docs/query-grammar.md): what a search sends to Elasticsearch
-- [Windows and buckets](docs/windows-and-buckets.md): windows, halving, budgets
-- [Hit lines](docs/hit-lines.md): the result, paging, how a line is cut
-- [Failures](docs/failures.md): refusals, errors, and the reasons behind a gap
-- [Connecting](docs/connecting.md): direct or through a transport, sign-in, time
-- [Not verified yet](docs/not-verified.md): what needs a real backend
+**Use it**
+- [Parameters](docs/parameters.md): Read before you call it.
+- [Backends](docs/backends.md): Read before you add a backend.
+- [Loki](docs/loki.md): Read before you use Loki.
+- [Query grammar](docs/query-grammar.md): Read before you edit a query.
+- [Windows and buckets](docs/windows-and-buckets.md): Read before a wide search.
+- [Hit lines](docs/hit-lines.md): Read when a hit line is cut.
+
+**Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
+- [Connecting](docs/connecting.md): Read before you connect a backend.
+
+**Trust it**
+- [Failures](docs/failures.md): Read when a search leaves a gap.
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.

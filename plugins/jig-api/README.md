@@ -1,8 +1,6 @@
 # jig-api: your team's saved API requests, run safely
 
-**Status: built.** The sending engine (sign-in, OAuth, transports, previews and
-lost-reply checks) and five sources, each tried against fake APIs, and in CI against
-a real HTTP server and a real OAuth server (see [Not verified yet](docs/not-verified.md)):
+**Status: built.** Saved requests from Postman, `.http` files, Bruno, OpenAPI and Hurl run through `jig-core`.
 - **Postman** collection files (v2.1, with environment files);
 - folders of **`.http` files**;
 - **Bruno** collections (OpenCollection YAML and `.bru`);
@@ -139,26 +137,33 @@ example of each source, is in [Configuration](docs/configuration.md).
 
 ## Layout
 
-```text
-jig-api/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the tool and its checks (index, tool, params, config, ad-hoc, refresh), collections (model, template,
-            catalog, sources/ with a few files per format), a request worked out (resolve, planning, optional, show),
-            engine/ (sending through jig-core's request, previews, results)
-  skills/   api/SKILL.md: list, show, then run; read before you write
-  test/     fixtures of an example orders API in every format, the engine's tests, the safety tests; test/it/ against
-            go-httpbin and Keycloak (see the repository's docs/integration-tests.md)
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
+Every file: [Code map](docs/code-map.md).
 
 ## More detail
 
-- [Code map](docs/code-map.md): every file, who calls it, and a saved request followed from call to answer
-- [Postman](docs/postman.md), [`.http` files](docs/http-files.md), [Bruno](docs/bruno.md), [OpenAPI](docs/openapi.md) and
-  [Postman cloud](docs/postman-cloud.md): what is read, and what is refused
-- [Variables](docs/variables.md): the order values come in, and how the agent's are written
-- [Safety](docs/safety.md): pinned hosts, blocked addresses, files, scripts
-- [Configuration](docs/configuration.md): every field of the `api` section, with an example of each source
-- [Parameters](docs/parameters.md), [Sign-in](docs/auth.md), [Results](docs/results.md), [Writes](docs/writes.md)
-- [Adding a source](docs/sources.md): the interface an adapter implements
-- [Not verified yet](docs/not-verified.md): what needs a real service
+**Use it**
+- [Postman](docs/postman.md): Read about Postman.
+- [`.http` files](docs/http-files.md): Read about `.http` files.
+- [Bruno](docs/bruno.md): Read about Bruno.
+- [OpenAPI](docs/openapi.md): Read about OpenAPI.
+- [Postman cloud](docs/postman-cloud.md): Read about Postman cloud.
+- [Variables](docs/variables.md): Read about Variables.
+- [Parameters](docs/parameters.md): Read before you call it.
+- [Results](docs/results.md): Read when a result surprises you.
+
+**Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
+- [Sign-in](docs/auth.md): Read before you set up a login.
+
+**Trust it**
+- [Safety](docs/safety.md): Read before you point it at a host.
+- [Writes](docs/writes.md): Read before a write asks.
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.
+- [Adding a source](docs/sources.md): Read before you add a source.

@@ -1,7 +1,6 @@
 # jig-workflow: named workflows, with stages, holds and evidence
 
-**Status: built.** Tested with the real `jig-core`, real git repositories, a fake `gh`/`glab`, and the real sandbox where
-bubblewrap is installed. Not tried against real `gh pr view`, `glab api` or a CI watch; not in real Pi for an outside test.
+**Status: built.** Named workflows with stages, holds and evidence, tested with the real `jig-core` and sandbox.
 
 `jig-workflow` takes a piece of work, such as a ticket, through a **workflow**: a named, ordered list of
 stages, each with a goal for the agent and the conditions that let the work move on. The conditions are
@@ -136,24 +135,22 @@ variables such as `JAVA_HOME`) and `outside` (a command that needs what the sand
 
 ## Layout
 
-```text
-jig-workflow/   index.ts: the entry Pi loads; it hands on src/index.ts, so Pi shows the plugin's name
-  src/        index.ts (the factory), runtime.ts (the session), config.ts, definition.ts + load.ts (workflow files),
-              store.ts (workflow.json), ticket.ts + repos.ts, conditions.ts + sources.ts + listeners.ts + forge.ts (evidence),
-              plan.ts, tests.ts + environment.ts + java.ts + outside.ts (test runs), gate.ts (holds), tool.ts + actions.ts (one
-              file for each family: action-start, -plan, -tests, -stages, -support), commands.ts, status.ts, host.ts, stage-tools.ts
-  skills/     workflow/SKILL.md: how to take work through its workflow
-  examples/   feature.json, bugfix.json, investigation.json
-  test/       one file per module; world.ts runs a whole session through the real jig-core
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
+Every file: [Code map](docs/code-map.md).
 
 ## More detail
 
-- [Code map](docs/code-map.md): every file, who calls it, and `advance` followed through them
-- [Files](docs/files.md): fields, matching, folders, examples, a company's files
-- [Conditions](docs/conditions.md): how each one is decided, and what makes a result stop counting
-- [Holds](docs/holds.md): the gate, what a hold matches, calls that always ask
-- [Plan](docs/plan.md): `plan.md`, the approval, scenarios and their evidence
-- [Tests](docs/tests.md): commands per repository, the sandbox, what is recorded
-- [State](docs/state.md): `workflow.json`, switching, protection, concurrent sessions
-- [Design](docs/design.md): how it is built, what it adds to other plugins, the tests
+**Use it**
+- [Files](docs/files.md): Read before you add a workflow.
+- [Conditions](docs/conditions.md): Read before you add a condition.
+- [Holds](docs/holds.md): Read before you hold a call.
+- [Plan](docs/plan.md): Read before you approve a plan.
+- [Tests](docs/tests.md): Read before you run tests.
+- [State](docs/state.md): Read before you change state.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.
+- [Design](docs/design.md): Read before you change the design.

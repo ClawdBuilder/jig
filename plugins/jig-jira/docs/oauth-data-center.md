@@ -54,3 +54,5 @@ Declare it by name in `jig.json`; a command not declared here cannot run:
 sees only the short environment list Jig gives a secret command, not your whole environment. Its standard
 output is trimmed; more than 16 KiB, an empty answer or a non-zero exit is refused. The token is registered with Jig's
 redactor and is never written to a record, a log, an error or the review page.
+
+Back to the [jig-jira overview](../README.md).

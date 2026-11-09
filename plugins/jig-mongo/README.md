@@ -1,8 +1,6 @@
 # jig-mongo: MongoDB, with reads, writes, indexes and aggregation
 
-**Status: built.** Every action below is tested against fakes, and in CI against real MongoDB 9.0 and 8.0 replica sets, reached directly, through an
-SSH forward and through a SOCKS tunnel (`ssh -D`) to a real SSH server. What is still unproved is in
-[Not verified yet](docs/not-verified.md).
+**Status: built.** A complete MongoDB tool, with reads and writes governed by `jig-core`.
 
 `jig-mongo` gives the agent a complete MongoDB tool: exploring, querying, indexes, query plans, aggregation and writes.
 `jig-core` decides each call by environment: reads run, a write to `staging` asks you with a preview, and every write to
@@ -124,24 +122,23 @@ Use a read-only database user for production. The floor denies writes anyway, bu
 
 ## Layout
 
-```text
-jig-mongo/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the tool (index, tool, params, plan), access lists (access, expr, filter, pipeline), reads, writes (write-check,
-            writes), the index check (require-index), results (render, explain, bson, ejson), the driver seam (backend, driver),
-            connections (config, session, route)
-  skills/   mongo/SKILL.md: count, then find; explain before blaming the database; preview every write; never production writes
-  test/     fakes of jig-core, the database and ssh; one test file per area; test/it/ against a real MongoDB and SSH server
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 Every file: [Code map](docs/code-map.md).
 ## More detail
 
-- [Access](docs/access.md): the lists, the always-denied names, how a pipeline is walked, what is refused and why
-- [Index check](docs/index-check.md): when a read must use an index, how the plan is read, reference collections, `requireIndex`
-- [Writes](docs/writes.md): previews, the count, the cap, "changed since the preview", a lost reply
-- [Connections](docs/connections.md): the configuration, several connections in one environment, the SSH route and its key file, the tunnel (forward or SOCKS), how connections are kept
-- [Results](docs/results.md): Extended JSON in and out, partial results, schema and explain output, the record
-- [Not verified yet](docs/not-verified.md): what needs a real MongoDB
-- [Refusals](docs/refusals.md): the common reasons and what to change
+**Use it**
+- [Access](docs/access.md): Read before you allow a collection.
+- [Index check](docs/index-check.md): Read before a production read.
+- [Results](docs/results.md): Read when a result surprises you.
+
+**Set it up**
+- [Connections](docs/connections.md): Read before you add a connection.
+
+**Trust it**
+- [Writes](docs/writes.md): Read before a write asks.
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.
+- [Refusals](docs/refusals.md): Read when a call is refused.

@@ -1,9 +1,6 @@
 # jig-git: git, pull requests and releases
 
-**Status: built.** Tested against temporary repositories and recorded GitHub
-and GitLab answers, and in CI the reads are run against real GitHub. No test
-writes to GitHub, and GitLab itself was never reached (see
-[Not verified yet](docs/not-verified.md)).
+**Status: built.** Three tools cover the local repository, pull requests and releases on GitHub and GitLab.
 
 `jig-git` gives the agent three tools: `git` for the local repository, `pr` for
 pull requests and reviews, and `release` for tags and releases. `pr` and
@@ -92,6 +89,11 @@ The notes on single actions are in [Actions](docs/actions.md).
   `gh` and `glab` own the sign-in; Jig never signs in ([Credential sources](../../plugins/jig-core/docs/sign-in-and-transports.md)).
 - **Writes are previewed and never resent.** [Approvals](../../docs/approvals.md#preview-digest-and-a-lost-reply)
   has the rule; [Writes](docs/writes.md) has the one read after a lost reply.
+- **Guarded names match at any depth.** A repository in `packages/app` still guards
+  `packages/app/.pi/settings.json`; case is folded on every platform. After a fetch the guard
+  compares blob ids, so a file changed after the question is treated as newly brought.
+  Nested `.git` paths that run code, such as config, hooks, worktree config and
+  `info/attributes`, are refused for the file tools.
 - **`fetch` asks about a host your configuration does not name.** It is a read, but it offers
   your SSH key to the remote's host, and a remote's address is something the agent can change
   in `bash`. So a fetch from a host your configuration does not call a forge — `github.com`,
@@ -159,34 +161,25 @@ listener that fails never undoes the push. The details are in
 
 ## Layout
 
-```text
-jig-git/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      git.ts, pr.ts and release.ts (the three tools); the actions (git-read, git-branch + git-changes +
-            git-integrate with git-guards for the local writes, git-remote, clone, pr-read, pr-write); the comment watch (pr-watch, pr-watch-tool); github.ts, gitlab.ts and the GitLab
-            actions (gitlab-pr-read, gitlab-pr-write, gitlab-release, gitlab-watch); forge.ts and repo.ts; config.ts,
-            previews.ts and events.ts (jig-git:pushed)
-  skills/   git/SKILL.md: how to use the tools (status before commit, what a push announces)
-  test/     against temporary local repositories, a fake gh and glab and a fake jig-core
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 Every file: [Code map](docs/code-map.md).
 ## More detail
 
-- [Events](docs/events.md): `jig-git:pushed`, who publishes it, and what a listener can rely on
-- [GitLab](docs/gitlab.md): the forge for a repository, how each action maps to glab, what GitLab has no equivalent for
-- [Comment watch](docs/comments-watch.md): `pr watch`, what the agent is told, what is skipped, rate limits, when it ends
-- [Actions](docs/actions.md): notes on single actions of `git` and `pr`
-- [Configuration](docs/configuration.md): the fields of the `git` section in detail
-- [Writes](docs/writes.md): what you see before a write asks, and lost replies
-- [Scope](docs/scope.md): what is left out on purpose, and what belongs elsewhere
-- [Background](docs/background.md): the sessions the tool list comes from, and what was ported
-- [Not verified yet](docs/not-verified.md): what the tests do not cover
+**Use it**
+- [Events](docs/events.md): Read before you listen for an event.
+- [GitLab](docs/gitlab.md): Read before you use a GitLab host.
+- [Comment watch](docs/comments-watch.md): Read before you watch comments.
+- [Actions](docs/actions.md): Read before you use an action.
+- [Background](docs/background.md): Read before you start long work.
 
-## Guards in 0.4.2
+**Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
 
-Guarded names match at any depth (a repository in `packages/app` still guards `packages/app/.pi/settings.json`) and case
-is folded on every platform. After a fetch the guard compares blob ids, so a file whose content changed after the question
-is treated as newly brought. Nested `.git` paths that run code — config, hooks, worktree config and `info/attributes` —
-are refused for the file tools.
+**Trust it**
+- [Writes](docs/writes.md): Read before a write asks.
+- [Scope](docs/scope.md): Read when a call is refused.
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.

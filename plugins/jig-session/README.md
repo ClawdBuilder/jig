@@ -1,7 +1,6 @@
 # jig-session: the live session's state, as a file other programs read
 
-**Status: built.** Tested with a stand-in for Pi, and seen working with Pi 1.4.0 in a real session in WSL, read by the Work
-panel of the [Herdr app files](https://github.com/ClawdBuilder/jig-herdr). Not tried: macOS, Windows without WSL.
+**Status: built.** One small JSON status file per session, tested with a stand-in and seen in a real Pi session.
 
 <img src="../../docs/assets/jig.svg" width="48" alt="Jig logo: a set-square">
 
@@ -101,17 +100,15 @@ them. **Schema 1:**
 - **Its own life.** The file goes when the session ends (a reload keeps it); files left by a Pi that crashed are removed at the next start.
 - **No child files.** A child Pi that `jig-agents` started writes nothing: it runs in its parent's terminal.
 
-## Configure
-
-Nothing. The folder follows `$JIG_STATE_DIR`, as jig-core's does. The ticket folder and the workflow folders are read from
-the `memory` and `workflow` sections, and the Jira address from the `jira` section's `site`, as those plugins read them.
-
-## How it fits with the other plugins
-
 - **`jig-core`:** `recent` takes each call's decision from the `jig:decision` event; its rules decide every call.
 - **`jig-memory`, `jig-workflow`, `jig-jira`:** read only, for `ticket` and `workflow`.
 - **Readers:** any program that can read the folder, on this machine or through a link to it, as the
   [Herdr app files](https://github.com/ClawdBuilder/jig-herdr) do for their Work and Context panels.
+
+## Configure
+
+Nothing. The folder follows `$JIG_STATE_DIR`, as jig-core's does. The ticket folder and the workflow folders are read from
+the `memory` and `workflow` sections, and the Jira address from the `jira` section's `site`, as those plugins read them.
 
 ## Company part (in the company plugin)
 
@@ -119,19 +116,15 @@ None. Nothing here is specific to a company.
 
 ## Layout
 
-```text
-jig-session/
-  index.ts  the entry Pi loads; it hands on src/index.ts
-  src/      index.ts (events, commands), status.ts (the file and when), activity.ts, ticket.ts, usage.ts, files.ts,
-            context.ts + breakdown.ts (the context detail), requests.ts (the request file, the switches)
-  test/     the file written, updated and removed; outputs, ticket, workflow; the breakdown, requests, switches, reload
-  docs/     how-it-works.md, status-file.md, context.md
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: none: the tool text is the entry.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 ## More detail
 
-- [How it works](docs/how-it-works.md): the write and the switch step by step, a reading path through `src/`, and what it is
-  built on (Pi's extension API, Node's built-ins)
-- [The status file](docs/status-file.md): when it is written, an example, and how a reader finds the session it wants
-- [Front-end contracts](../../docs/contracts.md): the status-file and review API surfaces this plugin is part of
-- [Context and requests](docs/context.md): how the breakdown is counted, how a request is handled, skills and reload
+**Use it**
+- [How it works](docs/how-it-works.md): Read before you change the file.
+- [The status file](docs/status-file.md): Read before you read the file.
+- [Front-end contracts](../../docs/contracts.md): Read before you change a contract.
+- [Context and requests](docs/context.md): Read before you change context.

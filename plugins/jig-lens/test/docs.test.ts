@@ -84,7 +84,15 @@ test("the README points at jig-core's records page, where the section moved to",
 test("the README has the shape the other plugins' READMEs have, and is about as long as they are", () => {
     const readme = readFileSync(README, "utf8");
     const headings = [...readme.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
-    assert.deepEqual(headings, ["Commands", "Rules", "Configure", "Later", "Layout", "More detail"]);
+    assert.deepEqual(headings, [
+        "Commands",
+        "Rules",
+        "Configure",
+        "Company part (in the company plugin)",
+        "Later",
+        "Layout",
+        "More detail",
+    ]);
     assert.match(readme, /^\*\*Status: built\.\*\*/m);
     assert.match(readme, /\n\*[^*\n]+\*\n/, "an italic caption under the picture");
     assert.ok(readme.split("\n").length <= 125, `${readme.split("\n").length} lines: detail belongs in docs/`);

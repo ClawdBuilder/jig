@@ -1,8 +1,6 @@
 # jig-ops: build, deploy and run, on any CI and any platform
 
-**Status: `ci`, `deploy` and `runtime` are built.** Tested against fakes, and in CI against a real
-Kubernetes cluster with Helm, real GitHub Actions runs and a real HTTPS address. GitLab, Jenkins and Concourse
-were not tried against a real server ([Not verified yet](docs/not-verified.md)).
+**Status: built.** `ci`, `deploy` and `runtime` cover build, deploy and run on any CI and platform.
 
 `jig-ops` covers what happens after the code is written: did CI pass, can it go to a
 test environment, is it healthy, and what do the logs say. You describe each service
@@ -139,6 +137,10 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
   `{ repo, service, system, sha, branch?, pr?, finish, outcome, summary }`. `jig-workflow`'s
   `checks-pass` listens for it.
 
+## Configure
+
+In `~/.pi/agent/jig.json`, under `ops`. [The catalog](docs/catalog.md) has every field and what is checked.
+
 ## Company part (in the company plugin)
 
 - its service catalog, test environments and "artifact ready" rules; later, its deploy
@@ -155,22 +157,25 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 
 ## Layout
 
-```text
-jig-ops/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      index, catalog, values, watch (ops-rollout); runtime/ and deploy/ (kubernetes/, helm, kubectl-image, pin-*);
-            ci/ (the tool, the adapter interface, an adapter per system with its api and watch, request.ts, ops-ci)
-  skills/   ops/ (roll out, check, read events and logs), ci/ (wait without polling, read why it failed)
-  test/     fake gh, kubectl and helm on a PATH, fake GitLab, Jenkins and Concourse on 127.0.0.1, a fake jig-core;
-            test/it/ against a kind cluster, Helm, GitHub and an HTTPS server (see the repository's docs/integration-tests.md)
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: the skill text; read it before the first call.
+- `test/`: the unit tests, fake hosts and real-program tests.
+Every file: [Code map](docs/code-map.md).
 
 ## More detail
 
-- [Code map](docs/code-map.md): every file, who calls it, and a deploy followed from call to command
-- [The catalog](docs/catalog.md): every field, and what is checked
-- [CI](docs/ci.md): what each system can do, sign-in, previews, lost replies, watches and artifacts
-- [Runtime](docs/runtime.md): the parameters, the results, health, and the Kubernetes adapter's rules
-- [Deploy](docs/deploy.md): the commands, previews, the fingerprint, no resend, rollback and watch
-- [Not verified yet](docs/not-verified.md): what needs a real CI system, cluster, Helm or address
-- [CI platforms](docs/ci-platforms.md): which actions each system supports
+**Use it**
+- [CI](docs/ci.md): Read before you use CI.
+- [Runtime](docs/runtime.md): Read before you read a service.
+- [Deploy](docs/deploy.md): Read before you deploy.
+- [CI platforms](docs/ci-platforms.md): Read before you pick a platform.
+
+**Set it up**
+- [The catalog](docs/catalog.md): Read before you add a service.
+
+**Trust it**
+- [Not verified yet](docs/not-verified.md): Read before you rely on it.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.

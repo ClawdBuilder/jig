@@ -1,9 +1,6 @@
 # jig-sandbox: the agent's shell, in a sandbox that stays out of the way
 
-**Status: built.**
-Built on [Anthropic's sandbox runtime](https://github.com/anthropics/sandbox-runtime) (Apache-2.0): bubblewrap on
-Linux and WSL2, Seatbelt on macOS. The escape and keep-working tests run on Linux and WSL2; the macOS side is
-written from the runtime's documentation and not yet tested on a Mac.
+**Status: built.** The agent’s `bash` runs in a sandbox tested on Linux and WSL2, with the macOS side from documentation.
 
 `jig-sandbox` runs the `bash` commands the agent sends inside an operating-system
 sandbox, and keeps two promises:
@@ -39,6 +36,7 @@ says exactly which variables go.
 ## Rules
 
 The full list is in [The rules](docs/rules.md): hidden, locked, ask-first and writable paths, and why.
+The broker (`broker/broker.mjs`) is the only place the runtime runs; it is a plain-JavaScript child process.
 
 ## Configure
 
@@ -84,27 +82,22 @@ default `open` mode, so a company that wants it applied also defaults `network.m
 
 ## Layout
 
-```text
-index.ts            the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-broker/broker.mjs   the only place the runtime runs: a plain-JavaScript child process
-src/                index.ts (entry), bash.ts (the tool, and one command outside), sandbox.ts + sandbox-types.ts +
-                    sandbox-setup.ts + sandbox-messages.ts (the session), rules.ts + lists.ts + repos.ts (the rules as
-                    data), audit.ts + gitconfig.ts (after a command), ask.ts + allowed.ts (questions), explain.ts,
-                    env.ts, output.ts, commands.ts, doctor.ts
-src/background/     the tasks: tasks.ts (start, stop, limits) with tasks-deps.ts, task-record.ts, capture.ts and
-                    after-end.ts, notify.ts (waking), patterns.ts, logfile.ts + output.ts (the log and its reading),
-                    process.ts + sessions.ts (stopping, crash clean-up), tools.ts, ps.ts
-src/network/        the callback's rules (addresses.ts, hosts.ts, policy.ts), the question to you (ask-host.ts),
-                    the localhost bridge (bridge.ts) and how they are wired to the sandbox (wiring.ts)
-test/               rules as data, and the escape and keep-working tests in the real sandbox
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: none: the tool text is the entry.
+- `test/`: the unit tests, fake hosts and real-program tests.
+Every file: [Code map](docs/code-map.md).
 
 ## More detail
 
-- [Code map](docs/code-map.md): every file, who calls it, and a `bash` command followed through them
-- [The rules](docs/rules.md): every hidden, locked and ask-first path, and why
-- [When a command hits a rule](docs/when-blocked.md): the messages, the prompts, the ways through
-- [Network](docs/network.md): the modes, the proxy and the host rules
-- [Background tasks](docs/background.md): the tools, limits, waking, `/ps`
-- [Design](docs/design.md): how it is built, what the earlier sandbox taught us, the tests
+**Use it**
+- [Network](docs/network.md): Read before you change the network.
+- [Background tasks](docs/background.md): Read before you start long work.
 
+**Trust it**
+- [The rules](docs/rules.md): Read when a command is refused.
+- [When a command hits a rule](docs/when-blocked.md): Read when a command is refused.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.
+- [Design](docs/design.md): Read before you change the design.

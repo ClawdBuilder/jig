@@ -1,9 +1,6 @@
 # jig-theme: palettes, a footer, and your own colours
 
-**Status: built.** Tested with a fake Pi and Pi's own theme validator and resource
-loader, and seen in Pi 1.4.0's terminal on Linux (tmux, a temporary agent folder, no
-model): the six palettes, a palette written from `jig.json`, the live list, the footer
-shrinking with the pane, and answers drawn from a stored session.
+**Status: built.** Six palettes and a footer, tested with Pi’s own validator and loader.
 
 Not tried yet: macOS, Windows, a terminal without truecolor, and answers streaming from a
 live model.
@@ -143,18 +140,16 @@ The footer's colours, context limits, cost decimals and separator are in
 
 ## Layout
 
-```text
-jig-theme/
-  index.ts  the entry Pi loads: it hands on src/index.ts, so Pi shows the plugin's name
-  src/      the roles and the 17 colours (roles, palettes), a palette to a theme (build), your palettes on disk
-            (config, write, apply), the footer (footer, segments, session, cache, usage, width), answer-text.ts, the /theme command
-  themes/   the six as Pi theme files, made by scripts/build-themes.ts
-  test/     golden roles, contrast, Pi's validator and loader, the writer, the footer at every width, the command
-  docs/     the detail pages below
-```
+- `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
+- `src/`: the implementation, its checks and the parts it runs on.
+- `skills/`: none: the tool text is the entry.
+- `test/`: the unit tests, fake hosts and real-program tests.
 
 ## More detail
 
-- [Palettes](docs/palettes.md): the named colours, the role map, the contrast rules
-- [Your palettes](docs/your-palettes.md): fields, names, when files are written and left alone
-- [The footer](docs/footer.md): every part, the colours, narrow terminals, parts from other plugins
+**Use it**
+- [The footer](docs/footer.md): Read before you change the footer.
+
+**Set it up**
+- [Palettes](docs/palettes.md): Read before you change colours.
+- [Your palettes](docs/your-palettes.md): Read before you add colours.
