@@ -24,6 +24,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { removeTree } from "./remove-tree.ts";
 import { fileURLToPath } from "node:url";
 
 export const REPO = realpathSync(path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url)))));
@@ -151,7 +152,7 @@ export function makeWorld(folder = "work"): World {
                 child.on("close", (status) => resolve({ status, stdout, stderr }));
                 child.stdin.end();
             }),
-        dispose: () => rmSync(root, { recursive: true, force: true }),
+        dispose: () => removeTree(root),
     };
 }
 

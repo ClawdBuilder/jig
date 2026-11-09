@@ -12,7 +12,7 @@
         "pi-package"
     ],
     "scripts": {
-        "test": "node --import ./test/support/host.mjs --test \"test/*.test.ts\" \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\"",
+        "test": "node --import ./test/support/host.mjs --test \"test/*.test.ts\" \"test/eval/*.test.ts\" \"plugins/*/test/*.test.ts\" \"examples/*/test/*.test.ts\"",
         "test:it": "node --import ./test/support/host.mjs --test \"plugins/*/test/it/*.test.ts\"",
         "check": "node test/support/link-host.mjs && node scripts/check-pinned-deps.mjs && node scripts/check-runtime-deps.mjs && node scripts/check-docs.mjs && node scripts/check-version-pins.mjs && node scripts/check-released-changelog.mjs && node scripts/build-contracts.mjs --check && tsc -p tsconfig.json && biome ci .",
         "check:install": "node scripts/check-install.mjs",
