@@ -130,13 +130,18 @@ classifies the call from the **script text**:
 
 - a script that names only tools is a **local read**. Every tool call inside it is classified and gated as its own call,
   as a direct call is, and a read-only role can run a script of reads;
-- a script that names `models`, `globalThis`, `eval`, `Function`, `constructor`, `Reflect`, `import`, `this`, `self` or
-  `global` is an **external write**. It asks, with “the script can call outside models: ask”, and a role that may not write
-  refuses it. `models` runs classifier and image models on the session's credentials, outside every Jig record and gate;
+- a script that names `models`, `globalThis`, `eval`, `Function`, `constructor`, `Reflect`, `import`, `this`, `self`,
+  `global`, `getOwnPropertyDescriptor`, `getPrototypeOf`, `defineProperty`, `prototype` or `__proto__`, or computes a member
+  access with something other than a number or one plain string, is an **external write**. It asks, with “the script can
+  call outside models: ask”, and a role that may not write refuses it. `models` runs classifier and image models on the
+  session's credentials, outside every Jig record and gate;
 - a missing or unreadable script falls back to asking.
 
 The check reads text. It is conservative, not a proof: a script that can reach `models` is asked even when it does not,
-and an obfuscation Jig cannot see could get past it. That is why the fallback is ask, not allow.
+and a script that builds a name from pieces can still get past it. Pi defines `models` on the sandbox's global object as a
+non-configurable, non-writable namespace, so Jig cannot remove it before the script runs; the text check and the ask are
+the guard. What a missed script can reach is the session's own model providers, on its credentials, outside every Jig
+record and gate. That is why the fallback is ask, not allow.
 
 To turn it on, enable Pi's builtin in the agent's `settings.json` and keep the other tools declared:
 

@@ -144,6 +144,21 @@ describe("the codemode classification", () => {
         }
     });
 
+    test("a name built from pieces or a computed member access asks", () => {
+        const scripts = [
+            'const c = "con" + "structor"; return ({})[c][c]("return mod" + "els")().classify("x");',
+            'return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(() => 0), "con" + "structor").value("return models")();',
+        ];
+        for (const code of scripts) {
+            assert.equal(classifyCodemode({ code })?.environment, "external", code);
+            assert.deepEqual(ask(code), { decision: "ask", reason: "the script can call outside models: ask" });
+        }
+        assert.deepEqual(classifyCodemode({ code: 'const x = { a: 1 }; return x["a"] + [1][0];' }), {
+            environment: "local",
+            effect: "read",
+        });
+    });
+
     test("missing or unparsable input falls back to asking", () => {
         assert.equal(classifyCodemode({}), undefined);
         assert.deepEqual(ask(), { decision: "ask", reason: "the script could not be read: ask" });

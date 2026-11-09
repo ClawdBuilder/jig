@@ -4,11 +4,17 @@
 import type { CallClass, GateCall, GateVerdict } from "./contract.ts";
 
 /** Whole words that mean a script can leave the tool sandbox or reach a model on the session's credentials. */
-const RISKY = /\b(?:models|globalThis|eval|Function|constructor|Reflect|import|this|self|global)\b/;
+const RISKY =
+    /\b(?:models|globalThis|eval|Function|constructor|Reflect|import|this|self|global|getOwnPropertyDescriptor|getPrototypeOf|defineProperty|prototype|__proto__)\b/;
+
+/** A computed member access whose index is not a number or one plain string literal; it can build a name at run time. */
+const COMPUTED =
+    /(?:[A-Za-z_$][\w$]*|\)|\])\[\s*(?!(?:\d+(?:\.\d+)?|0x[0-9a-fA-F]+)\s*\]|(?:'[^'\\]*(?:\\.[^'\\]*)*'|"[^"\\]*(?:\\.[^"\\]*)*"|`[^`$\\]*(?:\\.[^`$\\]*)*`)\s*\])/;
 
 export function classifyCodemode(input: Readonly<Record<string, unknown>>): CallClass | undefined {
     if (typeof input.code !== "string") return undefined;
-    if (RISKY.test(input.code)) return { environment: "external", effect: "write", atLeast: "ask" };
+    if (RISKY.test(input.code) || COMPUTED.test(input.code))
+        return { environment: "external", effect: "write", atLeast: "ask" };
     return { environment: "local", effect: "read" };
 }
 
@@ -16,6 +22,6 @@ export function classifyCodemode(input: Readonly<Record<string, unknown>>): Call
 export function codemodeAsk(call: GateCall): GateVerdict | undefined {
     if (call.tool !== "codemode") return undefined;
     if (typeof call.input.code !== "string") return { decision: "ask", reason: "the script could not be read: ask" };
-    if (!RISKY.test(call.input.code)) return undefined;
+    if (!RISKY.test(call.input.code) && !COMPUTED.test(call.input.code)) return undefined;
     return { decision: "ask", reason: "the script can call outside models: ask" };
 }
