@@ -25,8 +25,8 @@ export interface JiraOptions {
 // At most 200 characters (registration.test.ts). The skill carries the rest: reading before writing, and what a search by
 // who commented returns.
 const DESCRIPTION =
-    "Read and change Jira issues in wiki markup. Writes preview and ask; read before changing. " +
-    "search commented {by, from?, to?}: issues a person commented on; from/to are whole local days, inclusive.";
+    "Read and change Jira issues in wiki markup. Writes preview and ask; read before changing. Read the jira skill " +
+    "before you change an issue.";
 
 function describeCall(call: Call): string {
     const target = "key" in call ? ` ${call.key}` : "";

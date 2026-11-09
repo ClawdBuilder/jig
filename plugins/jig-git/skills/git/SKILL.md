@@ -1,6 +1,6 @@
 ---
 name: git
-description: How to work with the git, pr and release tools - branch, commit, push, open and review pull requests (GitHub) and merge requests (GitLab), and hand CI to the ci tool. Use for any change that ends in a pull request or merge request, and whenever you would reach for git, gh or glab. Not for a code edit with no git step; use edit/write.
+description: Git and pull requests (git, pr, release tools) - branch, commit, push, open, review and merge on GitHub or GitLab. Use for any change that ends in a pull request or merge request, and when you would reach for git, gh or glab.
 ---
 
 # Git, pull requests and CI
@@ -27,17 +27,21 @@ merge request, and `pr` and `release` work the same way with these differences:
 
 1. **Look first.** `git status` shows the branch, how far it is from its upstream and from the base, and the changed
    files. Without `repo` it covers every repository in the workspace; Pi started inside a repository means that one.
+   Done when you can name the branch, its base and every changed file.
 2. **Start from the fetched base.** `git branch` with `operation: create` fetches the base and cuts the new branch from
    it. It refuses when tracked files have uncommitted changes. If `git.branchName` is set, the name must match it.
+   Done when the branch exists at the fetched base and has no tracked changes.
 3. **Commit exact paths.** `git commit` takes the files and a message. Other staged and unstaged work stays as it is.
    If `git.commitMessage` is set, the message must match it. `amend: true` replaces the last commit, and only while no
-   remote has it; with no paths it only rewords.
+   remote has it; with no paths it only rewords. Done when the commit contains exactly the named paths.
 4. **Push.** `git push` shows the commits it will send and waits for the user. It refuses the protected branches (by
    default the repository's default branch), and `force_with_lease` is the only force there is. If you commit again
-   while the user is reading, the push refuses and says so; run it again to see the new preview.
+   while the user is reading, the push refuses and says so; run it again to see the new preview. Done when the push
+   result names the commits sent or the refusal.
 5. **Open the pull request.** `pr create` needs the branch pushed at its tip. Leave `body` out to be shown the
    template; fill it in and call again. If a pull request is open for the branch, you get it back and nothing is
-   created. If `git.prTitle` is set, the title of `pr create` and of `pr edit` must match it; a refusal shows the pattern.
+   created. If `git.prTitle` is set, the title of `pr create` and of `pr edit` must match it; a refusal shows the
+   pattern. Done when `pr create` returns the open pull request or the template.
 
 ## After a push, CI is the ci tool's
 
@@ -78,7 +82,8 @@ what GitHub shows. It never sends the request again. Do not repeat the call your
 ## What is not offered
 
 Deleting or moving tags, `reset --hard`, `clean`, approving a pull request and starting a workflow by hand. They destroy
-work or decide for a person. If one is truly needed, ask the user to run it.
+work or decide for a person. If one is truly needed, ask the user to run it. The tool's action list has every action;
+this page gives the order.
 
 ## Tags and releases
 

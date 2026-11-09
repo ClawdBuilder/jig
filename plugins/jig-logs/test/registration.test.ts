@@ -47,13 +47,10 @@ test("the tool says what it is in few words, and runs like any other tool", () =
     const tool = tools.get("logs") as ToolDefinition;
     assert.match(tool.name, /^[a-zA-Z0-9_-]+$/);
     assert.ok(tool.description.length > 40 && tool.description.length < 400, `${tool.description.length} characters`);
-    assert.match(tool.description, /match, exclude and around/, "how to pick lines is in the description");
+    assert.match(tool.description, /Read the logs skill/);
     assert.match(tool.description, /only reads/);
     assert.ok(tool.promptSnippet && tool.promptSnippet.length < 100);
-    const guidelines = tool.promptGuidelines ?? [];
-    assert.ok(guidelines.length >= 1 && guidelines.length <= 2);
-    assert.ok(guidelines.every((line) => line.length < 140 && !line.includes("\n") && line.startsWith("logs: ")));
-    assert.match(guidelines.join(" "), /narrow window/);
+    assert.equal(tool.promptGuidelines, undefined, "the skill carries the search order");
     assert.equal(tool.exposure, undefined, "always loaded: the default exposure is direct");
     assert.equal((tool as unknown as { defaultActive?: boolean }).defaultActive, undefined);
     assert.equal(tool.executionMode, undefined, "searches may run side by side: they only read");

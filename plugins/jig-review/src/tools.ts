@@ -26,7 +26,7 @@ export function registerReviewTools(pi: ExtensionAPI, handlers: ReviewToolHandle
         name: START_TOOL,
         label: "Start Interactive Code Review",
         description:
-            "Open the browser code review for the user, as /code-review does: with an active ticket its bound repositories' branches since the main branch (what a push needs approved), otherwise the uncommitted changes. Only the user can approve it.",
+            "Open the browser code review for the user: with an active ticket its bound repositories' branches since the main branch, otherwise the uncommitted changes. This satisfies workflow's review-done condition; the user approves in the browser.",
         parameters: Type.Object({}),
         execute: async (_toolCallId, _params, _signal, _onUpdate, ctx): Promise<ToolResult> => {
             const outcome = await handlers.startReview(ctx);

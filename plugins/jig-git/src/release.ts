@@ -457,7 +457,7 @@ export const releaseTool: JigTool = buildTool({
     name: "release",
     label: "Release",
     description:
-        "Tags and releases on GitHub or GitLab, by the repository's origin: tags, releases, tag_create (local), tag_push and release_create (these ask). A tag is never moved, forced or deleted from here.",
+        "Tags and releases: list, create, push. The user is asked before a tag or release is pushed or created. Read the git skill before your first release call.",
     promptSnippet: "Tags and releases: list, create, push",
     parameters: ReleaseParams,
     table: RELEASE_ACTIONS,

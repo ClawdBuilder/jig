@@ -36,14 +36,8 @@ export function createLogsTool(deps: LogsDeps = {}): JigTool {
         name: "logs",
         label: "Logs",
         description:
-            "Search logs by exact phrase, or by a Lucene or LogQL query, over at most the configured longest window " +
-            "(7 days by default): the number of hits, " +
-            "then one line per hit. match, exclude and around choose and shape the lines. It only reads.",
+            "Search logs by phrase or query in a time window. It only reads. Read the logs skill before your first search.",
         promptSnippet: "Search logs by phrase or query in a time window",
-        promptGuidelines: [
-            "logs: search an exact identifier in a narrow window first (30m to 2h); widen the window step by step.",
-            "logs: pick lines with match, exclude and around instead of raising size; read the logs skill.",
-        ],
         parameters: logsParameters,
         async execute(toolCallId, params, signal, onUpdate) {
             const input = params as Input;

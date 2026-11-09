@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Read-only exploration of code, logs and tickets, with evidence
+description: Read-only exploration of code and logs, with evidence
 tools: read, grep, find, ls, git, logs, bash
 actions: git status|diff|log|show|blame|branches
 writes: false

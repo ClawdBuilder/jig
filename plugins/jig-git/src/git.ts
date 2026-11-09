@@ -206,10 +206,10 @@ export const gitTool: JigTool = buildTool({
     name: "git",
     label: "Git",
     description:
-        "The local git repository: status, diff, log, show, blame, branches, fetch, clone, branch, worktree, commit, stash, sync, merge, rebase, cherry_pick, restore, and push. Commits take exact paths. Push and restore ask the user first.",
+        "Local git and worktrees: status, diff, log, commit, branch, push. Push and restore ask the user first. Read the git skill before your first git call.",
     promptSnippet: "Local git: status, diff, log, show, blame, branches, commit, branch, push",
     promptGuidelines: [
-        "Use the git tool for git, not bash: the shell has no GitHub credentials. Check status before you commit, and read the git skill for the order of work.",
+        "Use the git tool for git, not bash: the shell has no GitHub credentials. Check status before you commit.",
         "A promise to report on CI later needs a watch, because nothing else wakes you: the last line of a push result says how you will hear, and with no watch the user has to ask.",
     ],
     parameters: GitParams,

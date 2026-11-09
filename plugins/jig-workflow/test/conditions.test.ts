@@ -240,7 +240,7 @@ describe("review-done", () => {
         assert.equal(none.ok, false);
         assert.match(
             none.lines[0] ?? "",
-            /no approved review covers [0-9a-f]{7}: review the branch \(\/code-review --branch\)/,
+            /no approved review covers [0-9a-f]{7}: call start_interactive_code_review; the user approves in the browser/,
         );
         w.state.reviews.push({
             reviewId: "r1",

@@ -225,7 +225,7 @@ function reviewDone(ev: Evidence, only: string | undefined): Promise<ConditionRe
             line:
                 `${name}: no approved review covers ${short(view.head)}` +
                 (was === undefined ? "" : ` (the last one covered ${short(was)})`) +
-                ": review the branch (/code-review --branch) and approve it",
+                ": call start_interactive_code_review; the user approves in the browser",
         };
     });
 }

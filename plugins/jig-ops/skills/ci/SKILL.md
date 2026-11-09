@@ -1,6 +1,6 @@
 ---
 name: ci
-description: How to wait for CI without polling, find out why a run failed, and rerun or trigger it with the ci tool on GitHub Actions, GitLab CI, Jenkins or Concourse. Use after a push or a pull request, whenever a check, a pipeline or a build is red, and whenever you would reach for a CI page.
+description: CI (ci tool; GitHub Actions, GitLab CI, Jenkins, Concourse) - wait without polling, read why a run failed, rerun or trigger. Use after a push, when a check, pipeline or build is red, and to start an environment's CI job.
 ---
 
 # Waiting for CI, and reading why it failed
@@ -9,7 +9,7 @@ The `ci` tool works on a `service` from the ops catalog. If the service is not i
 
 ## A service's CI, and an environment's job
 
-A call without `environment` is about the service's own CI, the one that builds it. A call with `environment` (`ci trigger {service, environment: "staging"}`) is about the CI job of that environment, such as the job that deploys it, and it acts in that environment: a trigger there asks the user, and in production it is refused before anyone is asked. A name with no job is refused with the environments that have one. When the environment is pinned to a version in a control repository, the trigger's preview has a `Deploys` row saying which: read it before you ask. A push never starts a watch of an environment's job; start it with `ci watch {environment}` after a trigger.
+A call without `environment` is about the service's own CI, the one that builds it. A call with `environment` (`ci trigger {service, environment: "staging"}`) is about the CI job of that environment, such as the job that deploys it, and it acts in that environment: a trigger there asks the user, and in production it is refused before anyone is asked. A name with no job is refused with the environments that have one. When the environment is pinned to a version in a control repository, the trigger's preview has a `Deploys` row saying which: read it before you ask. A push never starts a watch of an environment's job; start it with `ci watch {service, environment}` after a trigger.
 
 ## After a push, do not poll
 

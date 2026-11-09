@@ -24,8 +24,8 @@ import { parameters, parseCall } from "./params.ts";
 import type { Call } from "./params.ts";
 
 const DESCRIPTION =
-    "Read a service's runtime state from the ops catalog: its pods, its rollout (optionally waiting for a version), " +
-    "pod logs, recent events and its health address. It only reads.";
+    "Read a service's runtime state from the ops catalog: pods, rollout, logs, events and health. It only reads. " +
+    "Read the ops skill before you check a service.";
 
 type Input = Readonly<Record<string, unknown>>;
 
@@ -131,11 +131,6 @@ export function createRuntimeTool(options: RuntimeOptions = {}): RuntimeTool {
             label: "Runtime",
             description: DESCRIPTION,
             promptSnippet: "read a service's pods, rollout, logs, events and health from the ops catalog",
-            promptGuidelines: [
-                "runtime: run pods first; after a deploy call rollout with waitFor once instead of polling pods.",
-                "runtime: read the ops skill. A health check in a pod runs in test environments only; " +
-                    "sign-in failures are the user's.",
-            ],
             parameters,
             async execute(toolCallId, params, signal, onUpdate) {
                 const call = parseCall(params as Input, currentCatalog());

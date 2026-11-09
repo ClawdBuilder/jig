@@ -34,8 +34,8 @@ export interface ApiOptions extends HttpOptions {
 }
 
 const DESCRIPTION =
-    "Run saved API requests by name, filling only their variables: list, show, run, run_folder; call for an ad-hoc one " +
-    "where allowed; postman_environments for ids. The tool signs in; non-2xx is a result.";
+    "Run saved API requests by name, filling only their variables. The tool signs in; non-2xx is a result. Read the api " +
+    "skill before you run a saved request.";
 
 export interface ApiTool {
     definition: ToolDefinition<typeof parameters>;

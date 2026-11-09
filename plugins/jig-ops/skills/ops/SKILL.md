@@ -1,6 +1,6 @@
 ---
 name: ops
-description: How to try a change on a test environment and check it with the runtime and deploy tools - check the rollout, plan and run a deploy, watch it, check health, read events and logs when it fails, and never touch production. Use whenever a change must be deployed to staging, or a service in an environment is down, slow or failing.
+description: Deploy and runtime (deploy, runtime tools) - plan, run and watch a rollout on a test environment, then read pods, events, logs and health; production is read-only. Use when you deploy a change to staging, and when a service in an environment is down, slow or failing.
 ---
 
 # Deploying and checking a service

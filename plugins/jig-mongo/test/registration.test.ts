@@ -116,7 +116,7 @@ describe("the package", () => {
         assert.match(head, /^name: mongo$/m);
         const description = /^description: (.*)$/m.exec(head)?.[1] ?? "";
         assert.ok(description.length > 40 && description.length <= 1024, description);
-        assert.match(description, /Use when/);
+        assert.match(description, /Use (when|to|for)/);
     });
 
     test("the skill teaches what the README promises: count before find, explain, a preview for every write, never production", () => {

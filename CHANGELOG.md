@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Changed
+
+- Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
+
 ## [0.5.4] - 2026-11-09
 
 Shorter, clearer tool text, a local-read codemode, and a doctor that trusts `gh`.

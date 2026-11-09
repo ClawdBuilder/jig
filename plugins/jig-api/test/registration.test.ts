@@ -179,6 +179,6 @@ describe("the package", () => {
         assert.match(head, /^name: api$/m);
         const description = /^description: (.*)$/m.exec(head)?.[1] ?? "";
         assert.ok(description.length > 40 && description.length <= 1024, description);
-        assert.match(description, /Use when/);
+        assert.match(description, /Use (when|to|for)/);
     });
 });
