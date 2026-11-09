@@ -232,6 +232,7 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
         promptGuidelines: [
             "Call workflow with action status when you start on a ticket and after each stage: it says what is missing and how to fix it.",
             "Never claim a test passed or a plan was approved; workflow test and workflow submit_plan make the plugin record it.",
+            "A Jig tool named in a skill may be deferred; if it is not in your tool list, call tool_search with its name first.",
         ],
         parameters,
         // Each action reads the state and writes it back, and a move depends on the evidence it just read.

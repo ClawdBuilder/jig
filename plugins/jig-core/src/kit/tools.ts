@@ -15,7 +15,6 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-w
 import { Text, TruncatedText } from "@earendil-works/pi-tui";
 import type { TSchema } from "typebox";
 import { jig } from "../client.ts";
-import { RefusedError } from "./values.ts";
 
 /** The `jig.json` section that holds `deferred`. jig-core checks it; a company plugin may give defaults for it. */
 export const TOOLS_SECTION = "tools";

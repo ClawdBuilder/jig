@@ -304,6 +304,11 @@ describe("fields: an allow list", () => {
         assert.equal(view.visibility(["internalNotes"]), "no");
     });
 
+    test("a truncated allow list names the next step", () => {
+        const many = allow({ "orders.orders": Array.from({ length: 30 }, (_, i) => `field_${i}`) }).view([ns]);
+        assert.match(many.reason(["denied"]), /Omit the field, or name only an allowed one/);
+    });
+
     test("the reason names the allowed fields", () => {
         assert.match(
             view.reason(["internalNotes"]),

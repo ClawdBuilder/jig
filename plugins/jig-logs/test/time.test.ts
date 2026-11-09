@@ -40,6 +40,33 @@ test("anything else is refused with one line that shows the right form", () => {
         refused(() => parseWindow(bad), /^logs: window must look like 30m, 2h or 1d and be at most 7d/, bad);
     }
     refused(() => parseWindow("9d"), /\(got "9d"\)$/);
+    refused(
+        () => parseWindow("8d"),
+        /at most 7d \(logs\.maxWindow\); for older logs pass from and to in slices of at most 7 days/,
+    );
+});
+
+test("logs.maxWindow sets the longest window, and every refusal names it with the value in force", () => {
+    const longest = 45 * DAY_MS;
+    assert.equal(parseWindow("45d", longest), longest);
+    assert.equal(parseWindow("1080h", longest), longest);
+    refused(() => parseWindow("46d", longest), /at most 45d \(logs\.maxWindow\);.* slices of at most 45 days/);
+    refused(() => parseWindow("2h", 90 * MINUTE_MS), /at most 90m \(logs\.maxWindow\);.* slices of at most 90 minutes/);
+    refused(() => parseWindow("2d", DAY_MS), /at most 1d \(logs\.maxWindow\);.* slices of at most 1 day /);
+
+    const since = { from: "2026-08-29T12:00:00Z" };
+    const range = { ...since, to: "2026-10-13T12:00:00Z" };
+    assert.deepEqual(resolveRange(range, "2h", T0, longest), { from: T0 - longest, to: T0 });
+    assert.deepEqual(resolveRange(since, "2h", T0, longest), { from: T0 - longest, to: T0 });
+    refused(() => resolveRange(range, "2h", T0), /^logs: from\.\.to must span at most 7 days \(logs\.maxWindow\)/);
+    refused(() => resolveRange(since, "2h", T0), /^logs: from must be within 7 days of now \(logs\.maxWindow\)/);
+    const longer = { from: "2026-08-29T11:59:59Z", to: range.to };
+    refused(() => resolveRange(longer, "2h", T0, longest), /at most 45 days \(logs\.maxWindow\)/);
+});
+
+test("a default window longer than the longest one is cut to it, not refused", () => {
+    assert.deepEqual(resolveRange({}, "2h", T0, HOUR_MS), { from: T0 - HOUR_MS, to: T0 });
+    assert.deepEqual(resolveRange({}, "2h", T0, 45 * DAY_MS), { from: T0 - 2 * HOUR_MS, to: T0 });
 });
 
 test("instants need a timezone and a real calendar date", () => {
@@ -98,6 +125,8 @@ test("buckets: one up to 6 hours, hour buckets up to 2 days, day buckets above",
     assert.equal(count(2 * DAY_MS), 48);
     assert.equal(count(2 * DAY_MS + 1), 3);
     assert.equal(count(7 * DAY_MS), 7);
+    assert.equal(count(45 * DAY_MS), 45, "a longer window allowed by logs.maxWindow is one request a day");
+    assert.equal(count(90 * DAY_MS), 90);
 });
 
 test("buckets are contiguous and ascending, and cover the range", () => {
@@ -113,7 +142,7 @@ test("buckets are contiguous and ascending, and cover the range", () => {
     assert.ok(buckets.every((bucket) => bucket.depth === 0));
 });
 
-test("no window needs more than 48 buckets", () => {
+test("no window of up to 7 days needs more than 48 buckets", () => {
     for (const span of [7 * DAY_MS, 7 * DAY_MS - 1, 2 * DAY_MS, 2 * DAY_MS + 1, 6 * HOUR_MS + 1]) {
         assert.ok(planBuckets({ from: T0, to: T0 + span }).length <= 48, String(span));
     }

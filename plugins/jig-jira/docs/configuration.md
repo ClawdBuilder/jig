@@ -18,6 +18,11 @@ The fields of the `jira` section of `jig.json`, in detail. The tables are in the
   - **`create` accepts only these projects.** Another project is refused before
     anyone is asked or Jira is called, and the message lists the ones allowed.
     With no `projects`, `create` takes any project.
+  - **`link` and `unlink` accept only links with both issues in these projects.**
+    The keys are the ones Jira answers with, so an issue that moved is judged
+    where it is now. A link with an end outside is refused before anyone is
+    asked, naming the issue, its project and `jira.projects`. With no
+    `projects`, any two issues may be linked.
 - **`updateFields`:** up to 100 fields, by name or id. `create` may set any
   field on the create screen. A field not listed here is refused by `update`;
   find its id with `jira find_field`, then add it here.
@@ -42,11 +47,25 @@ The fields of the `jira` section of `jig.json`, in detail. The tables are in the
   outgoing text (see [Writes](writes.md)).
 - **`environment`:** letters, digits, `_` and `-`, starting with a letter, up to
   40 characters.
-- **`me`:** up to 128 characters, no line breaks. It is read only by the
-  `commented` filter of `search` (see [Commented by](commented.md)), and only
-  when `GET /myself` is unavailable: some sites reach Jira through a sign-in
-  proxy that has no "who am I". Use the account id on Jira Cloud, and the user
-  name (or the key) on Data Center.
+- **`me`:** up to 128 characters, no line breaks. It is read only when
+  `GET /myself` is unavailable: some sites reach Jira through a sign-in proxy
+  that has no "who am I". Use the account id on Jira Cloud, and the user name
+  (or the key) on Data Center. Two things read it:
+  - **the `commented` filter of `search`,** for `"by": "me"` (see
+    [Commented by](commented.md));
+  - **`edit_comment` and `delete_comment`,** to tell your comments from other
+    people's (see `othersComments`).
+- **`othersComments`:** `true` or `false` (the default). With `false`,
+  `edit_comment` and `delete_comment` change only your own comments.
+  - **Who you are** is what `GET /myself` says, or else `me`. On Cloud the
+    comment's author is matched by account id, on Data Center by user name, key
+    or email address.
+  - **Someone else's comment** is refused before anyone is asked, with the
+    author's name and this setting.
+  - **When neither says who you are,** the change is refused too, naming
+    `jira.me`.
+  - **With `true`,** any comment the account may change is changed, and
+    `GET /myself` is not asked.
 - **`commentSearch`:** `auto` (the default), `scriptrunner` or `read`. It says
   how the `commented` filter finds issues; the three modes are in
   [Commented by](commented.md).

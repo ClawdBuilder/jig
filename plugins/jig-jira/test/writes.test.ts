@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 import type { FakeIssue, Recorded } from "./support/fake-jira.ts";
-import { ok, setupHarness } from "./support/harness.ts";
+import { cloudSection, ok, setupHarness } from "./support/harness.ts";
 import type { CallResult, Harness } from "./support/harness.ts";
 
 let h: Harness;
@@ -90,6 +90,7 @@ describe("comment", () => {
 
 describe("edit_comment and delete_comment", () => {
     test("edit_comment shows the new text and the text it replaces, then replaces it", async () => {
+        h.jira.me = h.jira.users[1] as typeof h.jira.me; // Sam Lee, who wrote comment 10003
         const result = await h.call({
             action: "edit_comment",
             key: "PROJ-1",
@@ -157,6 +158,67 @@ describe("edit_comment and delete_comment", () => {
             );
         }
         assert.equal(writes(h).length, 0);
+    });
+});
+
+describe("only your own comments are edited or deleted", () => {
+    const EDIT = (commentId: string) => ({ action: "edit_comment", key: "PROJ-1", commentId, text: "Reworded." });
+    const DELETE = (commentId: string) => ({ action: "delete_comment", key: "PROJ-1", commentId });
+    const REFUSED = "Blocked by jig-core: jira cannot run with this input: ";
+
+    test("your own comment is edited and deleted as before, on Cloud and on Data Center", async () => {
+        for (const harness of [h, datacenter]) {
+            assert.equal(ok(await harness.call(EDIT("10002"))), "Updated comment 10002 on PROJ-1.");
+            assert.equal(ok(await harness.call(DELETE("10002"))), "Deleted comment 10002 from PROJ-1.");
+            assert.equal(harness.jira.sent("GET", "/myself").length >= 2, true, "who is signed in is asked");
+        }
+    });
+
+    test("someone else's is refused before anyone is asked, naming the author and the setting", async () => {
+        for (const harness of [h, datacenter]) {
+            const edited = await harness.call(EDIT("10003"));
+            assert.equal(
+                edited.blocked,
+                `${REFUSED}jira edit_comment: comment 10003 on PROJ-1 is by Sam Lee, not by you. Only your own comments ` +
+                    "are changed; jira.othersComments: true in jig.json allows others'",
+            );
+            assert.equal(edited.preview, undefined, "nobody was asked");
+            const deleted = await harness.call(DELETE("10001"));
+            assert.match(
+                deleted.blocked ?? "",
+                /^.*jira delete_comment: comment 10001 on PROJ-1 is by Sam Lee, not by you/,
+            );
+            assert.equal(writes(harness).length, 0);
+            assert.equal(issue(harness, "PROJ-1").comments.length, 3);
+        }
+    });
+
+    test("without /myself, jira.me says who you are, and without either the change is refused naming jira.me", async () => {
+        h.jira.myselfStatus = 404;
+        const unknown = await h.call(EDIT("10002"));
+        assert.equal(
+            unknown.blocked,
+            `${REFUSED}jira edit_comment: comment 10002 on PROJ-1 is not known to be yours (Jira answered 404 to ` +
+                "GET /myself). Set jira.me in jig.json: your account id (Cloud) or user name (Data Center)",
+        );
+        assert.match(
+            (await h.call(DELETE("10002"))).blocked ?? "",
+            /not known to be yours .*Set jira\.me in jig\.json/,
+        );
+
+        const jane = h.jira.users[0]?.accountId as string;
+        h.configure({ ...cloudSection(), me: jane });
+        h.jira.myselfStatus = 404;
+        assert.equal(ok(await h.call(EDIT("10002"))), "Updated comment 10002 on PROJ-1.");
+        assert.match((await h.call(EDIT("10003"))).blocked ?? "", /is by Sam Lee, not by you/);
+        assert.equal(writes(h).length, 1);
+    });
+
+    test("othersComments: true allows anyone's comment, and then who is signed in is not asked", async () => {
+        h.configure({ ...cloudSection(), othersComments: true });
+        assert.equal(ok(await h.call(EDIT("10003"))), "Updated comment 10003 on PROJ-1.");
+        assert.equal(ok(await h.call(DELETE("10001"))), "Deleted comment 10001 from PROJ-1.");
+        assert.equal(h.jira.sent("GET", "/myself").length, 0);
     });
 });
 

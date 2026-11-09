@@ -42,8 +42,8 @@ the hits already fetched (Loki also receives `match` and `exclude` as filters).
 |---|---|---|
 | `phrase` or `query` | one of the two | `phrase`: an exact phrase in the message. `query`: a query in the backend's language |
 | `environment` | required | Where to search: one of the configured environments |
-| `window` | optional | A relative window that ends now, such as `30m`, `2h` or `1d`. Default `2h` |
-| `from`, `to` | optional | Exact times: ISO 8601 with a timezone, `to` exclusive. `from` alone searches through now; at most 7 days |
+| `window` | optional | A relative window that ends now, such as `30m`, `2h` or `1d`, up to `maxWindow`. Default `2h` |
+| `from`, `to` | optional | Exact times, ISO 8601 with a timezone, `to` exclusive; `from` alone ends now. Up to `maxWindow` |
 | `size` | optional | How many hits to fetch, 1 to 200. Default 50 |
 | `order` | optional | `asc` (default) fetches the oldest hits of the window, `desc` the newest |
 | `match`, `exclude` | optional | Plain texts that a hit's message must, or must not, contain |
@@ -94,6 +94,7 @@ not configured instead of running half set up.
 |---|---|
 | `backend` | Required. The `type` (`elasticsearch` or `loki`), its `url`, and `auth` or `transport` |
 | `environments` | Required, at least one. Each says where its logs are: an `index` or a `selector`, and may add a `filter` |
+| `maxWindow` | The longest window one call searches, `1h` to `90d`, written like `window`. Default `7d` |
 
 A password, key or token in `auth` is a secret reference such as
 `pass:logs/api-key` (see [Secrets](../../docs/secrets.md)), never the secret. A

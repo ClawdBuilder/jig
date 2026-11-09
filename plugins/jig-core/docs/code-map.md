@@ -28,6 +28,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `classify.ts` | Where a call acts and whether it reads or writes, from the tool's own word, a rule, or a default | `commands.ts`, `config.ts` and 3 more |
+| `codemode.ts` | Reads a codemode script: a plain read, or an external write when it can reach models or an escape hatch; the gate's ask reason | `index.ts` |
 | `decide.ts` | The pure decision: allow, ask or deny, from the rules table, the floor and your configuration | `commands.ts`, `config.ts` and 2 more |
 | `gates.ts` | Checks that other plugins register; a gate can make a decision stricter and never looser | `gate.ts`, `state.ts` |
 | `environments.ts` | The names a call can act in, and which are test and which are production | `config.ts` |

@@ -70,10 +70,8 @@ if (args.includes("--help") || args.includes("-h")) {
 } else {
     const { register: registerHook } = await import("node:module");
     const PI = "@earendil-works/pi-coding-agent";
-    const { existsSync } = await import("node:fs");
+    const { existsSync, realpathSync } = await import("node:fs");
     const { delimiter, dirname, join } = await import("node:path");
-    const { realpathSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
     function isPi(folder) {
         const manifest = join(folder, "package.json");
         if (!existsSync(manifest)) return false;

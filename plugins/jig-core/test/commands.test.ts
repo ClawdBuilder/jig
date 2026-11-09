@@ -1,6 +1,6 @@
 // The /jig commands: status, setup, doctor, rules per tool and action, and records.
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import type { CallClass, JigApi } from "../src/contract.ts";
@@ -58,20 +58,6 @@ function declareGit(api: JigApi): void {
             if (input.action === "push") return { action: "push", environment: "external", effect: "write" };
             return undefined;
         },
-    });
-}
-
-/** A company section that needs a login and a credential, for the setup questions. */
-function credentialSections(api: JigApi): void {
-    api.config.addSectionDefaults("acme", { bastion: {}, sso: {} });
-    api.config.registerSection("acme", (raw) => {
-        const value = raw as { bastion?: { user?: unknown }; sso?: { token?: unknown } };
-        const errors: string[] = [];
-        if (typeof value?.bastion?.user !== "string" || value.bastion.user === "") {
-            errors.push("acme.bastion.user is required");
-        }
-        if (typeof value?.sso?.token !== "string") errors.push("acme.sso.token is required");
-        return errors;
     });
 }
 

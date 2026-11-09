@@ -44,7 +44,7 @@ describe("what the role says about a call", () => {
         );
         assert.deepEqual(verdict, {
             decision: "deny",
-            reason: 'the role "scout" may not write, and git commit writes',
+            reason: 'the role "scout" may not write, and git commit writes; report what should change instead',
         });
         assert.deepEqual(
             roleVerdict(policy({ writes: false }), call({ tool: "write", effect: "write" }), true)?.decision,

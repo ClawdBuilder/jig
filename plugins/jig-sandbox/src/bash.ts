@@ -25,19 +25,11 @@ const OUTSIDE_PARAMETER =
 const REASON_PARAMETER =
     "With outside: why the sandbox blocks what you need and no Jig tool does it, in one sentence (at most 300 characters).";
 
-/** What the model is told about this shell, after Pi's own description. */
+/** What the model is told about this shell, after Pi's own description. The full list is in docs/when-blocked.md. */
 export const SANDBOX_DESCRIPTION = [
-    "This shell runs in a sandbox (jig-sandbox). Everything works as usual: the project, your home folder, /tmp, build caches, git configuration, the network.",
-    "The sandbox cannot read credentials (~/.ssh, ~/.aws, ~/.kube, ~/.config/gh, a project's .env files, ...) and cannot write what runs later outside it (shell start-up files, PATH folders, git hooks, Pi's settings and extensions).",
-    "A blocked command prints a '[sandbox]' line that says which rule stopped it and what to do instead. Use these ways through:",
-    "- git over SSH, fetch, pull, push: the git tool. GitHub pull requests and releases: the pr and release actions.",
-    "- kubectl, aws, gcloud, deploys, logs: the runtime, deploy and company tools.",
-    "- A project's .env: ask the user for the value, or use the tool that holds the secret.",
-    "- Changing source code: the edit and write tools, not a script, so the change shows in reviews.",
-    "- A toolchain folder such as ~/.sdkman or ~/.nvm: the user is asked; when a '[sandbox]' line says they allowed it, run the command again.",
-    "- A locked file such as ~/.bashrc: the user does it themselves with !.",
-    "Only when the sandbox blocks something you need and no Jig tool does it, set outside: true and give a reason (at most 300 characters): the user is asked whether this one command may run outside the sandbox, with their credentials and full network.",
-    "A dev server, a watcher or a build that takes more than a minute: set background: true, with notifyOn patterns for when it is up (ready) and when it failed (error). The command starts as a task in the same sandbox and you are woken when it ends or a pattern matches, so never sleep or poll. bg_output reads its output, bg_list lists tasks and bg_kill stops one. A background task cannot use outside.",
+    "This shell runs in a sandbox (jig-sandbox): the project, your home folder, /tmp, build caches, git configuration and the network work; credentials and writes that outlive the command do not.",
+    "A blocked command prints a '[sandbox]' line naming the rule and the way through: use the git tool, the edit and write tools, or the Jig tool it names.",
+    "Only when no Jig tool does what you need, set outside: true and give a reason (at most 300 characters); long work uses background: true with notifyOn, and never sleep or poll. A background task cannot use outside. The full list is in plugins/jig-sandbox/docs/when-blocked.md.",
 ].join("\n");
 
 /** What `jig-core` decided about a call, as it announces it on the event bus. */

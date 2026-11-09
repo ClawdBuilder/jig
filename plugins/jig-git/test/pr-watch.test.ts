@@ -838,13 +838,10 @@ describe("through jig-core's watch engine", () => {
     test("new comments wake the agent once, the watch polls on without saying them again, and the end is one more message", async () => {
         const clock = fakeClock();
         const sent: WatchMessage[] = [];
-        let polls = 0;
         const engine = createWatchEngine({
             now: clock.now,
             timers: clock.timers,
-            onPoll: () => {
-                polls++;
-            },
+            onPoll: () => {},
             store: createWatchStore(),
             protect: { redact: (text) => text, mask: (text) => text },
             notify: () => false,

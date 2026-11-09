@@ -5,8 +5,10 @@ import { refuse, shown } from "./values.ts";
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
-/** The longest window one call searches. An older period is read in slices of at most this. */
+/** The longest window one call searches when `logs.maxWindow` is not set. An older period is read in slices of it. */
 export const MAX_RANGE_MS = 7 * DAY_MS;
+/** What `logs.maxWindow` may be set to. */
+export const LONGEST_WINDOW = { min: HOUR_MS, max: 90 * DAY_MS };
 /** A bucket that times out or loses shards is halved at most this many times. */
 export const MAX_DEPTH = 4;
 /** Below this a bucket is not worth halving. */
@@ -22,19 +24,38 @@ export interface Bucket extends Range {
     depth: number;
 }
 
-const WINDOW_HELP =
-    "window must look like 30m, 2h or 1d and be at most 7d; " +
-    "for older logs pass from and to in slices of at most 7 days";
 const WINDOW = /^([1-9][0-9]{0,4})([mhd])$/;
 const INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-](\d{2}):(\d{2}))$/;
 
-/** "30m", "2h" or "1d" in milliseconds, at most 7 days. */
-export function parseWindow(text: string): number {
+/** "30m", "2h" or "1d" in milliseconds, or undefined when the text is not one. `logs.maxWindow` is read the same way. */
+export function windowSpan(text: string): number | undefined {
     const match = WINDOW.exec(text);
-    if (match === null) return refuse(`logs: ${WINDOW_HELP} (got ${shown(text)})`);
+    if (match === null) return undefined;
     const unit = match[2] === "m" ? MINUTE_MS : match[2] === "h" ? HOUR_MS : DAY_MS;
-    const span = Number(match[1]) * unit;
-    if (span > MAX_RANGE_MS) return refuse(`logs: ${WINDOW_HELP} (got ${shown(text)})`);
+    return Number(match[1]) * unit;
+}
+
+/** A span in the largest unit that holds it whole: `short` as a window is written (7d), `long` in words (7 days). */
+function spanText(ms: number): { short: string; long: string } {
+    const [count, letter, word] =
+        ms % DAY_MS === 0
+            ? [ms / DAY_MS, "d", "day"]
+            : ms % HOUR_MS === 0
+              ? [ms / HOUR_MS, "h", "hour"]
+              : [ms / MINUTE_MS, "m", "minute"];
+    return { short: `${count}${letter}`, long: `${count} ${word}${count === 1 ? "" : "s"}` };
+}
+
+/** "30m", "2h" or "1d" in milliseconds, at most `longest` (7 days unless `logs.maxWindow` says otherwise). */
+export function parseWindow(text: string, longest: number = MAX_RANGE_MS): number {
+    const span = windowSpan(text);
+    if (span === undefined || span > longest) {
+        const { short, long } = spanText(longest);
+        return refuse(
+            `logs: window must look like 30m, 2h or 1d and be at most ${short} (logs.maxWindow); ` +
+                `for older logs pass from and to in slices of at most ${long} (got ${shown(text)})`,
+        );
+    }
     return span;
 }
 
@@ -74,14 +95,20 @@ export interface RangeInput {
     to?: string;
 }
 
-/** The searched range: an explicit `from` and `to`, or the last `window` (else `defaultWindow`) ending now. */
-export function resolveRange(input: RangeInput, defaultWindow: string, now: number): Range {
+/**
+ * The searched range: an explicit `from` and `to`, or the last `window` (else `defaultWindow`) ending now. No range is
+ * longer than `longest`, and a default window that is longer is cut to it.
+ */
+export function resolveRange(input: RangeInput, defaultWindow: string, now: number, longest = MAX_RANGE_MS): Range {
+    const limit = spanText(longest).long;
     if (input.from !== undefined && input.to === undefined) {
         if (input.window !== undefined) return refuse("logs: give either window or from and to, not both");
         const from = parseInstant(input.from, "from");
         if (now <= from) return refuse("logs: from must be before now when to is not given");
-        if (now - from > MAX_RANGE_MS) {
-            return refuse("logs: from must be within 7 days of now; search older logs in slices of at most 7 days");
+        if (now - from > longest) {
+            return refuse(
+                `logs: from must be within ${limit} of now (logs.maxWindow); search older logs in slices of at most ${limit}`,
+            );
         }
         return { from, to: now };
     }
@@ -91,12 +118,18 @@ export function resolveRange(input: RangeInput, defaultWindow: string, now: numb
         if (input.window !== undefined) return refuse("logs: give either window or from and to, not both");
         const range = { from: parseInstant(input.from, "from"), to: parseInstant(input.to, "to") };
         if (range.to <= range.from) return refuse("logs: to must be after from");
-        if (range.to - range.from > MAX_RANGE_MS) {
-            return refuse("logs: from..to must span at most 7 days; search older logs in slices of at most 7 days");
+        if (range.to - range.from > longest) {
+            return refuse(
+                `logs: from..to must span at most ${limit} (logs.maxWindow); search older logs in slices of at most ${limit}`,
+            );
         }
         return range;
     }
-    return { from: now - parseWindow(input.window ?? defaultWindow), to: now };
+    const span =
+        input.window === undefined
+            ? Math.min(parseWindow(defaultWindow, Number.POSITIVE_INFINITY), longest)
+            : parseWindow(input.window, longest);
+    return { from: now - span, to: now };
 }
 
 /** The compact UTC form used in request bodies and in the result: no milliseconds when they are zero. */
@@ -106,7 +139,7 @@ export function iso(ms: number): string {
 
 /**
  * The buckets a window is searched in, oldest first. Over 2 days it is searched in day buckets, over 6 hours in hour
- * buckets, otherwise in one. A day of logs in one request is where a busy backend starts to time out, and a bucket
+ * buckets, otherwise in one, so a 45-day window is 45 requests. A day of logs in one request is where a busy backend starts to time out, and a bucket
  * that does is halved and tried again (see `halve`). A backend that refuses a request over some length passes it as
  * `longest`, and no bucket is longer.
  */

@@ -337,6 +337,20 @@ describe("finding the service of a ci call", () => {
         assert.throws(() => findCiService(read, "ci", 5), /no service named 5/);
     });
 
+    test("a truncated service list names the action that lists them all", () => {
+        const raw = section();
+        const services = raw.services as Record<string, Raw>;
+        const base = services["orders-api"] as Raw;
+        for (let i = 0; i < 10; i++) {
+            const copy = JSON.parse(JSON.stringify(base)) as Raw;
+            copy.repo = `acme/service-${i}`;
+            copy.ci = { system: "github-actions", workflow: "build.yml" };
+            services[`service-${i}`] = copy;
+        }
+        const read = catalog(raw);
+        assert.throws(() => findCiService(read, "ci", "nope"), /Run ci services to list them all/);
+    });
+
     test("a near name is suggested, and a huge name does not stall the check", () => {
         assert.throws(() => findCiService(read, "ci", "orders-ap"), /Did you mean orders-api\?/);
         const started = performance.now();

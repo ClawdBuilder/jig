@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { type CardFront, checkCard, draftCard, PLACEHOLDER, renderCard, SECTION_LIMIT } from "../src/card.ts";
+import { type CardFront, checkCard, draftCard, renderCard, SECTION_LIMIT } from "../src/card.ts";
 import {
     CARD_FIX,
     CARD_REQUEST,
@@ -133,7 +133,6 @@ test("/ticket close drafts the card, sends one follow-up message that starts an 
     pi.result("logs", "10:00:00 ERROR NullPointerException in OrderMapper", { action: "query" });
     const before = pi.sent.length;
     await pi.command("close");
-    const paths = ticketPaths(folder, "PROJ-1");
     assert.equal(pi.sent.length, before + 1);
     const sent = pi.sent.at(-1);
     assert.equal(sent?.message.customType, CARD_REQUEST);
@@ -202,7 +201,6 @@ test("a card that is too long is named, corrected, and passes once it is shorten
     pi.input("look at PROJ-1");
     pi.result("logs", "ERROR boom", { action: "query" });
     await pi.command("close");
-    const paths = ticketPaths(folder, "PROJ-1");
     const front = checkCard(read(draftPath(folder, "PROJ-1"))).front as CardFront;
     writeFileSync(
         draftPath(folder, "PROJ-1"),
