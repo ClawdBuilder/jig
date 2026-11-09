@@ -43,10 +43,7 @@ What each one shows in full is in the
 
 ## Rules
 
-- **The floor holds.** Whatever the configuration says, production writes are
-  denied, production results are masked, credentials are hidden from `bash`,
-  nothing that needs approval runs without a screen, and Pi's file tools
-  refuse protected paths (see [Permissions](../../docs/permissions.md)).
+- **The floor holds.** Configuration cannot lower it: [the fixed rules](../../docs/permissions.md#the-floor-what-configuration-cannot-change).
 - **A plugin's gate only tightens.** A gate sees each call after the rules and can make an allow into an
   ask or a deny, never the reverse; one that fails denies the call ([Plugin contract](docs/plugin-contract.md#gates)).
 - **Unknown tools ask.** A tool that nothing classifies counts as a write
@@ -61,8 +58,8 @@ What each one shows in full is in the
   configuration would run a command.
 - **Nothing leaves this machine on its own.** Records and saved watches stay
   here. `jig-core` sends only the requests that plugins ask for
-  (`http.request`), with a credential it reads for them. It never signs in and
-  stores no credential ([Decisions](../../docs/decisions.md)).
+  (`http.request`), with a credential it reads for them. It never signs in; the tool that owns a login does
+  ([Credential sources](docs/sign-in-and-transports.md)).
 
 ## Configure
 

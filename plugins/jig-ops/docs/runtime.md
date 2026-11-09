@@ -141,7 +141,7 @@ in the first ready pod.
   log lines, event messages and bodies, so a hostile log cannot act on the
   terminal. `jig-core` masks production results, removes secrets, and cuts a long
   result with the whole text in a file.
-- **Sign-in is the user's.** The tools never sign in. A kubeconfig that is
+- **Sign-in is the user's.** The tools never sign in ([Credential sources](../../jig-core/docs/sign-in-and-transports.md)). A kubeconfig that is
   expired, a network or VPN failure, a user who may not read: each is one line
   that says whose it is to fix, and nothing is retried by itself.
   - A kubeconfig whose sign-in helper needs environment variables must set them itself (its `exec.env` field): `jig-core` does not

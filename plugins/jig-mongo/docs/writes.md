@@ -30,15 +30,11 @@ checked first, and an invalid call is blocked without asking.
 The count is `countDocuments` with a limit one past the cap, so a huge collection is not counted whole. The preview has a fingerprint
 (a SHA-256 of the request and every count). It is read back with `approvedPreview` when the call runs.
 
-## "Changed since the preview"
+## Changed since the preview and a lost reply
 
-When the call runs, the counts are read again. If the fingerprint differs from the one that was approved, nothing is sent:
-
-```text
-mongo update staging orders.orders: changed since the preview (it was 12 documents match; now 13 documents match). Nothing was changed; run it again to see the new preview.
-```
-
-Ids made for documents with none are not part of the fingerprint, so an `insert` does not change between preview and run.
+The digest rule is in [Approvals](../../../docs/approvals.md#preview-digest-and-a-lost-reply).
+The count is read again just before the write; a changed fingerprint sends
+nothing. A write is sent once.
 
 ## Guards
 
@@ -53,20 +49,8 @@ Ids made for documents with none are not part of the fingerprint, so an `insert`
 
 ## The write is sent once
 
-The driver's retryable writes are off, so it never sends a write again. If the reply is lost, the tool does not send it again either.
-What it knows depends on where the call ended:
-
-| What happened | The model is told |
-|---|---|
-| The route, the connection or the sign-in failed, or a count before the write failed | `Nothing was changed.` |
-| The server rejected the write of one document, or one index change | `Nothing was changed.` |
-| The server rejected a write of many | `Part of it may have been carried out. It was not sent again.` and the result of one read |
-| The reply was lost, or a time limit ran out | `no answer (...). The outcome is unknown ...` and the result of one read |
-
-The full message for an unknown outcome is: `no answer (...). The outcome is unknown: the server may have carried it out. It was not
-sent again.`
-
-The one read, on a new connection with a short time limit:
+The rule is in [Approvals](../../../docs/approvals.md#preview-digest-and-a-lost-reply).
+After a lost reply the tool reads once; the read depends on the write:
 
 | Write | The read |
 |---|---|
@@ -76,8 +60,8 @@ The one read, on a new connection with a short time limit:
 | `$out`, `$merge` | how many documents the target has now |
 | `create_index`, `drop_index` | the names of the indexes now |
 
-If that read fails too, the message says so and tells the model to read the data. Either way the model must not send the write again
-without looking.
+If that read fails too, the message says so and tells the model to read the
+data. Either way the model must not send the write again without looking.
 
 ## The record
 

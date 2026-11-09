@@ -14,8 +14,8 @@ short version for a person, in the order you meet the work.
 - **Generic only.** No company name, host, environment name or project key goes in this repository. Examples use `staging`,
   `orders-api`, `PROJ-123` and `api.staging.example.com`. A company's parts live in a private company plugin, and
   [Writing a company plugin](docs/company-plugin.md) shows how one is built.
-- **No secrets and no sign-in.** No plugin stores a credential or runs a login. A credential is a reference that `jig-core`
-  reads, and [Secrets](docs/secrets.md) says where it looks.
+- **No secrets and no sign-in.** A plugin never signs in or stores a credential; the tool that owns the login does
+  ([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
 - **The floor holds.** The fixed rules in [Permissions](docs/permissions.md#the-floor-what-configuration-cannot-change) are not
   settings. A change that would make one of them configurable is refused, however convenient it looks.
 - **A plugin README is the specification.** [AGENTS.md](AGENTS.md) says what that requires.

@@ -23,9 +23,8 @@ order the example uses.*
 
 - **Configuration and knowledge, not code that changes a tool.** A company gives a tool another site or another sign-in. If a
   tool needs another behaviour, that is a change to the generic plugin, for everyone.
-- **No credential, ever.** A company plugin holds secret references and the name of the tool that owns the login. A token in its
-  code is a leak, and Jig's own rule is that no plugin signs in or stores one
-  ([Decisions](decisions.md#2026-10-30-jig-never-signs-in-it-reads-a-credential-and-keeps-it-from-the-agent)).
+- **No credential, ever.** A company plugin holds secret references and names the tool that owns the login; it never signs in
+  ([Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md)).
 - **Nothing from here goes into Jig.** Jig's pages and examples use fictional names, so that they go with you to any job.
 
 ## The package
@@ -101,13 +100,8 @@ documents under "Configure".
 
 ### 3. Credentials and sign-in
 
-Jig never signs in. The tool that owns a login does it, and a company plugin connects Jig to that tool in one of three ways:
-
-| Seam | Use it when | jig-acme |
-|---|---|---|
-| A secret reference | A tool prints a token, or a store holds one | `env:`, `pass:` and `cmd:` references |
-| `config.addSecretCommands` | A command-line tool owns the login | `acme-sso` runs `acme auth token` |
-| `signIn.register` | A request must be signed as it is sent | `acme-sso` adds a bearer header |
+Jig never signs in; the tool that owns a login does it ([Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md)).
+A company plugin connects to that tool with a secret reference, `config.addSecretCommands`, or `signIn.register`.
 
 - **A secret is a reference,** never the secret. A value pasted where a reference belongs is refused, and the message does not
   repeat it ([`config.ts`](../examples/jig-acme/src/config.ts)).

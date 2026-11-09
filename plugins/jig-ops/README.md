@@ -108,9 +108,9 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 
 ## Rules
 
-- **Reads run.** Reruns, triggers, deploys and rollbacks ask you. Writes to production
-  are denied by the floor, and production reads are masked. The CI host is `external`
-  unless the catalog names its environment, or the call names one with a `job`.
+- **Reads run; writes ask.** Production is denied and masked by the floor
+  ([Permissions](../../docs/permissions.md)). The CI host is `external` unless the
+  catalog names its environment, or the call names one with a `job`.
 - **Arguments, never a shell.** `gh`, `kubectl` and `helm` get their repository, context,
   namespace, release, chart and values from the catalog, never from the model. So do
   GitLab, Jenkins and Concourse their address, project, team, pipeline and job.

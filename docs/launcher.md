@@ -11,7 +11,8 @@ next `pi` in that folder offers to reattach. Jig works without it; `pi install` 
 Tested on Linux and WSL2. It needs bash 4.4 or later (macOS ships 3.2: install
 a newer one).
 
-**It never signs in and never touches the network,** and it sets none of your settings: Pi's own defaults apply. To set your own,
+**It never signs in and never touches the network,** and it sets none of your settings: Pi's own defaults apply
+([Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md)). To set your own,
 write a shim at `~/.local/bin/pi` that exports them and runs the launcher. The launcher skips a shim when it looks for the real Pi:
 
 ```bash

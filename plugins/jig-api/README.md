@@ -92,9 +92,9 @@ Parameters and their checks: [Parameters](docs/parameters.md).
   credentials or a password grant ([Sign-in](docs/auth.md)). Requests are plain
   HTTP; GraphQL is a `POST` and works, while gRPC, WebSocket and MQTT requests are
   listed and refused, not skipped silently.
-- **The rest is `jig-core`'s:** reads run, a write to a test environment asks you with a
-  preview, production writes are denied, production results are masked, and an unknown outcome
-  is checked once, never resent ([Writes](docs/writes.md)).
+- **The rest is `jig-core`'s:** reads run, a write to a test environment asks with a preview,
+  and production is denied and masked. [Approvals](../../docs/approvals.md#preview-digest-and-a-lost-reply)
+  has the digest and lost-reply rule.
 
 ## Configure
 
@@ -134,8 +134,8 @@ example of each source, is in [Configuration](docs/configuration.md).
   opt into, with the output masked again.
 - **Asserts,** as declared in Bruno and Hurl files. Bruno's are read and shown
   today; `run_folder` would report them.
-- **The Postman CLI and `bru`,** so those tools sign in themselves. Not built: Jig
-  never signs in (see [Decisions](../../docs/decisions.md)).
+- **The Postman CLI and `bru`,** so those tools sign in themselves. Jig never signs in
+  ([Credential sources](../../plugins/jig-core/docs/sign-in-and-transports.md)).
 
 ## Layout
 

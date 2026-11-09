@@ -54,15 +54,14 @@ Parameters and results: [Results](docs/results.md).
 
 ## Rules
 
-- **Writes are previewed with a count.** The preview shows the filter, the change, and how many documents it touches, counted just
-  before. If that count changes before the write runs, it is refused as "changed since the preview".
+- **Writes are previewed with a count and never resent.** [Approvals](../../docs/approvals.md#preview-digest-and-a-lost-reply)
+  has the digest rule; the count is read again just before the write.
 - **Guards on writes:** an `update` or `delete` with an empty filter is refused; `many` above 1000 documents needs a `limit` you
   raise on purpose ([Writes](docs/writes.md)).
 - **Production reads must use an index.** Before a `find`, `count`, `distinct` or `aggregate` runs there, the planner is asked
   how it would run (nothing is executed), and a plan that scans the collection is refused, naming the fields an index leads
   with ([Index check](docs/index-check.md)).
 - **Server-side JavaScript is refused** (`$where`, `$function`, `$accumulator`), unless you allow it for a test environment.
-- **A lost reply is never resent.** One read checks what happened.
 - **Production is read-only and masked,** whatever the configuration says: `jig-core`'s floor denies a production write, and the
   tool refuses it again when it plans the call. `jig-core` masks every production result.
 

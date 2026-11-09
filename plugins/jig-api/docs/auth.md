@@ -47,7 +47,7 @@ no secret and adds no header.
 - **A transport carries** `GET`, `POST`, `PUT`, `PATCH` and `DELETE` and a text body. A `HEAD`, an `OPTIONS`, a file and a multipart
   form are refused before anything is sent.
 - **A transport that fails** is reported in its own words, cut at 160 characters, and for a write the outcome is then unknown (see
-  [Writes](writes.md#when-no-reply-comes)).
+  [Writes](writes.md#changed-since-the-preview-and-a-lost-reply)).
 - **A name that no company plugin registered** means that nothing was sent.
 
 ## OAuth without a browser
@@ -93,4 +93,4 @@ in with HTTP Basic). The table is Postman's.
   code, never its own words, the account or the secrets. Only the codes of RFC 6749, section 5.2, are repeated.
   - A redirect from the token endpoint is not followed.
   - Secrets that cannot be read stop the sign-in before the endpoint is asked.
-- **One deadline** covers the token request and the call together (see [Writes](writes.md#the-clock)).
+- **One deadline** covers the token request and the call together (see [Writes](writes.md)).
