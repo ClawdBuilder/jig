@@ -10,7 +10,7 @@ the detail, and `/jig` always says what is wrong with your setup.
 ## 0. Before you start
 
 You need:
-- **Pi 1.5** — the tested version; see [Compatibility](compatibility.md) — and **Node.js 22.19 or later**;
+- **Pi 1.4 or later** (tested with 1.5; see [Compatibility](compatibility.md)) and **Node.js 22.19 or later**;
 - **git**, and a scratch repository to practise in (a new folder with `git init` and one commit is enough);
 - **`gh`** (GitHub's command line) signed in with `gh auth login`, only if you want to try a pull request later.
   Jig never signs in for you: the tool that owns a login does it.
