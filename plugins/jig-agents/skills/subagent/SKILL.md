@@ -1,6 +1,6 @@
 ---
 name: subagent
-description: When and how to hand work to a child agent with the subagent tool - a scout for exploration that would fill your context, a reviewer for a fresh look at your own change, a worker for one scoped change in a worktree of its own. Use before you read more than about five files for one question, before you call a change done, and when a child's report arrives.
+description: Child agents (subagent tool) - which role to start and how to brief it: a scout for reading across more than five files, a reviewer before you call a change done, a worker for one scoped change. Also read it when a child's report arrives.
 ---
 
 # Handing work to a child agent

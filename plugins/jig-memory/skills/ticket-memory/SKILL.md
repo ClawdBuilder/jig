@@ -1,6 +1,6 @@
 ---
 name: ticket-memory
-description: Keeping a ticket's memory honest during long work - date notes from the clock, keep the Now block of notes.md current, save output the user pasted with the ticket tool, and track open checks so a promised check is done or named before the next command. Use when a ticket is active, when the user pastes the output of something they ran, or before handing the user a command for the next step.
+description: Ticket notes (ticket tool) - dated notes.md with a current Now block, pasted output saved as evidence, open checks closed before the next command. Use while a ticket is active, when the user pastes output they ran, and before you hand over a command.
 ---
 
 # Keeping a ticket's memory

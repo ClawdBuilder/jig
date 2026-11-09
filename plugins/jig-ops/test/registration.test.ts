@@ -233,13 +233,8 @@ describe("what the runtime tool says about itself", () => {
         for (const word of ["pods", "rollout", "logs", "events", "health"])
             assert.match(tool.description, new RegExp(word));
         assert.ok(tool.promptSnippet && tool.promptSnippet.length <= 140, String(tool.promptSnippet));
-        const guidelines = tool.promptGuidelines ?? [];
-        assert.ok(guidelines.length >= 1 && guidelines.length <= 2);
-        assert.ok(
-            guidelines.every((line) => line.length <= 160 && !line.includes("\n") && line.startsWith("runtime: ")),
-            guidelines.join(" | "),
-        );
-        assert.match(guidelines.join(" "), /waitFor/);
+        assert.match(tool.description, /Read the ops skill/);
+        assert.equal(tool.promptGuidelines, undefined, "the skill carries the order");
     });
 
     test("it runs like any other tool: always loaded, calls may run side by side", () => {
@@ -321,7 +316,7 @@ describe("what the deploy tool says about itself", () => {
             tool.description.length > 80 && tool.description.length <= 320,
             `${tool.description.length} characters`,
         );
-        for (const word of ["plan", "run", "status", "rollback", "watch", "asked", "Never production"])
+        for (const word of ["plan", "run", "status", "rollback", "watch", "asked", "Production is read-only"])
             assert.match(tool.description, new RegExp(word));
         assert.ok(tool.promptSnippet && tool.promptSnippet.length <= 140, String(tool.promptSnippet));
         const guidelines = tool.promptGuidelines ?? [];

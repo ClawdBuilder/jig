@@ -1,6 +1,6 @@
 ---
 name: api
-description: Running the team's saved API requests with the api tool - list and show them, run a read first, change one thing at a time, and check each answer. Use when the user asks to call, test or check an API, reproduce a request from a ticket, check a deploy’s API, or smoke-test an environment. Not for a pod’s health; use runtime.
+description: Saved API requests (api tool) - list, show and run one by name, then check the answer. Use to call or test an API, reproduce a request from a ticket, or smoke-test an environment after a deploy.
 ---
 
 # Running saved API requests

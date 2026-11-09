@@ -72,14 +72,8 @@ const parameters = Type.Object(
     { additionalProperties: false },
 );
 
-const DESCRIPTION = [
-    "The handoff record of the active ticket.",
-    "save_evidence keeps text the user pasted (the output of a run they did) in the ticket's evidence, masked.",
-    "add_check records something you said you would do before the next step; it is shown with every prompt until close_check.",
-    "Before you hand the user a command for the next step, close each open check or say plainly that it is still open.",
-    "recall searches earlier tickets' notes and cards by text, without leaving the active ticket in the results.",
-    "When a ticket's work is done, such as a root cause found and a Jira comment posted, close it with close; when it has no workflow, use this line to decide.",
-].join(" ");
+const DESCRIPTION =
+    "The ticket's handoff record: save_evidence, add_check, recall, close. Read the ticket-memory skill before you write ticket notes or close a ticket.";
 
 /** Checks a call's input against the action's table. An `InputError` blocks the call without asking anyone. */
 export function checkInput(input: Readonly<Record<string, unknown>>): ActionName {

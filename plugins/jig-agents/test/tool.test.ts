@@ -76,11 +76,9 @@ describe("the description", () => {
 
     test("lists every role with its description and whether it writes, and says when to delegate", () => {
         const text = describeTool(roles.values());
-        assert.match(text, /- scout: Read-only exploration of code, logs and tickets, with evidence \(read-only\)/);
+        assert.match(text, /- scout: Read-only exploration of code and logs, with evidence \(read-only\)/);
         assert.match(text, /- worker: .* \(writes, in a git worktree of its own\)/);
-        assert.match(text, /more than about five files or 20,000 tokens of output \(start a scout\)/);
-        assert.match(text, /fresh look at your own change \(start a reviewer\)/);
-        assert.match(text, /do not poll/);
+        assert.match(text, /Read the subagent skill before you start a child\./);
         assert.equal(roleLines(roles.values()).split("\n").length, 3);
     });
 

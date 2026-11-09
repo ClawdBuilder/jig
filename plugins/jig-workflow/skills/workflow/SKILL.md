@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: How to take a ticket through its workflow with the workflow tool - read the stage, run the tests, get the plan approved, record scenario results with evidence, and advance only when the exit conditions hold. Use when the user names a ticket or a stage, when a call is refused as held, and before you say that work is done.
+description: Workflow (workflow tool) - a ticket's stages and the evidence each exit condition needs. Use when the user names a ticket or a stage, when a call is refused as held, and before you say work is done.
 ---
 
 # Taking work through its workflow
@@ -20,7 +20,7 @@ No workflow yet? `workflow start` picks the one whose pattern matches the ticket
 | `notes-updated` | writing what you learned in `notes.md` | that the notes changed since the stage began |
 | `plan-approved` | `workflow submit_plan` after writing `plan.md` | the user's yes to this exact text, by fingerprint |
 | `tests-pass-at-head` | commit, then `workflow test` | the result at the full commit, on a clean tree |
-| `review-done` | `/code-review --branch`, approved by the user | a review that covers the commit |
+| `review-done` | call `start_interactive_code_review`; the user approves in the browser | a review that covers the commit |
 | `pull-request-open`, `checks-pass` | `git push`, `pr create`, then wait for the CI message | the pull request and its checks, read from GitHub |
 | `scenarios-pass` | running each scenario, then `workflow scenario` | each result with its evidence |
 | `you-approve` | `workflow advance` | the user's yes to moving on |

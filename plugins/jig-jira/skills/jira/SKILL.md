@@ -1,11 +1,13 @@
 ---
 name: jira
-description: "Reading and changing Jira issues with the jira tool: comments, transitions, fields and new issues, and the wiki markup their text uses. Use when the user names an issue key, or asks to search, comment on, update, move or create a Jira issue."
+description: Jira issues (jira tool) in wiki markup - get, search, comment, update, transition, link, create. Use when the user names an issue key, or asks to search, comment on, move, update or create an issue.
 ---
 
 # Jira work
 
-Use the `jira` tool for every Jira operation. Every write shows the user a preview and asks first.
+Use the `jira` tool for every Jira operation. Every write shows the user a preview and asks first. The
+tool's action list has the rest: `transition` moves the status; `edit_comment` and `delete_comment` change comments
+(delete is destructive); `changelog` and `attachments` read them.
 
 ## Read before you write
 

@@ -111,13 +111,9 @@ const parameters = Type.Object(
     { additionalProperties: false },
 );
 
-const DESCRIPTION = [
-    "Take a piece of work, such as a ticket, through its workflow: stages, each with a goal and the conditions that let you leave it.",
-    "Start with action status to see the stage, what is missing and which calls are held. The plugin records evidence itself:",
-    "test runs the tests at the current commit, submit_plan asks the user to approve plan.md, scenario records what you ran",
-    "with evidence, and advance moves on only when every exit condition holds. You cannot mark anything passed yourself.",
-    "A held call (git push, edit, ...) is refused with the condition it waits for.",
-].join(" ");
+const DESCRIPTION =
+    "Take a piece of work through its workflow's stages, each with exit conditions. The tool records evidence itself; " +
+    "a held call is refused with the condition it waits for. Read the workflow skill before you advance a stage.";
 
 /** Checks a call's input against the action's table. An `InputError` blocks the call without asking anyone. */
 export function checkInput(input: Readonly<Record<string, unknown>>): ActionName {

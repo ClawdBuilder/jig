@@ -27,9 +27,8 @@ import { planRollback, planRun, refusal } from "./plan.ts";
 import { createRecords } from "./records.ts";
 
 const DESCRIPTION =
-    "Deploy a version of a service with the method the ops catalog names: plan what would change, run it " +
-    "(the user is asked first), status, rollback (test environments only), and watch the rollout in the background. " +
-    "Never production.";
+    "Deploy a version with the method the ops catalog names: plan, run (the user is asked first), status, rollback in test " +
+    "environments, and watch. Production is read-only. Read the ops skill before you deploy.";
 
 type Input = Readonly<Record<string, unknown>>;
 

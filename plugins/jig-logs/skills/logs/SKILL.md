@@ -1,6 +1,6 @@
 ---
 name: logs
-description: How to search logs with the logs tool - start from an exact identifier in a narrow window, widen the window step by step, and read the lines that matter. Use whenever a ticket, an error report or a question needs evidence from the logs. Not for a code search; use the file tools.
+description: Logs (logs tool) - start from an exact identifier in a narrow window, widen step by step. Use when a ticket, an error report or a question needs evidence from the logs.
 ---
 
 # Searching logs

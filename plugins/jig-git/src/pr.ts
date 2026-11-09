@@ -208,7 +208,7 @@ export const prTool: JigTool = buildTool({
     name: "pr",
     label: "Pull request",
     description:
-        "Pull requests (GitHub, through gh) and merge requests (GitLab, through glab), by the repository's origin: view, list, comments; create, edit, ready, comment, reply, resolve, review, merge; watch for new comments. Every write asks the user first. It never approves.",
+        "Pull and merge requests by the repository's origin: view, comments, create, review, merge. Every write asks the user first. Read the git skill before your first pr call.",
     promptSnippet: "Pull and merge requests: view, comments, watch, create, review, merge",
     promptGuidelines: [
         "Use the pr tool for pull requests and merge requests, not bash: the shell has no GitHub or GitLab sign-in. Push the branch with the git tool first.",

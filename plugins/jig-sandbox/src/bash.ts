@@ -29,7 +29,7 @@ const REASON_PARAMETER =
 export const SANDBOX_DESCRIPTION = [
     "This shell runs in a sandbox (jig-sandbox): the project, your home folder, /tmp, build caches, git configuration and the network work; credentials and writes that outlive the command do not.",
     "A blocked command prints a '[sandbox]' line naming the rule and the way through: use the git tool, the edit and write tools, or the Jig tool it names.",
-    "Only when no Jig tool does what you need, set outside: true and give a reason (at most 300 characters); long work uses background: true with notifyOn, and never sleep or poll. A background task cannot use outside. The full list is in plugins/jig-sandbox/docs/when-blocked.md.",
+    "Only when no Jig tool does what you need, set outside: true and give a reason (at most 300 characters); long work uses background: true with notifyOn, and never sleep or poll. A background task cannot use outside.",
 ].join("\n");
 
 /** What `jig-core` decided about a call, as it announces it on the event bus. */

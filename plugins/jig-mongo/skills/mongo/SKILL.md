@@ -1,6 +1,6 @@
 ---
 name: mongo
-description: Using the mongo tool to look at MongoDB and, in a test environment, change it - count before find, explain before blaming the database, preview every write, never write to production. Use when the user asks about data in MongoDB, why a query is slow, what an order or document looks like, or to fix test data.
+description: MongoDB (mongo tool) - count before find, explain a slow query, change test data after a preview; production is read-only. Use for questions about data in MongoDB, a slow query, or fixing test data.
 ---
 
 # Looking at MongoDB, and changing it in a test environment
@@ -13,7 +13,8 @@ Some environments have more than one cluster, such as `orders` and `billing` in 
 
 ## Start by looking
 
-1. `databases`, then `collections` for a database, show what exists. Do not guess a name: a name that is denied or not allowed is refused with what is allowed.
+1. `access` lists each environment's allowed or denied names; read it before you guess one. Then `databases`, and
+   `collections` for a database, show what exists. A name that is denied or not allowed is refused with what is allowed.
 2. `schema` shows the field names and types of a collection from a sample. Use it before you write a filter, so the field names are real.
 3. `indexes` shows what a query can use. `stats` shows how big a collection is.
 
