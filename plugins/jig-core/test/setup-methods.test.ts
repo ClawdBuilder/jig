@@ -346,3 +346,16 @@ test("a company entry before the section keeps its prefill and new method in the
     assert.equal(section?.methods?.find((one) => one.id === "own-sign-in")?.default, false);
     assert.equal(section?.methods?.length, 3);
 });
+
+test("jig setup <section> says when there is nothing to ask", async () => {
+    writeFileSync(file, "{}");
+    const state = createState(fakePi().pi, { env: {} });
+    state.configPath = () => file;
+    const api = buildApi(state);
+    api.config.registerSection("jira", () => []);
+    loadPersonalConfig(state, file);
+    const seen: string[] = [];
+    const ui = { notify: (text: string) => void seen.push(text) } as unknown as SetupUi;
+    assert.equal(await runSetup(state, ui, "jira"), 0);
+    assert.match(seen.join("\n"), /Nothing to ask for jira\./);
+});
