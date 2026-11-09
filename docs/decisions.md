@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-09: sediment moved out of plugin design pages](#2026-11-09-sediment-moved-out-of-plugin-design-pages)
 - [2026-11-09: sign-in methods are declared with their section](#2026-11-09-sign-in-methods-are-declared-with-their-section)
 - [2026-11-06: Jig is published as a scoped npm package](#2026-11-06-jig-is-published-as-a-scoped-npm-package)
 - [2026-11-05: the project files Pi loads are guarded for its file tools](#2026-11-05-the-project-files-pi-loads-are-guarded-for-its-file-tools)
@@ -80,6 +81,31 @@ sign-in/transport method as a prefill. No method id is written; setup infers the
 **Why:** ownership is structural, not a token or a later call, and a company cannot replace another plugin's methods.
 The required path set is the method's shape, so a Data Center token is the subset of a Cloud token plus email and the
 most specific method wins.
+
+## 2026-11-09: sediment moved out of plugin design pages
+
+**Decision.** Design pages state current behaviour. The history that explained it, and the options compared, are recorded
+here once.
+
+- **Sandbox.** The build order is done. The spike taught that rules exist only for paths that exist; WSL keeps its resolver;
+  the runtime needs a writable `.git/config` with program-running settings audited; only what Pi loads is locked; tool
+  folders ask; Gradle keeps only its init scripts and credentials locked; code edits go through `edit`/`write`; project
+  `.pi/extensions` and git hooks are locked. The runtime's placeholders appeared in the project, so the broker runs them;
+  `HOME` does not move `ssh`, so hidden paths come from the real home; an approved address still passes the callback's
+  private-address check; `open` shares the machine's network and `filtered` uses the bridge; file refusals are read from
+  the command's error lines. Building changed the design: `docker` is reserved because Linux cannot allow one Unix socket;
+  Pi's spawn hook is synchronous, so the tool wraps first; macOS needs no ripgrep; `filtered`/`ask` are untried on macOS;
+  a moved-aside folder cannot replace a mounted file; `PATH` folders in the home are locked; host questions use
+  `approvals.inTurn`; a server that outlives a command is a background task, with logs under the agent folder and a
+  python helper for its network.
+- **Workflow.** Building changed the design: the state file is guarded when a ticket with one becomes active; remote
+  conditions are read fresh by `status`, `advance` and holds; `bind` runs the `git` tool through `ctx.executeTool`; a
+  failing plan is checked in the preview; `workflow test` re-checks the sandbox at run time; a test outside the sandbox
+  calls `bash` with `outside: true` through `ctx.executeTool`; holds use the repository a call acts in.
+- **Agents.** RPC was chosen over in-process and package APIs: a child is a separate Pi process, so `jig-core` and
+  `jig-sandbox` still govern it, and the parent holds its questions and report.
+- **git.** The tool list came from about 26,000 recorded calls; the missing wait after a push became the CI watch in
+  `jig-ops`.
 
 ## 2026-11-06: Jig is published as a scoped npm package
 

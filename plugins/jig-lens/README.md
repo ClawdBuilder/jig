@@ -102,7 +102,6 @@ Every file: [Code map](docs/code-map.md).
 - [The web page](docs/web.md): Read before you open the page.
 - [Viewers](docs/viewers.md): Read before you choose a viewer.
 - [Viewer settings](docs/viewer-settings.md): Read before you change a viewer.
-- [Later](docs/later.md): Read only if you plan ahead.
 
 **Set it up**
 - [Configuration](docs/configuration.md): Read before you add settings.

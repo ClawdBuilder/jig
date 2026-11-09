@@ -1,5 +1,7 @@
 # Reuse: existing packages before our own
 
+**Snapshot from 2026-10-30, not maintained.** The live decisions are in [Decisions](decisions.md).
+
 Checked on 2026-10-30. About 2,200 of the 13,000 Pi packages on npm were
 sampled, and the strongest were read in source or README. Nothing has been
 installed or run yet, apart from AI Observer (in a sandbox with no network) and

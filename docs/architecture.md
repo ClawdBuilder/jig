@@ -179,3 +179,12 @@ Jig is TypeScript on Node, as Pi is, so it runs on Linux and macOS.
 
 *Guides go forward into Pi before it acts, sensors feed back after it acts, and you steer by changing both. A star marks a model deciding, a dot a program, a figure a person, and a dashed outline something planned for later.*
 
+## Later plans
+
+![Codebase and runtime sensors feed the coding agent, and harness sensors built from your sessions and tickets feed you](img/harness-loop.svg)
+
+*Sensors outside any one change, in Böckeler's layout, with the harness watching itself.*
+
+![Memory in five steps: write, consolidate, index, retrieve and use](img/memory-steps.svg)
+
+*Memory in five steps: notes, consolidation, index, retrieval and a short message in a later ticket.*
