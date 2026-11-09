@@ -1,15 +1,7 @@
 # Jig agent guide
 
-Fifteen of the fifteen plugins are built: `jig-core`, `jig-git`, `jig-memory`,
-`jig-lens`, `jig-jira`, `jig-logs`, `jig-api`, `jig-ops`, `jig-review`,
-`jig-mongo`, `jig-theme`, `jig-sandbox`, `jig-workflow`, `jig-agents` and `jig-session`.
-`examples/jig-acme` is an example company plugin for a fictional company: the one
-place a company plugin lives in this repository, and its tests run with `npm test`.
-
-Plugin READMEs are the specifications. Code follows them, and when either
-changes, the other changes in the same commit. Tests read the tool tables of
-`jig-git`, `jig-jira` and `jig-mongo`, and the READMEs and docs of `jig-lens`,
-`jig-theme`, `jig-workflow` and `jig-agents`, so change a table and its test together.
+Every plugin in `plugins/` is built; [the plugin map](docs/plugins.md) names each one and its tools. `examples/jig-acme` is
+the one company plugin in this repository, and its tests run with `npm test`.
 
 - **Read first:** [docs/architecture.md](docs/architecture.md) and
   [docs/permissions.md](docs/permissions.md).
@@ -17,10 +9,6 @@ changes, the other changes in the same commit. Tests read the tool tables of
   internal system names, environment names or hostnames. Those belong in a
   private company plugin. Examples use `staging`, `orders-api`, `PROJ-123`,
   `api.staging.example.com` and GitHub Actions.
-- **README shape.** A plugin README follows
-  [plugins/jig-workflow/README.md](plugins/jig-workflow/README.md). Detail that would
-  take it past about 120 lines goes to `plugins/<name>/docs/`, linked under
-  "More detail".
 - **Code maps.** `jig-core`, `jig-api`, `jig-ops`, `jig-sandbox`, `jig-agents` and `jig-workflow` each have
   `docs/code-map.md`: every file of `src/` with what it does and who calls it, and one call followed through
   the files. When you add, rename or remove a file in one of them, change its map in the same commit; a test
@@ -31,12 +19,8 @@ changes, the other changes in the same commit. Tests read the tool tables of
 - **The launcher is not a plugin.** `bin/pi`, with `bin/tmux.conf` and `bin/clipboard-copy`, is the optional `pi` command. `docs/launcher.md` is its specification, and `test/launcher.test.ts` fails when that section misses a flag or variable the
   script reads. The tests run a fake Pi and tmux in a closed world (`test/support/launcher-world.ts`) and start nothing real. It stays
   generic like everything here: it sets none of the user's settings, runs no checks at start, and never signs in.
-- **Docs.** Write them by [Writing the docs](docs/writing.md): open with what
-  it is and why, short paragraphs and table cells (about 350 and 100
-  characters), lists with bold lead-ins, generic examples, tagged code blocks.
-  A test fails on a broken link or anchor.
-- **The existing harness is reference only.** Read it to port from; never
-  modify it.
+- **Docs.** Before you write, change or review any Markdown page, read [Writing the docs](docs/writing.md). `npm run check` fails on a broken link or anchor and on more docs warnings than its baseline.
+- **What we ported from is read-only.** [Reuse](docs/reuse.md) names the code that came from the earlier Pi harness; read it, never modify it.
 - **The floor in [Permissions](docs/permissions.md) is not configurable.** Do
   not add settings that lower it.
 - **No sign-in and no stored credentials in any plugin.** No OAuth or
@@ -64,15 +48,7 @@ changes, the other changes in the same commit. Tests read the tool tables of
   with the reason when there is no Pi 1.x, and runs in CI, where Pi is installed. It uses a temporary agent
   folder and home, never `~/.pi/agent`, and never the `pi` on `PATH`, which may be a wrapper that signs in. Two tests also
   load `jig-sandbox` for a read-only `bash`, and skip with the reason when the sandbox's programs are missing.
-- **Checks:** `npm run check` (types, Biome, and the two dependency checks below), `npm test`, `npm run check:install`
-  and the review page's checks (`npm run check:web`, `npm run test:web`, `npm run check:dist`) must
-  pass before a commit; CI runs all of them on every push and pull request, and `ci-ok` is the one job to require.
-  Package `files` patterns use the `dir/**` form. npm 10 and 11 read them differently from npm 12; CI covers both majors:
-  Node 24 runs npm 12, Node 26 its bundled npm. A local pack proves only this machine's npm.
-  Run `npm run format` before committing. The page's checks need `npm ci` in
-  `plugins/jig-review/web` first, and a change under its `src/` needs a rebuild
-  (`npm run build` there) or `check:dist` fails. `check:install` needs network: it lets the stock Pi install a copy of this
-  working tree as `pi install git:` does, and every extension must load.
+- **Checks:** run `npm run check`, `npm test` and `npm run check:install`; [CONTRIBUTING](CONTRIBUTING.md#the-checks) lists the review page's three. CI runs the same set, and `ci-ok` is the one required job.
 - **Integration tests** run the plugins against real services: `npm run test:it`, and the `integration` job in CI. A
   suite skips when its service's address is not set, so `npm test` and `npm run check` never need a service. See
   [Integration tests](docs/integration-tests.md). Every test file starts in an isolated environment (temporary home, a git

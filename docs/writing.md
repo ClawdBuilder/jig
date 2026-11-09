@@ -8,6 +8,20 @@ Plugin READMEs are the specifications that the code follows (see
 [AGENTS.md](../AGENTS.md)), so a page that is hard to read is a specification
 that is hard to check.
 
+## Writing, changing or reviewing a page
+
+1. **Name the reader** and what they need here. The root README: someone deciding whether to try Jig. A plugin README:
+   the specification a reviewer checks the code against. A `docs/` page: a reader who followed a link for the detail.
+2. **Check each claim against its source**: the code, `--help`, `package.json`, the section's validator. Where that
+   source is long or changes often, link to it rather than copy it. A copied table needs a test that reads it, as the
+   tool tables of `jig-git` and `jig-jira` have.
+3. **Show one real use near the top**: the command, and what the person sees.
+4. **Apply every rule below**, then run `npm run check`.
+
+The page is done when every sentence you wrote matches the code it describes, every rule holds, and `check-docs`
+reports no new warning. A review applies step 2 to every sentence of the page, not only the changed ones, and lists
+each stale sentence with the file that disproves it.
+
 ## The rules
 
 1. **Open with what it is and why,** in one or two plain sentences, before any
@@ -29,8 +43,8 @@ that is hard to check.
    [glossary](glossary.md) says what each term means.
 8. **Tag every code block:** `json`, `ts`, `text` or `bash`. A tag turns on
    colour and tells the reader what they are looking at.
-9. **Do not re-wrap lines that are fine.** GitHub ignores line breaks inside a
-   paragraph, and a re-wrapped paragraph hides the real change in a diff.
+9. **Edit only the lines whose meaning changes.** GitHub ignores line breaks inside a
+   paragraph, so a re-wrapped paragraph hides the real change in a diff.
 
 ## The README shape
 

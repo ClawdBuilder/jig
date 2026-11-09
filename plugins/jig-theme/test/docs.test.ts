@@ -339,9 +339,8 @@ test("the root documents list the plugin", () => {
         assert.ok(name, row);
         assert.ok(root.includes(`(plugins/jig-${name}/README.md)`), `README links ${name}`);
     }
-    // AGENTS.md lists the built plugins in its first paragraph; jig-theme must be among them, however it is worded.
-    const agentsIntro = read(path.join(ROOT, "AGENTS.md")).split("\n\n")[1] ?? "";
-    assert.match(agentsIntro, /are built:[^.]*`jig-theme`/);
+    // AGENTS.md points at the plugin map; the map's rows above are the status, so the list is not copied there.
+    assert.match(read(path.join(ROOT, "AGENTS.md")), /\[the plugin map\]\(docs\/plugins\.md\)/);
     assert.match(read(path.join(ROOT, "docs/architecture.md")), /jig-theme {2}the look/);
     const glossary = read(path.join(ROOT, "docs/glossary.md"));
     assert.match(glossary, /\| \*\*Palette\*\* \|/);

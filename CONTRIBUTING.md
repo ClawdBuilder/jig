@@ -39,16 +39,12 @@ and `npm run build` there first; a changed `src/` that was not built fails `chec
 
 ## The checks
 
-| Command | Covers | Needs |
-|---|---|---|
-| `npm run check` | types, Biome, exact dependency versions, allowed imports, docs shape and links | Pi installed |
-| `npm test` | about 8,000 tests in an isolated home and repository | the sandbox's programs, for its tests |
-| `npm run check:install` | a stock Pi installing a copy of this tree as `pi install git:` does | network |
-| `npm run check:web`, `npm run test:web`, `npm run check:dist` | the review page's types, tests and built copy | `npm ci` in its folder |
-
-Every one of them passes before a commit. CI runs all of them on every push and pull request, and `ci-ok` is the job to
-require. A test suite for a real service skips when its address is not set, so `npm test` never needs one; the integration
-suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
+Run `npm run check`, `npm test` and `npm run check:install`; the review page also has `npm run check:web`,
+`npm run test:web` and `npm run check:dist`. `package.json` is the command list; [AGENTS.md](AGENTS.md) gives the
+CI rule. Every one of them passes before a commit; CI runs all of them on every push
+and pull request, and `ci-ok` is the job to require. A test suite for a real service skips when its address is not
+set, so `npm test` never needs one; the integration suite is `npm run test:it` (see
+[Integration tests](docs/integration-tests.md)).
 
 ### Commit emails
 
