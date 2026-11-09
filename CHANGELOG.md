@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-11-09
+
+Shorter, clearer tool text, a local-read codemode, and a doctor that trusts `gh`.
+
 ### Added
 
 - `logs.maxWindow` sets the longest window one `logs` call searches, from `1h` to `90d` (default `7d`), for a backend that
@@ -22,6 +26,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
   `jira.me` says who you are, before anyone is asked.
 - With `jira.projects` set, `jira link` and `unlink` refuse a link with an issue outside those projects.
 - A `logs` window of more than 48 days gets one request a day and 16 more, so the request budget alone does not cut it.
+- Patch updates to the formatter and web server dependencies; no configuration changes.
+- Internal: one email-guard run, isolated test suites, the docs warning budget, eval replay, and a stable real-Pi
+  teardown.
 
 ### Fixed
 
