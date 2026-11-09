@@ -845,6 +845,8 @@ export interface OnboardingMethod {
     who?: string;
     /** The fields this method writes, relative to the section. A `*` segment stands for one dynamic name. */
     fields: readonly OnboardingMethodField[];
+    /** A path relative to the object a `*` matched that must already exist; `ci` for a service's CI methods. */
+    requires?: string;
 }
 
 /** One field of an `OnboardingMethod`. A plugin method has no `value`; a company-only method fixes every field. */

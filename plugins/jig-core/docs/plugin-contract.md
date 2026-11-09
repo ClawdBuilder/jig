@@ -118,8 +118,12 @@ closed instead of running ungoverned.
     `backend.auth` or `services.*.ci.auth`. `{ union }` names lists that add
     up instead, such as `folders`: the company's entries first, then the
     user's, each once. `{ methods }` declares the section's sign-in methods in
-    the same call, so ownership is structural. A section is registered once;
-    a second registration is refused.
+    the same call, so ownership is structural. A method gives `id`, `label`,
+    `who`, `fields` and an optional `requires` path. A section is registered
+    once; a second registration is refused. The company overlay lives in its
+    onboarding entry: `default`, `hide`, or `add` a fixed signIn/transport
+    method as a prefill. No method id is written; setup infers the method from
+    the required paths.
   - Defaults that are not valid alone, with no section of the user's, leave the
     plugin unconfigured and are shown by `/jig`, not reported as a problem.
 - **`protectedPaths.list()`** gives every protected path with its `kind`

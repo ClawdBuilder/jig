@@ -43,6 +43,10 @@ export async function runSetup(state: JigState, ui: SetupUi, requestedSection?: 
         return 1;
     }
     const plan = built.plan;
+    if (requestedSection !== undefined && plan.sections.every((section) => section.fields.length === 0)) {
+        ui.notify(`Nothing to ask for ${requestedSection}.`, "info");
+        return 0;
+    }
     if (plan.sections.length === 0) {
         ui.notify("Nothing needs you right now. jig doctor has the full check.", "info");
         return 0;

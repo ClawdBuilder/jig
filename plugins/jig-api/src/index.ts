@@ -10,7 +10,6 @@ import type { ApiOptions } from "./tool.ts";
 
 export type { ApiOptions };
 
-/** The extension, with parts a test can replace (the clock and the timeouts). Pi loads the default export below. */
 export const API_METHODS = [
     {
         id: "environment-sign-in",
@@ -30,6 +29,7 @@ export const API_METHODS = [
     },
 ] as const;
 
+/** The extension, with parts a test can replace (the clock and the timeouts). Pi loads the default export below. */
 export function jigApi(options: ApiOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const tool = createTool(options);

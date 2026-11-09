@@ -106,3 +106,38 @@ test("api asks for a name when the environment mapping is a string, through vali
     );
     assert.ok(methods.every((method) => (method.notes ?? []).some((note) => /No match/.test(note))));
 });
+
+test("wildcard current: the ops and api methods the configured names use are marked", () => {
+    const ops = {
+        services: {
+            "with-ci": {
+                ci: {
+                    system: "gitlab",
+                    url: "https://gitlab.example.com",
+                    project: "acme/orders",
+                    auth: { token: "pass:ci/token" },
+                },
+            },
+        },
+    };
+    writeFileSync(file, JSON.stringify({ ops }));
+    const built = buildSetupPlan(state("ops", new Map([["ops", OPS_METHODS]])));
+    assert.ok("plan" in built, JSON.stringify(built));
+    assert.equal(
+        built.plan.sections.find((one) => one.name === "ops")?.methods?.find((one) => one.id === "ci-token")?.current,
+        true,
+    );
+    const api = {
+        collections: { orders: { http: "/work/orders" } },
+        environments: { staging: { environment: "staging", signIn: "acme-sso" } },
+    };
+    writeFileSync(file, JSON.stringify({ api }));
+    const apiPlan = buildSetupPlan(state("api", new Map([["api", API_METHODS]])));
+    assert.ok("plan" in apiPlan, JSON.stringify(apiPlan));
+    assert.equal(
+        apiPlan.plan.sections
+            .find((one) => one.name === "api")
+            ?.methods?.find((one) => one.id === "environment-sign-in")?.current,
+        true,
+    );
+});

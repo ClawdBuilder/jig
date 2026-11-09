@@ -9,7 +9,7 @@ import {
     addCompanySecretCommands,
     OWN_SECTIONS,
 } from "./config.ts";
-import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
+import type { Facts, JigApi, OnboardingEntry, SandboxProvider } from "./contract.ts";
 import { git, run, setCredentialRegistrar } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import { UPDATES_SECTION } from "./updates-section.ts";
@@ -44,6 +44,14 @@ function sandboxCanRun(state: JigState): boolean {
         return provider.active === true;
     } catch {
         return false;
+    }
+}
+
+/** A company entry may only name methods for a section that declared them. */
+function checkMethodSections(entry: OnboardingEntry, state: JigState, label: string): void {
+    for (const section of Object.keys(entry.methods ?? {})) {
+        if (state.sectionChecks.has(section) && !state.onboardingMethods.has(section))
+            throw new Error(`${label}: section ${JSON.stringify(section)} has no methods`);
     }
 }
 
@@ -259,27 +267,34 @@ export function buildApi(state: JigState): JigApi {
                 }
                 if (state.sectionChecks.has(name))
                     throw new Error(`registerSection: "${name}" is already registered by another plugin`);
-                state.sectionChecks.set(name, validate);
                 const declared = options?.methods;
-                if (declared !== undefined) {
-                    const checked = checkOnboardingMethods(name, declared);
-                    state.onboardingMethods.set(name, checked);
-                    // Validate any company entry that arrived before this section's methods, without rolling them back.
-                    if (state.onboarding !== undefined) {
-                        try {
-                            state.onboarding = checkOnboarding(state.onboarding, state.onboardingMethods);
-                        } catch (error) {
-                            throw new Error(`company onboarding: ${(error as Error).message}`);
-                        }
+                const nextMethods = new Map(state.onboardingMethods);
+                const checkedMethods = declared === undefined ? undefined : checkOnboardingMethods(name, declared);
+                if (checkedMethods !== undefined) nextMethods.set(name, checkedMethods);
+                // Validate the company entries against the prospective methods before any state is written.
+                let nextOnboarding = state.onboarding;
+                const nextCompanyOnboarding = new Map<string, typeof state.onboarding>();
+                if (nextOnboarding !== undefined) {
+                    try {
+                        nextOnboarding = checkOnboarding(nextOnboarding, nextMethods);
+                    } catch (error) {
+                        throw new Error(`company onboarding: ${(error as Error).message}`);
                     }
-                    for (const [company, entry] of state.companies) {
-                        if (entry.onboarding === undefined) continue;
-                        try {
-                            entry.onboarding = checkOnboarding(entry.onboarding, state.onboardingMethods);
-                        } catch (error) {
-                            throw new Error(`company ${company} onboarding: ${(error as Error).message}`);
-                        }
+                }
+                for (const [company, entry] of state.companies) {
+                    if (entry.onboarding === undefined) continue;
+                    try {
+                        nextCompanyOnboarding.set(company, checkOnboarding(entry.onboarding, nextMethods));
+                    } catch (error) {
+                        throw new Error(`company ${company} onboarding: ${(error as Error).message}`);
                     }
+                }
+                state.sectionChecks.set(name, validate);
+                if (checkedMethods !== undefined) state.onboardingMethods.set(name, checkedMethods);
+                state.onboarding = nextOnboarding;
+                for (const [company, entry] of nextCompanyOnboarding) {
+                    const target = state.companies.get(company);
+                    if (target !== undefined) target.onboarding = entry;
                 }
                 if (oneOf === undefined || oneOf.length === 0) state.sectionOneOf.delete(name);
                 else
@@ -287,7 +302,6 @@ export function buildApi(state: JigState): JigApi {
                         name,
                         oneOf.map((paths) => [...paths]),
                     );
-                // Registering again replaces what the first call said, the keys that replace and the lists that add up included.
                 if (replace === undefined || replace.length === 0) state.sectionReplace.delete(name);
                 else state.sectionReplace.set(name, [...replace]);
                 if (union === undefined || union.length === 0) state.sectionUnion.delete(name);
@@ -377,6 +391,7 @@ export function buildApi(state: JigState): JigApi {
 
         onboarding: {
             register: (entry) => {
+                checkMethodSections(entry, state, "company onboarding");
                 state.onboarding = checkOnboarding(entry, state.onboardingMethods);
             },
         },
@@ -476,6 +491,7 @@ function scoped(api: JigApi, state: JigState, entry: CompanyEntry): JigApi {
         onboarding: {
             register: (list) => {
                 try {
+                    checkMethodSections(list, state, `company ${entry.name} onboarding`);
                     entry.onboarding = checkOnboarding(list, state.onboardingMethods);
                 } catch (error) {
                     throw new Error(`company ${entry.name} onboarding: ${(error as Error).message}`);

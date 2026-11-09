@@ -22,12 +22,14 @@ export type OpsOptions = RuntimeOptions & DeployOptions & CiWatchOptions;
 export const OPS_METHODS = [
     {
         id: "ci-token",
+        requires: "ci",
         label: "CI token",
         who: "GitLab or Concourse",
         fields: [{ kind: "reference", path: "services.*.ci.auth.token", label: "The CI token" }],
     },
     {
         id: "ci-basic",
+        requires: "ci",
         label: "User name and API token",
         who: "Jenkins",
         fields: [
@@ -37,11 +39,13 @@ export const OPS_METHODS = [
     },
     {
         id: "ci-sign-in",
+        requires: "ci",
         label: "Company sign-in service",
         fields: [{ kind: "text", path: "services.*.ci.auth.signIn", label: "The sign-in service name" }],
     },
     {
         id: "ci-transport",
+        requires: "ci",
         label: "Company transport",
         fields: [{ kind: "text", path: "services.*.ci.auth.transport", label: "The transport name" }],
     },

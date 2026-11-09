@@ -5,6 +5,9 @@ import { describe, test } from "node:test";
 import type { OnboardingEntry, OnboardingMethod } from "../src/contract.ts";
 import { checkOnboarding, checkOnboardingMethods, inferredMethod } from "../src/onboarding.ts";
 import { withJig } from "../src/client.ts";
+import { buildApi } from "../src/api.ts";
+import { createState } from "../src/state.ts";
+import { fakePi } from "./support/fake-pi.ts";
 
 const methods: readonly OnboardingMethod[] = [
     {
@@ -49,6 +52,16 @@ describe("checkOnboardingMethods", () => {
                 ]),
             /path/,
         );
+        for (const path of ["auth.constructor", "auth.prototype", "auth.__proto__"]) {
+            assert.throws(
+                () =>
+                    checkOnboardingMethods("jira", [
+                        { id: "x", label: "X", fields: [{ kind: "text", path, label: "X" }] },
+                    ]),
+                /prototype key/,
+                path,
+            );
+        }
         assert.throws(
             () =>
                 checkOnboardingMethods("jira", [
@@ -206,4 +219,24 @@ test("a bad company entry names the company and keeps the plugin's methods", asy
     } finally {
         await h.shutdown();
     }
+});
+
+test("a refused registration writes nothing, and a no-method section is refused", () => {
+    const state = createState(fakePi().pi);
+    const api = buildApi(state);
+    api.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } });
+    assert.throws(
+        () => api.config.registerSection("jira", () => [], { methods }),
+        /company onboarding:.*not a method of this section/,
+    );
+    assert.equal(state.sectionChecks.has("jira"), false);
+    assert.equal(state.onboardingMethods.has("jira"), false);
+    api.onboarding?.register({ items: [], methods: { jira: { default: "transport" } } });
+    api.config.registerSection("jira", () => [], { methods });
+    assert.equal(state.sectionChecks.has("jira"), true);
+    api.config.registerSection("other", () => []);
+    assert.throws(
+        () => api.onboarding?.register({ items: [], methods: { other: { default: "x" } } }),
+        /section "other" has no methods/,
+    );
 });

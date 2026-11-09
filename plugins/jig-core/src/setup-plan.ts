@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
 import type { OnboardingEntry, OnboardingItem, OnboardingMethod } from "./contract.ts";
-import { inferredMethod } from "./onboarding.ts";
+import { inferredMethod, requiredPaths } from "./onboarding.ts";
 import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
 import { layered } from "./section-defaults.ts";
@@ -284,15 +284,6 @@ export interface SetupChange {
     enableBackend?: SecretBackend;
 }
 
-/** The required paths of a method; kinds and optional fields do not decide the method. */
-function requiredPaths(method: OnboardingMethod): string {
-    return method.fields
-        .filter((field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true))
-        .map((field) => field.path)
-        .sort()
-        .join("|");
-}
-
 /** A dynamic name that is safe to put in a dotted path. */
 function safeSegment(name: string): boolean {
     return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && !["__proto__", "constructor", "prototype"].includes(name);
@@ -318,15 +309,23 @@ function expandMethodPath(path: string, root: unknown): string[] {
         }
         paths = next;
     }
-    if (!dynamic) return paths;
-    return paths.filter((path) => {
-        const parent = path.split(".").slice(0, -1).join(".");
-        if (isObject(getPath(root, parent))) return true;
-        // A CI method may create ci.auth, but only when the service already has ci.
-        const ci = path.indexOf(".ci.");
-        if (ci === -1) return false;
-        return isObject(getPath(root, `${path.slice(0, ci)}.ci`));
-    });
+    return paths;
+}
+
+/** Whether an expanded field path is allowed: its final object exists, or the method's declared `requires` does. */
+function methodPathAllowed(fieldPath: string, expanded: string, method: OnboardingMethod, root: unknown): boolean {
+    const original = fieldPath.split(".");
+    const dynamic = original.indexOf("*");
+    if (dynamic === -1) return true;
+    const expandedParts = expanded.split(".");
+    const wildcardObject = original
+        .slice(0, dynamic)
+        .concat(expandedParts[dynamic] ?? "")
+        .join(".");
+    if (method.requires !== undefined) {
+        return isObject(getPath(getPath(root, wildcardObject), method.requires));
+    }
+    return isObject(getPath(root, expanded.split(".").slice(0, -1).join(".")));
 }
 
 /** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
@@ -363,7 +362,9 @@ function setupMethods(
         const notes: string[] = [];
         const fixed = prefill.get(method.id);
         for (const field of method.fields) {
-            const paths = expandMethodPath(field.path, merged);
+            const paths = expandMethodPath(field.path, merged).filter((path) =>
+                methodPathAllowed(field.path, path, method, merged),
+            );
             if (paths.length === 0) notes.push(`No match for ${field.path}; name it first.`);
             for (const path of paths) {
                 const at = getPath(merged, path);

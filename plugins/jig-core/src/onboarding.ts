@@ -32,40 +32,53 @@ function optionalLine(value: unknown, at: string, max: number, errors: string[])
         errors.push(`${at}: must be one line of at most ${max} characters`);
 }
 
-/** The required paths of a method. Kinds and optional fields do not decide the method; the set of paths does.
- *  A subset is allowed: `{ auth.token }` is Jira Data Center, `{ auth.email, auth.token }` is Jira Cloud. A value is
- *  matched to the most specific method (largest path set); only two exact sets are ambiguous. */
-function methodPaths(method: OnboardingMethod): string {
-    return method.fields
-        .filter((field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true))
+/** The fields every method value must have: a reference, or text that is not optional. */
+export function requiredFields(method: OnboardingMethod): OnboardingMethodField[] {
+    return method.fields.filter(
+        (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
+    );
+}
+
+/** The required paths of a method, sorted. Kinds and optional fields do not decide the method; the set of paths does.
+ *  A subset is allowed and the most specific method wins, as long as two sets are not identical. */
+export function requiredPaths(method: OnboardingMethod): string {
+    return requiredFields(method)
         .map((field) => field.path)
         .sort()
         .join("|");
 }
 
-function methodFieldPaths(method: OnboardingMethod): Set<string> {
-    return new Set(method.fields.map((field) => field.path));
+/** A path segment a method may name: not a prototype key. */
+function safeSegment(segment: string): boolean {
+    return !["__proto__", "constructor", "prototype"].includes(segment);
 }
 
-/** The method a section value uses: the most specific required path set, or undefined on a tie or no match. */
+function safeMethodPath(path: string): boolean {
+    return path.split(".").every(safeSegment);
+}
+
+/**
+ * The method a section value uses: the most specific required path set matched by the value, or undefined on a tie or
+ * no match. A `*` in a method path matches one name at that level.
+ */
 export function inferredMethod(methods: readonly OnboardingMethod[], value: unknown): OnboardingMethod | undefined {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-    const at = (path: string): unknown => {
-        let current: unknown = value;
-        for (const segment of path.split(".")) {
-            if (typeof current !== "object" || current === null || Array.isArray(current)) return undefined;
-            current = (current as Record<string, unknown>)[segment];
-        }
-        return current;
+    const has = (current: unknown, path: string): boolean => {
+        const segments = path.split(".");
+        const walk = (node: unknown, index: number): boolean => {
+            if (index === segments.length) return node !== undefined;
+            const segment = segments[index] ?? "";
+            if (typeof node !== "object" || node === null || Array.isArray(node)) return false;
+            if (segment === "*") return Object.values(node).some((child) => walk(child, index + 1));
+            return Object.hasOwn(node, segment) && walk((node as Record<string, unknown>)[segment], index + 1);
+        };
+        return walk(current, 0);
     };
     let best: OnboardingMethod | undefined;
     let size = -1;
     let tie = false;
     for (const method of methods) {
-        const required = method.fields.filter(
-            (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
-        );
-        if (!required.every((field) => at(field.path) !== undefined)) continue;
+        const required = requiredFields(method);
+        if (required.length === 0 || !required.every((field) => has(value, field.path))) continue;
         const count = required.length;
         if (count > size) {
             best = method;
@@ -104,7 +117,8 @@ function checkMethodField(
     for (const key of Object.keys(field)) {
         if (!allowed.includes(key)) errors.push(`${at}.${key}: unknown field for ${kind}`);
     }
-    if (!METHOD_PATH.test(String(field.path))) errors.push(`${at}.path: a dotted path inside the section`);
+    if (!METHOD_PATH.test(String(field.path)) || !safeMethodPath(String(field.path)))
+        errors.push(`${at}.path: a dotted path inside the section, without a prototype key`);
     if (!oneLine(field.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
     optionalLine(field.why, `${at}.why`, WHY_MAX, errors);
     if (company && (typeof field.value !== "string" || !oneLine(field.value, 64))) {
@@ -182,13 +196,19 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
         }
         const method = value as Record<string, unknown>;
         for (const key of Object.keys(method)) {
-            if (!["id", "label", "who", "fields"].includes(key)) errors.push(`${at}.${key}: unknown field`);
+            if (!["id", "label", "who", "fields", "requires"].includes(key)) errors.push(`${at}.${key}: unknown field`);
         }
         if (typeof method.id !== "string" || !METHOD_ID.test(method.id)) errors.push(`${at}.id: a lower-case id`);
         else if (ids.has(method.id)) errors.push(`${at}.id: ${JSON.stringify(method.id)} is used twice`);
         else ids.add(method.id);
         if (!oneLine(method.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
         optionalLine(method.who, `${at}.who`, LABEL_MAX, errors);
+        if (
+            method.requires !== undefined &&
+            (!METHOD_PATH.test(String(method.requires)) || !safeMethodPath(String(method.requires)))
+        ) {
+            errors.push(`${at}.requires: a relative dotted path without a prototype key`);
+        }
         if (!Array.isArray(method.fields) || method.fields.length === 0 || method.fields.length > 64) {
             errors.push(`${at}.fields: a list of one to 64 fields`);
             continue;
@@ -202,9 +222,12 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
             id: String(method.id ?? ""),
             label: String(method.label ?? ""),
             ...(typeof method.who === "string" ? { who: method.who } : {}),
+            ...(typeof method.requires === "string" ? { requires: method.requires } : {}),
             fields,
         };
-        const paths = methodPaths(complete as OnboardingMethod);
+        if (requiredFields(complete as OnboardingMethod).length === 0)
+            errors.push(`${at}.fields: at least one field is required`);
+        const paths = requiredPaths(complete as OnboardingMethod);
         const other = shapes.get(paths);
         if (other !== undefined)
             errors.push(`${at}.fields: the same required paths as ${other}; the method could not be inferred`);
@@ -284,7 +307,7 @@ function checkMethodChoice(
                     ...(typeof method.who === "string" ? { who: method.who } : {}),
                     fields,
                 };
-                const same = known?.find((one) => methodPaths(one) === methodPaths(complete));
+                const same = known?.find((one) => requiredPaths(one) === requiredPaths(complete));
                 if (same !== undefined) {
                     if (same.id !== complete.id) {
                         errors.push(
@@ -297,8 +320,8 @@ function checkMethodChoice(
                     continue;
                 }
                 if (known !== undefined) {
-                    const shared = [...methodFieldPaths(complete)].filter((path) =>
-                        known.some((one) => methodFieldPaths(one).has(path)),
+                    const shared = [...new Set(complete.fields.map((field) => field.path))].filter((path) =>
+                        known.some((one) => new Set(one.fields.map((field) => field.path)).has(path)),
                     );
                     if (shared.length > 0) {
                         errors.push(
@@ -306,7 +329,7 @@ function checkMethodChoice(
                         );
                     }
                 }
-                if (add.some((one) => methodPaths(one) === methodPaths(complete)))
+                if (add.some((one) => requiredPaths(one) === requiredPaths(complete)))
                     errors.push(`${methodAt}.fields: the same required paths as another company method`);
                 add.push(complete);
             }
@@ -317,7 +340,7 @@ function checkMethodChoice(
         for (const method of add) {
             if (
                 ids.has(method.id) &&
-                !known.some((one) => one.id === method.id && methodPaths(one) === methodPaths(method))
+                !known.some((one) => one.id === method.id && requiredPaths(one) === requiredPaths(method))
             )
                 errors.push(`${at}.add: ${JSON.stringify(method.id)} is already a plugin method`);
         }
@@ -332,7 +355,7 @@ function checkMethodChoice(
             errors.push(`${at}.default: ${JSON.stringify(choice.default)} cannot also be hidden`);
         const paths = new Map<string, string>();
         for (const method of [...known, ...add]) {
-            const set = methodPaths(method);
+            const set = requiredPaths(method);
             const other = paths.get(set);
             if (other !== undefined && other !== method.id)
                 errors.push(`${at}: ${JSON.stringify(method.id)} has the same required paths as ${other}`);
