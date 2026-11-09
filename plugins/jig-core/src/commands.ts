@@ -20,7 +20,7 @@ import { doctorContext } from "./doctor-checks.ts";
 import { doctorReportFile, writeDoctorReport } from "./doctor-json.ts";
 import { countQuickIssues } from "./doctor-secrets.ts";
 import { renamedInRules } from "./kit/action-names.ts";
-import { formatDoctor, runDoctor } from "./doctor.ts";
+import { doctorMarkers, formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
 import { shorten } from "./secret-status.ts";
 
@@ -76,7 +76,7 @@ async function doctorLines(state: JigState, args: readonly string[]): Promise<st
     if (unknown.length > 0) return ["Usage: /jig doctor [--json] [--network] [--quiet]"];
     const flags = new Set(args);
     const report = await runDoctor(doctorContext(state), { network: flags.has("--network") });
-    const lines = formatDoctor(report, { quiet: flags.has("--quiet") });
+    const lines = formatDoctor(report, { quiet: flags.has("--quiet"), markers: doctorMarkers(state.env) });
     if (!flags.has("--json")) return lines;
     const file = doctorReportFile(stateDir(state.env));
     try {

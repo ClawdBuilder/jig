@@ -71,6 +71,9 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const required = minimumVersion(pkg.node) ?? "22.19.0";
     const pi = (options.piVersion ?? piVersion)();
     const jig = options.jigVersion === null ? undefined : (options.jigVersion ?? pkg.version);
+    const fromEnv = context.env.PI_CODING_AGENT_DIR !== undefined && context.env.PI_CODING_AGENT_DIR.trim() !== "";
+    const folder = shorten(context.agentDir, home);
+    const folderWhy = fromEnv ? "from PI_CODING_AGENT_DIR" : "the default folder";
     const wsl =
         platform === "linux" && (context.env.WSL_DISTRO_NAME !== undefined || context.env.WSL_INTEROP !== undefined);
     const system = platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : wsl ? "Linux (WSL)" : "Linux";
@@ -125,7 +128,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                     title: "Jig",
                     detail:
                         context.jigListedButMissing === undefined
-                            ? "not installed in Pi yet, so Pi does not load Jig's plugins."
+                            ? `not installed in ${folder} (${folderWhy}), so Pi does not load Jig's plugins.\nIf your Pi runs with PI_CODING_AGENT_DIR, run jig doctor with the same variable.`
                             : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
                     fix: `Install it: pi install ${npmInstall(pkg.name)}`,
                 }
@@ -197,7 +200,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
             group: "machine",
             level: "ok",
             title: "Pi's folder",
-            detail: shorten(context.agentDir, home),
+            detail: `${folder}, ${fromEnv ? "from PI_CODING_AGENT_DIR" : "the default"}`,
         });
     }
     return lines;

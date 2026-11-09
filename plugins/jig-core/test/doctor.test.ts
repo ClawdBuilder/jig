@@ -7,8 +7,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { defaultConfig, emptyAdditions } from "../src/config.ts";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "../src/config.ts";
-import { formatDoctor, runDoctor } from "../src/doctor.ts";
-import type { DoctorContext, DoctorOptions } from "../src/doctor.ts";
+import { doctorMarkers, formatDoctor, runDoctor } from "../src/doctor.ts";
+import type { DoctorContext, DoctorLine, DoctorOptions, DoctorReport } from "../src/doctor.ts";
 import { countQuickIssues, findOnPath } from "../src/doctor-secrets.ts";
 
 let home: string;
@@ -665,4 +665,143 @@ test("coloured doctor output wraps the plain text and colours only the label", (
     ).join("\n");
     assert.match(lines, /\u001b\[33mwarn\u001b\[0m T — abcdefghij/);
     assert.doesNotMatch(lines, /warn T — j /);
+});
+
+describe("the human marks", () => {
+    function report(): DoctorReport {
+        const lines: DoctorLine[] = [
+            { id: "a", group: "machine", level: "ok", title: "System", detail: "fine" },
+            { id: "b", group: "machine", level: "warn", title: "Pi", detail: "old" },
+            { id: "c", group: "machine", level: "fail", title: "Jig", detail: "missing" },
+            { id: "d", group: "machine", level: "skip", title: "Project", detail: "untrusted" },
+        ];
+        return {
+            lines,
+            counts: { ok: 1, warn: 1, fail: 1, skip: 1 },
+            meta: { jig: null, pi: null, node: "24", platform: "linux", network: false },
+        };
+    }
+
+    test("markers replace the level words when the terminal can show them", () => {
+        const shown = formatDoctor(report(), { markers: true }).join("\n");
+        assert.match(shown, /^ {2}✓ System/m);
+        assert.match(shown, /^ {2}! Pi/m);
+        assert.match(shown, /^ {2}✗ Jig/m);
+        assert.match(shown, /^ {2}– Project/m);
+        assert.match(shown, /Jig doctor · 1 ok · 1 warning · 1 failure · 1 skipped/);
+    });
+
+    test("the words come back for NO_COLOR, TERM=dumb or a non-UTF-8 locale", () => {
+        assert.equal(doctorMarkers({}), false);
+        assert.equal(doctorMarkers({ LANG: "en_US.UTF-8" }), true);
+        assert.equal(doctorMarkers({ LANG: "en_US.UTF-8", NO_COLOR: "1" }), false);
+        assert.equal(doctorMarkers({ LANG: "en_US.UTF-8", TERM: "dumb" }), false);
+        assert.equal(doctorMarkers({ LANG: "C" }), false);
+        const plain = formatDoctor(report(), { markers: false }).join("\n");
+        assert.match(plain, /^ {2}ok System/m);
+    });
+
+    test("equal references collapse into one counted row; a fail keeps its own row", () => {
+        const lines: DoctorLine[] = [
+            {
+                id: "1",
+                group: "secrets",
+                level: "skip",
+                title: "Ops services orders-api environments staging job auth token",
+                detail: "Your Ops services orders-api environments staging job auth token is in a command; Jig does not read it to check it.",
+            },
+            {
+                id: "2",
+                group: "secrets",
+                level: "skip",
+                title: "Ops services billing-api environments qa job auth token",
+                detail: "Your Ops services billing-api environments qa job auth token is in a command; Jig does not read it to check it.",
+            },
+            {
+                id: "3",
+                group: "secrets",
+                level: "fail",
+                title: "Jira token",
+                detail: "Your Jira token is missing.",
+                fix: "Add it.",
+            },
+        ];
+        const report2: DoctorReport = { lines, counts: { ok: 0, warn: 0, fail: 1, skip: 2 }, meta: report().meta };
+        const shown = formatDoctor(report2, { markers: true }).join("\n");
+        assert.match(shown, /– Ops services — 2 references come from a command, not read:/);
+        assert.match(shown, /orders-api environments staging job/);
+        assert.match(shown, /✗ Jira token/);
+    });
+
+    test("the machine line names the folder source and the fallback", async () => {
+        const withEnv = await runDoctor(
+            context({
+                overrides: { env: { PATH: "", PI_CODING_AGENT_DIR: agentDir }, standalone: true, jigInPi: false },
+            }),
+            options(),
+        );
+        const line = withEnv.lines.find((entry) => entry.id === "machine.agent");
+        assert.match(line?.detail ?? "", /from PI_CODING_AGENT_DIR/);
+        assert.doesNotMatch(line?.detail ?? "", /If your Pi runs/);
+        const jigLine = withEnv.lines.find((entry) => entry.id === "machine.jig");
+        assert.match(jigLine?.detail ?? "", /not installed in .*from PI_CODING_AGENT_DIR/);
+        assert.match(jigLine?.detail ?? "", /If your Pi runs with PI_CODING_AGENT_DIR/);
+        const byDefault = await runDoctor(context({ overrides: { standalone: true, jigInPi: false } }), options());
+        assert.match(byDefault.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /the default/);
+        assert.match(byDefault.lines.find((entry) => entry.id === "machine.jig")?.detail ?? "", /the default folder/);
+    });
+
+    test("repeated references with path axes collapse to a grid", () => {
+        const ops = ["orders-api", "billing-api", "payments-api", "catalog-api", "users-api"].flatMap(
+            (service, index) =>
+                ["staging", "qa"].map((environment, envIndex) => ({
+                    id: `ops-${index}-${envIndex}`,
+                    group: "secrets" as const,
+                    level: "skip" as const,
+                    title: `Ops services ${service} environments ${environment} job auth token`,
+                    detail: `Your Ops services ${service} environments ${environment} job auth token is in a command; Jig does not read it to check it.`,
+                    refPath: `ops.services.${service}.environments.${environment}.job.auth.token`,
+                })),
+        );
+        const opsReport: DoctorReport = {
+            lines: ops,
+            counts: { ok: 0, warn: 0, fail: 0, skip: 10 },
+            meta: report().meta,
+        };
+        const opsShown = formatDoctor(opsReport, { markers: true }).join("\n");
+        assert.match(
+            opsShown,
+            /– Ops job tokens — 10 references come from a command, not read: 5 services \(orders-api,/,
+        );
+        assert.match(opsShown, /billing-api, payments-api, …\) × staging, qa/);
+
+        const mongo = ["staging", "qa"].flatMap((environment) =>
+            ["app", "reports"].flatMap((connection) =>
+                ["user", "password"].map((field) => ({
+                    id: `${environment}-${connection}-${field}`,
+                    group: "secrets" as const,
+                    level: "ok" as const,
+                    title: `Mongo connections ${environment} ${connection} ${field}`,
+                    detail: `Found in pass.`,
+                    refPath: `mongo.connections.${environment}.${connection}.${field}`,
+                })),
+            ),
+        );
+        const mongoReport: DoctorReport = {
+            lines: mongo,
+            counts: { ok: 8, warn: 0, fail: 0, skip: 0 },
+            meta: report().meta,
+        };
+        const mongoShown = formatDoctor(mongoReport, { markers: true }).join("\n");
+        assert.match(mongoShown, /✓ Mongo connections — 8 references found in pass: staging, qa × app, reports/);
+        assert.match(mongoShown, /\(user and/);
+    });
+
+    test("a skipped GitHub accounts row has no fix line", async () => {
+        const result = await runDoctor(context(), options());
+        const line = result.lines.find((entry) => entry.id === "logins.gh-accounts");
+        assert.equal(line?.level, "skip");
+        assert.equal(line?.fix, undefined);
+        assert.doesNotMatch(text(result), /fix:.*git.accounts/);
+    });
 });

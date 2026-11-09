@@ -69,7 +69,17 @@ afterEach(() => {
 });
 
 function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
-    const merged: NodeJS.ProcessEnv = { ...process.env, HOME: home, PI_CODING_AGENT_DIR: agent, ...extra };
+    // Human doctor output is pinned: words by default, never the machine's locale or NO_COLOR.
+    const merged: NodeJS.ProcessEnv = {
+        ...process.env,
+        HOME: home,
+        PI_CODING_AGENT_DIR: agent,
+        LANG: "C",
+        LC_ALL: "C",
+        NO_COLOR: "1",
+        TERM: "dumb",
+        ...extra,
+    };
     for (const [key, value] of Object.entries(merged)) if (value === undefined) delete merged[key];
     return merged;
 }
@@ -236,6 +246,16 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /plugins\/jig-core\/index\.ts/);
     });
 
+    test("the same failure prints its marker in a UTF-8 colour terminal", { timeout: 60_000 }, async () => {
+        settingsFiltered(["!plugins/jig-core/index.ts"]);
+        const result = await run(["doctor", "--quiet"], {
+            env: { LANG: "C.UTF-8", LC_ALL: undefined, NO_COLOR: undefined, TERM: "xterm-256color" },
+        });
+        assert.equal(result.code, 1, result.stdout);
+        assert.match(result.stdout, /✗ Jig's core is filtered out/);
+        assert.doesNotMatch(result.stdout, /fail Jig's core is filtered out/);
+    });
+
     test("a filter that leaves out the sandbox is a failure, not an all-clear", { timeout: 60_000 }, async () => {
         settingsFiltered(["!plugins/jig-sandbox/index.ts"]);
         const result = await run(["doctor", "--quiet"]);
@@ -398,7 +418,8 @@ describe("jig doctor", () => {
         const result = await run(["doctor", "--quiet"]);
         assert.equal(result.code, 1);
         assert.match(result.stdout, /fail Jig/);
-        assert.match(result.stdout, /not installed in Pi yet/);
+        assert.match(result.stdout, /not installed in/);
+        assert.match(result.stdout, /If your Pi runs with PI_CODING_AGENT_DIR/);
         assert.match(result.stdout, /Install it: pi install npm:@clawdbuilder\/jig/);
     });
 
