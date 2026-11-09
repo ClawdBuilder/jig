@@ -12,7 +12,8 @@ import { checkOnboarding } from "../src/onboarding.ts";
 import { buildSetupPlan } from "../src/setup-plan.ts";
 import { runSetup, setupStateFrom } from "../src/setup.ts";
 import type { SetupUi } from "../src/setup.ts";
-import { createState } from "../src/state.ts";
+import { createState, loadPersonalConfig } from "../src/state.ts";
+import { buildApi } from "../src/api.ts";
 import { fakePi } from "./support/fake-pi.ts";
 import type { SetupState } from "../src/setup-plan.ts";
 
@@ -307,4 +308,41 @@ describe("fallbacks, wildcards and unknown sections", () => {
         assert.equal(await runSetup(state, ui, "nope"), 2);
         assert.match(seen.join("\n"), /Unknown section "nope".*jira/);
     });
+});
+
+test("a company entry before the section keeps its prefill and new method in the plan", () => {
+    writeFileSync(file, JSON.stringify({ jira: { site: "https://example.atlassian.net", auth: { token: "pass:t" } } }));
+    const state = createState(fakePi().pi, { env: {} });
+    state.configPath = () => file;
+    const api = buildApi(state);
+    api.onboarding?.register({
+        items: [],
+        methods: {
+            jira: {
+                default: "transport",
+                add: [
+                    {
+                        id: "transport",
+                        label: "Company broker",
+                        fields: [{ kind: "text", path: "auth.transport", label: "Broker", value: "acme-broker" }],
+                    },
+                    {
+                        id: "own-sign-in",
+                        label: "Own sign-in",
+                        fields: [{ kind: "text", path: "auth.signIn", label: "Service", value: "acme-sso" }],
+                    },
+                ],
+            },
+        },
+    });
+    api.config.registerSection("jira", () => [], { methods });
+    loadPersonalConfig(state, file);
+    const planState = setupStateFrom(state);
+    planState.requestedSection = "jira";
+    const built = buildSetupPlan(planState);
+    assert.ok("plan" in built, JSON.stringify(built));
+    const section = built.plan.sections.find((one) => one.name === "jira");
+    assert.equal(section?.methods?.find((one) => one.id === "transport")?.fields[0]?.fixed, "acme-broker");
+    assert.equal(section?.methods?.find((one) => one.id === "own-sign-in")?.default, false);
+    assert.equal(section?.methods?.length, 3);
 });
