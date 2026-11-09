@@ -59,7 +59,7 @@ export const parameters = Type.Object({
     folder: Type.Optional(Type.String({ description: "Folder." })),
     request: Type.Optional(Type.String({ description: "Request name from list." })),
     text: Type.Optional(Type.String({ description: "list: text in name, folder or address." })),
-    environment: Type.Optional(Type.String({ description: "Collection's environment name." })),
+    environment: Type.Optional(Type.String({ description: "Collection environment." })),
     variables: Type.Optional(
         Type.Object(
             {},
@@ -77,7 +77,7 @@ export const parameters = Type.Object({
             {},
             {
                 additionalProperties: Type.String(),
-                description: "call: extra headers, max 10; sign-in is added",
+                description: "call: extra headers, max 10.",
             },
         ),
     ),

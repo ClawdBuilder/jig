@@ -146,7 +146,7 @@ test("the skill has a name and a description that say what it is for, and teache
     }
     assert.match(text, /narrow/i);
     assert.match(text, /not hidden/);
-    assert.match(text, /Never tell\s+the user something is unavailable because it is masked/);
+    assert.match(text, /never call a masked value unavailable/i);
 });
 
 // ---- the one rule about imports ------------------------------------------------------------------------------

@@ -68,7 +68,7 @@ const flag = (description: string) => Type.Optional(Type.Boolean({ description }
 const GitParams = Type.Object(
     {
         action: stringEnum(ACTION_NAMES, { description: describeActions(GIT_ACTIONS) }),
-        repo: string("Folder/absolute path; default repo. clone: owner/name."),
+        repo: string("Folder/abs path; default repo. clone: owner/name."),
         operation: Type.Optional(
             stringEnum(["create", "switch", "delete", "list", "add", "remove", "push", "pop", "drop"] as const, {
                 description: "branch: create/switch/delete; worktree: list/add/remove; stash: push/list/pop/drop.",
@@ -79,7 +79,7 @@ const GitParams = Type.Object(
         remote: string("Remote; default origin."),
         paths: strings("Repo paths: commit/restore/stash exact; diff/log filter."),
         path: string("One repo-relative file."),
-        rev: string("Revision (HEAD~2, origin/main); default HEAD."),
+        rev: string("Revision (HEAD~2, origin/main), default HEAD."),
         revs: strings("cherry_pick: commits, oldest first."),
         range: string("Range a..b."),
         against: Type.Optional(
