@@ -72,7 +72,7 @@ const PrParams = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 1000,
-                description: "Workspace folder/path, not owner/name; default Pi's repo. number/branch selects.",
+                description: "Folder/path, not owner/name; default repo.",
             }),
         ),
         number: Type.Optional(Type.Integer({ minimum: 1, description: "Pull/merge request number." })),
@@ -87,7 +87,7 @@ const PrParams = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "Base; default git.base.",
+                description: "Base; default git.base or default branch.",
             }),
         ),
         title: Type.Optional(Type.String({ minLength: 1, maxLength: 256, description: "One line." })),
@@ -95,7 +95,7 @@ const PrParams = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 60_000,
-                description: "Markdown. create: omit for template; edit: replaces.",
+                description: "Markdown; create omit template; edit replaces.",
             }),
         ),
         draft: Type.Optional(Type.Boolean({ description: "create: open it as a draft." })),
@@ -122,7 +122,7 @@ const PrParams = Type.Object(
                 description: "list: state; default open.",
             }),
         ),
-        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "list: count." })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "list: count, default 20." })),
         labels: Type.Optional(
             Type.Array(Type.String({ minLength: 1, maxLength: 100 }), {
                 maxItems: 30,

@@ -77,7 +77,7 @@ export const parameters = Type.Object({
     key: Type.Optional(Type.String({ description: "Key, e.g. PROJ-123" })),
     jql: Type.Optional(
         Type.String({
-            description: "JQL. search may omit it only with jig.json projects set.",
+            description: "JQL; search may omit only with jig.json projects.",
         }),
     ),
     page: Type.Optional(Type.String({ description: "search: page from the previous result." })),
@@ -88,9 +88,11 @@ export const parameters = Type.Object({
             description: "search/assignable: up to 50.",
         }),
     ),
-    include: Type.Optional(Type.Array(Type.String(), { description: "get/comments/search: extra fields, max 10." })),
-    full: Type.Optional(Type.Boolean({ description: "get/comments: do not cut long text." })),
-    query: Type.Optional(Type.String({ description: "user/field name part to match." })),
+    include: Type.Optional(
+        Type.Array(Type.String(), { description: "get/comments/search: extra fields by name/id, max 10." }),
+    ),
+    full: Type.Optional(Type.Boolean({ description: "get/comments: full text." })),
+    query: Type.Optional(Type.String({ description: "user/field name part." })),
     commentId: Type.Optional(Type.String({ description: "Comment id, from comments" })),
     text: Type.Optional(Type.String({ description: "Comment text, in Jira wiki markup" })),
     transition: Type.Optional(Type.String({ description: "Transition name (or id), from transitions" })),
@@ -115,11 +117,11 @@ export const parameters = Type.Object({
         Type.Object(
             {
                 by: Type.String({ description: '"me" or id/name/email.' }),
-                from: Type.Optional(Type.String({ description: "First day, YYYY-MM-DD." })),
-                to: Type.Optional(Type.String({ description: "Last day, YYYY-MM-DD." })),
+                from: Type.Optional(Type.String({ description: "First day, YYYY-MM-DD, user's clock, included." })),
+                to: Type.Optional(Type.String({ description: "Last day, YYYY-MM-DD, user's clock, included." })),
             },
             {
-                description: "search: commented on by a person, whole days.",
+                description: "search: commented, whole days, user's clock, both in.",
             },
         ),
     ),

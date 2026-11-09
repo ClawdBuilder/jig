@@ -121,7 +121,8 @@ export function backgroundTools(tasks: Tasks): AnyTool[] {
     const output = {
         name: "bg_output",
         label: "bg_output",
-        description: "Read a background bash task's output: the lines not read yet; tail, offset or filter. Capped.",
+        description:
+            "Read a background bash task's output: unread lines by default; tail 1-500, offset bytes (footer gives next), filter ignores case. Capped.",
         promptSnippet: "Read a background task's output",
         parameters: Type.Object({
             id: Type.String({ description: "The task id that bash returned" }),

@@ -26,14 +26,14 @@ export const parameters = Type.Object(
         }),
         service: Type.Optional(
             Type.String({
-                description: "Catalog service with a ci entry; not for services.",
+                description: "Catalog service with ci; not for services.",
             }),
         ),
         environment: Type.Optional(
             Type.String({
                 minLength: 1,
                 maxLength: 40,
-                description: "Environment whose CI job the call acts on. Default: the service's ci.",
+                description: "Environment whose CI job; default service ci.",
             }),
         ),
         number: Type.Optional(Type.Integer({ minimum: 1, description: "A pull request number (GitHub Actions)." })),
@@ -41,7 +41,7 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "Branch. Default: the default branch.",
+                description: "Branch; default default branch.",
             }),
         ),
         sha: Type.Optional(
@@ -58,7 +58,7 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 30,
-                description: "runs: queued, in_progress, completed, success, failure, ...",
+                description: "runs: queued/in_progress/completed/success/failure.",
             }),
         ),
         limit: Type.Optional(
@@ -100,14 +100,14 @@ export const parameters = Type.Object(
                 {},
                 {
                     additionalProperties: Type.String(),
-                    description: `trigger: variables, name to value (max ${MAX_PARAMETERS}).`,
+                    description: `trigger: variables/build parameters, name to value (max ${MAX_PARAMETERS}).`,
                 },
             ),
         ),
         finish: Type.Optional(
             stringEnum(FINISHES, {
                 description:
-                    "watch: finish at required (default), check, run; GitHub: approved, merged, comment, tag, release.",
+                    "watch: finish at required (default), check (check), run (run_id); GitHub: approved/merged/comment/tag/release.",
             }),
         ),
         check: Type.Optional(

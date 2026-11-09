@@ -68,18 +68,18 @@ const flag = (description: string) => Type.Optional(Type.Boolean({ description }
 const GitParams = Type.Object(
     {
         action: stringEnum(ACTION_NAMES, { description: describeActions(GIT_ACTIONS) }),
-        repo: string("Workspace folder/path; default Pi's repo. clone: owner/name."),
+        repo: string("Folder/absolute path; default repo. clone: owner/name."),
         operation: Type.Optional(
             stringEnum(["create", "switch", "delete", "list", "add", "remove", "push", "pop", "drop"] as const, {
                 description: "branch: create/switch/delete; worktree: list/add/remove; stash: push/list/pop/drop.",
             }),
         ),
-        branch: string("branch: name; clone: checkout; merge: source; push: default current."),
+        branch: string("branch: name; clone: checkout; merge: source; push: current."),
         base: string("Base; default git.base or default branch."),
         remote: string("Remote; default origin."),
-        paths: strings("Repo-relative paths: commit/restore/stash exact, diff/log filter."),
+        paths: strings("Repo paths: commit/restore/stash exact; diff/log filter."),
         path: string("One repo-relative file."),
-        rev: string("Revision, default HEAD."),
+        rev: string("Revision (HEAD~2, origin/main); default HEAD."),
         revs: strings("cherry_pick: commits, oldest first."),
         range: string("Range a..b."),
         against: Type.Optional(
@@ -89,10 +89,10 @@ const GitParams = Type.Object(
         ),
         format: Type.Optional(
             stringEnum(["summary", "names", "patch", "oneline", "full"] as const, {
-                description: "diff/show: summary/names/patch; log: oneline/full.",
+                description: "diff/show: summary (default), names, patch; log: oneline (default), full.",
             }),
         ),
-        n: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "log: count." })),
+        n: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "log: count, default 20." })),
         author: string("log: author."),
         since: string("log: since."),
         until: string("log: until."),

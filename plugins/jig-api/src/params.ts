@@ -54,23 +54,23 @@ function describeActions(): string {
 }
 
 export const parameters = Type.Object({
-    action: stringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
-    collection: Type.Optional(Type.String({ description: "Collection name." })),
-    folder: Type.Optional(Type.String({ description: "Folder path, e.g. Orders/Smoke." })),
+    action: stringEnum(ACTION_NAMES, { description: `What to do: ${describeActions()}` }),
+    collection: Type.Optional(Type.String({ description: "Collection." })),
+    folder: Type.Optional(Type.String({ description: "Folder." })),
     request: Type.Optional(Type.String({ description: "Request name from list." })),
     text: Type.Optional(Type.String({ description: "list: text in name, folder or address." })),
-    environment: Type.Optional(Type.String({ description: "Environment name, e.g. Staging." })),
+    environment: Type.Optional(Type.String({ description: "Collection's environment name." })),
     variables: Type.Optional(
         Type.Object(
             {},
             {
                 additionalProperties: Type.String(),
-                description: 'Variables, e.g. {"orderId": "123"}; never secrets or host',
+                description: "Variables; never secrets or host",
             },
         ),
     ),
     method: Type.Optional(stringEnum(METHODS, { description: "call: GET/HEAD/OPTIONS read; others write." })),
-    url: Type.Optional(Type.String({ description: "call: full address on an environment host." })),
+    url: Type.Optional(Type.String({ description: "call: full URL on an environment host." })),
     body: Type.Optional(Type.Unknown({ description: "call: JSON body, max 256 KiB; not GET." })),
     headers: Type.Optional(
         Type.Object(
