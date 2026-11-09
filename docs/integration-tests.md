@@ -45,6 +45,11 @@ not depend on the machine. [`hermetic.test.ts`](../plugins/jig-core/test/hermeti
   `JIG_IT_KUBE_CONTEXT` is set.
 - **A test that needs more sets it itself** and puts it back, as `tempState()` does. It never reads the real home. `gh` has no login of
   its own in a test, so the GitHub suites need `GH_TOKEN` (on your machine, `GH_TOKEN=$(gh auth token)`).
+- **Two suites can run side by side.** Each file gets its own process and temporary world, and no port or session folder is fixed:
+  a sandbox test that starts a server takes a free port first. The one exception is an integration service, which names its
+  address through its `JIG_IT_*` variable.
+- **A CLI or doctor test that cannot find a package is a stale install, not a collision.** If it fails with
+  `Cannot find package 'amaro'`, run `npm ci`; the tests share no module cache or home.
 
 ## How a suite is written
 
