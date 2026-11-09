@@ -36,6 +36,8 @@ function table(markdown: string, heading: string): string[][] {
 
 describe("the README", () => {
     const readme = read("README.md");
+    const rolesPage = read("docs/roles.md");
+    const configurationPage = read("docs/configuration.md");
 
     test("opens with the status, and stays short enough to read in one sitting", () => {
         // Longer than most plugins' READMEs, on purpose: the roles and their fields are what a reader came to learn, and the owner asked
@@ -72,7 +74,7 @@ describe("the README", () => {
 
     test("the roles table lists the roles that ship, with whether each may write, its tools and its git actions", () => {
         const { roles } = loadRoles([shippedFolder()]);
-        const rows = table(readme, "The roles that ship");
+        const rows = table(rolesPage, "The roles that ship");
         assert.deepEqual(
             rows.map((row) => row[0]),
             ["scout", "reviewer", "worker"],
@@ -89,7 +91,7 @@ describe("the README", () => {
     });
 
     test("the field table lists every field an agent file has, in the parser's order", () => {
-        const rows = table(readme, "Every field");
+        const rows = table(rolesPage, "Every field");
         assert.deepEqual(
             rows.slice(0, ROLE_FIELDS.length).map((row) => row[0]),
             [...ROLE_FIELDS],
@@ -100,7 +102,7 @@ describe("the README", () => {
     });
 
     /** The Markdown code blocks of the README, each without the indent of the list item it may sit in. */
-    const blocks = [...readme.matchAll(/^ *```markdown\n([\s\S]*?)^ *```/gm)].map((match) =>
+    const blocks = [...rolesPage.matchAll(/^ *```markdown\n([\s\S]*?)^ *```/gm)].map((match) =>
         (match[1] ?? "").replace(/^ {2}/gm, ""),
     );
 
@@ -138,7 +140,7 @@ describe("the README", () => {
     });
 
     test("the configuration table lists the fields of the section, in order, with the defaults the code has", () => {
-        const rows = table(readme, "Configure");
+        const rows = table(configurationPage, "Configure");
         const names: string[] = [];
         for (const row of rows) {
             for (const cell of (row[0] ?? "").split(", ")) {

@@ -26,111 +26,6 @@ says exactly which variables go.
 
 *Where the line runs. Your own `!` commands and Jig's tools stay outside; only what the agent runs in `bash` is inside, and the hidden paths start from the list `jig-core` protects from Pi's file tools.*
 
-## Inside and outside
-
-| Inside the sandbox | Outside it |
-|---|---|
-| The agent's `bash`, and the background tasks it starts | Your own `!` commands: they are yours |
-| Subagents' `bash`, when it is the registered tool | Jig's tools (`git`, `jira`, `mongo`, ...), through `jig-core`'s rules |
-| Commands other plugins run with `sandbox.run`, such as `jig-workflow`'s tests | Pi itself and its file tools, which `jig-core`'s protected paths cover |
-
-## The four kinds of path
-
-| Kind | Examples | Inside the sandbox |
-|---|---|---|
-| **Hidden** | `~/.ssh`, `~/.aws`, `~/.kube`, `~/.config/gh`, Pi's `auth.json`, a project's `.env`, `~/.gradle/gradle.properties`, the Windows drive | Cannot be read. Never asks |
-| **Locked** | `~/.bashrc`, `~/.gitconfig`, `PATH` folders, git hooks, Pi's agent folder and the packages it loads, a project's `.pi/extensions`, `~/.gradle/init.d` | Readable, never written. Never asks |
-| **Ask first** | Toolchain managers (`~/.sdkman`, `~/.nvm`, `~/.pyenv`, ...) | Writable once you say yes |
-| **Writable** | The project, your home folder, `/tmp`, build caches (`~/.gradle/caches`, `~/.m2/repository`, `~/.npm`) | As outside |
-
-Hidden and locked are exact lists that start from `jig-core`'s protected paths, so the
-file tools and `bash` cannot disagree, and everything not on them is writable. Every
-entry and its reason is in [The rules](docs/rules.md).
-
-## A child agent that may not write
-
-A child started by [jig-agents](../jig-agents/README.md) from a role with `writes: false`, such as `scout` or `reviewer`, may
-have `bash`, and its `bash` is read-only.
-
-The parent puts the role's policy in the child's environment (`JIG_ROLE_POLICY`), and the sandbox in the child **locks**
-its home folder and its working folder: a command reads them and writes neither. `/tmp` stays writable, for the scratch
-files a tool needs.
-- **The build caches are locked too.** They live in the home folder, and the runtime lays a read-only mount over a
-  folder after the writable ones. A read-only agent cannot poison a cache that a later build outside the sandbox uses.
-- **Only more is locked.** `lock` in your section adds to it, and nothing in `jig.json` takes it away; `share` is ignored.
-  A policy that is there and cannot be read locks the same folders.
-- **A refusal says why** (`this agent's role may not write`) and nobody is asked to widen it.
-
-## When a command hits a rule
-
-- **It says why, and what to do instead.** For example: `cannot read ~/.ssh: it holds
-  credentials. Use the git tool for fetch, pull and push; it signs in outside the
-  sandbox.`
-- **A folder that is not locked asks you.** If a command was stopped from writing
-  `~/.sdkman`, Pi asks: *allow writes there for this session, always, or no?* Say yes
-  and the agent runs it again. With no screen to ask on, the answer is no.
-- **A failure that only looks like a block is named.** A program that cannot make a Unix socket (JVM attach, Python,
-  Node, `socat`, Docker's CLI) fails with its own words and no refusal. When a command fails and its output holds one
-  of a few such messages, one line says it looks like the sandbox and offers `outside: true`.
-- **Git config keeps working.** `git config` and `git remote add` work in the sandbox.
-  If a command adds a setting that would run a program outside it (`core.fsmonitor`,
-  an alias starting with `!`, a filter), `jig-sandbox` takes that setting out, keeps the
-  rest of the change, and says what it removed.
-- **One command can run outside, if you approve it.** When the sandbox blocks
-  something the agent needs and no Jig tool does it (Docker, a script that needs
-  your credentials, a build that must reach a private repository), the agent asks
-  to run that one command outside. You see the exact command, its folder and its
-  reason, and answer: once, this exact command for the session, or no.
-- **Your own `!` commands are never sandboxed,** and `/sandbox off` turns it off for
-  this session if you need to. The footer then says so.
-
-[When a command hits a rule](docs/when-blocked.md) has every message and its way through.
-
-## Network
-
-| Mode | What it does |
-|---|---|
-| `open` (default) | The machine's own network, as outside: every host, plain DNS, `localhost` |
-| `off` | No network at all, `localhost` included |
-| `filtered` | Through the sandbox's proxy: every public host, except metadata and local addresses, and `deny` |
-| `ask` | `filtered`, and a new host waits while Pi asks you: once, this session, always or no |
-
-In `filtered` and `ask` each command has a network of its own, and a refused connection
-says why: `cannot reach 169.254.169.254:80: it is a cloud metadata address, and those are
-always blocked.`
-- **Names resolve in the proxy,** so HTTP clients work and `dig` and `getent` do not.
-- **A port on this machine** (a local database) is reachable when you list it in
-  `network.localhost`. A `jig-core` tunnel on `localhost` is not, unless listed.
-- **A [background task's server](docs/background.md#reaching-a-tasks-server)** is carried into
-  later commands, and to you, at the same port.
-- **macOS:** `filtered` and `ask` are tested on Linux and WSL2, and mean `off` on a Mac;
-  `/sandbox` says so.
-
-**`network.allow` and `network.deny` apply in `filtered` and `ask` only.** They are read by the
-proxy those two modes route commands through. `allow` matters in `ask` alone (`filtered`
-already lets every public host through), and **`deny` does nothing in `open`**, the default,
-or in `off`: a host you list there is not refused. `/sandbox` and `/sandbox doctor` warn when
-`deny` is set in `open`; set `network.mode` to `filtered` or `ask` to apply it.
-
-In every mode, `ssh` has no keys (they are hidden), so git over SSH goes through Jig's
-`git` tool, and Unix sockets are closed, the Docker socket included: through Docker a
-command could run anything as root. For Docker, the agent asks to
-[run that command outside](docs/when-blocked.md#running-one-command-outside).
-
-**When to choose which.** In `open` a command can reach anything on this machine's
-`localhost`, including a tunnel `jig-core` opened for a database. If your tunnels lead to
-production, `filtered` or `ask` keeps bash away from them. `ask` is for when you want to see
-every new host; `network.allow` lists the ones that never need asking.
-
-## Fails closed, says so
-
-- When the sandbox cannot start, `bash` is refused with the steps to fix it. It never
-  runs unsandboxed by accident.
-- `/sandbox doctor` checks each requirement and runs real commands inside to prove it:
-  a write, a hidden read, a DNS lookup, a `localhost` connection.
-- Without `jig-sandbox`, `bash` runs as Pi runs it, and `/jig` says plainly that
-  credentials are then hidden only from Pi's file tools.
-
 ## Commands
 
 | Command | What it does |
@@ -140,6 +35,10 @@ every new host; `network.allow` lists the ones that never need asking.
 | `/sandbox allowed` | Folders and hosts you allowed; `add <folder\|host>` and `forget <folder\|host>` |
 | `/sandbox off`, `/sandbox on` | Turns it off or on for this session only |
 | `/ps` | The [background tasks](docs/background.md): their output as it grows, and stopping one |
+
+## Rules
+
+The full list is in [The rules](docs/rules.md): hidden, locked, ask-first and writable paths, and why.
 
 ## Configure
 
@@ -205,12 +104,7 @@ test/               rules as data, and the escape and keep-working tests in the 
 - [Code map](docs/code-map.md): every file, who calls it, and a `bash` command followed through them
 - [The rules](docs/rules.md): every hidden, locked and ask-first path, and why
 - [When a command hits a rule](docs/when-blocked.md): the messages, the prompts, the ways through
+- [Network](docs/network.md): the modes, the proxy and the host rules
 - [Background tasks](docs/background.md): the tools, limits, waking, `/ps`
 - [Design](docs/design.md): how it is built, what the earlier sandbox taught us, the tests
 
-## Session folders in 0.4.2
-
-A session's folder under the system temp folder is removed only when its owner process is gone, never because it is old;
-a folder with no owner record is left alone. A session whose folder disappeared recreates it on the next start, and a
-root that is not private and owned by this user is refused. Toolchain folders such as `~/.nvm` stay ask-first: bash asks,
-and a no-screen run is refused.

@@ -275,7 +275,7 @@ a small change in `jig-core`, and can come later. The backstop is `maxMinutes` +
 ## Roles and agent files
 
 An agent file is front matter and a prompt. Its fields, who may change each, and an annotated example are in the
-[README](../README.md#roles-and-agent-files); this page has how they are read and what is done with them.
+[README](roles.md); this page has how they are read and what is done with them.
 
 | Field | How it is read |
 |---|---|
@@ -559,3 +559,29 @@ the role as it is then.
 What these do not show is on the [Not verified](not-verified.md) page.
 
 Back to the [jig-agents overview](../README.md).
+
+## Approvals in a child
+
+A child asks through `jig-core` as its parent would. Pi's RPC mode turns the child's dialog into a request on
+its output. The parent shows it on your screen, one at a time and behind `jig-core`'s own questions, under a
+line the plugin writes (`Subagent "scout-2" (scout) asks.`), and sends your answer back by the request's random
+id on a pipe only the parent holds. The agent cannot answer for itself: the pipe is not a file or a web endpoint.
+
+- **Every failure is a no.** No screen, no answer within `approvalWaitMinutes`, more than `maxAsks` questions,
+  or a request the plugin cannot read: the question is cancelled, and the child's `jig-core` counts that as a
+  decline.
+- **The floor is decided in the child.** A yes only settles what the child's own rules left as "ask".
+  "Allow for this session" is shown as "Allow for this subagent" and ends with that child. A role set to
+  `approvals: "deny"` never forwards.
+
+[Design](#approvals-in-a-child) has the path, the checks and the attacks considered.
+
+## Later
+
+- **Structured verdicts** for `jig-workflow`: a reviewer answers PASS or FAIL in a form the review stage can read.
+- **`ask_parent`:** a tool for a child to put a question to the parent agent.
+- **A live view of a child:** a panel in Pi, and a terminal pane when tmux is there, that follows a child's transcript.
+- **A `memory` field:** a role that keeps notes between runs. Left out until the narrowing has been used, because
+  it needs a rule for what a child may remember and who may write it.
+- **Measuring delegation:** whether the agent delegates when it should, and what a child costs against doing it itself.
+- **A worktree made through `jig-git`,** and a **cost cap for the whole session**.

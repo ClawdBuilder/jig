@@ -413,3 +413,10 @@ Each step ships with its escape and keep-working tests.
 
 Since 0.4.2, session folders are removed only when their owner is gone; a missing folder is recreated on restart, and an
 unsafe root is refused. Toolchain folders remain ask-first.
+
+## Session folders
+
+A session's folder under the system temp folder is removed only when its owner process is gone, never because it is old;
+a folder with no owner record is left alone. A session whose folder disappeared recreates it on the next start, and a
+root that is not private and owned by this user is refused. Toolchain folders such as `~/.nvm` stay ask-first: bash asks,
+and a no-screen run is refused.

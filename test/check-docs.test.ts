@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 // @ts-expect-error the checker is plain JavaScript
-import { checkDocs } from "../scripts/check-docs.mjs";
+import { baselineFailures, checkDocs, warningCounts } from "../scripts/check-docs.mjs";
 
 function tree(files: Record<string, string>): string {
     const root = mkdtempSync(path.join(tmpdir(), "jig-docs-"));
@@ -85,5 +85,21 @@ test("a fenced block left open is a failure, not a silent skip of the rest", () 
     assert.ok(
         failures.some((one: string) => one.includes("unclosed code block")),
         failures.join("\n"),
+    );
+});
+
+test("the warning baseline counts each kind and fails only when a count goes up", () => {
+    const warnings = [
+        "docs/a.md:1 paragraph is long",
+        "docs/b.md:2 table cell is long",
+        "docs/b.md:3 table cell is long",
+        "plugins/x/README.md: 130 lines (about 120)",
+        "some other warning",
+    ];
+    assert.deepEqual(warningCounts(warnings), { paragraph: 1, cell: 2, readme: 1, other: 1 });
+    assert.deepEqual(baselineFailures(warnings, { paragraph: 1, cell: 2, readme: 1, other: 1 }), []);
+    assert.match(
+        baselineFailures(warnings, { paragraph: 0, cell: 2, readme: 1, other: 1 }).join("\n"),
+        /2 cell warnings, baseline 2|1 paragraph warning, baseline 0/,
     );
 });
