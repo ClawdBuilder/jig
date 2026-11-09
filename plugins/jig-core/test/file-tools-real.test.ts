@@ -2,11 +2,12 @@
 // project files can, nothing is planted, and the next start still has its sandbox.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { PI_PROJECT_PATHS } from "../src/kit/pi-project-paths.ts";
+import { removeTree } from "../../../test/support/remove-tree.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const PI_CLI = path.join(ROOT, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
@@ -25,7 +26,18 @@ beforeEach(() => {
     writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
     writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [ROOT], extensions: [FIXTURE] }));
 });
-afterEach(() => rmSync(home, { recursive: true, force: true }));
+afterEach(() => removeTree(home));
+
+/** Stops Pi and waits for it to close, so teardown never removes a folder the child is still writing. */
+function stop(child: ReturnType<typeof spawn>): Promise<void> {
+    if (child.exitCode !== null) return Promise.resolve();
+    return new Promise((resolve) => {
+        const done = (): void => resolve();
+        child.once("close", done);
+        child.kill();
+        setTimeout(done, 5_000);
+    });
+}
 
 /** Runs stock Pi with the given tool calls and returns each tool result, in order. */
 function runTools(tools: unknown[]): Promise<string[]> {
@@ -42,10 +54,12 @@ function runTools(tools: unknown[]): Promise<string[]> {
     let buffer = "";
     const results: string[] = [];
     return new Promise((resolve, reject) => {
+        let settled = false;
         const finish = (): void => {
+            if (settled) return;
+            settled = true;
             clearTimeout(timer);
-            child.kill();
-            resolve(results);
+            void stop(child).then(() => resolve(results));
         };
         child.stdout.on("data", (chunk: Buffer) => {
             buffer += chunk.toString();
@@ -96,10 +110,13 @@ function commandsAfterStart(): Promise<string[]> {
                         data?: { commands?: Array<{ name?: string }> };
                     };
                     if (record.type === "response" && record.command === "get_commands") {
-                        resolve(
-                            (record.data?.commands ?? []).flatMap((one) => (one.name === undefined ? [] : [one.name])),
+                        void stop(child).then(() =>
+                            resolve(
+                                (record.data?.commands ?? []).flatMap((one) =>
+                                    one.name === undefined ? [] : [one.name],
+                                ),
+                            ),
                         );
-                        child.kill();
                         return;
                     }
                 } catch {

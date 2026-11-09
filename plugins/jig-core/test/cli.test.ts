@@ -150,7 +150,10 @@ const settingsWith = (...packages: string[]): void =>
 function piCommands(cwd: string = work): Promise<string[]> {
     const cli = path.join(piHostDir, "dist/bundle/cli.js");
     return new Promise((resolve, reject) => {
-        const child = spawnTest(process.execPath, [cli, "--mode", "rpc"], { cwd, env: env() });
+        const child = spawnTest(process.execPath, [cli, "--mode", "rpc", "--no-skills", "--no-context-files"], {
+            cwd,
+            env: env(),
+        });
         let buffer = "";
         let stderr = "";
         let settled = false;
@@ -287,49 +290,62 @@ describe("jig doctor", () => {
         assert.doesNotMatch(result.stdout, /warn .*jira/i);
     });
 
-    test("stock Pi and the doctor agree on the effective entry: plain, project, delta, untrusted, and two refs", {
-        timeout: 60_000,
-    }, async () => {
-        const settings = (file: string, packages: unknown[]): void => writeFileSync(file, JSON.stringify({ packages }));
-        const agentSettings = path.join(agent, "settings.json");
-        const projectSettings = path.join(work, ".pi", "settings.json");
+    const settingsFor = (file: string, packages: unknown[]): void => writeFileSync(file, JSON.stringify({ packages }));
+    const settingsAgent = (packages: unknown[]): void => settingsFor(path.join(agent, "settings.json"), packages);
+    const settingsProject = (packages: unknown[]): void =>
+        settingsFor(path.join(work, ".pi", "settings.json"), packages);
+    const prepareProject = (): void => {
         mkdirSync(path.join(work, ".pi"), { recursive: true });
+    };
+    const projectFile = (): string => path.join(work, ".pi", "settings.json");
 
-        // Plain: the user entry, no project entry.
-        settings(agentSettings, [ROOT]);
-        let commands = await piCommands();
-        assert.equal(commands.includes("sandbox"), true);
-        let doctor = await run(["doctor"]);
-        assert.equal(doctor.code, 0, doctor.stdout);
-
-        // Project replace: Pi keeps the project entry, so the sandbox command goes, and the doctor must fail.
-        settings(agentSettings, [ROOT]);
-        settings(projectSettings, [{ source: ROOT, extensions: ["!plugins/jig-sandbox/index.ts"] }]);
-        writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
-        commands = await piCommands();
-        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
-        doctor = await run(["doctor"]);
-        assert.equal(doctor.code, 1, doctor.stdout);
-        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
-        assert.match(doctor.stdout, new RegExp(`In ${projectSettings.replaceAll(".", "\\.")}`));
-
-        // Project delta: autoload:false subtracts the same file, and the doctor must fail the same way.
-        settings(projectSettings, [{ source: ROOT, autoload: false, extensions: ["-plugins/jig-sandbox/index.ts"] }]);
-        commands = await piCommands();
-        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
-        doctor = await run(["doctor"]);
-        assert.equal(doctor.code, 1, doctor.stdout);
-        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
-
-        // Untrusted project: Pi ignores the project entry, so the same filter must not change the result.
-        rmSync(path.join(agent, "trust.json"), { force: true });
-        commands = await piCommands();
+    test("stock Pi and the doctor agree on the plain entry", { timeout: 60_000 }, async () => {
+        settingsAgent([ROOT]);
+        const commands = await piCommands();
         assert.equal(commands.includes("sandbox"), true, `Pi loaded: ${commands.join(", ")}`);
-        doctor = await run(["doctor"]);
+        const doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 0, doctor.stdout);
+    });
+
+    test("stock Pi and the doctor agree on a project replace", { timeout: 60_000 }, async () => {
+        prepareProject();
+        settingsAgent([ROOT]);
+        settingsProject([{ source: ROOT, extensions: ["!plugins/jig-sandbox/index.ts"] }]);
+        writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
+        const commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
+        const doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 1, doctor.stdout);
+        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
+        assert.match(doctor.stdout, new RegExp(`In ${projectFile().replaceAll(".", "\\.")}`));
+    });
+
+    test("stock Pi and the doctor agree on a project delta", { timeout: 60_000 }, async () => {
+        prepareProject();
+        settingsAgent([ROOT]);
+        settingsProject([{ source: ROOT, autoload: false, extensions: ["-plugins/jig-sandbox/index.ts"] }]);
+        writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
+        const commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
+        const doctor = await run(["doctor"]);
+        assert.equal(doctor.code, 1, doctor.stdout);
+        assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
+    });
+
+    test("stock Pi and the doctor agree on an untrusted project", { timeout: 60_000 }, async () => {
+        prepareProject();
+        settingsAgent([ROOT]);
+        settingsProject([{ source: ROOT, extensions: ["!plugins/jig-sandbox/index.ts"] }]);
+        rmSync(path.join(agent, "trust.json"), { force: true });
+        const commands = await piCommands();
+        assert.equal(commands.includes("sandbox"), true, `Pi loaded: ${commands.join(", ")}`);
+        const doctor = await run(["doctor"]);
         assert.equal(doctor.code, 0, doctor.stdout);
         assert.doesNotMatch(doctor.stdout, /sandbox is filtered out/);
+    });
 
-        // Same git identity, different refs: the project ref wins, and the doctor names the project file.
+    test("stock Pi and the doctor agree on two refs of the same identity", { timeout: 60_000 }, async () => {
+        prepareProject();
         const userGit = path.join(agent, "git", "github.com", "example", "jig");
         const projectGit = path.join(work, ".pi", "git", "github.com", "example", "jig");
         mkdirSync(path.dirname(userGit), { recursive: true });
@@ -338,17 +354,15 @@ describe("jig doctor", () => {
         rmSync(projectGit, { force: true });
         symlinkSync(ROOT, userGit);
         symlinkSync(ROOT, projectGit);
-        settings(agentSettings, ["git:github.com/example/jig@v1"]);
-        settings(projectSettings, [
-            { source: "git:github.com/example/jig@v2", extensions: ["!plugins/jig-sandbox/index.ts"] },
-        ]);
+        settingsAgent(["git:github.com/example/jig@v1"]);
+        settingsProject([{ source: "git:github.com/example/jig@v2", extensions: ["!plugins/jig-sandbox/index.ts"] }]);
         writeFileSync(path.join(agent, "trust.json"), JSON.stringify({ [work]: true }));
-        commands = await piCommands();
+        const commands = await piCommands();
         assert.equal(commands.includes("sandbox"), false, `Pi loaded: ${commands.join(", ")}`);
-        doctor = await run(["doctor"]);
+        const doctor = await run(["doctor"]);
         assert.equal(doctor.code, 1, doctor.stdout);
         assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
-        assert.match(doctor.stdout, new RegExp(`In ${projectSettings.replaceAll(".", "\\.")}`));
+        assert.match(doctor.stdout, new RegExp(`In ${projectFile().replaceAll(".", "\\.")}`));
     });
 
     test("an invalid jig.json is a FAIL line in a report, not a crash", { timeout: 60_000 }, async () => {
