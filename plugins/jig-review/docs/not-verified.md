@@ -1,4 +1,4 @@
-# Not verified yet
+# Not verified
 
 What is built and tested here, and what needs a real browser and a real device. Back to the
 [jig-review overview](../README.md).
@@ -7,6 +7,16 @@ The plugin has been used in real sessions with a real browser and approved pushe
 recorded, so this file still lists what a real device must prove. It is tested against a fake `jig-core`, a fake Pi, real
 git repositories, a real local server and a **fake authenticator**: test keys made with `node:crypto` (P-256 and RSA) sign the challenges as a
 device would. That proves the server's checks. It does not prove a real browser and device agree with them.
+
+## Verified in CI
+
+| Area | How |
+|---|---|
+| The test suite and fakes | `test/`; real browser approval paths are not recorded. |
+
+## Not verified
+
+Each item says what to try.
 
 - **Windows Hello through WSL's localhost forwarding.** The page is opened in a Windows browser, and reaches the server in WSL as `localhost:<port>`
   - *What to try:* Run `/code-review`, open the link, press Approve, register a passkey, and approve. Edge and Chrome should offer Windows Hello. Check that the fingerprint Pi shows is the one the settings page lists

@@ -122,3 +122,16 @@ first call that needs them, reused by the calls that follow, closed after five i
 
 One line, with the call named. A test environment gets the server's own words for an error the tool has no wording for, cut to 160
 characters. **Production never does:** a server's text can echo a value.
+
+## Facts the code relies on (read 2026-10-30)
+
+- The driver's relaxed Extended JSON writes a 64-bit integer as a number, which loses digits beyond 2^53, so `bson.ts` writes `$numberLong` itself.
+  - *Source:* tried against the driver's `Long`.
+- Converting an object that has `$regex` to BSON drops its other operators, so `driver.ts` converts typed values one at a time.
+  - *Source:* tried against `EJSON.deserialize`.
+- A listener that was just closed can go on accepting connections for a few milliseconds, so a free port is handed out only once it refuses.
+  - *Source:* seen on WSL2.
+- `servername` and `checkServerIdentity` are accepted as client options.
+  - *Source:* the driver's `connection_string.js`.
+- `retryWrites: false` is what stops the driver from sending a write again.
+  - *Source:* the driver's documentation of retryable writes.
