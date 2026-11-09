@@ -89,10 +89,9 @@ The notes on single actions are in [Actions](docs/actions.md).
 - **The forge comes from the repository.** `github.com` is GitHub, `gitlab.com` is GitLab, an ssh alias is the host `ssh -G` says it is,
   and `git.forges` names a host that ssh cannot explain, such as a self-hosted GitLab. An origin on any other host is refused with
   the line that fixes it ([GitLab](docs/gitlab.md#which-forge-a-repository-is-on)).
-  `gh` and `glab` own the sign-in; Jig never signs in.
-- **Writes are previewed, and never repeated blindly.** A write that asks shows
-  what it will do, and refuses if anything changed since. A lost reply is read
-  once and never sent again (see [Writes](docs/writes.md)).
+  `gh` and `glab` own the sign-in; Jig never signs in ([Credential sources](../../plugins/jig-core/docs/sign-in-and-transports.md)).
+- **Writes are previewed and never resent.** [Approvals](../../docs/approvals.md#preview-digest-and-a-lost-reply)
+  has the rule; [Writes](docs/writes.md) has the one read after a lost reply.
 - **`fetch` asks about a host your configuration does not name.** It is a read, but it offers
   your SSH key to the remote's host, and a remote's address is something the agent can change
   in `bash`. So a fetch from a host your configuration does not call a forge — `github.com`,

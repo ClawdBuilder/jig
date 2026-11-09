@@ -31,17 +31,13 @@ The rules for writes in full, and what each preview shows. Back to the
   [Configuration](configuration.md)).
 - **Links stay in your projects.** With `projects` set, `link` and `unlink`
   refuse a link with an issue outside them.
-- **Changed since the preview.** The plan is made again right before the write
-  is sent. If what would be sent now differs from the preview you approved (a
-  status moved, a comment was edited, a field changed), the write is refused:
-  "changed since the preview; run it again to see the new preview".
-- **No resend on timeout.** A write whose result is unknown (a timeout, a
-  dropped connection, a 5xx answer) is never sent again. The issue is read once,
-  and the tool says whether the write happened:
+- **Changed since the preview, and a lost reply.** The rule is in
+  [Approvals](../../../docs/approvals.md#preview-digest-and-a-lost-reply). After a
+  lost write Jira reads the issue once; the read depends on the write:
 
   | Write | The one read afterwards |
   |---|---|
-  | `comment` | The newest 50 comments: one by the same person with the same text (see below) |
+  | `comment` | The newest 50 comments: one by the same person with the same text |
   | `edit_comment` | The comment: it holds the new text, the old text, or neither |
   | `delete_comment` | The comment: it is gone, or still there |
   | `create` | A search for the summary, created in the last 10 minutes |
@@ -50,8 +46,8 @@ The rules for writes in full, and what each preview shows. Back to the
   | `link` | The issue's links: one of this type to the other issue, reading the same way |
   | `unlink` | The issue's links: the link's id is gone, or still there |
 
-  A write that Jira turned down (a 4xx answer) changed nothing and is reported
-  as that. A write that never left (no sign-in) is reported as that.
+  A write that Jira turned down (a 4xx answer) changed nothing. A write that
+  never left (no sign-in) is reported as that.
 - **Who is signed in.** `comment` asks `GET /myself` next to reading the issue,
   for three things: the preview says who posts, the fingerprint holds the
   account (a changed sign-in voids the approval), and the read after a lost

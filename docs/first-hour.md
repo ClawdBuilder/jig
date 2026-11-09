@@ -13,7 +13,7 @@ You need:
 - **Pi 1.4 or later** (tested with 1.5; see [Compatibility](compatibility.md)) and **Node.js 22.19 or later**;
 - **git**, and a scratch repository to practise in (a new folder with `git init` and one commit is enough);
 - **`gh`** (GitHub's command line) signed in with `gh auth login`, only if you want to try a pull request later.
-  Jig never signs in for you: the tool that owns a login does it.
+  Jig never signs in; [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md) has who owns each login.
 
 On Linux or WSL2 the sandbox also needs three programs. Install them now, so step 5 passes:
 
@@ -50,10 +50,8 @@ Three more commands help you look around:
 
 ## 3. Set up one plugin: `jig-git`
 
-Jig reads one file, `~/.pi/agent/jig.json`. In a terminal, `jig setup` asks one question at a time, starting with
-which company setup you use, shows each change in plain words, and writes only those fields after you confirm. It
-keeps a backup beside the file and says to start Pi again, or run `/reload` in it. The command writes the file; the
-agent never can, because Pi's file tools refuse that folder. (/jig setup inside Pi just says to run this command.)
+Jig reads one file, `~/.pi/agent/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
+covers the questions, confirmation and backup.
 
 In this scratch repository no company plugin is loaded, so there is nothing for setup to fill in. Create the
 `git` section yourself, as an example of the file's shape. It names the branch new work starts from and the

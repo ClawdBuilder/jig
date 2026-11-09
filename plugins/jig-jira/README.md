@@ -75,11 +75,8 @@ The rules, limits and failures are in [Commented by](docs/commented.md).
 - **Your own comments only.** `edit_comment` and `delete_comment` refuse a comment
   by someone else, or when Jira cannot say who you are and `me` is not set.
   `othersComments` allows other people's.
-- **Changed since the preview.** If what would be sent differs from what you
-  approved, the write is refused: "changed since the preview; run it again to
-  see the new preview".
-- **No resend on timeout.** A write whose result is unknown is never sent
-  again. The issue is read once, and the tool says whether the write happened.
+- **Writes are previewed and never resent.** [Approvals](../../docs/approvals.md#preview-digest-and-a-lost-reply)
+  has the digest and lost-reply rule; Jira reads the issue once.
 - **JQL notes.** A `search` whose JQL says `labels != x` (or `not in`, or the same
   with `component` or `fixVersion`) gets a note: such a clause also drops issues
   that have none. It is a note, never a refusal.

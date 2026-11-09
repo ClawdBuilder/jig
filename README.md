@@ -11,8 +11,8 @@ Jig is a set of plugins for the [Pi](https://pi.dev) coding agent. It decides wh
 matters, keeps credentials out of its reach, and records what happened. The agent keeps its tools; Jig puts one policy,
 one approval path and one record around all of them.
 
-Jig never signs in. A credential stays where you already keep it, and a production result is masked before the model
-sees it. The same rules govern `bash`, pull requests, Jira, databases, APIs, CI and child agents.
+Jig never signs in; the tool that owns a login does ([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
+A production result is masked before the model sees it. The same rules govern `bash`, pull requests, Jira, databases, APIs, CI and child agents.
 
 ## How it works
 
@@ -47,16 +47,9 @@ npm install -g @clawdbuilder/jig
 The first command adds Jig's plugins to Pi. The second installs the `jig` command for terminal commands such as
 `jig setup` and `jig doctor`. Neither command starts a session.
 
-Start Pi and run `/jig`. It shows the rules in force, the plugins loaded and anything that needs fixing. For the setup
-questions in a terminal, run `jig setup`; [Setup and doctor](docs/setup-and-doctor.md) explains both commands, `--json`,
-`--yes` and the exit codes (0 success, 1 failure, 2 usage).
+Start Pi and run `/jig`, or run `jig setup` in a terminal; [Setup and doctor](docs/setup-and-doctor.md) covers both.
 
-`jig update` moves both copies of Jig to one published version, so an update is one command rather than two;
-[Setup and doctor](docs/setup-and-doctor.md#updating) covers what it checks and changes. Pin a release with
-`@<version>` after either package name when you want a fixed version.
-
-The launcher is optional: [The launcher](docs/launcher.md) covers tmux, reattaching, the WSL interop repair and the
-flags. Jig works without it; `pi install` is all it needs.
+The launcher is optional; [The launcher](docs/launcher.md) covers it. Jig works without it.
 
 ### First session
 

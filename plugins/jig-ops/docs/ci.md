@@ -52,14 +52,8 @@ names the adapter and says what it does have.
   there are masked and writes are denied before anyone is asked.
 - **A write is previewed.** The preview names the service, what is sent and the
   state it is sent against (the failed jobs of the pipeline, the newest pipeline of
-  the `ref`, the next build number). It carries a fingerprint.
-  - When the call runs, the plan is worked out again.
-  - If the fingerprint differs the call is refused: "changed since the preview ...
-    Nothing was sent".
-- **A write is sent once.** A timeout, a connection that broke, a gateway error or
-  a cancelled call may mean that the CI system did what it was asked. The tool
-  then reads once and tells the model what it found. It never sends the request
-  again, so one `rerun` cannot become two.
+  the `ref`, the next build number). The [digest and lost-reply rule](../../../docs/approvals.md#preview-digest-and-a-lost-reply)
+  applies; the tool reads once after a lost reply, so one `rerun` cannot become two.
 - **Concourse is started with one POST and no body.** The job's builds are read first: the newest is the baseline, and a
   read that fails means nothing is sent. A paused job or pipeline is refused before anyone is asked.
 - **Jenkins needs a crumb for a POST.** It is requested from

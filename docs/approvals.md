@@ -39,6 +39,20 @@ that approves. It holds because the endpoint checks something the agent cannot
 supply, not because its address is secret.
 ([Passkeys](../plugins/jig-review/docs/passkeys.md) has the checks.)
 
+## Preview, digest and a lost reply
+
+A write that asks shows what it will do before the call runs. The tool keeps a
+digest (or fingerprint) of that preview and makes it again just before sending:
+if anything changed, it **refuses** with “changed since the preview; run it
+again to see the new preview” and sends nothing. A write is sent once. If its
+reply is lost, the tool reads once to see whether it happened, says what it
+found, and never sends it again; if it cannot tell, it says the outcome is
+unknown and asks you to check. Each tool’s own “action | what the preview
+shows” table, and the one rule only it adds, are in its writes page:
+[api](../plugins/jig-api/docs/writes.md), [jira](../plugins/jig-jira/docs/writes.md),
+[git](../plugins/jig-git/docs/writes.md), [mongo](../plugins/jig-mongo/docs/writes.md),
+[ops deploy](../plugins/jig-ops/docs/deploy.md) and [ops ci](../plugins/jig-ops/docs/ci.md).
+
 ## Three kinds of question
 
 | Kind | When | What you see | How you answer |

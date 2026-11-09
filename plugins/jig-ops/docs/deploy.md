@@ -89,8 +89,8 @@ A rollback shows `Going back to: revision 4, which ran 1.4.2` instead.
 exact argument list, the versions running now and where the command goes.
 - **It changes** when the version asked for, the versions running, the command or the service changes.
 - **It does not change** when pods are scaled or become unready, because those are not a change of version.
-- **When the user approves,** the run plans again with the cluster as it is, and **refuses with "changed since the preview"** if
-  the fingerprint differs, naming the versions that run now. Nothing is run.
+- **The digest rule** is in [Approvals](../../../docs/approvals.md#preview-digest-and-a-lost-reply): the run plans again with the
+  cluster as it is, and a changed fingerprint refuses and names the versions that run now.
 
 **What the preview does not show** is the contents of the chart or the values
 file: they are files on disk. A chart edited after the preview is not noticed.
@@ -170,6 +170,7 @@ one-line pull request that a person can make by hand meanwhile.
 
 ## No resend
 
+The general rule is in [Approvals](../../../docs/approvals.md#preview-digest-and-a-lost-reply).
 A command is started **once**. It ends in one of three ways:
 
 - **It exited with `0`:** the deploy is `started`. The model is told that nothing waits for the rollout.

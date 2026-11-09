@@ -40,9 +40,6 @@ first time it uses it, where that helps.
 | **Unknown tool** | A tool that nothing classifies. It counts as a write outside the machine, so it asks. |
 | **Protected path** | A path Pi's file tools refuse: *secret* (no read, no write) or *guarded* (read only). |
 
-- **The floor** is: production writes denied, production results masked,
-  credentials hidden from `bash`, no approval without a screen, and protected
-  paths refused. See [Permissions](permissions.md#the-floor-what-configuration-cannot-change).
 - **Classification** takes its answer from the tool's declaration, then a rule
   in your configuration, Pi's built-in defaults, the tool's hints, and last
   the default. See
@@ -55,17 +52,25 @@ first time it uses it, where that helps.
 
 | Term | Meaning |
 |---|---|
-| **Approval** | Your answer to an "ask", given inside the waiting call. |
+| **Approval** | Your answer to an **ask**, given inside the waiting call. |
+| **Ask** | The rule's decision that a person must answer before the call runs. |
+| **Approve / decline** | The person's yes or no to an ask. |
+| **Refused** | A tool said no; report what it names and stop. |
+| **Held** | A workflow call waits for named evidence. |
 | **Preview** | What a tool shows before a write that asks. A call is refused if the write changed since. |
 | **Review screen** | A scrollable approval screen for long previews. `y` approves, `o` opens the browser. |
 
 See [Approvals](approvals.md). When a write changed since you looked, the call
-is refused and you see the new preview.
+is **refused** and you see the new preview; a workflow call that waits for
+evidence is **held**. **Credential** sources are in
+[Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md).
 
 ## Secrets and data
 
 | Term | Meaning |
 |---|---|
+| **Secret reference** | What the user writes to name where a value is kept: a store, variable, file or command. |
+| **Credential** | The value a login gives; `jig-core` reads it and attaches it, and a plugin never sees it. |
 | **Masking** | Replacing customer personal data in production results with tokens that stay the same all day. |
 | **Redaction** | Removing every known secret value from output. |
 | **Secret reference** | The name of a stored secret, such as `pass:work/jira-token`. The model never sees the value. |

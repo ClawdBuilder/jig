@@ -218,7 +218,7 @@ shows only the warnings and failures, with the summary. The full report is still
 ## What it never does
 
 - It never asks for, shows, stores or records a secret value.
-- It never signs in, unlocks a store, or refreshes a login.
+- It never signs in, unlocks a store, or refreshes a login ([Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md)).
 - The doctor never changes `jig.json`; setup writes only the fields you confirm, and never rules, protected
   paths or the list of stores you turned off.
 - It never installs a program or runs a fix.

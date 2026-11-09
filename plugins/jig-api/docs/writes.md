@@ -40,52 +40,19 @@ Made when it is sent: $uuid
 A call that does not ask, such as a read by default, has no preview. A rule that makes a read ask gives it a preview, and the guard
 below applies to it too.
 
-## Changed since the preview
+## Changed since the preview, and a lost reply
 
-The plan is made again right before the call is sent. If what would be sent now differs from the preview you approved, nothing is sent:
-
-```text
-api run "Create order": changed since the preview; run it again to see the new preview. Nothing was sent.
-```
-
-What is compared:
+The rule is in [Approvals](../../../docs/approvals.md#preview-digest-and-a-lost-reply).
+API compares:
 - the collection, the request, its environment and `jig-core`'s name for it;
 - how it signs in (the kind, and the name of a service or a transport);
 - the secrets it uses with their references (never their values);
 - the method, the full address, the headers, the body and the digest of every file in it.
 
-A generated value is a mark, so it is the same at the preview and at the send. Header names are compared in lower case and in any
-order. The timeout is left out, because it changes how long the tool waits and not what it sends.
+A generated value is a mark, so it is the same at the preview and at the send.
+Header names are compared in lower case and in any order. The timeout is left
+out, because it changes how long the tool waits and not what it sends.
 
-A change is caught whether the call, the configuration or a file changed while you read.
-
-The message names the call without its query, its body or its headers.
-
-## When no reply comes
-
-A request is sent once. These are the three ways it can end without an answer:
-
-- **Nothing was sent:** the request never left. That is no connection, a name that does not resolve, a certificate that is not
-  accepted, an address that is not allowed, a sign-in that failed, or a call cancelled before it was sent.
-  - Example: `api run "Create order": could not connect (ECONNREFUSED). Nothing was sent.`
-- **The outcome is unknown:** a write got no answer. It timed out, the connection dropped or was reset, a transport failed, or the
-  call was cancelled in flight.
-  - Example: `api run "Create order": no answer (timed out after 30 s). The outcome is unknown: the server may have carried it
-    out. It was not sent again. Check with a GET before trying again.`
-- **It can be sent again:** a read got no answer.
-  - Example: `api run "Get order": no answer (timed out after 30 s). A GET changes nothing, so it can be sent again.`
-
-Certificate checks are never turned off, and a certificate that is not accepted is a failure before the request is written. A reply
-that comes after the timeout is too late, and does not cause a second send.
-
-**An error status is an answer.** A `500` to a write is a result, with a note that the write may still have been carried out (see
-[Results](results.md)). It is not sent again either. In a folder, a request that gets no answer stops the folder.
-
-The only request the tool ever repeats is one that the API turned down with a `401` for a kept OAuth token. It is sent once more, with a
-new token (see [Sign-in](auth.md#oauth-without-a-browser)).
-
-## The clock
-
-`timeoutSec` covers the requests, a token request included, and starts with the first one. Time spent waiting for a secret store to be
-unlocked, or for a sign-in service to answer, is not counted. One deadline covers the token request and the call together: a deadline
-that started again for the call would let it wait longer than `timeoutSec`.
+A read can be sent again after a lost reply; a write never is. The result says
+whether nothing was sent, whether the outcome is unknown, or that the read can
+be retried.

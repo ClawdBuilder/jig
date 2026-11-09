@@ -74,9 +74,9 @@ with no `git.forges` entry at all, whatever its name, and `gh` is never told the
 
 ## Sign-in
 
-`glab` owns it. Run `glab auth login --hostname gitlab.example.com` yourself; Jig never signs in, never reads a token and never
-writes one. `glab` keeps its sign-in in `~/.config/glab-cli`, which `jig-core` protects from the agent's file tools and the sandbox
-by default, next to `~/.config/gh`.
+`glab` owns it: run `glab auth login --hostname gitlab.example.com` yourself. Jig never signs in
+([Credential sources](../../jig-core/docs/sign-in-and-transports.md)); `glab` keeps its sign-in in
+`~/.config/glab-cli`, which `jig-core` protects from the agent's file tools and the sandbox.
 
 A call that finds `glab` not signed in says so in one line, with the command to run. `GITLAB_TOKEN` and the like are not passed to
 `glab`: jig-core gives a program a short list of variables, and a token in the environment is not on it.

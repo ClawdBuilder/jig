@@ -14,9 +14,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
   [where a page goes](docs/writing.md#where-a-page-goes). `npm run check` fails on a broken link or anchor and on more
   docs warnings than its baseline.
 - **The floor in [Permissions](docs/permissions.md) is not configurable.** Do not add settings that lower it.
-- **A plugin gets its credential through `jig-core`.** Sign-in stays with the tool that owns it (`gh`, the Postman CLI,
-  Pi's `/mcp login`, a company plugin's sign-in service); `jig-core` reads the reference and attaches it to the request,
-  so the plugin never sees the value. See [Decisions](docs/decisions.md).
+- **A plugin gets its credential through `jig-core`.** Sign-in stays with the tool that owns it; `jig-core` reads the
+  reference and attaches it, so the plugin never sees the value ([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
 - **Approvals happen inside the waiting tool call.** Never add a web endpoint that approves, except `jig-review`'s page,
   which approves only with a WebAuthn passkey signature the agent cannot make, or marks "approved in page" and waits for
   a `y` in Pi ([Approvals](docs/approvals.md)). Never add a second one, and never let that endpoint approve on a secret or
