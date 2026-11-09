@@ -17,7 +17,7 @@ short version for a person, in the order you meet the work.
   reads, and [Secrets](docs/secrets.md) says where it looks.
 - **The floor holds.** The fixed rules in [Permissions](docs/permissions.md#the-floor-what-configuration-cannot-change) are not
   settings. A change that would make one of them configurable is refused, however convenient it looks.
-- **A plugin README is the specification.** The code follows it. When either changes, the other changes in the same commit.
+- **A plugin README is the specification.** [AGENTS.md](AGENTS.md) says what that requires.
 
 ## Set up
 
@@ -39,14 +39,14 @@ and `npm run build` there first; a changed `src/` that was not built fails `chec
 
 ## The checks
 
-| Command | Covers | Needs |
-|---|---|---|
-| `npm run check` | types, Biome, exact dependency versions, allowed imports, docs shape and links | Pi installed |
-| `npm test` | about 8,000 tests in an isolated home and repository | the sandbox's programs, for its tests |
-| `npm run check:install` | a stock Pi installing a copy of this tree as `pi install git:` does | network |
-| `npm run check:web`, `npm run test:web`, `npm run check:dist` | the review page's types, tests and built copy | `npm ci` in its folder |
+| Command | Needs |
+|---|---|
+| `npm run check` | Pi installed |
+| `npm test` | the sandbox's programs, for its tests |
+| `npm run check:install` | network |
+| `npm run check:web`, `npm run test:web` and `npm run check:dist` | `npm ci` in `plugins/jig-review/web` |
 
-Every one of them passes before a commit. CI runs all of them on every push and pull request, and `ci-ok` is the job to
+Every one of them passes before a commit; CI runs all of them on every push and pull request, and `ci-ok` is the job to
 require. A test suite for a real service skips when its address is not set, so `npm test` never needs one; the integration
 suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
 

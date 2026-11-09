@@ -77,8 +77,9 @@ describeIt("jig-logs against Elasticsearch", { service: "elasticsearch", variabl
 
 ## The matrix
 
-The `checks` job runs on the current Node LTS line and the previous one. The `integration` job has two entries, and each
-moves several versions together, so the lines that users run side by side are all tried without a run for every combination.
+The `checks` job runs all three Node lines in `package.json`'s range: 22.19.0, 24 and 26. The `integration` job has
+two entries, and each moves several versions together, so the lines that users run side by side are all tried without
+a run for every combination.
 
 | | Latest line | Previous line |
 |---|---|---|
@@ -92,8 +93,7 @@ moves several versions together, so the lines that users run side by side are al
   Kubernetes 1.37.0 nodes and kubectl 1.37.2, and Pi 1.5.0. Loki, Keycloak and the rest have no older line that the plugins claim.
 - **Pi is installed at an exact version,** the latest one, because the type check and the `jig-agents` tests read its own packages.
   To move it, follow "Pi version" in [AGENTS.md](../AGENTS.md); [Compatibility](compatibility.md) has the table and the weekly canary.
-- **The `checks` job** runs both Node lines, and prints `node --version` first. Node 22.19, the lowest that `package.json` allows,
-  is not run in CI.
+- **The `checks` job** runs all three Node lines (22.19.0, 24, 26), and prints `node --version` first.
 - **Not crossed.** Node is not crossed with the services: Node differences show in the unit tests of the `checks` job, and the
   services differ from each other whatever the Node line. A failure that needs one combination is reproduced by hand.
 
