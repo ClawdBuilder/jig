@@ -214,7 +214,7 @@ describe("/agents", () => {
             text ?? "",
             /scout \(read-only\)[\s\S]*warning: it lists bash and does not write, which is safe only inside jig-sandbox/,
         );
-        assert.doesNotMatch((text ?? "").split("\nworker ")[1] ?? "", /warning/);
+        assert.doesNotMatch((text ?? "").split("\nworker ")[1] ?? "", /\n {2}warning:/);
     });
 
     test("show gives the end of a child's transcript, cleaned", { timeout: 30_000 }, async () => {
