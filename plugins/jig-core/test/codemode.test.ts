@@ -159,6 +159,18 @@ describe("the codemode classification", () => {
         });
     });
 
+    test("the plural, __lookupGetter__ and setPrototypeOf are listed too", () => {
+        for (const code of [
+            "return Object.getOwnPropertyDescriptors({});",
+            "return ({}).__lookupGetter__('x');",
+            "return Object.setPrototypeOf({}, null);",
+            "return Object.getOwnPropertyDescriptors(Object.prototype);",
+        ]) {
+            assert.equal(classifyCodemode({ code })?.environment, "external", code);
+            assert.deepEqual(ask(code), { decision: "ask", reason: "the script can call outside models: ask" });
+        }
+    });
+
     test("missing or unparsable input falls back to asking", () => {
         assert.equal(classifyCodemode({}), undefined);
         assert.deepEqual(ask(), { decision: "ask", reason: "the script could not be read: ask" });

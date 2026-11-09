@@ -5,7 +5,7 @@ import type { CallClass, GateCall, GateVerdict } from "./contract.ts";
 
 /** Whole words that mean a script can leave the tool sandbox or reach a model on the session's credentials. */
 const RISKY =
-    /\b(?:models|globalThis|eval|Function|constructor|Reflect|import|this|self|global|getOwnPropertyDescriptor|getPrototypeOf|defineProperty|prototype|__proto__)\b/;
+    /\b(?:models|globalThis|eval|Function|constructor|Reflect|import|this|self|global|getOwnPropertyDescriptor|getOwnPropertyDescriptors|__lookupGetter__|setPrototypeOf|getPrototypeOf|defineProperty|prototype|__proto__)\b/;
 
 /** A computed member access whose index is not a number or one plain string literal; it can build a name at run time. */
 const COMPUTED =
