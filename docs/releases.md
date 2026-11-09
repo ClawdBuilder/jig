@@ -10,21 +10,22 @@ newer than the version they had, once, after an update, so every entry is writte
    `## [Unreleased]` into `## [0.3.0] - <today>`, gathering repeated `### Added`, `### Changed` and `### Fixed` headings.
 3. **Read the diff.** The script writes files and nothing else; the entries are what a user will read.
 4. **Commit** it as `Release 0.3.0`.
-5. **Publish the package.** The tag's workflow requires a successful `ci-ok` check on the tagged commit, packs the tag and
-   compares its tarball integrity with npm (a version already there is skipped only on an exact match, and a mismatch fails),
-   publishes `@clawdbuilder/jig` with provenance, confirms the registry has the version, and only then writes the GitHub
-   release. So `npm install -g @clawdbuilder/jig@<version>` and `pi install npm:@clawdbuilder/jig@<version>` get the same
-   release. The repository secret `NPM_TOKEN` supplies npm authentication; Trusted Publishing is a later step.
-6. **Tag and push both.** The tag is the release:
+5. **Tag and push both, after `ci-ok` on main's merge commit.** The [Release workflow](../.github/workflows/release.yml)
+   checks the `ci-ok` check-run on the tagged commit and refuses a tag pushed before it exists; wait for the merge
+   commit's check to finish. The tag is the release:
 
 ```bash
 git tag -a v0.3.0 -m "Jig 0.3.0"
 git push origin main v0.3.0
 ```
 
-The tag starts the [Release workflow](../.github/workflows/release.yml). It fails when the tag does not name the version in
-`package.json`, or when the changelog has no section for it, and otherwise writes the GitHub release with that section as
-its notes. A second run edits the release rather than failing.
+6. **Watch the workflow publish it.** The tag starts the Release workflow, which packs the tag and compares its tarball
+   integrity with npm (a version already there is skipped only on an exact match, and a mismatch fails), publishes
+   `@clawdbuilder/jig` with provenance, confirms the registry has the version, and only then writes the GitHub release.
+   So `npm install -g @clawdbuilder/jig@<version>` and `pi install npm:@clawdbuilder/jig@<version>` get the same release.
+   The repository secret `NPM_TOKEN` supplies npm authentication; Trusted Publishing is a later step. The workflow fails
+   when the tag does not name the version in `package.json`, or when the changelog has no section for it; otherwise it
+   writes the GitHub release with that section as its notes. A second run edits the release rather than failing.
 
 A tag that was pushed before that workflow existed has a tag but no page. Run the workflow by hand (**Actions**, **Release**,
 **Run workflow**) and name the tag: it writes the page from that tag's own changelog, and does not mark it the latest release.
