@@ -142,6 +142,7 @@ describe("classification", () => {
 const PLUGIN = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const README = fs.readFileSync(path.join(PLUGIN, "README.md"), "utf8");
 const PARAMETERS = fs.readFileSync(path.join(PLUGIN, "docs", "parameters.md"), "utf8");
+const CONFIGURATION = fs.readFileSync(path.join(PLUGIN, "docs", "configuration.md"), "utf8");
 
 /** The rows of the table whose header starts with `header`, in the README or in `document`, as lists of cells. */
 function table(header: string, document: string = README): string[][] {
@@ -200,7 +201,7 @@ describe("the README", () => {
     });
 
     test("its configuration table names exactly the fields the section accepts", () => {
-        const documented = table("| Field | Default |").map((row) => names(row[0])[0]);
+        const documented = table("| Field | Default |", CONFIGURATION).map((row) => names(row[0])[0]);
         assert.deepEqual(documented, [
             "site",
             "auth",
@@ -227,7 +228,9 @@ describe("the README", () => {
     });
 
     test("its auth forms are the section's five modes, and the defaults it states are the code's", () => {
-        const forms = table("| `auth` | Signs in with |").map((row) => (row[0] ?? "").replace(/^`|`$/g, ""));
+        const forms = table("| `auth` | Signs in with |", CONFIGURATION).map((row) =>
+            (row[0] ?? "").replace(/^`|`$/g, ""),
+        );
         assert.equal(forms.length, 6, "two rows are the OAuth Cloud and Data Center forms");
         for (const form of forms) {
             const filled = form
@@ -240,7 +243,7 @@ describe("the README", () => {
             const auth = JSON.parse(filled) as unknown;
             assert.deepEqual(validateJira({ site: "https://example.test", auth }), [], form);
         }
-        const defaults = table("| Field | Default |").find((row) => row[0] === "`updateFields`")?.[1];
+        const defaults = table("| Field | Default |", CONFIGURATION).find((row) => row[0] === "`updateFields`")?.[1];
         assert.deepEqual(names(defaults), ["summary", "description", "labels", "priority", "assignee"]);
     });
 
