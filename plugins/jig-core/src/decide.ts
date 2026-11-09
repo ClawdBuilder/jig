@@ -134,7 +134,6 @@ export function decide(input: DecideInput): Verdict {
 
     // 1. The table. A call nothing classified is a write outside the machine: it asks.
     let decision: Decision = call.unknown ? "ask" : TABLE[call.environmentKind][call.effect];
-    let reason: string | undefined;
     let source: DecisionSource = call.unknown ? "unknown" : "table";
     let approval = call.approval;
     let decidingRule: Rule | undefined;
@@ -196,7 +195,6 @@ export function decide(input: DecideInput): Verdict {
         decision = input.hasUI ? "ask" : "deny";
         source = "floor";
         floor = "protected-path";
-        if (!input.hasUI) reason = input.protectedAsk;
     }
     // Last: a protected path is refused whatever else was decided, and its reason is the one the model reads.
     if (input.protectedRefusal !== undefined) {

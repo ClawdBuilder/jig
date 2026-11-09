@@ -524,11 +524,9 @@ function timelineList(timeline, sessionId = timeline.session) {
 
 function laneChart(lanes) {
     if (!lanes || !lanes.turns || lanes.turns.length === 0) return null;
-    const total = lanes.turns.reduce((sum, lane) => sum + (lane.end - lane.start) * 1000, 0);
     const rows = lanes.turns.map((lane) => {
         const span = Math.max(1, (lane.end - lane.start) * 1000);
         const model = (lane.modelMs / span) * 100;
-        const tool = (lane.toolMs / span) * 100;
         const you = (lane.waitedMs / span) * 100;
         return h("div", { class: "lane", title: `model ${ms(lane.modelMs)}, tools ${ms(lane.toolMs)}, waiting ${ms(lane.waitedMs)}` },
             h("span", { class: "at mono" }, clock(lane.start)),

@@ -108,10 +108,6 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
         );
         const plannedGuarded =
             plannedTarget === undefined ? [] : await guardedPathsFor(plannedTarget, "branch", signal);
-        const plannedSnapshots =
-            plannedTarget === undefined
-                ? new Map<string, string>()
-                : await guardedSnapshots(repo.root, plannedTarget.from, plannedTarget.targets[0]?.sha ?? "", signal);
         const targetSha = plannedTarget?.targets[0]?.sha;
         return {
             preview: {

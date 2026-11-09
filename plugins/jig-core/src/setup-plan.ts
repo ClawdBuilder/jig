@@ -152,7 +152,7 @@ function addOnboardingFields(
             state.union.get(item.section) ?? [],
         );
         if (getPath(merged, item.path) !== undefined) continue;
-        candidate.section.fields.push(onboardingField(entry, state, item, index));
+        candidate.section.fields.push(onboardingField(entry, state, item));
     }
 }
 
@@ -163,7 +163,6 @@ function onboardingField(
     entry: OnboardingEntry,
     state: SetupState,
     item: Exclude<OnboardingItem, { kind: "info" } | { kind: "login" }>,
-    index: number,
 ): SetupField {
     const reason = item.why ?? "The company's list says its tools need it.";
     if (item.kind === "reference") {
