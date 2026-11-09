@@ -6,7 +6,7 @@ import { lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from "n
 import { homedir } from "node:os";
 import path from "node:path";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
-import type { OnboardingEntry, OnboardingItem } from "./contract.ts";
+import type { OnboardingEntry, OnboardingItem, OnboardingMethod } from "./contract.ts";
 import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
 import { layered } from "./section-defaults.ts";
@@ -41,6 +41,8 @@ export interface SetupState {
     commands: Readonly<Record<string, readonly string[]>>;
     /** The active company's onboarding list, when it wrote one: its order, labels and hints. */
     onboarding?: OnboardingEntry;
+    /** The sign-in methods plugins registered for their sections. */
+    onboardingMethods?: ReadonlyMap<string, readonly OnboardingMethod[]>;
 }
 
 export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick";
@@ -59,6 +61,8 @@ export interface SetupField {
     reference?: SetupReferenceChoice;
     /** For a pick: the plain answers, from the company's list. */
     choices?: readonly string[];
+    /** A fixed answer, from a company-only method; setup shows it and does not ask. */
+    fixed?: string;
 }
 
 export interface SetupReferenceChoice {
@@ -77,10 +81,21 @@ export interface SetupReferenceChoice {
     addHints?: Readonly<Partial<Record<SecretBackend, string>>>;
 }
 
+export interface SetupMethod {
+    id: string;
+    label: string;
+    who?: string;
+    /** The company's choice, or the first visible method. */
+    default: boolean;
+    fields: SetupField[];
+}
+
 export interface SetupSection {
     name: string;
     label: string;
     fields: SetupField[];
+    /** The sign-in methods this section's plugin declared; setup asks the question before these fields. */
+    methods?: SetupMethod[];
     /** Things setup cannot ask for here, such as a credential or a value that is a list. */
     notes: string[];
 }
@@ -262,6 +277,89 @@ export interface SetupChange {
     enableBackend?: SecretBackend;
 }
 
+/** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
+function setupMethods(
+    state: SetupState,
+    section: string,
+    rawSection: Record<string, unknown>,
+    merged: unknown,
+): SetupMethod[] {
+    const registered = state.onboardingMethods?.get(section) ?? [];
+    const choice = state.onboarding?.methods?.[section];
+    const hidden = new Set(choice?.hide ?? []);
+    const all = [...registered, ...(choice?.add ?? [])];
+    const visible = all.filter((method) => !hidden.has(method.id));
+    if (visible.length === 0) return [];
+    const chosen = choice?.default ?? visible[0]?.id;
+    return visible.map((method) => ({
+        id: method.id,
+        label: method.label,
+        ...(method.who === undefined ? {} : { who: method.who }),
+        default: method.id === chosen,
+        fields: method.fields.map((field) => {
+            const at = getPath(merged, field.path);
+            const current =
+                typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
+            if (field.kind !== "reference" && field.value !== undefined) {
+                return {
+                    section,
+                    path: field.path,
+                    label: field.label,
+                    question: field.label,
+                    kind: "text",
+                    ...(current === undefined ? {} : { current }),
+                    fixed: field.value,
+                    reason: field.why ?? "The company's sign-in choice sets this.",
+                };
+            }
+            if (field.kind === "reference") {
+                const reference = referenceChoice(state, current, getPath(state.defaults.get(section), field.path));
+                if (field.stores !== undefined) {
+                    reference.stores = field.stores.filter((store) => reference.stores.includes(store));
+                }
+                const preferred = field.preferredStore ?? state.onboarding?.preferredStore;
+                if (preferred !== undefined && reference.stores.includes(preferred)) {
+                    reference.preferred = preferred;
+                    reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
+                }
+                if (field.suggested !== undefined) reference.suggested = field.suggested;
+                if (field.addHints !== undefined) reference.addHints = field.addHints;
+                return {
+                    section,
+                    path: field.path,
+                    label: field.label,
+                    question: referenceQuestion(field.label),
+                    kind: "reference",
+                    reason: field.why ?? "Jig reads the value from there when a tool needs it.",
+                    reference,
+                };
+            }
+            if (field.kind === "pick") {
+                return {
+                    section,
+                    path: field.path,
+                    label: field.label,
+                    question: field.label,
+                    kind: "pick",
+                    choices: [...field.choices],
+                    ...(current === undefined ? {} : { current }),
+                    reason: field.why ?? "The plugin's list says the choices.",
+                };
+            }
+            return {
+                section,
+                path: field.path,
+                label: field.label,
+                question: field.label,
+                ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
+                ...(current === undefined ? {} : { current }),
+                kind: "text",
+                reason: field.why ?? "The plugin's list says this field is needed.",
+            };
+        }),
+    }));
+}
+
 /** The plan: read the file, then ask only about the fields a validator names. */
 export function buildSetupPlan(state: SetupState): SetupPlanResult {
     if (state.configPath === "") {
@@ -433,8 +531,13 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
             });
         }
 
-        if (fields.length > 0 || notes.length > 0) {
-            candidates.push({ section: { name, label: labelOf(name), fields, notes }, priority, order });
+        const methods = setupMethods(state, name, rawSection, merged);
+        if (fields.length > 0 || notes.length > 0 || methods.length > 0) {
+            candidates.push({
+                section: { name, label: labelOf(name), fields, ...(methods.length === 0 ? {} : { methods }), notes },
+                priority,
+                order,
+            });
         }
     }
 

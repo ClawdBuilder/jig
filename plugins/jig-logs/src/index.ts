@@ -17,5 +17,35 @@ export default function (pi: ExtensionAPI) {
             replace: ["backend.auth"],
             oneOf: [["backend.auth", "backend.transport"]],
         });
+        api.onboarding?.registerMethods("logs", [
+            {
+                id: "basic",
+                label: "User name and password",
+                fields: [
+                    { kind: "text", path: "backend.auth.username", label: "The log user name" },
+                    { kind: "reference", path: "backend.auth.password", label: "The log password" },
+                ],
+            },
+            {
+                id: "api-key",
+                label: "API key",
+                fields: [{ kind: "reference", path: "backend.auth.apiKey", label: "The log API key" }],
+            },
+            {
+                id: "token",
+                label: "Service token",
+                fields: [{ kind: "reference", path: "backend.auth.token", label: "The log service token" }],
+            },
+            {
+                id: "sign-in-service",
+                label: "Company sign-in service",
+                fields: [{ kind: "text", path: "backend.auth.signIn", label: "The sign-in service name" }],
+            },
+            {
+                id: "transport",
+                label: "Company transport",
+                fields: [{ kind: "text", path: "backend.transport", label: "The transport name" }],
+            },
+        ]);
     });
 }

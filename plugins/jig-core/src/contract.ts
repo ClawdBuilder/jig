@@ -764,6 +764,10 @@ export interface JigApi {
     readonly onboarding?: {
         /** Registers the list. Registering again replaces it; one company plugin's list applies, the active one's. */
         register(entry: OnboardingEntry): void;
+        /** Registers the sign-in methods a plugin's section accepts. The plugin owns the fields; a company only refers
+         *  to the ids (`default`, `hide`) and may add a fixed transport/sign-in method. Registering a section again
+         *  replaces its methods. */
+        registerMethods(section: string, methods: readonly OnboardingMethod[]): void;
     };
 
     /**
@@ -819,7 +823,64 @@ export interface OnboardingEntry {
     preferredStore?: OnboardingStore;
     /** Ask these in this order. Each names where the answer goes, or says something before the questions. */
     items: readonly OnboardingItem[];
+    /** Which registered method is the company's default, which to hide, and any company-only fixed method. */
+    methods?: Readonly<Record<string, OnboardingMethodChoice>>;
 }
+
+/** The company's choice among the methods a plugin registered for one section. It may only name ids the plugin owns. */
+export interface OnboardingMethodChoice {
+    /** The id of the method setup offers first. */
+    default?: string;
+    /** Ids setup does not offer. A user may still write one by hand; doctor warns, never refuses. */
+    hide?: readonly string[];
+    /** Company-only methods whose fields are all fixed values, for its own transport or sign-in service. */
+    add?: readonly OnboardingMethod[];
+}
+
+/** One sign-in method a plugin's section accepts. The shape is inferred from the fields; no id is written to jig.json. */
+export interface OnboardingMethod {
+    /** A stable id, such as `cloud-basic` or `transport`. */
+    id: string;
+    /** The plain answer to “How do you sign in?”. */
+    label: string;
+    /** One line for the picker, such as “Jira Cloud” or “Data Center”. */
+    who?: string;
+    /** The fields this method writes, relative to the section. A `*` segment stands for one dynamic name. */
+    fields: readonly OnboardingMethodField[];
+}
+
+/** One field of an `OnboardingMethod`. A plugin method has no `value`; a company-only method fixes every field. */
+export type OnboardingMethodField =
+    | {
+          kind: "text";
+          /** A dotted path inside the section; `*` stands for one dynamic name. */
+          path: string;
+          label: string;
+          why?: string;
+          placeholder?: string;
+          optional?: boolean;
+          /** A fixed answer, for a company-only method. */
+          value?: string;
+      }
+    | {
+          kind: "pick";
+          path: string;
+          label: string;
+          choices: readonly string[];
+          why?: string;
+          /** A fixed answer, for a company-only method. */
+          value?: string;
+      }
+    | {
+          kind: "reference";
+          path: string;
+          label: string;
+          stores?: readonly OnboardingStore[];
+          preferredStore?: OnboardingStore;
+          suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          why?: string;
+      };
 
 /** The secret stores a company can prefer. The names are `jig.json`'s. */
 export type OnboardingStore = "pass" | "env" | "keychain" | "op" | "cmd" | "file";

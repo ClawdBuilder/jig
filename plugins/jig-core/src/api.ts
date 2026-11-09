@@ -14,7 +14,7 @@ import { git, run, setCredentialRegistrar } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import { UPDATES_SECTION } from "./updates-section.ts";
 import type { ExecGuard } from "./exec.ts";
-import { checkOnboarding } from "./onboarding.ts";
+import { checkOnboarding, checkOnboardingMethods } from "./onboarding.ts";
 import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
 import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
@@ -354,7 +354,10 @@ export function buildApi(state: JigState): JigApi {
 
         onboarding: {
             register: (entry) => {
-                state.onboarding = checkOnboarding(entry);
+                state.onboarding = checkOnboarding(entry, state.onboardingMethods);
+            },
+            registerMethods: (section, methods) => {
+                state.onboardingMethods.set(section, checkOnboardingMethods(section, methods));
             },
         },
 
@@ -452,7 +455,10 @@ function scoped(api: JigApi, state: JigState, entry: CompanyEntry): JigApi {
         },
         onboarding: {
             register: (list) => {
-                entry.onboarding = checkOnboarding(list);
+                entry.onboarding = checkOnboarding(list, state.onboardingMethods);
+            },
+            registerMethods: (section, methods) => {
+                state.onboardingMethods.set(section, checkOnboardingMethods(section, methods));
             },
         },
     };
