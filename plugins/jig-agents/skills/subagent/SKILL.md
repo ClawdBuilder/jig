@@ -1,6 +1,6 @@
 ---
 name: subagent
-description: Child agents (subagent tool) - which role to start and how to brief it: a scout for reading across more than five files, a reviewer before you call a change done, a worker for one scoped change. Also read it when a child's report arrives.
+description: Child agents (subagent tool) - which role to start and how to brief it - a scout for reading across more than five files, a reviewer before you call a change done, a worker for one scoped change. Also read it when a child's report arrives.
 ---
 
 # Handing work to a child agent
