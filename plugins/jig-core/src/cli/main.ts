@@ -1,8 +1,5 @@
 // The `jig` command: doctor and setup from any terminal, with no Pi session and no model. It loads the plugins Pi would
 // load, registers their sections and defaults, and reads the same jig.json; nothing here starts a tool or connects.
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { homedir } from "node:os";
 import { buildSetupPlan } from "../setup-plan.ts";
 import { setupStateFrom, runSetup } from "../setup.ts";
 import type { SetupUi } from "../setup.ts";
@@ -14,7 +11,7 @@ import { helpFor, nearestCommand, USAGE } from "./help.ts";
 import { npmInstall, piVersion, jigPackage } from "../pi-version.ts";
 import { loadPersonalConfig } from "../state.ts";
 import type { JigState } from "../state.ts";
-import { agentDirFor, loadHeadless, ownPackage } from "./headless.ts";
+import { loadHeadless, ownPackage } from "./headless.ts";
 import type { LoadFailure } from "./headless.ts";
 import { terminalUi } from "./terminal.ts";
 import { update as updateCommand } from "./update.ts";

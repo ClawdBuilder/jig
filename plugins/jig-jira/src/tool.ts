@@ -95,7 +95,7 @@ export function createTool(options: JiraOptions = {}): JiraTool {
             name: "jira",
             label: "Jira",
             description: DESCRIPTION,
-            promptSnippet: "jira: read, search and change Jira issues: comments, transitions, fields, new issues",
+            promptSnippet: "read, search and change Jira issues: comments, transitions, fields, new issues",
             parameters,
             // One call at a time and in order: a comment must be on the issue before the transition that follows it.
             executionMode: "sequential",

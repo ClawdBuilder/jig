@@ -13,6 +13,15 @@ import type { Session, SessionOptions } from "./support/session.ts";
 
 const skip = skipUnlessRealSandbox();
 
+/** A port no other test holds: two suites can run this file at once. */
+async function freePort(): Promise<number> {
+    const server = net.createServer();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as net.AddressInfo).port;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    return port;
+}
+
 /** The alias the tests use as a public host. */
 const PUBLIC = "127.0.0.2";
 const asPublic = (address: string, real: unknown) => (address === PUBLIC ? undefined : real);
@@ -454,11 +463,12 @@ describe("the doctor in filtered mode", { skip }, () => {
 describe("filtered keeps everything else working", { skip }, () => {
     test("twelve commands at once run, and two of them can each start a server on the same port: a command's network is its own", async () => {
         const s = await begin(filtered());
+        const port = await freePort();
         const results = await Promise.all(
             Array.from({ length: 12 }, (_, index) =>
                 s.bash(
                     index < 2
-                        ? `python3 -u -m http.server 18123 --bind 127.0.0.1 --directory /tmp >/dev/null 2>&1 & sleep 1; python3 - <<'PY'\nimport urllib.request\nprint("served", urllib.request.build_opener(urllib.request.ProxyHandler({})).open("http://127.0.0.1:18123/", timeout=5).status)\nPY`
+                        ? `python3 -u -m http.server ${port} --bind 127.0.0.1 --directory /tmp >/dev/null 2>&1 & sleep 1; python3 - <<'PY'\nimport urllib.request\nprint("served", urllib.request.build_opener(urllib.request.ProxyHandler({})).open("http://127.0.0.1:${port}/", timeout=5).status)\nPY`
                         : `echo ${index}`,
                 ),
             ),
@@ -499,8 +509,9 @@ describe("filtered keeps everything else working", { skip }, () => {
 
     test("a server and its client in one command work with no bridge at all", async () => {
         const s = await begin(filtered());
+        const port = await freePort();
         const result = await s.bash(
-            `python3 -u -m http.server 18124 --bind 127.0.0.1 --directory /tmp >/dev/null 2>&1 & sleep 1; python3 - <<'PY'\nimport urllib.request\nprint("ok", urllib.request.build_opener(urllib.request.ProxyHandler({})).open("http://127.0.0.1:18124/", timeout=5).status)\nPY`,
+            `python3 -u -m http.server ${port} --bind 127.0.0.1 --directory /tmp >/dev/null 2>&1 & sleep 1; python3 - <<'PY'\nimport urllib.request\nprint("ok", urllib.request.build_opener(urllib.request.ProxyHandler({})).open("http://127.0.0.1:${port}/", timeout=5).status)\nPY`,
         );
         assert.match(result.text, /ok 200/);
     });

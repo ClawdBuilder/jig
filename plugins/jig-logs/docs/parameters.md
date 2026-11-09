@@ -11,9 +11,11 @@ leaves out. Back to the overview.
   wildcards in Lucene, or `|= "timeout" | json` in LogQL (1 to 2000 characters).
 - **`environment`:** one of the environments in the configuration. A name nobody
   configured is refused, and the message lists the ones that exist.
-- **`window`:** `30m`, `2h` or `1d`, at most `7d`. Not together with `from` and
+- **`window`:** `30m`, `2h` or `1d`, at most the longest window (`7d` unless
+  `logs.maxWindow` says otherwise). Not together with `from` and
   `to`.
-- **`from`, `to`:** ISO 8601 with a timezone, `to` exclusive, at most 7 days apart.
+- **`from`, `to`:** ISO 8601 with a timezone, `to` exclusive, at most the longest
+  window apart.
 - **`size`:** 1 to 200. The hits fetched are what `match`, `exclude`, `around`,
   `chars` and `offset` then choose among.
 - **`order`:** `asc` fetches the oldest hits of the window, `desc` the newest.

@@ -37,7 +37,7 @@ export function roleVerdict(policy: RolePolicy, call: GateCall, sandboxActive: b
     const who = `the role "${policy.role}"`;
     if (!policy.writes && call.effect === "write") {
         if (call.tool !== "bash" || call.action !== undefined) {
-            return deny(`${who} may not write, and ${label(call)} writes`);
+            return deny(`${who} may not write, and ${label(call)} writes; report what should change instead`);
         }
         if (!sandboxActive) {
             return deny(

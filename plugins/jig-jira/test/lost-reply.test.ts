@@ -60,6 +60,8 @@ const CASES: Case[] = [
         happened: /A read afterwards shows that it happened: comment 10003 now holds the new text\.$/,
         didNot: /A read afterwards shows that it did not happen: comment 10003 still holds the old text\./,
         key: "PROJ-1",
+        // Sam Lee wrote comment 10003, and only your own comments are edited.
+        setUp: () => void (h.jira.me = h.jira.users[1] as typeof h.jira.me),
         done: () => issue("PROJ-1").comments.find((comment) => comment.id === "10003")?.body === "Verified twice.",
     },
     {
@@ -289,6 +291,7 @@ describe("other ways to lose the reply", () => {
     });
 
     test("a comment that someone else changed is not settled either", async () => {
+        h.jira.me = h.jira.users[1] as typeof h.jira.me; // Sam Lee, who wrote comment 10003
         late((request) => request.method === "PUT", false, {
             effect: () =>
                 void (issue("PROJ-1").comments.find((comment) => comment.id === "10003")!.body =

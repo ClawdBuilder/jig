@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { distroOf, installCommand } from "../src/kit/sandbox-programs.ts";
 import { sandboxChecks } from "../src/doctor-tools.ts";
-import type { DoctorContext, DoctorOptions } from "../src/doctor.ts";
+import type { DoctorContext } from "../src/doctor.ts";
 
 const context = (path: string): DoctorContext =>
     ({

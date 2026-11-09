@@ -80,6 +80,8 @@ function folders(
         config?: unknown;
         steps?: unknown[];
         roles?: Record<string, string>;
+        /** Extra Pi settings for a child, such as enabling codemode. */
+        settings?: Record<string, unknown>;
     } = {},
 ): Folders {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-agents-real-")));
@@ -93,6 +95,7 @@ function folders(
         path.join(agent, "settings.json"),
         JSON.stringify({
             extensions: [MODEL_EXTENSION],
+            ...options.settings,
             packages: jig
                 ? [
                       {
@@ -646,6 +649,25 @@ describe("a real child enforces the narrowing its role gave it", { skip }, () =>
             /Report: .*Blocked by jig-core: the role "reader" may not write, and its bash is read-only only inside jig-sandbox, which is not active in this agent/,
         );
         assert.doesNotMatch(report, /\bhi\b/);
+    });
+
+    test("a codemode script cannot reach a tool outside the child's --tools list", {
+        timeout: 90_000,
+    }, async (t: TestContext) => {
+        const f = folders({
+            settings: { defaultTools: ["+codemode"], codemode: { mode: "on" } },
+        });
+        const child = await spawnChild(t, f, {
+            policy: writeRolePolicy({ role: "scripter", writes: false, actions: {}, ask: {} }),
+            flags: ["--tools", "read,codemode"],
+            script: [
+                { tool: "codemode", args: { code: 'return Object.keys(tools).join(",");' } },
+                { textFromLastToolResult: "Report: " },
+            ],
+        });
+        const report = await child.run();
+        assert.match(report, /Report: [\s\S]*read/);
+        assert.doesNotMatch(report, /echo_tool/);
     });
 
     test("a child whose policy says it may write runs bash as before", { timeout: 90_000 }, async (t: TestContext) => {

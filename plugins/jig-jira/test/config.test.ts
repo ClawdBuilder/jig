@@ -69,6 +69,7 @@ describe("a valid section", () => {
         assert.equal(found.environment, DEFAULT_ENVIRONMENT);
         assert.equal(DEFAULT_ENVIRONMENT, "external");
         assert.equal(found.me, undefined);
+        assert.equal(found.othersComments, false, "only your own comments are edited or deleted");
         assert.equal(found.commentSearch, DEFAULT_COMMENT_SEARCH);
         assert.equal(DEFAULT_COMMENT_SEARCH, "auto");
     });
@@ -82,9 +83,11 @@ describe("a valid section", () => {
             privateNames: [" payroll ", "corp.example.net"],
             environment: "staging",
             me: " 5b10a2844c20165700ede21g ",
+            othersComments: true,
             commentSearch: "read",
         });
         assert.equal(found.me, "5b10a2844c20165700ede21g");
+        assert.equal(found.othersComments, true);
         assert.equal(found.commentSearch, "read");
         assert.deepEqual(found.createDefaults, { Priority: "Medium", Components: ["Web"], "Story Points": 1 });
         assert.deepEqual(found.updateFields, ["summary", "Story Points", "customfield_10500"]);
@@ -415,6 +418,18 @@ describe("the other fields", () => {
         for (const me of accepted) assert.deepEqual(validateJira({ ...cloud, me }), [], me);
         for (const me of ["", "   ", 5, "x".repeat(129), "two\nlines"]) {
             assert.match(validateJira({ ...cloud, me })[0] ?? "", /^jira\.me: must be your account id/, String(me));
+        }
+    });
+
+    test("othersComments is true or false", () => {
+        for (const othersComments of [true, false])
+            assert.deepEqual(validateJira({ ...cloud, othersComments }), [], String(othersComments));
+        for (const othersComments of ["true", 1, null, "yes"]) {
+            assert.deepEqual(
+                validateJira({ ...cloud, othersComments }),
+                ["jira.othersComments: must be true or false"],
+                String(othersComments),
+            );
         }
     });
 

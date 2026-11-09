@@ -10,7 +10,7 @@ import type { Target } from "./config.ts";
 import { MAX_CHARS, MIN_CHARS } from "./line.ts";
 import type { LogQuery, Order } from "./query.ts";
 import type { View } from "./summary.ts";
-import { resolveRange } from "./time.ts";
+import { MAX_RANGE_MS, resolveRange } from "./time.ts";
 import { CONTROL, printable, refuse, shown } from "./values.ts";
 
 export const DEFAULT_WINDOW = "2h";
@@ -62,16 +62,22 @@ export const logsParameters = Type.Object(
         window: Type.Optional(
             Type.String({
                 pattern: "^[1-9][0-9]{0,4}[mhd]$",
-                description: "Window ending now: 30m, 2h, 1d; at most 7d. Default 2h. Not with from and to.",
+                description:
+                    "Window ending now: 30m, 2h, 1d; at most the configured longest window (7d by default). Default 2h. " +
+                    "Not with from and to.",
             }),
         ),
         from: Type.Optional(
             Type.String({
-                description: "Start, ISO 8601 with a timezone. Omit to to end now; within 7 days of now.",
+                description:
+                    "Start, ISO 8601 with a timezone. Omit to to end now; within the longest window (7d by default) of now.",
             }),
         ),
         to: Type.Optional(
-            Type.String({ description: "End (exclusive), ISO 8601 with a timezone; within 7 days of from." }),
+            Type.String({
+                description:
+                    "End (exclusive), ISO 8601 with a timezone; within the longest window (7d by default) of from.",
+            }),
         ),
         size: Type.Optional(Type.Integer({ minimum: 1, maximum: MAX_SIZE, description: "Hits to fetch. Default 50." })),
         order: Type.Optional(
@@ -153,9 +159,15 @@ function checkTerms(input: Input, name: "match" | "exclude"): string[] | undefin
 
 /**
  * What the call searches for: the text, the window, how many hits and from which end. `environment` is the name the
- * call used and `target` what the configuration says about it.
+ * call used, `target` what the configuration says about it, and `longest` the longest window it may search.
  */
-export function resolveQuery(input: Input, environment: string, target: Target, now: number): LogQuery {
+export function resolveQuery(
+    input: Input,
+    environment: string,
+    target: Target,
+    now: number,
+    longest = MAX_RANGE_MS,
+): LogQuery {
     const kind = input.phrase !== undefined ? "phrase" : "query";
     const text = printableText(input[kind], kind, kind === "phrase" ? MAX_PHRASE_CHARS : MAX_QUERY_CHARS);
     // The backend refuses a query that its language lets reach beyond what the configuration allowed.
@@ -164,6 +176,7 @@ export function resolveQuery(input: Input, environment: string, target: Target, 
         { window: optionalText(input, "window"), from: optionalText(input, "from"), to: optionalText(input, "to") },
         DEFAULT_WINDOW,
         now,
+        longest,
     );
     const order = input.order ?? "asc";
     if (order !== "asc" && order !== "desc") refuse(`logs: order must be asc or desc (got ${shown(order)})`);

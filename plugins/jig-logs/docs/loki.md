@@ -165,8 +165,8 @@ only says `Timeout`.
 | Lines in one query | 5000 | `max_entries_limit_per_query`, default 5000 |
 | Time range of one query | 721 hours | `max_query_length`, default 30d1h |
 
-The tool asks for at most 200 hits and 7 days, so neither is reached on a default
-Loki. An operator may have set them lower; the next section says what happens then.
+The tool asks for at most 200 hits and one day a request, so neither is reached on
+a default Loki, even when `logs.maxWindow` allows a longer window. An operator may have set them lower; the next section says what happens then.
 
 ## What Loki's errors mean
 

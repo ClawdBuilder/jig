@@ -72,6 +72,9 @@ The rules, limits and failures are in [Commented by](docs/commented.md).
   decide.
 - **Invalid input is not asked about.** Every call is checked before anyone is
   asked, and a mistake blocks the call with a message that says what to change.
+- **Your own comments only.** `edit_comment` and `delete_comment` refuse a comment
+  by someone else, or when Jira cannot say who you are and `me` is not set.
+  `othersComments` allows other people's.
 - **Changed since the preview.** If what would be sent differs from what you
   approved, the write is refused: "changed since the preview; run it again to
   see the new preview".
@@ -93,13 +96,14 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 |---|---|---|
 | `site` | required | The https address of the Jira, such as `https://example.atlassian.net` |
 | `auth` | required | How requests are signed in: exactly one of the five forms below |
-| `projects` | none | Project keys, such as `["PROJ"]`: `search` with no JQL looks in them, and `create` accepts only them |
+| `projects` | none | Project keys, such as `["PROJ"]`, for `search` without JQL; `create` and links take only these |
 | `updateFields` | `summary`, `description`, `labels`, `priority`, `assignee` | The fields `update` may set, by name or id |
 | `fields` | none | Friendly names for field ids, such as `"Story Points": "customfield_10016"` |
 | `createDefaults` | none | Values `create` gives a field when the call does not set it, by field name or id |
 | `privateNames` | none | Folder or host names to flag in outgoing text, up to 100 |
 | `environment` | `external` | The environment name that rules and classification know this Jira by |
-| `me` | none | Your account id (Cloud) or user name (Data Center), for `commented` when `/myself` is unavailable |
+| `me` | none | Your account id (Cloud) or user name (Data Center), for when `/myself` is unavailable |
+| `othersComments` | `false` | `true` lets `edit_comment` and `delete_comment` change other people's comments |
 | `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` (see [Commented by](docs/commented.md)) |
 
 A screen field whose schema says `array` takes one value as a one-item list; the preview says when it wrapped one.
@@ -143,8 +147,8 @@ is.
 - the Jira site;
 - the sign-in: a company sign-in service, a company transport, or an API token
   through a secret reference;
-- the project keys, so that `search` needs no JQL for them and `create` cannot
-  name another project;
+- the project keys, so that `search` needs no JQL for them and `create`, `link`
+  and `unlink` cannot reach another project;
 - default fields: friendly names, the fields `update` may set, and private names — its `privateNames` and yours add up;
 - the environment name, when it is not `external`.
 
@@ -169,3 +173,4 @@ jig-jira/
 - [Configuration](docs/configuration.md): the fields of the `jira` section in detail
 - [Writes](docs/writes.md): the rules for writes in full, and what each preview shows
 - [Not verified yet](docs/not-verified.md): what needs a real Jira
+- [Wiki markup](docs/wiki-markup.md): the Jira syntax and its traps

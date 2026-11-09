@@ -23,8 +23,8 @@ export interface JiraSettings {
     /** The base address: https, no trailing slash. It may have a path, for a Jira served below one. */
     site: string;
     auth: Auth;
-    /** The project keys this setup works in, upper case. A `search` with no JQL looks in them, and `create` only accepts
-     *  them. Empty when none is set: `search` then needs JQL and `create` takes any project. */
+    /** The project keys this setup works in, upper case. A `search` with no JQL looks in them, and `create`, `link` and
+     *  `unlink` only accept them. Empty when none is set: `search` then needs JQL, and the writes take any project. */
     projects: readonly string[];
     /** The fields `update` may set, by name or id. */
     updateFields: readonly string[];
@@ -36,9 +36,12 @@ export interface JiraSettings {
     privateNames: readonly string[];
     /** The environment name that jig-core's rules know this Jira by. */
     environment: string;
-    /** Who "me" is for `search`'s `commented` filter when the site does not answer `GET /myself`: an account id (Jira
-     *  Cloud), or a user name or key (Data Center). Undefined when not set. */
+    /** Who "me" is when the site does not answer `GET /myself`, for `search`'s `commented` filter and for the check that
+     *  a comment being edited or deleted is yours: an account id (Jira Cloud), or a user name or key (Data Center).
+     *  Undefined when not set. */
     me: string | undefined;
+    /** True lets `edit_comment` and `delete_comment` change other people's comments. False by default: only your own. */
+    othersComments: boolean;
     /** How `search`'s `commented` filter finds issues: ScriptRunner's `commented()` when the site has it, else by
      *  reading every candidate's comments. */
     commentSearch: CommentSearch;
@@ -62,6 +65,7 @@ const SECTION_FIELDS: ReadonlySet<string> = new Set([
     "privateNames",
     "environment",
     "me",
+    "othersComments",
     "commentSearch",
 ]);
 const AUTH_FIELDS: ReadonlySet<string> = new Set(["email", "token", "oauth", "cloudId", "signIn", "transport"]);
@@ -330,6 +334,8 @@ export function readJira(raw: unknown): { settings?: JiraSettings; errors: strin
         errors.push("jira.environment: must be an environment name, such as external");
     }
     const me = checkMe(raw.me, errors);
+    const othersComments = raw.othersComments === undefined ? false : raw.othersComments;
+    if (typeof othersComments !== "boolean") errors.push("jira.othersComments: must be true or false");
     const commentSearch = checkCommentSearch(raw.commentSearch, errors);
 
     if (errors.length > 0 || site === undefined || auth === undefined) return { errors };
@@ -345,6 +351,7 @@ export function readJira(raw: unknown): { settings?: JiraSettings; errors: strin
             privateNames: privateNames ?? [],
             environment: String(environment),
             me,
+            othersComments: othersComments === true,
             commentSearch,
         },
     };
