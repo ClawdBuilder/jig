@@ -97,9 +97,7 @@ export function usage(action: ActionName): string {
 }
 
 function describeActions(): string {
-    return ACTION_NAMES.map(
-        (name) => `${name}(${ACTIONS[name].required.filter((item) => item !== "environment").join(",")})`,
-    ).join(" ");
+    return ACTION_NAMES.join(", ");
 }
 
 const json = (description: string) =>
@@ -107,31 +105,24 @@ const json = (description: string) =>
 
 export const parameters = Type.Object({
     action: stringEnum(ACTION_NAMES, {
-        description: `What to do. Needs: ${describeActions()}. All also need environment`,
+        description: `What to do: ${describeActions()}`,
     }),
-    environment: Type.Optional(Type.String({ description: "The connection's environment name, such as staging" })),
+    environment: Type.Optional(Type.String({ description: "Environment." })),
     cluster: Type.Optional(
         Type.String({
-            description:
-                "Which connection, for an environment that has several, such as orders. Refused where there is one",
+            description: "Connection name where an environment has several, e.g. orders.",
         }),
     ),
-    database: Type.Optional(Type.String({ description: "The database, such as orders" })),
-    collection: Type.Optional(Type.String({ description: "The collection, such as orders" })),
-    filter: Type.Optional(
-        json(
-            'Extended JSON filter: {"status": "open", "_id": {"$oid": "..."}, "createdAt": {"$gt": {"$date": "2026-01-01T00:00:00Z"}}}',
-        ),
-    ),
-    projection: Type.Optional(
-        json('Fields to return: {"status": 1, "items": 1}. With an allow list only the allowed fields are returned'),
-    ),
+    database: Type.Optional(Type.String({ description: "Database." })),
+    collection: Type.Optional(Type.String({ description: "Collection." })),
+    filter: Type.Optional(json('Extended JSON, e.g. {"status": "open", "_id": {"$oid": "..."}}')),
+    projection: Type.Optional(json('Fields to return, e.g. {"status": 1}; allow lists narrow.')),
     sort: Type.Optional(json('Sort order: {"createdAt": -1}')),
     limit: Type.Optional(
         Type.Integer({
             minimum: 1,
             maximum: MAX_LIMIT,
-            description: `Documents to return, or to sample (default ${DEFAULT_LIMIT}). For a write that changes many, the most it may touch (default ${WRITE_CAP}; raise on purpose)`,
+            description: `Documents returned/sampled (default ${DEFAULT_LIMIT}); for a bulk write, the cap (default ${WRITE_CAP}); raise on purpose.`,
         }),
     ),
     maxTimeMS: Type.Optional(
@@ -144,29 +135,25 @@ export const parameters = Type.Object({
     field: Type.Optional(Type.String({ description: "distinct: the field whose values to list" })),
     pipeline: Type.Optional(
         Type.Array(json("One stage"), {
-            description:
-                "aggregate: the stages. explain: the pipeline to explain. update: an update written as stages ($set, $unset, ...)",
+            description: "aggregate/explain: stages; update: stages ($set, $unset, ...).",
         }),
     ),
     which: Type.Optional(
         stringEnum(["one", "many"], { description: "update, delete: change one document or every match" }),
     ),
-    documents: Type.Optional(
-        Type.Array(json("One document"), { description: "insert: the documents, in Extended JSON" }),
-    ),
+    documents: Type.Optional(Type.Array(json("One document"), { description: "insert: documents in Extended JSON." })),
     update: Type.Optional(json('update: the change, such as {"$set": {"status": "shipped"}}')),
-    replacement: Type.Optional(json("replace: the whole new document")),
+    replacement: Type.Optional(json("replace: new document.")),
     operations: Type.Optional(
         Type.Array(json("One operation"), {
-            description:
-                'bulk: operations such as {"updateOne": {"filter": {...}, "update": {...}}}, insertOne, updateMany, replaceOne, deleteOne, deleteMany',
+            description: 'bulk: {"updateOne": {...}} or insertOne/updateMany/replaceOne/deleteOne/deleteMany.',
         }),
     ),
     keys: Type.Optional(json('create_index: the fields, such as {"status": 1, "createdAt": -1}')),
     options: Type.Optional(
-        json("create_index: name, unique, sparse, expireAfterSeconds, partialFilterExpression, hidden"),
+        json("create_index: name, unique, sparse, expireAfterSeconds, partialFilterExpression, hidden."),
     ),
-    name: Type.Optional(Type.String({ description: "drop_index: the index name, from indexes" })),
+    name: Type.Optional(Type.String({ description: "drop_index: index name." })),
     verbosity: Type.Optional(
         stringEnum(["queryPlanner", "executionStats"], {
             description: "explain: executionStats (default) also runs the query",

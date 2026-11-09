@@ -37,7 +37,7 @@ Text is Jira wiki markup, not Markdown. Read [Wiki markup](../../docs/wiki-marku
 
 - `create` needs `project`, `type` and `summary`. Ask the user for any value you would have to guess, such as the components or the priority.
 - The preview shows every field with its final value and the possible duplicates. If one looks like the same issue, tell the user instead of creating another.
-- The user may have listed their projects. A `create` for another project is refused with the list; use one of them, and do not look for a way around it.
+- The user may have listed their projects. A `create` for another project is refused with the list; use one of them.
 - Other fields go in `fields`, by name or id.
 - The user may have defaults for some fields. The preview marks them `(from your defaults)`; do not set those fields again unless the user wants a different value, and say if a default looks wrong for this issue.
 
@@ -50,7 +50,7 @@ Text is Jira wiki markup, not Markdown. Read [Wiki markup](../../docs/wiki-marku
 
 ## Updating fields
 
-- `update` sets only the fields that are allowed. If one is refused, the message lists the ones that are; do not look for a way around it.
+- `update` sets only the fields that are allowed. If one is refused, the message lists the ones that are.
 - Give a list field its whole new value: `labels` replaces the labels.
 
 ## Links between issues
@@ -58,11 +58,11 @@ Text is Jira wiki markup, not Markdown. Read [Wiki markup](../../docs/wiki-marku
 - Call `link_types` for the names and phrases. `link` reads "key <phrase> to": `key: "PROJ-1"`, `to: "PROJ-2"`, `linkType: "blocks"` makes PROJ-1 block PROJ-2. The other phrase (`is blocked by`) turns it round.
 - Check the direction in the preview before the user approves it: it says what each issue reads and which one Jira gets as outward.
 - `unlink` takes the two issues; give `linkType` when there is more than one link between them. Read the issue's `Links:` first, so you remove the one meant.
-- A link that already exists is refused. Do not look for a way around it.
+- A link that already exists is refused. Report it and stop.
 
 ## When a write gets no reply
 
-A write is never sent twice. When its reply is lost, the tool reads the issue once and says whether the write happened. Believe it: do not repeat a write that happened. If it says the write did not happen, ask the user before you run it again.
+If a write's reply is lost, the tool reads the issue once and says whether it happened; believe it, and ask before running a write it says did not happen.
 
 ## Example
 

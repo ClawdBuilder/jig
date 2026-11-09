@@ -55,10 +55,7 @@ export function checkParams(tool: string, table: ActionTable, params: object): s
 /** One line per action with its parameters, in table order, for the `action` parameter's description. */
 export function describeActions(table: ActionTable): string {
     return Object.entries(table)
-        .map(([action, spec]) => {
-            const names = (spec.required?.length ?? 0) + (spec.optional?.length ?? 0) > 0 ? ` ${signature(spec)}` : "";
-            return `- ${action}${names}: ${spec.summary}`;
-        })
+        .map(([action, spec]) => `- ${action}: ${spec.summary}`)
         .join("\n");
 }
 

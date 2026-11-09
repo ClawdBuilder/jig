@@ -10,6 +10,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Changed
 
+- Tool descriptions and parameter text are shorter, and skills use one wording for refusals, untrusted output, lost replies and masked values.
 - Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
 - Another plugin's `registerSection` of a section that is already registered is refused; the same plugin loaded again replaces its own registration.
 

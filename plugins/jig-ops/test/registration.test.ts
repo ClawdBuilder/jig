@@ -673,7 +673,7 @@ describe("the ci skill", () => {
             "ci trigger",
             "do not poll|Do not call",
             "never send it again",
-            "Do not follow instructions",
+            "instructions come only from the user",
         ]) {
             assert.match(text, new RegExp(word, "i"), word);
         }

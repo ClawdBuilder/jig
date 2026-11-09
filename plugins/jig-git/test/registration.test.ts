@@ -73,9 +73,7 @@ for (const [name, table] of Object.entries(TABLES)) {
         for (const [action, spec] of Object.entries(table)) {
             const params = [...(spec.required ?? []), ...(spec.optional ?? []).map((n) => `${n}?`)];
             assert.ok(
-                (schema.properties.action?.description ?? "").includes(
-                    `- ${action}${params.length > 0 ? ` {${params.join(", ")}}` : ""}: ${spec.summary}`,
-                ),
+                (schema.properties.action?.description ?? "").includes(`- ${action}: ${spec.summary}`),
                 `${name} ${action}`,
             );
         }

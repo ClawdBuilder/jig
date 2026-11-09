@@ -22,21 +22,18 @@ export const MAX_PARAMETERS = 20;
 export const parameters = Type.Object(
     {
         action: stringEnum(CI_ACTIONS, {
-            description:
-                "services lists the catalog's CI services; status, runs, run, log, rerun, trigger or watch act on one",
+            description: "What to do: services status runs run log rerun trigger watch",
         }),
         service: Type.Optional(
             Type.String({
-                description:
-                    "A service from the ops catalog that has a ci entry. Not needed for services. An unknown name is refused with the known ones",
+                description: "Catalog service with ci; not for services.",
             }),
         ),
         environment: Type.Optional(
             Type.String({
                 minLength: 1,
                 maxLength: 40,
-                description:
-                    "An environment of the service that has a CI job: the call acts in it. Default: the service's own ci.",
+                description: "Environment whose CI job; default service ci.",
             }),
         ),
         number: Type.Optional(Type.Integer({ minimum: 1, description: "A pull request number (GitHub Actions)." })),
@@ -44,7 +41,7 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "A branch. Default: the default branch where there is one.",
+                description: "Branch; default default branch.",
             }),
         ),
         sha: Type.Optional(
@@ -53,8 +50,7 @@ export const parameters = Type.Object(
         run_id: Type.Optional(
             Type.Integer({
                 minimum: 1,
-                description:
-                    "A GitHub run, a GitLab pipeline or a Jenkins or Concourse build number, as runs lists them.",
+                description: "Run/pipeline/build number from runs.",
             }),
         ),
         required_only: Type.Optional(Type.Boolean({ description: "status: only the required checks or jobs." })),
@@ -62,8 +58,7 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 30,
-                description:
-                    "runs: queued, in_progress, completed, success, failure ... (Concourse: succeeded, failed, ...)",
+                description: "runs: queued/in_progress/completed/success/failure.",
             }),
         ),
         limit: Type.Optional(
@@ -73,7 +68,7 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "log: a job name or id. Default: the first failed job.",
+                description: "log: job name/id. Default: first failed.",
             }),
         ),
         tail: Type.Optional(
@@ -87,7 +82,7 @@ export const parameters = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "log: only lines matching this regular expression.",
+                description: "log: lines matching this regex.",
             }),
         ),
         failed_only: Type.Optional(
@@ -105,22 +100,21 @@ export const parameters = Type.Object(
                 {},
                 {
                     additionalProperties: Type.String(),
-                    description: `trigger: variables or build parameters, name to value (at most ${MAX_PARAMETERS}).`,
+                    description: `trigger: variables/build parameters, name to value (max ${MAX_PARAMETERS}).`,
                 },
             ),
         ),
         finish: Type.Optional(
             stringEnum(FINISHES, {
                 description:
-                    "watch: when it ends. required (default), check (the one in check), run (run_id); " +
-                    "GitHub also approved, merged, comment, tag, release.",
+                    "watch: finish at required (default), check (check), run (run_id); GitHub: approved/merged/comment/tag/release.",
             }),
         ),
         check: Type.Optional(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "watch: the name of the check, job or stage to wait for.",
+                description: "watch: check/job/stage name.",
             }),
         ),
         pattern: Type.Optional(
