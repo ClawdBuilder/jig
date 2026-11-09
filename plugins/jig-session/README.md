@@ -133,4 +133,5 @@ jig-session/
 - [How it works](docs/how-it-works.md): the write and the switch step by step, a reading path through `src/`, and what it is
   built on (Pi's extension API, Node's built-ins)
 - [The status file](docs/status-file.md): when it is written, an example, and how a reader finds the session it wants
+- [Front-end contracts](../../docs/contracts.md): the status-file and review API surfaces this plugin is part of
 - [Context and requests](docs/context.md): how the breakdown is counted, how a request is handled, skills and reload

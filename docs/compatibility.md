@@ -17,7 +17,23 @@ the npm its Node line provides.
   newest Pi that npm has, on Node 26. It never runs on a pull request. A red canary means the next Pi would break Jig.
 - **Not tested:** other Pi versions. `peerDependencies` say `*` because Pi
   supplies its own packages to an extension, so the real requirement is this table.
-- **To move the Pi version,** follow "Pi version" in [AGENTS.md](../AGENTS.md): the pin, this table and the README change together.
+- **To move the Pi version,** follow [Moving the Pi version](#moving-the-pi-version).
+
+## Moving the Pi version
+
+The Pi that Jig is tested with is named in six places that move together, in one commit:
+
+- both `Install Pi` steps of `.github/workflows/ci.yml`;
+- the "Tested with" table above, with the date;
+- the tested-version sentence in `README.md`;
+- the Pi row and the install command in [Contributing](../CONTRIBUTING.md#set-up);
+- the tested Pi named in `AGENTS.md`;
+- the exact Pi packages in `package.json`'s `devDependencies` (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`,
+  `@earendil-works/pi-tui` and `typebox`), and `jig.agents.pi.tested` beside them.
+
+First run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`, "Run workflow") and wait for it to be green on
+the new release. Then change those places and run `npm run check`, `npm test` and `npm run check:install` on that Pi. The
+minimum, `jig.agents.pi.minimum`, moves only by a decision of its own.
 
 ## What is public
 
@@ -69,5 +85,7 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
   older contract finds no `jig-core` and fails closed, rather than running against an API that changed under it.
 - **A pin is never loosened to get green.** When a pin test fails, either the change was a slip and is undone, or it is on purpose and
   the decision comes first. Deleting a literal, or swapping an exact comparison for a looser one, is not a fix.
+
+The front-end surfaces are listed in [Front-end contracts](contracts.md).
 
 Back to the [README](../README.md).
