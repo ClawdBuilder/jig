@@ -19,6 +19,38 @@ import { registerRolloutWatch } from "./watch.ts";
 export type OpsOptions = RuntimeOptions & DeployOptions & CiWatchOptions;
 
 /** The extension, with parts a test can replace. Pi loads the default export below. */
+export const OPS_METHODS = [
+    {
+        id: "ci-token",
+        requires: "ci",
+        label: "CI token",
+        who: "GitLab or Concourse",
+        fields: [{ kind: "reference", path: "services.*.ci.auth.token", label: "The CI token" }],
+    },
+    {
+        id: "ci-basic",
+        requires: "ci",
+        label: "User name and API token",
+        who: "Jenkins",
+        fields: [
+            { kind: "text", path: "services.*.ci.auth.user", label: "The CI user name" },
+            { kind: "reference", path: "services.*.ci.auth.token", label: "The CI API token" },
+        ],
+    },
+    {
+        id: "ci-sign-in",
+        requires: "ci",
+        label: "Company sign-in service",
+        fields: [{ kind: "text", path: "services.*.ci.auth.signIn", label: "The sign-in service name" }],
+    },
+    {
+        id: "ci-transport",
+        requires: "ci",
+        label: "Company transport",
+        fields: [{ kind: "text", path: "services.*.ci.auth.transport", label: "The transport name" }],
+    },
+] as const;
+
 export function jigOps(options: OpsOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         // "Artifact ready" is published on Pi's event bus, for any plugin that wants to act on it.
@@ -29,7 +61,8 @@ export function jigOps(options: OpsOptions = {}): ExtensionFactory {
         // jig-core may load after this plugin; withJig waits for it.
         // What the tools declare is how jig-core classifies them.
         withJig((api) => {
-            api.config.registerSection("ops", validateOps, { replace: OPS_REPLACE });
+            api.config.registerSection("ops", validateOps, { replace: OPS_REPLACE, methods: OPS_METHODS });
+
             api.declareTool({ tool: "runtime", plugin: "jig-ops", classify: runtime.classify });
             api.declareTool({ tool: "deploy", plugin: "jig-ops", classify: deploy.classify, preview: deploy.preview });
             api.declareTool({ tool: "ci", plugin: "jig-ops", classify: ci.classify, preview: ci.preview });

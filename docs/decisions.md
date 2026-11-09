@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-09: sign-in methods are declared with their section](#2026-11-09-sign-in-methods-are-declared-with-their-section)
 - [2026-11-06: Jig is published as a scoped npm package](#2026-11-06-jig-is-published-as-a-scoped-npm-package)
 - [2026-11-05: the project files Pi loads are guarded for its file tools](#2026-11-05-the-project-files-pi-loads-are-guarded-for-its-file-tools)
 - [2026-11-05: project packages load only when Pi would trust the folder](#2026-11-05-project-packages-load-only-when-pi-would-trust-the-folder)
@@ -68,6 +69,17 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-09: sign-in methods are declared with their section
+
+**Decision.** A plugin declares a section's sign-in methods in the same `registerSection` call. Another
+plugin's `registerSection` of a taken name is refused; the same plugin loaded again (a reload, a test) brings the same
+validator and replaces its own registration. A company may set `default`, `hide`, or `add` a fixed
+sign-in/transport method as a prefill. No method id is written; setup infers the method from its required paths.
+
+**Why:** ownership is structural, not a token or a later call, and a company cannot replace another plugin's methods.
+The required path set is the method's shape, so a Data Center token is the subset of a Cloud token plus email and the
+most specific method wins.
 
 ## 2026-11-06: Jig is published as a scoped npm package
 

@@ -4,9 +4,14 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- `jig setup <section>` asks about one section even when it is already valid, and plugins declare their sign-in methods so setup can offer them.
+
 ### Changed
 
 - Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
+- Another plugin's `registerSection` of a section that is already registered is refused; the same plugin loaded again replaces its own registration.
 
 ## [0.5.4] - 2026-11-09
 

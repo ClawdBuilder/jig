@@ -1,13 +1,22 @@
 // A company's onboarding list: what its people must supply, in the company's order and words. It is data, checked once when
 // the plugin registers, never code: setup and doctor read it and ask or report. A plugin without a list is fine — setup falls
 // back to the section validators, which is less pretty but never blocked.
-import type { OnboardingEntry, OnboardingItem, OnboardingStore } from "./contract.ts";
+import type {
+    OnboardingEntry,
+    OnboardingItem,
+    OnboardingMethod,
+    OnboardingMethodChoice,
+    OnboardingMethodField,
+    OnboardingStore,
+} from "./contract.ts";
 
 /** The stores a list may name, in `jig.json`'s spelling. */
 export const ONBOARDING_STORES: readonly OnboardingStore[] = ["pass", "env", "keychain", "op", "cmd", "file"];
 
 const SECTION = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const PATH = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
+const METHOD_ID = /^[a-z][a-z0-9-]{0,63}$/;
+const METHOD_PATH = /^(?:[A-Za-z0-9_*][A-Za-z0-9_*-]*)(?:\.[A-Za-z0-9_*][A-Za-z0-9_*-]*)*$/;
 const LABEL_MAX = 120;
 const WHY_MAX = 400;
 const DETAIL_MAX = 600;
@@ -23,14 +32,350 @@ function optionalLine(value: unknown, at: string, max: number, errors: string[])
         errors.push(`${at}: must be one line of at most ${max} characters`);
 }
 
+/** The fields every method value must have: a reference, or text that is not optional. */
+export function requiredFields(method: OnboardingMethod): OnboardingMethodField[] {
+    return method.fields.filter(
+        (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
+    );
+}
+
+/** The required paths of a method, sorted. Kinds and optional fields do not decide the method; the set of paths does.
+ *  A subset is allowed and the most specific method wins, as long as two sets are not identical. */
+export function requiredPaths(method: OnboardingMethod): string {
+    return requiredFields(method)
+        .map((field) => field.path)
+        .sort()
+        .join("|");
+}
+
+/** A path segment a method may name: not a prototype key. */
+function safeSegment(segment: string): boolean {
+    return !["__proto__", "constructor", "prototype"].includes(segment);
+}
+
+function safeMethodPath(path: string): boolean {
+    return path.split(".").every(safeSegment);
+}
+
+/**
+ * The method a section value uses: the most specific required path set matched by the value, or undefined on a tie or
+ * no match. A `*` in a method path matches one name at that level.
+ */
+export function inferredMethod(methods: readonly OnboardingMethod[], value: unknown): OnboardingMethod | undefined {
+    const has = (current: unknown, path: string): boolean => {
+        const segments = path.split(".");
+        const walk = (node: unknown, index: number): boolean => {
+            if (index === segments.length) return node !== undefined;
+            const segment = segments[index] ?? "";
+            if (typeof node !== "object" || node === null || Array.isArray(node)) return false;
+            if (segment === "*") return Object.values(node).some((child) => walk(child, index + 1));
+            return Object.hasOwn(node, segment) && walk((node as Record<string, unknown>)[segment], index + 1);
+        };
+        return walk(current, 0);
+    };
+    let best: OnboardingMethod | undefined;
+    let size = -1;
+    let tie = false;
+    for (const method of methods) {
+        const required = requiredFields(method);
+        if (required.length === 0 || !required.every((field) => has(value, field.path))) continue;
+        const count = required.length;
+        if (count > size) {
+            best = method;
+            size = count;
+            tie = false;
+        } else if (count === size) {
+            tie = true;
+        }
+    }
+    return tie ? undefined : best;
+}
+
+/** One field of a plugin method, or of a company-only fixed method. */
+function checkMethodField(
+    raw: unknown,
+    at: string,
+    company: boolean,
+    errors: string[],
+): OnboardingMethodField | undefined {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        errors.push(`${at}: must be an object`);
+        return undefined;
+    }
+    const field = raw as Record<string, unknown>;
+    const kind = field.kind;
+    if (kind !== "text" && kind !== "pick" && kind !== "reference") {
+        errors.push(`${at}.kind: must be text, pick or reference`);
+        return undefined;
+    }
+    const allowed =
+        kind === "reference"
+            ? ["kind", "path", "label", "stores", "preferredStore", "suggested", "addHints", "why"]
+            : kind === "pick"
+              ? ["kind", "path", "label", "choices", "why", "value"]
+              : ["kind", "path", "label", "why", "placeholder", "optional", "value"];
+    for (const key of Object.keys(field)) {
+        if (!allowed.includes(key)) errors.push(`${at}.${key}: unknown field for ${kind}`);
+    }
+    if (!METHOD_PATH.test(String(field.path)) || !safeMethodPath(String(field.path)))
+        errors.push(`${at}.path: a dotted path inside the section, without a prototype key`);
+    if (!oneLine(field.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
+    optionalLine(field.why, `${at}.why`, WHY_MAX, errors);
+    if (company && (typeof field.value !== "string" || !oneLine(field.value, 64))) {
+        errors.push(`${at}.value: a company-only method fixes every field in one line of at most 64 characters`);
+    }
+    if (!company && field.value !== undefined) errors.push(`${at}.value: only a company-only method may fix a field`);
+    if (kind === "text") {
+        optionalLine(field.placeholder, `${at}.placeholder`, LABEL_MAX, errors);
+        if (field.optional !== undefined && typeof field.optional !== "boolean")
+            errors.push(`${at}.optional: true or false`);
+    }
+    if (kind === "pick") {
+        if (!Array.isArray(field.choices) || field.choices.length === 0 || field.choices.length > 100) {
+            errors.push(`${at}.choices: a list of one to 100 choices`);
+        } else {
+            for (const [index, choice] of field.choices.entries()) {
+                if (!oneLine(choice, LABEL_MAX)) errors.push(`${at}.choices[${index}]: one line`);
+            }
+        }
+        if (
+            company &&
+            typeof field.value === "string" &&
+            Array.isArray(field.choices) &&
+            !field.choices.includes(field.value)
+        ) {
+            errors.push(`${at}.value: must be one of the choices`);
+        }
+    }
+    if (kind === "reference") {
+        if (field.stores !== undefined) {
+            if (!Array.isArray(field.stores) || field.stores.length === 0) {
+                errors.push(`${at}.stores: a list of the stores to offer`);
+            } else {
+                for (const store of field.stores) {
+                    if (!ONBOARDING_STORES.includes(store as OnboardingStore))
+                        errors.push(`${at}.stores: ${JSON.stringify(store)} is not a store Jig knows`);
+                }
+            }
+        }
+        for (const [name, value] of [
+            ["suggested", field.suggested],
+            ["addHints", field.addHints],
+        ] as const) {
+            if (value === undefined) continue;
+            if (typeof value !== "object" || value === null || Array.isArray(value)) {
+                errors.push(`${at}.${name}: must be an object keyed by store`);
+                continue;
+            }
+            for (const store of Object.keys(value)) {
+                if (!ONBOARDING_STORES.includes(store as OnboardingStore))
+                    errors.push(`${at}.${name}: ${JSON.stringify(store)} is not a store Jig knows`);
+            }
+        }
+        if (field.preferredStore !== undefined && !ONBOARDING_STORES.includes(field.preferredStore as OnboardingStore))
+            errors.push(`${at}.preferredStore: must be one of ${ONBOARDING_STORES.join(", ")}`);
+    }
+    return field as unknown as OnboardingMethodField;
+}
+
+/** Throws when a plugin's methods for one section are not a list setup can use. */
+export function checkOnboardingMethods(section: string, raw: unknown): readonly OnboardingMethod[] {
+    if (!SECTION.test(section)) throw new TypeError(`onboarding methods: ${JSON.stringify(section)} is not a section`);
+    if (!Array.isArray(raw) || raw.length === 0) {
+        throw new TypeError(`onboarding methods(${section}): methods must be a non-empty list`);
+    }
+    const errors: string[] = [];
+    const methods: OnboardingMethod[] = [];
+    const ids = new Set<string>();
+    const shapes = new Map<string, string>();
+    for (const [index, value] of raw.entries()) {
+        const at = `methods[${index}]`;
+        if (typeof value !== "object" || value === null || Array.isArray(value)) {
+            errors.push(`${at}: must be an object`);
+            continue;
+        }
+        const method = value as Record<string, unknown>;
+        for (const key of Object.keys(method)) {
+            if (!["id", "label", "who", "fields", "requires"].includes(key)) errors.push(`${at}.${key}: unknown field`);
+        }
+        if (typeof method.id !== "string" || !METHOD_ID.test(method.id)) errors.push(`${at}.id: a lower-case id`);
+        else if (ids.has(method.id)) errors.push(`${at}.id: ${JSON.stringify(method.id)} is used twice`);
+        else ids.add(method.id);
+        if (!oneLine(method.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
+        optionalLine(method.who, `${at}.who`, LABEL_MAX, errors);
+        if (
+            method.requires !== undefined &&
+            (!METHOD_PATH.test(String(method.requires)) || !safeMethodPath(String(method.requires)))
+        ) {
+            errors.push(`${at}.requires: a relative dotted path without a prototype key`);
+        }
+        if (!Array.isArray(method.fields) || method.fields.length === 0 || method.fields.length > 64) {
+            errors.push(`${at}.fields: a list of one to 64 fields`);
+            continue;
+        }
+        const fields: OnboardingMethodField[] = [];
+        for (const [field, rawField] of method.fields.entries()) {
+            const checked = checkMethodField(rawField, `${at}.fields[${field}]`, false, errors);
+            if (checked !== undefined) fields.push(checked);
+        }
+        const complete = {
+            id: String(method.id ?? ""),
+            label: String(method.label ?? ""),
+            ...(typeof method.who === "string" ? { who: method.who } : {}),
+            ...(typeof method.requires === "string" ? { requires: method.requires } : {}),
+            fields,
+        };
+        if (requiredFields(complete as OnboardingMethod).length === 0)
+            errors.push(`${at}.fields: at least one field is required`);
+        const paths = requiredPaths(complete as OnboardingMethod);
+        const other = shapes.get(paths);
+        if (other !== undefined)
+            errors.push(`${at}.fields: the same required paths as ${other}; the method could not be inferred`);
+        else shapes.set(paths, String(method.id));
+        methods.push(complete as OnboardingMethod);
+    }
+    if (errors.length > 0) throw new TypeError(`onboarding methods(${section}): ${errors.join("; ")}`);
+    return methods;
+}
+
+/** The company's overlay on a section's methods, checked against the ids the plugin registered. */
+function checkMethodChoice(
+    raw: unknown,
+    at: string,
+    known: readonly OnboardingMethod[] | undefined,
+    errors: string[],
+): OnboardingMethodChoice | undefined {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        errors.push(`${at}: must be an object`);
+        return undefined;
+    }
+    const choice = raw as Record<string, unknown>;
+    for (const key of Object.keys(choice)) {
+        if (!["default", "hide", "add"].includes(key)) errors.push(`${at}.${key}: unknown field`);
+    }
+    if (choice.default !== undefined && (typeof choice.default !== "string" || !METHOD_ID.test(choice.default)))
+        errors.push(`${at}.default: a method id`);
+    const hidden = new Set<string>();
+    if (choice.hide !== undefined) {
+        if (!Array.isArray(choice.hide)) errors.push(`${at}.hide: a list of method ids`);
+        else {
+            for (const [index, id] of choice.hide.entries()) {
+                if (typeof id !== "string" || !METHOD_ID.test(id)) errors.push(`${at}.hide[${index}]: a method id`);
+                else if (hidden.has(id)) errors.push(`${at}.hide[${index}]: ${JSON.stringify(id)} is listed twice`);
+                else hidden.add(id);
+            }
+        }
+    }
+    const add: OnboardingMethod[] = [];
+    if (choice.add !== undefined) {
+        if (!Array.isArray(choice.add)) errors.push(`${at}.add: a list of methods`);
+        else {
+            for (const [index, value] of choice.add.entries()) {
+                const methodAt = `${at}.add[${index}]`;
+                if (typeof value !== "object" || value === null || Array.isArray(value)) {
+                    errors.push(`${methodAt}: must be an object`);
+                    continue;
+                }
+                const method = value as Record<string, unknown>;
+                for (const key of Object.keys(method)) {
+                    if (!["id", "label", "who", "fields"].includes(key))
+                        errors.push(`${methodAt}.${key}: unknown field`);
+                }
+                if (typeof method.id !== "string" || !METHOD_ID.test(method.id))
+                    errors.push(`${methodAt}.id: a lower-case id`);
+                if (!oneLine(method.label, LABEL_MAX)) errors.push(`${methodAt}.label: needed, one line`);
+                optionalLine(method.who, `${methodAt}.who`, LABEL_MAX, errors);
+                if (!Array.isArray(method.fields) || method.fields.length === 0) {
+                    errors.push(`${methodAt}.fields: a list of fixed fields`);
+                    continue;
+                }
+                const fields: OnboardingMethodField[] = [];
+                for (const [field, rawField] of method.fields.entries()) {
+                    const checked = checkMethodField(rawField, `${methodAt}.fields[${field}]`, true, errors);
+                    if (checked !== undefined) {
+                        const last = checked.path.split(".").at(-1);
+                        if (last !== "signIn" && last !== "transport")
+                            errors.push(
+                                `${methodAt}.fields[${field}].path: a company method names its own signIn or transport`,
+                            );
+                        fields.push(checked);
+                    }
+                }
+                const complete = {
+                    id: String(method.id ?? ""),
+                    label: String(method.label ?? ""),
+                    ...(typeof method.who === "string" ? { who: method.who } : {}),
+                    fields,
+                };
+                const same = known?.find((one) => requiredPaths(one) === requiredPaths(complete));
+                if (same !== undefined) {
+                    if (same.id !== complete.id) {
+                        errors.push(
+                            `${methodAt}.id: use ${JSON.stringify(same.id)} to prefill this method's value, not a new method`,
+                        );
+                    }
+                    // A matching path set with the plugin's id is a default value for that method, kept in `add`
+                    // so the plan can prefill it without writing an id.
+                    add.push(complete);
+                    continue;
+                }
+                if (known !== undefined) {
+                    const shared = [...new Set(complete.fields.map((field) => field.path))].filter((path) =>
+                        known.some((one) => new Set(one.fields.map((field) => field.path)).has(path)),
+                    );
+                    if (shared.length > 0) {
+                        errors.push(
+                            `${methodAt}.fields: shares ${shared.join(", ")} with a free method; use one path set or prefill the plugin method`,
+                        );
+                    }
+                }
+                if (add.some((one) => requiredPaths(one) === requiredPaths(complete)))
+                    errors.push(`${methodAt}.fields: the same required paths as another company method`);
+                add.push(complete);
+            }
+        }
+    }
+    if (known !== undefined) {
+        const ids = new Set(known.map((method) => method.id));
+        for (const method of add) {
+            if (
+                ids.has(method.id) &&
+                !known.some((one) => one.id === method.id && requiredPaths(one) === requiredPaths(method))
+            )
+                errors.push(`${at}.add: ${JSON.stringify(method.id)} is already a plugin method`);
+        }
+        const names = new Set([...known, ...add].map((method) => method.id));
+        if (typeof choice.default === "string" && !names.has(choice.default))
+            errors.push(`${at}.default: ${JSON.stringify(choice.default)} is not a method of this section`);
+        for (const id of Array.isArray(choice.hide) ? choice.hide : []) {
+            if (typeof id === "string" && !names.has(id))
+                errors.push(`${at}.hide: ${JSON.stringify(id)} is not a method of this section`);
+        }
+        if (typeof choice.default === "string" && hidden.has(choice.default))
+            errors.push(`${at}.default: ${JSON.stringify(choice.default)} cannot also be hidden`);
+        const paths = new Map<string, string>();
+        for (const method of [...known, ...add]) {
+            const set = requiredPaths(method);
+            const other = paths.get(set);
+            if (other !== undefined && other !== method.id)
+                errors.push(`${at}: ${JSON.stringify(method.id)} has the same required paths as ${other}`);
+            else paths.set(set, method.id);
+        }
+    }
+    return add.length === 0 ? (choice as OnboardingMethodChoice) : ({ ...choice, add } as OnboardingMethodChoice);
+}
+
 /** Throws a `TypeError` naming the item and field when the list is not one setup can follow. */
-export function checkOnboarding(raw: unknown): OnboardingEntry {
+export function checkOnboarding(
+    raw: unknown,
+    knownMethods: ReadonlyMap<string, readonly OnboardingMethod[]> = new Map(),
+): OnboardingEntry {
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
         throw new TypeError("onboarding.register: the entry must be an object with items");
     }
     const entry = raw as Record<string, unknown>;
     for (const key of Object.keys(entry)) {
-        if (key !== "preferredStore" && key !== "items") {
+        if (key !== "preferredStore" && key !== "items" && key !== "methods") {
             throw new TypeError(`onboarding.register: unknown field ${JSON.stringify(key)}`);
         }
     }
@@ -38,11 +383,11 @@ export function checkOnboarding(raw: unknown): OnboardingEntry {
     if (entry.preferredStore !== undefined && !ONBOARDING_STORES.includes(entry.preferredStore as OnboardingStore)) {
         errors.push(`preferredStore: must be one of ${ONBOARDING_STORES.join(", ")}`);
     }
-    if (!Array.isArray(entry.items)) {
+    if (entry.items !== undefined && !Array.isArray(entry.items)) {
         throw new TypeError("onboarding.register: items must be a list");
     }
     const items: OnboardingItem[] = [];
-    for (const [index, rawItem] of entry.items.entries()) {
+    for (const [index, rawItem] of (entry.items ?? []).entries()) {
         const at = `items[${index}]`;
         if (typeof rawItem !== "object" || rawItem === null || Array.isArray(rawItem)) {
             errors.push(`${at}: must be an object`);
@@ -152,10 +497,29 @@ export function checkOnboarding(raw: unknown): OnboardingEntry {
         }
         errors.push(`${at}.kind: must be text, pick, reference, login or info`);
     }
+    const methods: Record<string, OnboardingMethodChoice> = {};
+    if (entry.methods !== undefined) {
+        if (typeof entry.methods !== "object" || entry.methods === null || Array.isArray(entry.methods)) {
+            errors.push("methods: must be an object keyed by section");
+        } else {
+            for (const [section, value] of Object.entries(entry.methods)) {
+                if (!SECTION.test(section)) {
+                    errors.push(`methods.${section}: not a section name`);
+                    continue;
+                }
+                const checked = checkMethodChoice(value, `methods.${section}`, knownMethods.get(section), errors);
+                if (checked !== undefined) methods[section] = checked;
+            }
+        }
+    }
     if (errors.length > 0) {
         throw new TypeError(`onboarding.register: ${errors.join("; ")}`);
     }
-    return raw as unknown as OnboardingEntry;
+    return {
+        ...(entry.preferredStore === undefined ? {} : { preferredStore: entry.preferredStore as OnboardingStore }),
+        items,
+        ...(Object.keys(methods).length === 0 ? {} : { methods }),
+    };
 }
 
 /** The item for one field, by section and dotted path, or undefined when the company did not name it. */

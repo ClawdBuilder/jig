@@ -16,6 +16,7 @@ import type {
     Decision,
     EnvironmentKind,
     OnboardingEntry,
+    OnboardingMethod,
     Preview,
     SandboxProvider,
     ToolDeclaration,
@@ -116,6 +117,9 @@ export interface JigState {
     personal: LoadedConfig;
     /** The onboarding list a company plugin without profiles registered; the active company's lives on its entry. */
     onboarding: OnboardingEntry | undefined;
+    /** Sign-in methods plugin sections declare, by section; setup asks among them and infers the one in use. */
+    onboardingMethods: Map<string, readonly OnboardingMethod[]>;
+
     /** What company plugins added, as policy and secrets read it: `globalCompany` and the active company's additions. */
     company: CompanyAdditions;
     /** What plugins that never registered with `profiles.register` added: it always applies. */
@@ -247,6 +251,8 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         },
         company: emptyAdditions(),
         onboarding: undefined,
+        onboardingMethods: new Map(),
+
         globalCompany: emptyAdditions(),
         companies: new Map(),
         profile: newProfileState(),

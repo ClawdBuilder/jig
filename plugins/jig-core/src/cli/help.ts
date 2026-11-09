@@ -30,17 +30,19 @@ Examples:
   jig doctor
   jig doctor --json > doctor.json
 ${EXIT_CODES}`,
-    setup: `Usage: jig setup
+    setup: `Usage: jig setup [section]
 
 Ask only what is missing, then write your settings file once, with a backup.
-Setup needs a terminal: its company, profile and credential choices have no safe
-headless default.
+A section you name is asked about even when it is already valid, so you can
+change its sign-in. Setup needs a terminal: its company, profile and credential
+choices have no safe headless default.
 
 Options:
   -h, --help show this help
 
 Examples:
   jig setup
+  jig setup jira
 ${EXIT_CODES}`,
     update: `Usage: jig update [--check] [--json] [--to <version>] [--yes]
 

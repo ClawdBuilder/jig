@@ -26,13 +26,27 @@ export interface SetupUi {
     notify(text: string, level: "info" | "warning" | "error"): void;
 }
 
-export async function runSetup(state: JigState, ui: SetupUi): Promise<number> {
-    const built = buildSetupPlan(setupStateFrom(state));
+export async function runSetup(state: JigState, ui: SetupUi, requestedSection?: string): Promise<number> {
+    if (requestedSection !== undefined && !state.sectionChecks.has(requestedSection)) {
+        const known = [...state.sectionChecks.keys()].sort();
+        ui.notify(
+            `Unknown section ${JSON.stringify(requestedSection)}. Known sections: ${known.join(", ") || "none"}.`,
+            "error",
+        );
+        return 2;
+    }
+    const planState = setupStateFrom(state);
+    if (requestedSection !== undefined) planState.requestedSection = requestedSection;
+    const built = buildSetupPlan(planState);
     if ("problem" in built) {
         ui.notify(built.problem, "warning");
         return 1;
     }
     const plan = built.plan;
+    if (requestedSection !== undefined && plan.sections.every((section) => section.fields.length === 0)) {
+        ui.notify(`Nothing to ask for ${requestedSection}.`, "info");
+        return 0;
+    }
     if (plan.sections.length === 0) {
         ui.notify("Nothing needs you right now. jig doctor has the full check.", "info");
         return 0;
@@ -378,5 +392,6 @@ export function setupStateFrom(state: JigState): SetupState {
         companyBackends: backends.byCompany,
         commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
         onboarding: activeOnboarding(state),
+        onboardingMethods: state.onboardingMethods,
     };
 }
