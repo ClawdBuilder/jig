@@ -43,6 +43,33 @@ function anchors(text) {
     return found;
 }
 
+/** The warning categories the baseline counts. */
+export function warningCounts(warnings) {
+    const counts = { paragraph: 0, cell: 0, readme: 0, other: 0 };
+    for (const warning of warnings) {
+        if (warning.includes("paragraph is long")) counts.paragraph++;
+        else if (warning.includes("table cell is long")) counts.cell++;
+        else if (/lines \(about 120\)/.test(warning)) counts.readme++;
+        else counts.other++;
+    }
+    return counts;
+}
+
+/** Fail when any category has more warnings than the checked-in baseline. A drop is allowed. */
+export function baselineFailures(warnings, baseline) {
+    const counts = warningCounts(warnings);
+    const failures = [];
+    for (const category of ["paragraph", "cell", "readme", "other"]) {
+        const allowed = baseline[category];
+        if (typeof allowed !== "number" || counts[category] > allowed) {
+            failures.push(
+                `docs: ${counts[category]} ${category} warning${counts[category] === 1 ? "" : "s"}, baseline ${allowed ?? "missing"}`,
+            );
+        }
+    }
+    return failures;
+}
+
 export function checkDocs(root) {
     const failures = [];
     const warnings = [];
@@ -119,9 +146,19 @@ export function checkDocs(root) {
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
     const root = process.argv[2] ?? path.resolve(import.meta.dirname, "..");
-    const { failures, warnings } = checkDocs(root);
+    const { failures: structural, warnings } = checkDocs(root);
     for (const warning of warnings) console.log(`warn ${warning}`);
-    for (const failure of failures) console.log(`fail ${failure}`);
-    console.log(`docs: ${failures.length} failures, ${warnings.length} warnings`);
-    process.exit(failures.length === 0 ? 0 : 1);
+    const counts = warningCounts(warnings);
+    let baseline = {};
+    try {
+        baseline = JSON.parse(readFileSync(path.join(root, "scripts", "check-docs-baseline.json"), "utf8"));
+    } catch {
+        structural.push("docs: scripts/check-docs-baseline.json is missing or unreadable");
+    }
+    const raised = baselineFailures(warnings, baseline);
+    for (const failure of [...structural, ...raised]) console.log(`fail ${failure}`);
+    const failures = structural.length + raised.length;
+    const baselineTotal = Object.values(baseline).reduce((a, b) => a + (typeof b === "number" ? b : 0), 0);
+    console.log(`docs: ${failures} failures, ${warnings.length} warnings (baseline ${baselineTotal})`);
+    process.exit(failures === 0 ? 0 : 1);
 }

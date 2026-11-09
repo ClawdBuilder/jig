@@ -101,7 +101,7 @@ out of it.
 - Python start-up hooks: `*.pth` files in your user site-packages
 
 **A read-only agent** (a child whose role has `writes: false`, see
-[jig-agents](../../jig-agents/README.md#read-only-bash))
+[jig-agents](../../jig-agents/docs/roles.md#read-only-bash))
 - the home folder and the working folder, and with them everything inside, the build caches included.
   `/tmp` and the session's scratch folder stay writable. Nothing in your section opens them again: `share` is
   ignored, and an ask-first folder in the home folder is answered by this lock, so nobody is asked.
@@ -191,3 +191,47 @@ reports:
 
 A toolchain folder that does not exist yet is not audited: nothing there runs until you
 install the manager, which writes over it.
+
+## Inside and outside
+
+| Inside the sandbox | Outside it |
+|---|---|
+| The agent's `bash`, and the background tasks it starts | Your own `!` commands: they are yours |
+| Subagents' `bash`, when it is the registered tool | Jig's tools (`git`, `jira`, `mongo`, ...), through `jig-core`'s rules |
+| Commands other plugins run with `sandbox.run`, such as `jig-workflow`'s tests | Pi itself and its file tools, which `jig-core`'s protected paths cover |
+
+## The four kinds of path
+
+| Kind | Examples | Inside the sandbox |
+|---|---|---|
+| **Hidden** | `~/.ssh`, `~/.aws`, `~/.kube`, `~/.config/gh`, Pi's `auth.json`, a project's `.env`, `~/.gradle/gradle.properties`, the Windows drive | Cannot be read. Never asks |
+| **Locked** | `~/.bashrc`, `~/.gitconfig`, `PATH` folders, git hooks, Pi's agent folder and the packages it loads, a project's `.pi/extensions`, `~/.gradle/init.d` | Readable, never written. Never asks |
+| **Ask first** | Toolchain managers (`~/.sdkman`, `~/.nvm`, `~/.pyenv`, ...) | Writable once you say yes |
+| **Writable** | The project, your home folder, `/tmp`, build caches (`~/.gradle/caches`, `~/.m2/repository`, `~/.npm`) | As outside |
+
+Hidden and locked are exact lists that start from `jig-core`'s protected paths, so the
+file tools and `bash` cannot disagree, and everything not on them is writable. Every
+entry and its reason is in [The rules](../README.md).
+
+## A child agent that may not write
+
+A child started by [jig-agents](../../jig-agents/README.md) from a role with `writes: false`, such as `scout` or `reviewer`, may
+have `bash`, and its `bash` is read-only.
+
+The parent puts the role's policy in the child's environment (`JIG_ROLE_POLICY`), and the sandbox in the child **locks**
+its home folder and its working folder: a command reads them and writes neither. `/tmp` stays writable, for the scratch
+files a tool needs.
+- **The build caches are locked too.** They live in the home folder, and the runtime lays a read-only mount over a
+  folder after the writable ones. A read-only agent cannot poison a cache that a later build outside the sandbox uses.
+- **Only more is locked.** `lock` in your section adds to it, and nothing in `jig.json` takes it away; `share` is ignored.
+  A policy that is there and cannot be read locks the same folders.
+- **A refusal says why** (`this agent's role may not write`) and nobody is asked to widen it.
+
+## Fails closed, says so
+
+- When the sandbox cannot start, `bash` is refused with the steps to fix it. It never
+  runs unsandboxed by accident.
+- `/sandbox doctor` checks each requirement and runs real commands inside to prove it:
+  a write, a hidden read, a DNS lookup, a `localhost` connection.
+- Without `jig-sandbox`, `bash` runs as Pi runs it, and `/jig` says plainly that
+  credentials are then hidden only from Pi's file tools.

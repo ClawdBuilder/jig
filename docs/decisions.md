@@ -6,18 +6,21 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 - [2026-11-06: Jig is published as a scoped npm package](#2026-11-06-jig-is-published-as-a-scoped-npm-package)
 - [2026-11-05: the project files Pi loads are guarded for its file tools](#2026-11-05-the-project-files-pi-loads-are-guarded-for-its-file-tools)
+- [2026-11-05: project packages load only when Pi would trust the folder](#2026-11-05-project-packages-load-only-when-pi-would-trust-the-folder)
+- [2026-11-05: action names are snake case](#2026-11-05-action-names-are-snake-case)
+- [2026-11-04: setup and doctor run as a standalone command](#2026-11-04-setup-and-doctor-run-as-a-standalone-command)
 - [2026-11-04: `/jig doctor` reads, and `/jig setup` writes in the person's words](#2026-11-04-jig-doctor-reads-and-jig-setup-writes-in-the-persons-words)
+- [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
+- [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
+- [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
+- [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
+- [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-03: company profiles, and skill overlays instead of paired skills](#2026-11-03-company-profiles-and-skill-overlays-instead-of-paired-skills)
 - [2026-11-03: deferred tools and stage tools](#2026-11-03-deferred-tools-and-stage-tools)
 - [2026-11-02: the review screen's browser page is served over `localhost`, not opened as a file](#2026-11-02-the-review-screens-browser-page-is-served-over-localhost-not-opened-as-a-file)
 - [2026-11-02: a Gradle build's tests pick an installed JDK that fits, from files](#2026-11-02-a-gradle-builds-tests-pick-an-installed-jdk-that-fits-from-files)
 - [2026-11-02: the local packages and extensions that Pi loads are guarded paths](#2026-11-02-the-local-packages-and-extensions-that-pi-loads-are-guarded-paths)
 - [2026-11-02: a push says how the agent will hear how the checks end](#2026-11-02-a-push-says-how-the-agent-will-hear-how-the-checks-end)
-- [2026-11-02: a failed command is named when its output shows a Unix socket the sandbox does not make](#2026-11-02-a-failed-command-is-named-when-its-output-shows-a-unix-socket-the-sandbox-does-not-make)
-- [2026-11-02: an environment can have its own CI job, and a `ci` call can name it](#2026-11-02-an-environment-can-have-its-own-ci-job-and-a-ci-call-can-name-it)
-- [2026-11-02: Concourse is a CI system, its login is a secret reference, and a request can stop at a marker](#2026-11-02-concourse-is-a-ci-system-its-login-is-a-secret-reference-and-a-request-can-stop-at-a-marker)
-- [2026-11-02: jig-git asks ssh which host an alias is](#2026-11-02-jig-git-asks-ssh-which-host-an-alias-is)
-- [2026-11-02: a review of an agent run leaves out the commits that came in with it](#2026-11-02-a-review-of-an-agent-run-leaves-out-the-commits-that-came-in-with-it)
 - [2026-11-02: start checks and the store unlock are the user's settings, run inside Pi](#2026-11-02-start-checks-and-the-store-unlock-are-the-users-settings-run-inside-pi)
 - [2026-11-02: an optional launcher, with nothing a company decides](#2026-11-02-an-optional-launcher-with-nothing-a-company-decides)
 - [2026-11-02: where the secret store is, and who types secrets](#2026-11-02-where-the-secret-store-is-and-who-types-secrets)
@@ -63,6 +66,8 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [2026-10-30: jig-git's tools, and a watch that knows when it is done](#2026-10-30-jig-gits-tools-and-a-watch-that-knows-when-it-is-done)
 - [2026-10-30: built clean, beside the existing harness](#2026-10-30-built-clean-beside-the-existing-harness)
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
+- [Relationship to the existing harness](#relationship-to-the-existing-harness)
+- [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
 
 ## 2026-11-06: Jig is published as a scoped npm package
 
@@ -115,7 +120,7 @@ factories wait for trust. The doctor shows a `skip` line naming what was skipped
 as if there is no company; Jig listed only in an untrusted project is a skip, not "not installed". User-scope packages are
 unchanged. The `project_trust` extension event is not imitated: there is no screen here, and under-loading is safe.
 
-## 2026-11-05: action names are snake_case
+## 2026-11-05: action names are snake case
 
 Function-calling tools and MCP name actions `get_weather` and `create_pull_request`; a hyphen is not a letter in most
 languages that write scripts against a schema. Jig's actions now follow that: `run_folder`, `postman_environments`,

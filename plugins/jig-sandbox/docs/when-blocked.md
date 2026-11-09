@@ -52,7 +52,7 @@ tool messages below, one more line follows:
 | `nc` | `nc: /path: Operation not permitted` |
 | Go | `dial unix /path: socket: operation not permitted` |
 
-Every row names the same cause: the sandbox makes no Unix socket (see [Network](../README.md#network)).
+Every row names the same cause: the sandbox makes no Unix socket (see [Network](network.md)).
 
 - **It says "looks like".** The tool's words are a good guide and not proof, so the line is never stronger than that. A Python
   traceback that shows a raw socket (`SOCK_RAW`, `AF_PACKET`) is left alone.
