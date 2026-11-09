@@ -8,8 +8,6 @@
             "!plugins/jig-review/web",
             "!plugins/jig-logs/test/golden",
             "!plugins/jig-theme/themes",
-            "!herdr/themes",
-            "!herdr/**/*.svg",
             "!package-lock.json"
         ]
     },
@@ -39,7 +37,7 @@
     },
     "overrides": [
         {
-            "includes": ["plugins/*/test/**", "examples/*/test/**", "test/**", "herdr/test/**"],
+            "includes": ["plugins/*/test/**", "examples/*/test/**", "test/**"],
             "linter": {
                 "rules": {
                     "suspicious": { "noExplicitAny": "off", "noAssignInExpressions": "off" },

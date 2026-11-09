@@ -22,6 +22,6 @@
             "@earendil-works/pi-agent-core": ["./.pi-host/node_modules/@earendil-works/pi-agent-core/dist/index.d.ts"]
         }
     },
-    "include": ["plugins/**/*.ts", "examples/**/*.ts", "test/**/*.ts", "herdr/**/*.ts"],
+    "include": ["plugins/**/*.ts", "examples/**/*.ts", "test/**/*.ts"],
     "exclude": ["plugins/jig-review/web"]
 }
