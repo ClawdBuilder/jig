@@ -92,7 +92,7 @@ a run for every combination.
 - **The same on both:** Grafana Loki 3.7.9, go-httpbin 2.26.0, Keycloak 26.8.1, OpenSSH 10.3 (the jump host), kind v0.33.0 with
   Kubernetes 1.37.0 nodes and kubectl 1.37.2, and Pi 1.5.0. Loki, Keycloak and the rest have no older line that the plugins claim.
 - **Pi is installed at an exact version,** the latest one, because the type check and the `jig-agents` tests read its own packages.
-  To move it, follow "Pi version" in [AGENTS.md](../AGENTS.md); [Compatibility](compatibility.md) has the table and the weekly canary.
+  To move it, follow [Moving the Pi version](compatibility.md#moving-the-pi-version).
 - **The `checks` job** runs all three Node lines (22.19.0, 24, 26), and prints `node --version` first.
 - **Not crossed.** Node is not crossed with the services: Node differences show in the unit tests of the `checks` job, and the
   services differ from each other whatever the Node line. A failure that needs one combination is reproduced by hand.

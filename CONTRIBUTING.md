@@ -3,7 +3,8 @@
 Jig is a harness: it decides what an agent may do, asks you when it matters, and records what happened. A change is judged
 by whether it keeps those promises, not by how much code it adds.
 
-[AGENTS.md](AGENTS.md) is the full set of rules, and the coding agents that work in this repository read it. This page is the
+[AGENTS.md](AGENTS.md) is what the coding agents that work in this repository read first: the rules every change
+needs, and a pointer for each kind of work. This page is the
 short version for a person, in the order you meet the work.
 
 ## Before you start
@@ -33,6 +34,22 @@ npm install -g @earendil-works/pi-coding-agent@1.5.0
 npm ci
 sudo apt install bubblewrap socat ripgrep python3   # Debian, Ubuntu and WSL2
 ```
+
+### Tests that run real programs
+
+- **`jig-sandbox` tests run the real sandbox.** They need `bwrap`, `socat`, `rg` and `python3` (on Ubuntu 24.04 also
+  `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`), skip with the reason when those are missing, and fail
+  in CI (`CI` is set), where they are installed. `JIG_SANDBOX_TEST_BWRAP`, `_SOCAT` and `_RG` name the first three when
+  they are elsewhere. A test uses a fake home built at run time, hides the real home's credential paths as well, and never
+  reads a file under it or contacts any host but a server of its own.
+- **`jig-agents` tests start a real Pi.** `test/real-pi.test.ts` runs the Pi installed next to Node (`JIG_AGENTS_TEST_PI`
+  names another) as a child, with this repository's `jig-core` and `jig-agents` and Pi's own scripted model, so it calls
+  no model. It skips with the reason when there is no Pi 1.x, and runs in CI. It uses a temporary agent folder and home,
+  never `~/.pi/agent`, and never the `pi` on `PATH`, which may be a wrapper that signs in. Two tests also load
+  `jig-sandbox` for a read-only `bash`, and skip with the reason when the sandbox's programs are missing.
+- **The launcher tests start nothing real.** `test/launcher.test.ts` runs a fake Pi and tmux in a closed world
+  (`test/support/launcher-world.ts`), and fails when [The launcher](docs/launcher.md) misses a flag or variable the script
+  reads.
 
 The review page in `plugins/jig-review/web` is a package of its own. Change it only when you work on it, and run `npm ci`
 and `npm run build` there first; a changed `src/` that was not built fails `check:dist`.

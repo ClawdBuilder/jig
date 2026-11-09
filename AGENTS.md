@@ -10,8 +10,6 @@ the one company plugin in this repository, and its tests run with `npm test`.
   Examples use `staging`, `orders-api`, `PROJ-123`, `api.staging.example.com` and GitHub Actions.
 - **Specifications.** A plugin README is the specification; when code or README changes, the other changes in the same
   commit. Tests read the tool tables of `jig-git`, `jig-jira` and `jig-mongo`, so change a table and its test together.
-- **Where a page goes.** Follow [the README shape](docs/writing.md#the-readme-shape) and
-  [where a page goes](docs/writing.md#where-a-page-goes).
 - **Docs.** Before you write, change or review any Markdown page, read [Writing the docs](docs/writing.md) and
   [where a page goes](docs/writing.md#where-a-page-goes). `npm run check` fails on a broken link or anchor and on more
   docs warnings than its baseline.
@@ -32,8 +30,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
   agree (`plugins/jig-core/test/audit.test.ts`).
 - **Adding, renaming or removing a source file:** update its plugin's `docs/code-map.md`; a test fails when they
   disagree. A source file over 500 lines is reported as a warning: split it by job.
-- **Writing or running tests:** read [Integration tests](docs/integration-tests.md); the sandbox and real-Pi suites are
-  in [Contributing](CONTRIBUTING.md#set-up).
+- **Writing or running tests:** read [Tests that run real programs](CONTRIBUTING.md#tests-that-run-real-programs) (the
+  sandbox, a real Pi, the launcher) and [Integration tests](docs/integration-tests.md) (real services).
 - **Releasing or editing the changelog:** read [Releases](docs/releases.md). A change a user would notice adds one line
   under `## [Unreleased]` in `CHANGELOG.md`.
 - **Changing `jig-session`'s file, the review API, `jig:stage-done` or `contracts/`:** read
@@ -43,8 +41,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
 - **Removing or renaming a public name:** add a [Decisions](docs/decisions.md) entry first. The public surface is pinned by
   `surface.test.ts`, `plugin-surface.test.ts` and `boundaries.test.ts`; adding is fine when the pin is updated in the same
   commit. See [Compatibility](docs/compatibility.md).
-- **Changing the Pi or Node version, or a dependency:** read [Compatibility](docs/compatibility.md) and
-  [Releases](docs/releases.md). The tested Pi is `pi-coding-agent@1.5.0`. Dependencies are exact pins, enforced by
+- **Changing the Pi or Node version, or a dependency:** read
+  [Moving the Pi version](docs/compatibility.md#moving-the-pi-version) and [Releases](docs/releases.md). The tested Pi is `pi-coding-agent@1.5.0`. Dependencies are exact pins, enforced by
   `npm run check`; an `@anthropic-ai/sandbox-runtime` update runs the real-sandbox tests.
 - **Changing `bin/` or the launcher:** read [The launcher](docs/launcher.md); it is not a plugin.
 - **No secret-shaped literals, even fake ones.** Build a test value from parts, such as `["PMAK", "1a2b"].join("-")`; push
