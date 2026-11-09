@@ -4,7 +4,7 @@ import type { Target } from "../src/config.ts";
 import { RequestError } from "../src/failure.ts";
 import type { LogQuery } from "../src/query.ts";
 import type { Send } from "../src/request.ts";
-import { MAX_REQUESTS, runSearch } from "../src/search.ts";
+import { MAX_REQUESTS, requestBudget, runSearch } from "../src/search.ts";
 import { DAY_MS, HOUR_MS, iso } from "../src/time.ts";
 import { errorReply, hit, onlyCounts, rangeOf, searchReply } from "./support/fake-search.ts";
 import type { Answer, Json, Recorded } from "./support/fake-search.ts";
@@ -288,6 +288,19 @@ test("at most 64 requests per call: what the budget leaves out is missing, never
     // Every day is accounted for, oldest first, with no overlap.
     const covered = outcome.windows.reduce((sum, w) => sum + (Date.parse(w.to) - Date.parse(w.from)), 0);
     assert.equal(covered, 7 * DAY_MS);
+});
+
+test("a window with more day buckets than 64 requests leave room for gets one a day and 16 more", async () => {
+    assert.equal(requestBudget(1), MAX_REQUESTS);
+    assert.equal(requestBudget(48), MAX_REQUESTS, "a 2-day window of hour buckets keeps its budget");
+    assert.equal(requestBudget(45), MAX_REQUESTS);
+    assert.equal(requestBudget(90), 106);
+    const { outcome, requests } = await run(
+        (request) => searchReply({ hits: onlyCounts(request) ? [] : [hit(1)], total: 1 }),
+        query(90 * DAY_MS),
+    );
+    assert.equal(requests.length, 90);
+    assert.equal(outcome.status, "complete", "the last day is searched too");
 });
 
 test("the 64th request is kept for the check for data", async () => {

@@ -328,6 +328,21 @@ test("every error is reported, not only the first", () => {
 
 // ---- the settings ---------------------------------------------------------------------------------------------
 
+test("maxWindow is a window from 1h to 90d, and an error about it never repeats the value", () => {
+    const only = ["logs.maxWindow must be a whole number and m, h or d, from 1h to 90d, such as 30d"];
+    for (const good of ["1h", "60m", "45d", "90d", "2160h"]) {
+        assert.deepEqual(errorsOf({ ...section(), maxWindow: good }), [], good);
+    }
+    for (const bad of ["59m", "91d", "2161h", "0d", "1w", "45 d", "", 45, null, ["45d"], "pass:logs/reader"]) {
+        const errors = errorsOf({ ...section(), maxWindow: bad });
+        assert.deepEqual(errors, only, JSON.stringify(bad));
+        assert.equal(settingsFrom({ ...section(), maxWindow: bad }), undefined);
+    }
+    assert.equal(settingsFrom(section())?.maxWindowMs, 7 * 86_400_000, "7 days by default");
+    assert.equal(settingsFrom({ ...section(), maxWindow: "45d" })?.maxWindowMs, 45 * 86_400_000);
+    assert.equal(settingsFrom({ ...section(), maxWindow: "36h" })?.maxWindowMs, 36 * 3_600_000);
+});
+
 test("the settings have every default filled in", () => {
     const settings = settingsFrom(
         section({

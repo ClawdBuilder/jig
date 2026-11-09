@@ -18,8 +18,8 @@ window; the result is a header (window, status, hits found, fetched and shown, b
    `timeout*`, `level:ERROR AND payment`), a LogQL pipeline for Loki (`|= "timeout" | json | level="error"`). Loki's
    stream selector is configured, so a query starts with `|` and never names one.
 3. **Start narrow.** `window: "30m"` or `"2h"` around the event, or `from` and `to` with a timezone (`to` is
-   exclusive). Widen step by step (`1d`, then `7d`) instead of going straight to the widest. One call reads at most 7
-   days; for older logs search consecutive slices.
+   exclusive). Widen step by step (`1d`, then `7d`) instead of going straight to the widest. One call reads at most the
+   configured longest window (7 days by default); for older logs search consecutive slices.
 4. **Follow the trail.** Take new identifiers from the lines you read, and search them the same way.
 
 ## Reading the lines
