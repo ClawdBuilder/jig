@@ -26,8 +26,10 @@ export interface SetupUi {
     notify(text: string, level: "info" | "warning" | "error"): void;
 }
 
-export async function runSetup(state: JigState, ui: SetupUi): Promise<number> {
-    const built = buildSetupPlan(setupStateFrom(state));
+export async function runSetup(state: JigState, ui: SetupUi, requestedSection?: string): Promise<number> {
+    const planState = setupStateFrom(state);
+    if (requestedSection !== undefined) planState.requestedSection = requestedSection;
+    const built = buildSetupPlan(planState);
     if ("problem" in built) {
         ui.notify(built.problem, "warning");
         return 1;
@@ -378,5 +380,6 @@ export function setupStateFrom(state: JigState): SetupState {
         companyBackends: backends.byCompany,
         commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
         onboarding: activeOnboarding(state),
+        onboardingMethods: state.onboardingMethods,
     };
 }

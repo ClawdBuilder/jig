@@ -32,13 +32,19 @@ function optionalLine(value: unknown, at: string, max: number, errors: string[])
         errors.push(`${at}: must be one line of at most ${max} characters`);
 }
 
-/** The shape of a method: its fields' paths and kinds. Two methods of one section may not share it, or the method in
- *  use could not be inferred from the values. */
-function methodShape(method: OnboardingMethod): string {
+/** The required paths of a method. Kinds and optional fields do not decide the method; the set of paths does.
+ *  A subset is allowed: `{ auth.token }` is Jira Data Center, `{ auth.email, auth.token }` is Jira Cloud. A value is
+ *  matched to the most specific method (largest path set); only two exact sets are ambiguous. */
+function methodPaths(method: OnboardingMethod): string {
     return method.fields
-        .map((field) => `${field.path}:${field.kind}:${field.kind === "reference" ? "" : (field.value ?? "")}`)
+        .filter((field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true))
+        .map((field) => field.path)
         .sort()
         .join("|");
+}
+
+function methodFieldPaths(method: OnboardingMethod): Set<string> {
+    return new Set(method.fields.map((field) => field.path));
 }
 
 /** One field of a plugin method, or of a company-only fixed method. */
@@ -70,8 +76,8 @@ function checkMethodField(
     if (!METHOD_PATH.test(String(field.path))) errors.push(`${at}.path: a dotted path inside the section`);
     if (!oneLine(field.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
     optionalLine(field.why, `${at}.why`, WHY_MAX, errors);
-    if (company && typeof field.value !== "string") {
-        errors.push(`${at}.value: a company-only method fixes every field`);
+    if (company && (typeof field.value !== "string" || !oneLine(field.value, 64))) {
+        errors.push(`${at}.value: a company-only method fixes every field in one line of at most 64 characters`);
     }
     if (!company && field.value !== undefined) errors.push(`${at}.value: only a company-only method may fix a field`);
     if (kind === "text") {
@@ -168,11 +174,11 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
             ...(typeof method.who === "string" ? { who: method.who } : {}),
             fields,
         };
-        const shape = methodShape(complete as OnboardingMethod);
-        const other = shapes.get(shape);
+        const paths = methodPaths(complete as OnboardingMethod);
+        const other = shapes.get(paths);
         if (other !== undefined)
-            errors.push(`${at}.fields: the same shape as ${other}; the method could not be inferred`);
-        else shapes.set(shape, String(method.id));
+            errors.push(`${at}.fields: the same required paths as ${other}; the method could not be inferred`);
+        else shapes.set(paths, String(method.id));
         methods.push(complete as OnboardingMethod);
     }
     if (errors.length > 0) throw new TypeError(`onboarding.registerMethods(${section}): ${errors.join("; ")}`);
@@ -196,14 +202,14 @@ function checkMethodChoice(
     }
     if (choice.default !== undefined && (typeof choice.default !== "string" || !METHOD_ID.test(choice.default)))
         errors.push(`${at}.default: a method id`);
+    const hidden = new Set<string>();
     if (choice.hide !== undefined) {
         if (!Array.isArray(choice.hide)) errors.push(`${at}.hide: a list of method ids`);
         else {
-            const seen = new Set<string>();
             for (const [index, id] of choice.hide.entries()) {
                 if (typeof id !== "string" || !METHOD_ID.test(id)) errors.push(`${at}.hide[${index}]: a method id`);
-                else if (seen.has(id)) errors.push(`${at}.hide[${index}]: ${JSON.stringify(id)} is listed twice`);
-                else seen.add(id);
+                else if (hidden.has(id)) errors.push(`${at}.hide[${index}]: ${JSON.stringify(id)} is listed twice`);
+                else hidden.add(id);
             }
         }
     }
@@ -242,36 +248,67 @@ function checkMethodChoice(
                         fields.push(checked);
                     }
                 }
-                add.push({
+                const complete = {
                     id: String(method.id ?? ""),
                     label: String(method.label ?? ""),
                     ...(typeof method.who === "string" ? { who: method.who } : {}),
                     fields,
-                });
+                };
+                const same = known?.find((one) => methodPaths(one) === methodPaths(complete));
+                if (same !== undefined) {
+                    if (same.id !== complete.id) {
+                        errors.push(
+                            `${methodAt}.id: use ${JSON.stringify(same.id)} to prefill this method's value, not a new method`,
+                        );
+                    }
+                    // A matching path set with the plugin's id is a default value for that method, kept in `add`
+                    // so the plan can prefill it without writing an id.
+                    continue;
+                }
+                if (known !== undefined) {
+                    const shared = [...methodFieldPaths(complete)].filter((path) =>
+                        known.some((one) => methodFieldPaths(one).has(path)),
+                    );
+                    if (shared.length > 0) {
+                        errors.push(
+                            `${methodAt}.fields: shares ${shared.join(", ")} with a free method; use one path set or prefill the plugin method`,
+                        );
+                    }
+                }
+                if (add.some((one) => methodPaths(one) === methodPaths(complete)))
+                    errors.push(`${methodAt}.fields: the same required paths as another company method`);
+                add.push(complete);
             }
         }
     }
     if (known !== undefined) {
         const ids = new Set(known.map((method) => method.id));
-        for (const method of add)
-            if (ids.has(method.id)) errors.push(`${at}.add: ${JSON.stringify(method.id)} is already a plugin method`);
-        const all = [...known, ...add];
-        const names = new Set(all.map((method) => method.id));
+        for (const method of add) {
+            if (
+                ids.has(method.id) &&
+                !known.some((one) => one.id === method.id && methodPaths(one) === methodPaths(method))
+            )
+                errors.push(`${at}.add: ${JSON.stringify(method.id)} is already a plugin method`);
+        }
+        const names = new Set([...known, ...add].map((method) => method.id));
         if (typeof choice.default === "string" && !names.has(choice.default))
             errors.push(`${at}.default: ${JSON.stringify(choice.default)} is not a method of this section`);
         for (const id of Array.isArray(choice.hide) ? choice.hide : []) {
             if (typeof id === "string" && !names.has(id))
                 errors.push(`${at}.hide: ${JSON.stringify(id)} is not a method of this section`);
         }
-        const shapes = new Map<string, string>();
-        for (const method of all) {
-            const shape = methodShape(method);
-            const other = shapes.get(shape);
-            if (other !== undefined) errors.push(`${at}: ${JSON.stringify(method.id)} has the same shape as ${other}`);
-            else shapes.set(shape, method.id);
+        if (typeof choice.default === "string" && hidden.has(choice.default))
+            errors.push(`${at}.default: ${JSON.stringify(choice.default)} cannot also be hidden`);
+        const paths = new Map<string, string>();
+        for (const method of [...known, ...add]) {
+            const set = methodPaths(method);
+            const other = paths.get(set);
+            if (other !== undefined && other !== method.id)
+                errors.push(`${at}: ${JSON.stringify(method.id)} has the same required paths as ${other}`);
+            else paths.set(set, method.id);
         }
     }
-    return choice as unknown as OnboardingMethodChoice;
+    return add.length === 0 ? (choice as OnboardingMethodChoice) : ({ ...choice, add } as OnboardingMethodChoice);
 }
 
 /** Throws a `TypeError` naming the item and field when the list is not one setup can follow. */

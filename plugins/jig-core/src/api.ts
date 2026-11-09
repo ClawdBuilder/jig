@@ -258,6 +258,7 @@ export function buildApi(state: JigState): JigApi {
                     throw new Error(`registerSection: "${name}" is jig-core's section, so a plugin cannot use it`);
                 }
                 state.sectionChecks.set(name, validate);
+                state.lastRegisteredSection = name;
                 if (oneOf === undefined || oneOf.length === 0) state.sectionOneOf.delete(name);
                 else
                     state.sectionOneOf.set(
@@ -357,7 +358,27 @@ export function buildApi(state: JigState): JigApi {
                 state.onboarding = checkOnboarding(entry, state.onboardingMethods);
             },
             registerMethods: (section, methods) => {
-                state.onboardingMethods.set(section, checkOnboardingMethods(section, methods));
+                if (state.lastRegisteredSection !== section) {
+                    throw new TypeError(
+                        `onboarding.registerMethods(${section}): only the plugin that just registered ${section} may declare its methods`,
+                    );
+                }
+                const checked = checkOnboardingMethods(section, methods);
+                const before = state.onboardingMethods.get(section);
+                state.onboardingMethods.set(section, checked);
+                try {
+                    // The entry may have arrived first; both registrations now exist, so check the company's ids.
+                    if (state.onboarding !== undefined)
+                        state.onboarding = checkOnboarding(state.onboarding, state.onboardingMethods);
+                    for (const entry of state.companies.values()) {
+                        if (entry.onboarding !== undefined)
+                            entry.onboarding = checkOnboarding(entry.onboarding, state.onboardingMethods);
+                    }
+                } catch (error) {
+                    if (before === undefined) state.onboardingMethods.delete(section);
+                    else state.onboardingMethods.set(section, before);
+                    throw error;
+                }
             },
         },
 
@@ -458,7 +479,27 @@ function scoped(api: JigApi, state: JigState, entry: CompanyEntry): JigApi {
                 entry.onboarding = checkOnboarding(list, state.onboardingMethods);
             },
             registerMethods: (section, methods) => {
-                state.onboardingMethods.set(section, checkOnboardingMethods(section, methods));
+                if (state.lastRegisteredSection !== section) {
+                    throw new TypeError(
+                        `onboarding.registerMethods(${section}): only the plugin that just registered ${section} may declare its methods`,
+                    );
+                }
+                const checked = checkOnboardingMethods(section, methods);
+                const before = state.onboardingMethods.get(section);
+                state.onboardingMethods.set(section, checked);
+                try {
+                    // The entry may have arrived first; both registrations now exist, so check the company's ids.
+                    if (state.onboarding !== undefined)
+                        state.onboarding = checkOnboarding(state.onboarding, state.onboardingMethods);
+                    for (const entry of state.companies.values()) {
+                        if (entry.onboarding !== undefined)
+                            entry.onboarding = checkOnboarding(entry.onboarding, state.onboardingMethods);
+                    }
+                } catch (error) {
+                    if (before === undefined) state.onboardingMethods.delete(section);
+                    else state.onboardingMethods.set(section, before);
+                    throw error;
+                }
             },
         },
     };

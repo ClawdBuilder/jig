@@ -228,7 +228,8 @@ async function setup(args: readonly string[]): Promise<number> {
         process.stdout.write(`${helpFor("setup")}\n`);
         return 0;
     }
-    if (args.length > 0) {
+    const requested = args[0] !== undefined && !args[0].startsWith("-") ? args[0] : undefined;
+    if (args.length > (requested === undefined ? 0 : 1) || (args[0] !== undefined && args[0].startsWith("-"))) {
         process.stderr.write(`jig setup: unknown option ${args[0]}.\nRun jig setup --help for usage.\n`);
         return 2;
     }
@@ -277,7 +278,7 @@ async function setup(args: readonly string[]): Promise<number> {
         const step = await companyStep(loaded.state, ui);
         if (step === "cancel") return 130;
         if (step === "failed") return 1;
-        return await runSetup(loaded.state, ui);
+        return await runSetup(loaded.state, ui, requested);
     } catch (error) {
         ui.notify(`Setup stopped: ${errorMessage(error)}`, "error");
         return 1;

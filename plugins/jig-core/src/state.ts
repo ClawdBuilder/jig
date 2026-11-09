@@ -119,6 +119,8 @@ export interface JigState {
     onboarding: OnboardingEntry | undefined;
     /** Sign-in methods plugin sections declare, by section; setup asks among them and infers the one in use. */
     onboardingMethods: Map<string, readonly OnboardingMethod[]>;
+    /** The section whose `registerSection` was last called, so only that plugin can register its methods next. */
+    lastRegisteredSection: string | undefined;
     /** What company plugins added, as policy and secrets read it: `globalCompany` and the active company's additions. */
     company: CompanyAdditions;
     /** What plugins that never registered with `profiles.register` added: it always applies. */
@@ -251,6 +253,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         company: emptyAdditions(),
         onboarding: undefined,
         onboardingMethods: new Map(),
+        lastRegisteredSection: undefined,
         globalCompany: emptyAdditions(),
         companies: new Map(),
         profile: newProfileState(),

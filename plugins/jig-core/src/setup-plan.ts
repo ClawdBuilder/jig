@@ -41,6 +41,8 @@ export interface SetupState {
     commands: Readonly<Record<string, readonly string[]>>;
     /** The active company's onboarding list, when it wrote one: its order, labels and hints. */
     onboarding?: OnboardingEntry;
+    /** A section the person asked to change even when it is valid; `jig setup <section>` sets it. */
+    requestedSection?: string;
     /** The sign-in methods plugins registered for their sections. */
     onboardingMethods?: ReadonlyMap<string, readonly OnboardingMethod[]>;
 }
@@ -277,6 +279,34 @@ export interface SetupChange {
     enableBackend?: SecretBackend;
 }
 
+/** The required paths of a method; kinds and optional fields do not decide the method. */
+function requiredPaths(method: OnboardingMethod): string {
+    return method.fields
+        .filter((field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true))
+        .map((field) => field.path)
+        .sort()
+        .join("|");
+}
+
+/** Expands one `*` path segment against the configured objects: `services.*.ci.auth` -> each service name. */
+function expandMethodPath(path: string, root: unknown): string[] {
+    let paths = [""];
+    for (const segment of path.split(".")) {
+        if (segment !== "*") {
+            paths = paths.map((prefix) => (prefix === "" ? segment : `${prefix}.${segment}`));
+            continue;
+        }
+        const next: string[] = [];
+        for (const prefix of paths) {
+            const value = prefix === "" ? root : getPath(root, prefix);
+            if (!isObject(value)) continue;
+            for (const name of Object.keys(value)) next.push(prefix === "" ? name : `${prefix}.${name}`);
+        }
+        paths = next;
+    }
+    return paths;
+}
+
 /** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
 function setupMethods(
     state: SetupState,
@@ -287,77 +317,102 @@ function setupMethods(
     const registered = state.onboardingMethods?.get(section) ?? [];
     const choice = state.onboarding?.methods?.[section];
     const hidden = new Set(choice?.hide ?? []);
-    const all = [...registered, ...(choice?.add ?? [])];
+    const prefill = new Map<string, Map<string, string>>();
+    const added: OnboardingMethod[] = [];
+    for (const method of choice?.add ?? []) {
+        const target = registered.find((one) => requiredPaths(one) === requiredPaths(method));
+        if (target !== undefined && target.id === method.id) {
+            const values = new Map<string, string>();
+            for (const field of method.fields) {
+                if (field.kind !== "reference" && field.value !== undefined) values.set(field.path, field.value);
+            }
+            prefill.set(method.id, values);
+            continue;
+        }
+        added.push(method);
+    }
+    const all = [...registered, ...added];
     const visible = all.filter((method) => !hidden.has(method.id));
     if (visible.length === 0) return [];
     const chosen = choice?.default ?? visible[0]?.id;
-    return visible.map((method) => ({
-        id: method.id,
-        label: method.label,
-        ...(method.who === undefined ? {} : { who: method.who }),
-        default: method.id === chosen,
-        fields: method.fields.map((field) => {
-            const at = getPath(merged, field.path);
-            const current =
-                typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
-            if (field.kind !== "reference" && field.value !== undefined) {
-                return {
+    return visible.map((method) => {
+        const fields: SetupField[] = [];
+        const fixed = prefill.get(method.id);
+        for (const field of method.fields) {
+            for (const path of expandMethodPath(field.path, merged)) {
+                const at = getPath(merged, path);
+                const current =
+                    typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
+                const value = fixed?.get(field.path) ?? (field.kind === "reference" ? undefined : field.value);
+                if (value !== undefined) {
+                    fields.push({
+                        section,
+                        path,
+                        label: field.label,
+                        question: field.label,
+                        kind: "text",
+                        ...(current === undefined ? {} : { current }),
+                        fixed: value,
+                        reason: field.why ?? "The company's sign-in choice sets this.",
+                    });
+                    continue;
+                }
+                if (field.kind === "reference") {
+                    const reference = referenceChoice(state, current, getPath(state.defaults.get(section), path));
+                    if (field.stores !== undefined) {
+                        reference.stores = field.stores.filter((store) => reference.stores.includes(store));
+                    }
+                    const preferred = field.preferredStore ?? state.onboarding?.preferredStore;
+                    if (preferred !== undefined && reference.stores.includes(preferred)) {
+                        reference.preferred = preferred;
+                        reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
+                    }
+                    if (field.suggested !== undefined) reference.suggested = field.suggested;
+                    if (field.addHints !== undefined) reference.addHints = field.addHints;
+                    fields.push({
+                        section,
+                        path,
+                        label: field.label,
+                        question: referenceQuestion(field.label),
+                        kind: "reference",
+                        reason: field.why ?? "Jig reads the value from there when a tool needs it.",
+                        reference,
+                    });
+                    continue;
+                }
+                if (field.kind === "pick") {
+                    fields.push({
+                        section,
+                        path,
+                        label: field.label,
+                        question: field.label,
+                        kind: "pick",
+                        choices: [...field.choices],
+                        ...(current === undefined ? {} : { current }),
+                        reason: field.why ?? "The plugin's list says the choices.",
+                    });
+                    continue;
+                }
+                fields.push({
                     section,
-                    path: field.path,
+                    path,
                     label: field.label,
                     question: field.label,
+                    ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
+                    ...(current === undefined ? {} : { current }),
                     kind: "text",
-                    ...(current === undefined ? {} : { current }),
-                    fixed: field.value,
-                    reason: field.why ?? "The company's sign-in choice sets this.",
-                };
+                    reason: field.why ?? "The plugin's list says this field is needed.",
+                });
             }
-            if (field.kind === "reference") {
-                const reference = referenceChoice(state, current, getPath(state.defaults.get(section), field.path));
-                if (field.stores !== undefined) {
-                    reference.stores = field.stores.filter((store) => reference.stores.includes(store));
-                }
-                const preferred = field.preferredStore ?? state.onboarding?.preferredStore;
-                if (preferred !== undefined && reference.stores.includes(preferred)) {
-                    reference.preferred = preferred;
-                    reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
-                }
-                if (field.suggested !== undefined) reference.suggested = field.suggested;
-                if (field.addHints !== undefined) reference.addHints = field.addHints;
-                return {
-                    section,
-                    path: field.path,
-                    label: field.label,
-                    question: referenceQuestion(field.label),
-                    kind: "reference",
-                    reason: field.why ?? "Jig reads the value from there when a tool needs it.",
-                    reference,
-                };
-            }
-            if (field.kind === "pick") {
-                return {
-                    section,
-                    path: field.path,
-                    label: field.label,
-                    question: field.label,
-                    kind: "pick",
-                    choices: [...field.choices],
-                    ...(current === undefined ? {} : { current }),
-                    reason: field.why ?? "The plugin's list says the choices.",
-                };
-            }
-            return {
-                section,
-                path: field.path,
-                label: field.label,
-                question: field.label,
-                ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
-                ...(current === undefined ? {} : { current }),
-                kind: "text",
-                reason: field.why ?? "The plugin's list says this field is needed.",
-            };
-        }),
-    }));
+        }
+        return {
+            id: method.id,
+            label: method.label,
+            ...(method.who === undefined ? {} : { who: method.who }),
+            default: method.id === chosen,
+            fields,
+        };
+    });
 }
 
 /** The plan: read the file, then ask only about the fields a validator names. */
@@ -442,13 +497,13 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
     for (const name of state.sectionChecks.keys()) {
         order++;
         const section = sectionState(state.personal, name);
-        if (section === "loaded" || section === "not set") continue;
+        if ((section === "loaded" || section === "not set") && state.requestedSection !== name) continue;
         const priority = section === "company defaults incomplete" ? 0 : 1;
         const messages =
             section === "company defaults incomplete"
                 ? [...(state.personal.incomplete.get(name) ?? [])]
                 : state.personal.problems.filter((problem) => problem.key === name).map((problem) => problem.message);
-        if (messages.length === 0) continue;
+        if (messages.length === 0 && state.requestedSection !== name) continue;
 
         const notes: string[] = [];
         const rawValue = raw[name];

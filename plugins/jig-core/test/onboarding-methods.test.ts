@@ -35,7 +35,7 @@ describe("checkOnboardingMethods", () => {
                         fields: [{ kind: "reference", path: "auth.token", label: "Token" }],
                     },
                 ]),
-            /same shape/,
+            /same required paths/,
         );
     });
 
@@ -72,12 +72,13 @@ describe("the company's method choice", () => {
 
     test("adds a company-only fixed transport, and rejects a non-fixed or non-transport one", () => {
         const broker = {
-            id: "broker",
+            id: "transport",
             label: "Company broker",
             who: "this company",
             fields: [{ kind: "text", path: "auth.transport", value: "acme-broker", label: "The broker" }],
         };
         assert.deepEqual(entry({ add: [broker] }).methods?.jira?.add?.[0]?.fields[0]?.path, "auth.transport");
+        assert.throws(() => entry({ add: [{ ...broker, id: "broker" }] }), /use "transport" to prefill/);
 
         assert.throws(
             () =>
@@ -93,15 +94,71 @@ describe("the company's method choice", () => {
             () =>
                 entry({
                     add: [
-                        broker,
                         {
-                            ...broker,
-                            id: "broker-2",
-                            fields: [{ kind: "text", path: "auth.transport", label: "X", value: "acme-broker" }],
+                            id: "own-sign-in",
+                            label: "Own sign-in",
+                            fields: [{ kind: "text", path: "auth.signIn", label: "X", value: "acme-sso" }],
+                        },
+                        {
+                            id: "own-sign-in-2",
+                            label: "Own sign-in 2",
+                            fields: [{ kind: "text", path: "auth.signIn", label: "X", value: "acme-sso" }],
                         },
                     ],
                 }),
-            /same shape/,
+            /same required paths/,
         );
+    });
+});
+
+describe("registration ownership and order", () => {
+    test("only the section registrant may declare its methods", async () => {
+        const { start } = await import("./support/harness.ts");
+        const h = await start({ ui: false });
+        try {
+            h.api.config.registerSection("jira", () => []);
+            h.api.onboarding?.registerMethods("jira", methods);
+            h.api.config.registerSection("other", () => []);
+            assert.throws(
+                () => h.api.onboarding?.registerMethods("jira", methods),
+                /only the plugin that just registered jira/,
+            );
+        } finally {
+            await h.shutdown();
+        }
+    });
+
+    test("a default that is hidden is refused, and setup falls back to the first visible method", async () => {
+        assert.throws(() => entry({ default: "transport", hide: ["transport"] }), /cannot also be hidden/);
+    });
+
+    test("company choices are checked when the entry arrives after the methods", async () => {
+        const { start } = await import("./support/harness.ts");
+        const h = await start({ ui: false });
+        try {
+            h.api.config.registerSection("jira", () => []);
+            h.api.onboarding?.registerMethods("jira", methods);
+            assert.throws(
+                () => h.api.onboarding?.register({ items: [], methods: { jira: { default: "nope" } } }),
+                /not a method of this section/,
+            );
+        } finally {
+            await h.shutdown();
+        }
+    });
+
+    test("company choices are checked when the methods arrive after the entry", async () => {
+        const { start } = await import("./support/harness.ts");
+        const h = await start({ ui: false });
+        try {
+            h.api.config.registerSection("jira", () => []);
+            h.api.onboarding?.register({
+                items: [],
+                methods: { jira: { default: "nope" } },
+            });
+            assert.throws(() => h.api.onboarding?.registerMethods("jira", methods), /not a method of this section/);
+        } finally {
+            await h.shutdown();
+        }
     });
 });
