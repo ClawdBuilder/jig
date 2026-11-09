@@ -67,7 +67,6 @@ export class ReviewCoordinator {
     private ctx?: ExtensionContext;
     /** The question in Pi that is waiting for the user, so a shutdown can dismiss it. */
     private asking?: AbortController;
-    private readonly agentRoot: string;
     private readonly themeDir: string;
     private readonly settingsStore: SettingsStore;
     private readonly reviewStore: ReviewStore;
@@ -82,7 +81,6 @@ export class ReviewCoordinator {
     /** `cwd` is Pi's folder: the repository, or a workspace whose repositories are reviewed together. */
     public constructor(pi: ExtensionAPI, cwd: string, options: ReviewOptions) {
         this.pi = pi;
-        this.agentRoot = options.root;
         this.themeDir = options.agentDir ?? agentDirFor();
         this.askQueueWaitMs = options.askQueueWaitMs ?? QUEUE_WAIT_MS;
         this.git = options.git ?? jigGit;
