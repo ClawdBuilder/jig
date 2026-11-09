@@ -9,6 +9,10 @@ the one company plugin in this repository, and its tests run with `npm test`.
   internal system names, environment names or hostnames. Those belong in a
   private company plugin. Examples use `staging`, `orders-api`, `PROJ-123`,
   `api.staging.example.com` and GitHub Actions.
+- **Specifications.** A plugin README is the specification; when code or README changes, the other changes in the same
+  commit. Tests read the tool tables of `jig-git`, `jig-jira` and `jig-mongo`, so change a table and its test together.
+- **README shape.** Follow [the README shape](docs/writing.md#the-readme-shape): about 120 lines, with detail under
+  `plugins/<name>/docs/` linked from More detail.
 - **Code maps.** `jig-core`, `jig-api`, `jig-ops`, `jig-sandbox`, `jig-agents` and `jig-workflow` each have
   `docs/code-map.md`: every file of `src/` with what it does and who calls it, and one call followed through
   the files. When you add, rename or remove a file in one of them, change its map in the same commit; a test
@@ -48,7 +52,10 @@ the one company plugin in this repository, and its tests run with `npm test`.
   with the reason when there is no Pi 1.x, and runs in CI, where Pi is installed. It uses a temporary agent
   folder and home, never `~/.pi/agent`, and never the `pi` on `PATH`, which may be a wrapper that signs in. Two tests also
   load `jig-sandbox` for a read-only `bash`, and skip with the reason when the sandbox's programs are missing.
-- **Checks:** run `npm run check`, `npm test` and `npm run check:install`; [CONTRIBUTING](CONTRIBUTING.md#the-checks) lists the review page's three. CI runs the same set, and `ci-ok` is the one required job.
+- **Checks:** [CONTRIBUTING](CONTRIBUTING.md#the-checks) lists the commands and what each needs; CI runs them on every
+  push and pull request, and `ci-ok` is the one required job. Run `npm run format` before committing.
+  `check:install` needs network. Package `files` patterns use the `dir/**` form: npm 10/11 and 12 read them differently,
+  CI covers both majors, and a local pack proves only this machine's npm.
 - **Integration tests** run the plugins against real services: `npm run test:it`, and the `integration` job in CI. A
   suite skips when its service's address is not set, so `npm test` and `npm run check` never need a service. See
   [Integration tests](docs/integration-tests.md). Every test file starts in an isolated environment (temporary home, a git
