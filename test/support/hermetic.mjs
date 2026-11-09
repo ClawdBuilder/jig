@@ -18,7 +18,7 @@ const kubeconfig =
     (env.JIG_IT_KUBE_CONTEXT ?? "") === "" ? undefined : (env.KUBECONFIG ?? path.join(realHome, ".kube/config"));
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-test-")));
-process.on("exit", () => rmSync(root, { recursive: true, force: true }));
+process.on("exit", () => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 for (const name of ["home", "agent", "password-store", "gnupg"]) mkdirSync(path.join(root, name), { mode: 0o700 });
 writeFileSync(path.join(root, "gitconfig"), "[user]\n\tname = Jig Test\n\temail = test@example.com\n");
 

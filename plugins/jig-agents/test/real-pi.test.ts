@@ -5,16 +5,7 @@
 // It is skipped, with the reason, when there is no Pi 1.x next to this Node. JIG_AGENTS_TEST_PI names another one.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import {
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readdirSync,
-    readFileSync,
-    realpathSync,
-    rmSync,
-    writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "node:test";
@@ -25,6 +16,7 @@ import { ROLE_POLICY_VARIABLE, writeRolePolicy } from "../../jig-core/src/kit/ro
 import { realHost, thisPi } from "../src/host.ts";
 import type { Host, PiCommand } from "../src/host.ts";
 import { childEnvironment, flagsFor } from "../src/launch.ts";
+import { removeTree } from "../../../test/support/remove-tree.ts";
 import { loadRoles, shippedFolder } from "../src/roles.ts";
 import { RpcChannel } from "../src/rpc.ts";
 import { realTimers } from "../src/host.ts";
@@ -68,7 +60,7 @@ interface Folders {
 
 const roots: string[] = [];
 afterEach(async () => {
-    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+    for (const root of roots.splice(0)) removeTree(root);
 });
 
 /** A temporary agent folder for the child: the packages Jig loads, the scripted model, and the user's jig.json. */
