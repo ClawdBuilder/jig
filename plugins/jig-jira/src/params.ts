@@ -67,33 +67,30 @@ export function usage(action: ActionName): string {
     return `Usage: jira ${action} {${[...required, ...optional.map((name) => `${name}?`)].join(", ")}}`;
 }
 
-/** The actions with the parameters each needs, for the schema: `get(key) search(jql) ...`. */
+/** The action names, for the schema. The usage line on an error carries the parameters. */
 function describeActions(): string {
-    return ACTION_NAMES.map((name) => `${name}(${ACTIONS[name].required.join(",")})`).join(" ");
+    return ACTION_NAMES.join(", ");
 }
 
 export const parameters = Type.Object({
-    action: stringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
-    key: Type.Optional(Type.String({ description: "Issue key, such as PROJ-123" })),
+    action: stringEnum(ACTION_NAMES, { description: `What to do: ${describeActions()}` }),
+    key: Type.Optional(Type.String({ description: "Key, e.g. PROJ-123" })),
     jql: Type.Optional(
         Type.String({
-            description:
-                "JQL query. A search may leave it out only when the user has listed projects in jig.json, and then looks in them",
+            description: "JQL. search may omit it only with jig.json projects set.",
         }),
     ),
-    page: Type.Optional(Type.String({ description: "Search: the page value the previous result gave" })),
+    page: Type.Optional(Type.String({ description: "search: page from the previous result." })),
     limit: Type.Optional(
         Type.Integer({
             minimum: 1,
             maximum: 100,
-            description: "How many to return (search and assignable: up to 50)",
+            description: "search/assignable: up to 50.",
         }),
     ),
-    include: Type.Optional(
-        Type.Array(Type.String(), { description: "Extra fields to show, by name or id (up to 10)" }),
-    ),
-    full: Type.Optional(Type.Boolean({ description: "Do not cut long text. Use it before rewriting a description" })),
-    query: Type.Optional(Type.String({ description: "Text to match: part of a user's name, or of a field's name" })),
+    include: Type.Optional(Type.Array(Type.String(), { description: "get/comments/search: extra fields, max 10." })),
+    full: Type.Optional(Type.Boolean({ description: "get/comments: do not cut long text." })),
+    query: Type.Optional(Type.String({ description: "user/field name part to match." })),
     commentId: Type.Optional(Type.String({ description: "Comment id, from comments" })),
     text: Type.Optional(Type.String({ description: "Comment text, in Jira wiki markup" })),
     transition: Type.Optional(Type.String({ description: "Transition name (or id), from transitions" })),
@@ -117,17 +114,12 @@ export const parameters = Type.Object({
     commented: Type.Optional(
         Type.Object(
             {
-                by: Type.String({ description: '"me", or a person\'s account id, user name or email address' }),
-                from: Type.Optional(
-                    Type.String({ description: "First day, YYYY-MM-DD, on the user's own clock; the day is included" }),
-                ),
-                to: Type.Optional(
-                    Type.String({ description: "Last day, YYYY-MM-DD, on the user's own clock; the day is included" }),
-                ),
+                by: Type.String({ description: '"me" or id/name/email.' }),
+                from: Type.Optional(Type.String({ description: "First day, YYYY-MM-DD." })),
+                to: Type.Optional(Type.String({ description: "Last day, YYYY-MM-DD." })),
             },
             {
-                description:
-                    "Search only: issues commented on by a person; from and to are whole days, user's clock, both in",
+                description: "search: commented on by a person, whole days.",
             },
         ),
     ),

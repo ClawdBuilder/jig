@@ -41,9 +41,7 @@ window; the result is a header (window, status, hits found, fetched and shown, b
 - "at least N hits" is a lower bound. Loki cannot count, so a search that fills `size` reads "at least".
 - No hits proves nothing about retention. Check the identifier, the environment and the window first. The availability
   line only says whether the window holds any documents at all.
-- Production results are masked: personal values become tokens (`email#3fa9c1`) and identifiers are kept. Never tell
-  the user something is unavailable because it is masked. The same value gets the same token all day, so you can follow
-  it across searches.
+- Production results are masked: personal values become tokens (`email#3fa9c1`), and identifiers are kept; never call a masked value unavailable.
 - Quote the time of a line with any conclusion, so the user can check it.
 
 ## Example

@@ -68,57 +68,47 @@ const flag = (description: string) => Type.Optional(Type.Boolean({ description }
 const GitParams = Type.Object(
     {
         action: stringEnum(ACTION_NAMES, { description: describeActions(GIT_ACTIONS) }),
-        repo: string(
-            "A folder in the workspace, or an absolute path inside a work tree. Omit it for the repo Pi runs in. clone: owner/name.",
-        ),
+        repo: string("Workspace folder/path; default Pi's repo. clone: owner/name."),
         operation: Type.Optional(
             stringEnum(["create", "switch", "delete", "list", "add", "remove", "push", "pop", "drop"] as const, {
-                description:
-                    "branch: create, switch, delete. worktree: list, add, remove. stash: push, list, pop, drop.",
+                description: "branch: create/switch/delete; worktree: list/add/remove; stash: push/list/pop/drop.",
             }),
         ),
-        branch: string(
-            "A branch name. clone: the branch to check out. merge: the branch to merge. push: default the current branch.",
-        ),
-        base: string("The base branch. Default: git.base, else the default branch."),
-        remote: string("A remote name. Default origin."),
-        paths: strings("Repo-relative paths. commit, restore, stash: the exact files. diff, log: a filter."),
+        branch: string("branch: name; clone: checkout; merge: source; push: default current."),
+        base: string("Base; default git.base or default branch."),
+        remote: string("Remote; default origin."),
+        paths: strings("Repo-relative paths: commit/restore/stash exact, diff/log filter."),
         path: string("One repo-relative file."),
-        rev: string("A revision, such as HEAD~2 or origin/main. Default HEAD."),
-        revs: strings("cherry_pick: the commits to apply, oldest first."),
-        range: string("A revision range such as a..b."),
+        rev: string("Revision, default HEAD."),
+        revs: strings("cherry_pick: commits, oldest first."),
+        range: string("Range a..b."),
         against: Type.Optional(
             stringEnum(["working", "staged", "base"] as const, {
-                description:
-                    "diff: working tree vs HEAD (default), staged changes, or vs the merge base with the base.",
+                description: "diff: working (default), staged, merge base.",
             }),
         ),
         format: Type.Optional(
             stringEnum(["summary", "names", "patch", "oneline", "full"] as const, {
-                description: "diff, show: summary (default), names or patch. log: oneline (default) or full.",
+                description: "diff/show: summary/names/patch; log: oneline/full.",
             }),
         ),
-        n: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "log: how many commits. Default 20." })),
-        author: string("log: only commits by this author."),
-        since: string("log: only commits after this date."),
-        until: string("log: only commits before this date."),
-        grep: string("log: only commits whose message matches this."),
-        pickaxe: string("log: only commits whose diff adds or removes this text (git log -S)."),
-        lines: string('blame: a line range such as "10,20".'),
-        contains: string("branches: only branches that contain this commit."),
-        remotes: flag("branches: include remote branches."),
-        message: Type.Optional(
-            Type.String({ minLength: 1, maxLength: 10_000, description: "The commit or stash message." }),
-        ),
-        amend: flag(
-            "commit: replace the last commit. Only while it is unpushed. Without paths, only its message changes.",
-        ),
-        force_with_lease: flag("push: force, refused if the remote moved since you last fetched it."),
-        dir: string("clone, worktree: a folder name in the workspace."),
+        n: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "log: count." })),
+        author: string("log: author."),
+        since: string("log: since."),
+        until: string("log: until."),
+        grep: string("log: message."),
+        pickaxe: string("log: diff contains text (-S)."),
+        lines: string('blame: "10,20".'),
+        contains: string("branches: contain commit."),
+        remotes: flag("branches: include remotes."),
+        message: Type.Optional(Type.String({ minLength: 1, maxLength: 10_000, description: "Commit/stash message." })),
+        amend: flag("commit: replace last unpushed; message only if no paths."),
+        force_with_lease: flag("push: force if remote unmoved."),
+        dir: string("clone/worktree: folder."),
         index: Type.Optional(
-            Type.Integer({ minimum: 0, maximum: 99, description: "stash pop, drop: which stash. Default 0." }),
+            Type.Integer({ minimum: 0, maximum: 99, description: "stash pop/drop index; default 0." }),
         ),
-        untracked: flag("stash push: include untracked files."),
+        untracked: flag("stash push: untracked too."),
     },
     { additionalProperties: false },
 );
@@ -208,10 +198,6 @@ export const gitTool: JigTool = buildTool({
     description:
         "Local git and worktrees: status, diff, log, commit, branch, push. Push and restore ask the user first. Read the git skill before your first git call.",
     promptSnippet: "Local git: status, diff, log, show, blame, branches, commit, branch, push",
-    promptGuidelines: [
-        "Use the git tool for git, not bash: the shell has no GitHub credentials. Check status before you commit.",
-        "A promise to report on CI later needs a watch, because nothing else wakes you: the last line of a push result says how you will hear, and with no watch the user has to ask.",
-    ],
     parameters: GitParams,
     table: GIT_ACTIONS,
     classify: classifyGit,

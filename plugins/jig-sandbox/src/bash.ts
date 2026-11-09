@@ -19,17 +19,15 @@ import type { Sandbox } from "./sandbox.ts";
 const TAIL_CHARS = 64 * 1024;
 
 const OUTSIDE_PARAMETER =
-    "Set true only when the sandbox blocks something you need and no Jig tool does it (Docker, a script that needs the " +
-    "user's credentials, a build that must reach a private repository). The user is asked to approve this one command " +
-    "running outside the sandbox, with their credentials and full network. Needs a reason.";
-const REASON_PARAMETER =
-    "With outside: why the sandbox blocks what you need and no Jig tool does it, in one sentence (at most 300 characters).";
+    "Set true only when the sandbox blocks a command no Jig tool covers; the user is asked to run it outside, with " +
+    "their credentials and network. Needs a reason.";
+const REASON_PARAMETER = "outside: why, in one sentence (max 300 characters).";
 
 /** What the model is told about this shell, after Pi's own description. The full list is in docs/when-blocked.md. */
 export const SANDBOX_DESCRIPTION = [
-    "This shell runs in a sandbox (jig-sandbox): the project, your home folder, /tmp, build caches, git configuration and the network work; credentials and writes that outlive the command do not.",
-    "A blocked command prints a '[sandbox]' line naming the rule and the way through: use the git tool, the edit and write tools, or the Jig tool it names.",
-    "Only when no Jig tool does what you need, set outside: true and give a reason (at most 300 characters); long work uses background: true with notifyOn, and never sleep or poll. A background task cannot use outside.",
+    "This shell runs in a sandbox: project, home, /tmp, build caches, git config and network work; credentials and persistent writes do not.",
+    "A blocked command prints '[sandbox]' with the rule and the way through: use the git tool, the edit and write tools, or the Jig tool it names.",
+    "Only when no Jig tool does it, set outside: true with a reason; long work uses background: true with notifyOn. A background task cannot use outside.",
 ].join("\n");
 
 /** What `jig-core` decided about a call, as it announces it on the event bus. */

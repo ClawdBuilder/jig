@@ -72,24 +72,22 @@ const PrParams = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 1000,
-                description:
-                    "A folder in the workspace, or an absolute path inside a work tree — not owner/name. Omit it for the repo Pi runs in; use number or branch to select a pull request.",
+                description: "Workspace folder/path, not owner/name; default Pi's repo. number/branch selects.",
             }),
         ),
-        number: Type.Optional(Type.Integer({ minimum: 1, description: "The pull request (merge request) number." })),
+        number: Type.Optional(Type.Integer({ minimum: 1, description: "Pull/merge request number." })),
         branch: Type.Optional(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description:
-                    "The head branch: selects the pull request, or heads a new one. Default: the checked-out branch.",
+                description: "Head branch; default current.",
             }),
         ),
         base: Type.Optional(
             Type.String({
                 minLength: 1,
                 maxLength: 200,
-                description: "The base branch. Default: git.base, else the default branch.",
+                description: "Base; default git.base.",
             }),
         ),
         title: Type.Optional(Type.String({ minLength: 1, maxLength: 256, description: "One line." })),
@@ -97,7 +95,7 @@ const PrParams = Type.Object(
             Type.String({
                 minLength: 1,
                 maxLength: 60_000,
-                description: "Markdown. create: leave it out to be shown the template. edit: replaces the description.",
+                description: "Markdown. create: omit for template; edit: replaces.",
             }),
         ),
         draft: Type.Optional(Type.Boolean({ description: "create: open it as a draft." })),
@@ -105,26 +103,26 @@ const PrParams = Type.Object(
         auto: Type.Optional(Type.Boolean({ description: "merge: turn on auto-merge instead of merging now." })),
         event: Type.Optional(
             stringEnum(["comment", "request_changes"] as const, {
-                description: "review: a comment, or a request for changes. Approving is not possible.",
+                description: "review: comment/request changes; a person approves.",
             }),
         ),
         thread: Type.Optional(
-            Type.String({ minLength: 8, maxLength: 200, description: "A review thread id, as pr comments lists it." }),
+            Type.String({ minLength: 8, maxLength: 200, description: "Thread id from pr comments." }),
         ),
         author: Type.Optional(
             Type.String({
                 minLength: 1,
                 maxLength: 100,
-                description: "list: by this author, or @me. comments: only this person's.",
+                description: "list/ comments: author or @me.",
             }),
         ),
-        unresolved: Type.Optional(Type.Boolean({ description: "comments: only threads that are not resolved." })),
+        unresolved: Type.Optional(Type.Boolean({ description: "comments: unresolved only." })),
         state: Type.Optional(
             stringEnum(["open", "closed", "merged", "all"] as const, {
-                description: "list: which state. Default open.",
+                description: "list: state; default open.",
             }),
         ),
-        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "list: how many. Default 20." })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "list: count." })),
         labels: Type.Optional(
             Type.Array(Type.String({ minLength: 1, maxLength: 100 }), {
                 maxItems: 30,
@@ -134,7 +132,7 @@ const PrParams = Type.Object(
         reviewers: Type.Optional(
             Type.Array(Type.String({ minLength: 1, maxLength: 100 }), {
                 maxItems: 30,
-                description: "edit: people or teams to request a review from. GitLab: usernames.",
+                description: "edit: reviewers. GitLab: usernames.",
             }),
         ),
     },

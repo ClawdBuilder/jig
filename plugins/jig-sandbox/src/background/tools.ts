@@ -121,12 +121,8 @@ export function backgroundTools(tasks: Tasks): AnyTool[] {
     const output = {
         name: "bg_output",
         label: "bg_output",
-        description:
-            "Read the output of a background bash task. By default the lines not read yet; tail N gives the last N lines (1 to 500); offset reads forward from a byte offset (the footer names the next one); filter keeps only the lines that contain this text, ignoring case. Output is capped.",
-        promptSnippet: "Read the output of a background task",
-        promptGuidelines: [
-            "For a dev server, watcher or long build, call bash with background: true and notifyOn, and never sleep or poll bg_output to wait: you are woken. After a wake, read only what you need with bg_output tail or filter.",
-        ],
+        description: "Read a background bash task's output: the lines not read yet; tail, offset or filter. Capped.",
+        promptSnippet: "Read a background task's output",
         parameters: Type.Object({
             id: Type.String({ description: "The task id that bash returned" }),
             tail: Type.Optional(Type.Integer({ minimum: 1, maximum: 500, description: "The last N lines" })),

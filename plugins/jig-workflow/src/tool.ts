@@ -112,8 +112,8 @@ const parameters = Type.Object(
 );
 
 const DESCRIPTION =
-    "Take a piece of work through its workflow's stages, each with exit conditions. The tool records evidence itself; " +
-    "a held call is refused with the condition it waits for. Read the workflow skill before you advance a stage.";
+    "Take a ticket through its workflow's stages and exit conditions. It records evidence; a held call names the condition. " +
+    "Read the workflow skill before you advance a stage.";
 
 /** Checks a call's input against the action's table. An `InputError` blocks the call without asking anyone. */
 export function checkInput(input: Readonly<Record<string, unknown>>): ActionName {
@@ -225,11 +225,6 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
         label: "Workflow",
         description: DESCRIPTION,
         promptSnippet: "Take work through its workflow: status, test, submit_plan, scenario, advance",
-        promptGuidelines: [
-            "Call workflow with action status when you start on a ticket and after each stage: it says what is missing and how to fix it.",
-            "Never claim a test passed or a plan was approved; workflow test and workflow submit_plan make the plugin record it.",
-            "A Jig tool named in a skill may be deferred; if it is not in your tool list, call tool_search with its name first.",
-        ],
         parameters,
         // Each action reads the state and writes it back, and a move depends on the evidence it just read.
         executionMode: "sequential",

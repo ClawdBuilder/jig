@@ -50,44 +50,34 @@ export function usage(action: ActionName): string {
 
 /** The actions with the parameters each needs, for the schema: `list() show(request) ...`. */
 function describeActions(): string {
-    return ACTION_NAMES.map((name) => `${name}(${ACTIONS[name].required.join(",")})`).join(" ");
+    return ACTION_NAMES.join(", ");
 }
 
 export const parameters = Type.Object({
     action: stringEnum(ACTION_NAMES, { description: `What to do. Needs: ${describeActions()}` }),
-    collection: Type.Optional(
-        Type.String({ description: "A collection's name, to narrow a request or folder, or to call as one" }),
-    ),
-    folder: Type.Optional(
-        Type.String({ description: "A folder's path, such as Orders or Orders/Smoke, to narrow a request or to run" }),
-    ),
-    request: Type.Optional(Type.String({ description: "A saved request's name, from list" })),
-    text: Type.Optional(
-        Type.String({ description: "List only requests whose name, folder or address holds this text" }),
-    ),
-    environment: Type.Optional(
-        Type.String({ description: "The collection's name for the environment, such as Staging" }),
-    ),
+    collection: Type.Optional(Type.String({ description: "Collection name." })),
+    folder: Type.Optional(Type.String({ description: "Folder path, e.g. Orders/Smoke." })),
+    request: Type.Optional(Type.String({ description: "Request name from list." })),
+    text: Type.Optional(Type.String({ description: "list: text in name, folder or address." })),
+    environment: Type.Optional(Type.String({ description: "Environment name, e.g. Staging." })),
     variables: Type.Optional(
         Type.Object(
             {},
             {
                 additionalProperties: Type.String(),
-                description:
-                    'Values for the variables the request uses, such as {"orderId": "123"}. Never secrets or the host',
+                description: 'Variables, e.g. {"orderId": "123"}; never secrets or host',
             },
         ),
     ),
-    method: Type.Optional(stringEnum(METHODS, { description: "call: GET, HEAD and OPTIONS read; the others write" })),
-    url: Type.Optional(Type.String({ description: "call: the whole address, on a host of the environment" })),
-    body: Type.Optional(Type.Unknown({ description: "call: a JSON body, at most 256 KiB. Not for GET" })),
+    method: Type.Optional(stringEnum(METHODS, { description: "call: GET/HEAD/OPTIONS read; others write." })),
+    url: Type.Optional(Type.String({ description: "call: full address on an environment host." })),
+    body: Type.Optional(Type.Unknown({ description: "call: JSON body, max 256 KiB; not GET." })),
     headers: Type.Optional(
         Type.Object(
             {},
             {
                 additionalProperties: Type.String(),
-                description:
-                    'call: extra headers, at most 10, such as {"X-Request-Id": "t1"}. The tool adds the sign-in',
+                description: "call: extra headers, max 10; sign-in is added",
             },
         ),
     ),

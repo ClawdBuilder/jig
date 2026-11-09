@@ -23,7 +23,7 @@ Use the `api` tool for every API call. The team's requests are saved in collecti
 
 ## Specs (OpenAPI)
 
-A request named by an `operationId` comes from a service's spec. A spec runs only where the user listed its environments, against the server they mapped to each, and in production only for reads and only if they allowed it. An operation shown as `GET /path` has no `operationId` and is refused. Do not try to run a spec's operation in another environment, and never look for another host.
+A request named by an `operationId` comes from a service's spec. A spec runs only where the user listed its environments, against the server they mapped to each, and in production only for reads and only if they allowed it. An operation shown as `GET /path` has no `operationId` and is refused. A request stays in its environment.
 
 ## Read first, write once
 
@@ -36,7 +36,7 @@ Use known test accounts and records, never a customer's. Never run several write
 ## Reading an answer
 
 - A non-2xx status is a result, not a failure of the tool. Reason from the status and the body: `400` and `422` mean the request was wrong, `401` and `403` the sign-in or the permissions, `404` a wrong path or id, `409` a conflict.
-- A `401` or `403` is the user's to fix. Say so once. Do not look for another way around it.
+- A `401` or `403` is the user's to fix. Say so once.
 - Redirects are not followed. The `location` header shows where the server points.
 
 ## When the tool refuses
