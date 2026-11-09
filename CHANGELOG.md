@@ -13,6 +13,32 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
 - A second `registerSection` of an existing section is refused: plugin authors register a section once, with its methods.
 
+## [0.5.4] - 2026-11-09
+
+Shorter, clearer tool text, a local-read codemode, and a doctor that trusts `gh`.
+
+### Added
+
+- `logs.maxWindow` sets the longest window one `logs` call searches, from `1h` to `90d` (default `7d`), for a backend that
+  keeps logs longer. A window over 2 days is still one request a day, and a refusal names the setting.
+- `jira.othersComments` (default `false`): set it to `true` to let `edit_comment` and `delete_comment` change other
+  people's comments.
+
+### Changed
+
+- The `git`, `pr` and role refusals name the next step; the `bash` description points to the sandbox reference instead of
+  carrying the whole catalogue.
+- A plain `codemode` script is a local read: a read-only role can run a script of reads, every nested call is still
+  classified and gated as itself, and it no longer asks. A script that names `models`, `globalThis`, `eval` or another
+  escape hatch is an external write and asks; the check is text, conservative, and falls back to asking.
+- `jira edit_comment` and `delete_comment` now refuse a comment by someone else, and refuse when neither `GET /myself` nor
+  `jira.me` says who you are, before anyone is asked.
+- With `jira.projects` set, `jira link` and `unlink` refuse a link with an issue outside those projects.
+- A `logs` window of more than 48 days gets one request a day and 16 more, so the request budget alone does not cut it.
+- Patch updates to the formatter and web server dependencies; no configuration changes.
+- Internal: one email-guard run, isolated test suites, the docs warning budget, eval replay, and a stable real-Pi
+  teardown.
+
 ### Fixed
 
 - `jig doctor` no longer reports “GitHub login — not signed in” when `gh` is signed in: it runs the supported
