@@ -1,6 +1,6 @@
 // This module's only contact with processes: signals and `/proc`. Everything above it (the stop, the grace period, the
 // kill, the clean-up of a crashed session) runs against the `ProcessPort` interface, so a test can fake it. The group-kill
-// idea and the errno handling come from gvanderclay/pi-bg-bash (MIT, see docs/background.md, "Credit").
+// idea and the errno handling come from gvanderclay/pi-bg-bash (MIT, see docs/background-tasks.md, "Credit").
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import type { StopOutcome } from "./types.ts";

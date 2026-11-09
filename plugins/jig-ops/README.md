@@ -20,23 +20,13 @@ you with the exact command, and `runtime` checks it.
 In `~/.pi/agent/jig.json`, under `ops`:
 
 ```json
-{
-  "ops": {
-    "services": {
-      "orders-api": {
-        "repo": "acme/orders-api",
-        "ci": { "system": "github-actions", "workflow": "build.yml" },
-        "environments": {
-          "staging": {
-            "deploy":  { "method": "helm", "release": "orders-api", "chart": "deploy/chart" },
-            "runtime": { "kubernetes": { "context": "staging", "namespace": "orders", "selector": "app=orders-api" } },
-            "health":  "https://api.staging.example.com/orders/health"
-          }
-        }
-      }
-    }
-  }
-}
+{"ops": {"services": {"orders-api": {
+  "repo": "acme/orders-api",
+  "ci": {"system": "github-actions", "workflow": "build.yml"},
+  "environments": {"staging": {
+    "deploy": {"method": "helm", "release": "orders-api", "chart": "deploy/chart"},
+    "runtime": {"kubernetes": {"context": "staging", "namespace": "orders", "selector": "app=orders-api"}},
+    "health": "https://api.staging.example.com/orders/health"}}}}}}
 ```
 
 | Field | Meaning |
@@ -169,13 +159,13 @@ Every file: [Code map](docs/code-map.md).
 - [CI](docs/ci.md): Read before you use CI.
 - [Runtime](docs/runtime.md): Read before you read a service.
 - [Deploy](docs/deploy.md): Read before you deploy.
-- [CI platforms](docs/ci-platforms.md): Read before you pick a platform.
 
 **Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
 - [The catalog](docs/catalog.md): Read before you add a service.
 
 **Trust it**
-- [Not verified yet](docs/not-verified.md): Read before you rely on it.
+- [Not verified](docs/not-verified.md): Read before you rely on it.
 
 **Change it**
 - [Code map](docs/code-map.md): Read before you change the code.

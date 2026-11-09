@@ -40,7 +40,7 @@ others still load. The checks:
 
 A stage can name the tools it needs, such as `"tools": ["pr", "ci"]` on a `deliver` stage. They matter when
 `jig.json` keeps tools out of the context until `tool_search` finds them (`tools.deferred` in
-[`jig-core`](../../jig-core/docs/configuration.md#deferred-tools)): the stage brings them in without that step.
+[`jig-core`](../../jig-core/docs/tools-and-codemode.md)): the stage brings them in without that step.
 
 - **Entering the stage** adds each named tool that is not active to Pi's active set (`pi.setActiveTools`),
   and remembers which ones it added. A tool that was on already is left as it is.

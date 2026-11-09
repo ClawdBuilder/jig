@@ -90,8 +90,7 @@ test("the README has the shape the other plugins' READMEs have, and is built", (
     const readme = read(README);
     const headings = [...readme.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
     assert.deepEqual(headings, [
-        "Palettes",
-        "Your own palettes",
+        "Palettes and colours",
         "The footer",
         "Commands",
         "Rules",
@@ -107,7 +106,8 @@ test("the README has the shape the other plugins' READMEs have, and is built", (
 
 test("the README's tables say what the code does: palettes, commands, defaults", () => {
     const readme = read(README);
-    for (const name of PALETTE_NAMES) assert.ok(readme.includes(`\`${name}\``), name);
+    const palettes = page("palettes.md");
+    for (const name of PALETTE_NAMES) assert.ok(palettes.includes(`\`${name}\``), name);
     for (const command of ["/theme", "/theme <name>", "/theme reload", "/theme footer on` / `off"])
         assert.ok(readme.includes(`\`${command}\``), command);
     assert.ok(readme.includes(USAGE), "the usage line the code prints");
@@ -299,11 +299,6 @@ test("footer.md shows the example of a part from another plugin, as the README d
     const text = page("footer.md");
     assert.ok(
         text.includes(
-            'pi.events.emit("jig-theme:segment", { id: "spend", label: "Oct $120 / $200", tone: "warning" });',
-        ),
-    );
-    assert.ok(
-        read(README).includes(
             'pi.events.emit("jig-theme:segment", { id: "spend", label: "Oct $120 / $200", tone: "warning" });',
         ),
     );

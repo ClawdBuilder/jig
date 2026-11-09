@@ -31,7 +31,7 @@ says exactly which variables go.
 | `/sandbox doctor` | Checks the requirements and runs the proof commands |
 | `/sandbox allowed` | Folders and hosts you allowed; `add <folder\|host>` and `forget <folder\|host>` |
 | `/sandbox off`, `/sandbox on` | Turns it off or on for this session only |
-| `/ps` | The [background tasks](docs/background.md): their output as it grows, and stopping one |
+| `/ps` | The [background tasks](docs/background-tasks.md): their output as it grows, and stopping one |
 
 ## Rules
 
@@ -40,22 +40,7 @@ The broker (`broker/broker.mjs`) is the only place the runtime runs; it is a pla
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `sandbox`. Every field is optional.
-
-| Field | Default | Meaning |
-|---|---|---|
-| `share` | none | Folders writable although a rule hides them, such as a Windows work folder under `/mnt` |
-| `hide`, `lock` | none | More hidden or locked paths |
-| `network.mode` | `open` | `open`, `filtered`, `ask` or `off` |
-| `network.allow` | none | Hosts `ask` lets through without asking: `api.example.com`, `*.example.com:443`. Used in `ask` only |
-| `network.deny` | none | Hosts always refused in `filtered` and `ask`, in the same form. Not applied in `open`, and `/sandbox` warns |
-| `network.localhost` | none | Ports on this machine that commands may reach in `filtered` and `ask` |
-| `env.keep` | none | Variables passed in although their names look like credentials |
-| `env.remove` | none | More variables to keep out: names, or simple patterns such as `ACME_*` or `*_SECRETX`. Adds to what is already removed, never removes less |
-| `programs` | found on `PATH` | Absolute paths of `bwrap`, `socat` and `ripgrep` when they are elsewhere |
-| `background.maxTasks`, `.maxRuntimeMinutes`, `.keepFinished`, `.wake` | 4, 240, 12, `on` | Tasks at once, longest run, finished tasks kept, `off` to not wake the agent ([limits](docs/background.md#limits)) |
-| `docker` | `false` | Reserved: not supported on Linux (see Network) |
-
+In `~/.pi/agent/jig.json`, under `sandbox`. [Configuration](docs/configuration.md) has every field.
 ## Install
 
 Linux and WSL2: `sudo apt install bubblewrap socat ripgrep`, and `python3` (usually there
@@ -92,7 +77,10 @@ Every file: [Code map](docs/code-map.md).
 
 **Use it**
 - [Network](docs/network.md): Read before you change the network.
-- [Background tasks](docs/background.md): Read before you start long work.
+- [Background tasks](docs/background-tasks.md): Read before you start long work.
+
+**Set it up**
+- [Configuration](docs/configuration.md): Read before you add settings.
 
 **Trust it**
 - [The rules](docs/rules.md): Read when a command is refused.

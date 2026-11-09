@@ -1,6 +1,6 @@
 // Waking the agent: task events become messages, and a noisy build is one message and not twenty. The shape of the message
 // (the task, what happened, the matching line, the last lines, and a follow-up that starts a turn) is adapted from
-// gvanderclay/pi-bg-bash (MIT, see docs/background.md, "Credit"). Waking on a pattern, limiting repeats and holding while one
+// gvanderclay/pi-bg-bash (MIT, see docs/background-tasks.md, "Credit"). Waking on a pattern, limiting repeats and holding while one
 // message is on its way are behaviours described in aliou/pi-processes's README; no code was taken from it.
 import { formatRuntime, runtimeMs, slashed, stateText } from "./format.ts";
 import { formatBytes } from "./output.ts";

@@ -1,7 +1,6 @@
 # Configuration: the `jira` section
 
-The fields of the `jira` section of `jig.json`, in detail. The tables are in the
-[jig-jira overview](../README.md#configure). Back to the overview.
+The fields of the `jira` section of `jig.json`, in detail. Back to the overview.
 
 - **`site`** may have a path, but no user name, password, query or fragment.
   Plain `http` is refused.
@@ -69,3 +68,31 @@ The fields of the `jira` section of `jig.json`, in detail. The tables are in the
 - **`commentSearch`:** `auto` (the default), `scriptrunner` or `read`. It says
   how the `commented` filter finds issues; the three modes are in
   [Commented by](commented.md).
+
+
+## The fields
+
+| Field | Default | Meaning |
+|---|---|---|
+| `site` | required | The https address of the Jira, such as `https://example.atlassian.net` |
+| `auth` | required | How requests are signed in: exactly one of the five forms below |
+| `projects` | none | Project keys, such as `["PROJ"]`, for `search` without JQL; `create` and links take only these |
+| `updateFields` | `summary`, `description`, `labels`, `priority`, `assignee` | The fields `update` may set, by name or id |
+| `fields` | none | Friendly names for field ids, such as `"Story Points": "customfield_10016"` |
+| `createDefaults` | none | Values `create` gives a field when the call does not set it, by field name or id |
+| `privateNames` | none | Folder or host names to flag in outgoing text, up to 100 |
+| `environment` | `external` | The environment name that rules and classification know this Jira by |
+| `me` | none | Your account id (Cloud) or user name (Data Center), for when `/myself` is unavailable |
+| `othersComments` | `false` | `true` lets `edit_comment` and `delete_comment` change other people's comments |
+| `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` (see [Commented by](commented.md)) |
+
+## Auth forms
+
+| `auth` | Signs in with | For |
+|---|---|---|
+| `{ "email": "...", "token": "<secret reference>" }` | Basic authentication with an API token | Jira Cloud |
+| `{ "token": "<secret reference>" }` | A personal access token, sent as a Bearer token | Jira Data Center |
+| `{ "signIn": "<service name>" }` | The headers of a company sign-in service, asked for on every request | A company's single sign-on |
+| `{ "transport": "<name>" }` | A company transport: every request goes through it, and the tool holds no token | A company that reaches Jira only through a local sign-in proxy |
+| `{ "oauth": "cmd:<name>", "cloudId": "<id>" }` | An OAuth access token printed by a declared command, sent as Bearer; `cloudId` selects the Cloud API address | Cloud 3LO ([guide](oauth.md)) |
+| `{ "oauth": "cmd:<name>" }` | The same Bearer token, sent to the site URL | Data Center OAuth ([guide](oauth.md)) |

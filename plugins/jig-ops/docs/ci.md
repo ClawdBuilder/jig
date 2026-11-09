@@ -1,5 +1,15 @@
 # CI: the `ci` tool
 
+## CI platforms
+
+| | status, runs, run, log | rerun | trigger |
+|---|---|---|---|
+| GitHub Actions | yes | yes, no trigger | no |
+| GitLab CI | yes | failed jobs only | yes, on a `ref` |
+| Jenkins | yes | no | yes |
+| Concourse | yes | no | yes, the job, with no `ref` |
+
+
 How the `ci` tool looks at a service's CI, changes it and waits for it, on GitHub
 Actions, GitLab CI, Jenkins or Concourse. Back to the [jig-ops overview](../README.md). The
 catalog fields it reads are in [The catalog](catalog.md#ci).

@@ -60,43 +60,17 @@ pull, a rebase) is not the agent's, so it is left out; when nothing else changed
 
 ## While a review is open
 
-When the **agent** opens a review, `jig-review` holds the agent's writes through `jig-core`'s gate: edits, commits and other
-non-read calls are refused with one line saying the review is open in the browser and to wait for the person's message. The
-hold is off for `record_interactive_review_resolution` and for read-only calls. A person's next message in Pi releases it;
-approval or submitted comments release it too. A second refused write in the same wait **aborts the turn**, so a model cannot
-spin on the refusal; the person's next message starts the next turn. A session restart holds nothing. Set `holdAgent` to `false` in the review
-settings to turn it off; it is `true` by default and a company may set it.
-
-A review a person starts with `/code-review` holds nothing while the agent is idle; if the agent then acts, the same rule
-applies once it is the agent's open review.
-
-The preview page has no switch because its policy forbids script; it follows the saved choice server-side, which is why the
-one theme file matters.
+An agent-opened review holds the agent's non-read calls through `jig-core`'s gate until you answer or approve; reads and
+`record_interactive_review_resolution` pass, a second refused write aborts the turn, and `holdAgent: false` turns the hold
+off. A review you start with `/code-review` holds nothing while the agent is idle. The hold and its settings are in
+[Rounds](docs/rounds.md).
 
 ## Approving
 
-Approve in the page needs proof that you are there, and the agent cannot give it. There are two ways:
-
-| Way | What happens | Recorded as |
-|---|---|---|
-| **Passkey** | The page asks your device to sign a fresh challenge; the server checks the signature | `passkey` |
-| **Fallback** | The page marks the review "approved in page", and Pi asks you `y` or `n` | `page-and-pi` |
-
-A passkey is checked by Windows Hello, Touch ID or a security key. The fallback is for when no passkey is registered and you
-decline to register one, or your browser has none; it counts only after `y`.
-
-The first Approve on a machine offers to **register a passkey**. Pi then shows the key's SHA-256
-fingerprint and asks you to confirm it before it is stored.
-- **A passkey is a public key,** stored in `<agent folder>/jig-review/passkeys.json`, which the agent's shell does not write.
-- **The settings page** lists the keys by fingerprint and removes one, confirmed in Pi.
-- **[Passkeys](docs/passkeys.md)** has the checks, the store and what happens to a tampered file.
-
-On approval the plugin:
-- records it in the review store, with how and when, and the full commit of each repository when the
-  approved diff is still the current one (a branch review; anything else vouches for no commit);
-- emits `jig-review:approved` on `pi.events`, for `jig-workflow`'s `review-done` condition:
-  `{ reviewId, scope, ticket?, repos: [{ repo, head, root }], covered, files, method }`;
-- tells the agent how it was approved, when the agent asked for the review.
+You approve in the page with a **passkey** (Windows Hello, Touch ID or a security key); the fallback marks the review
+"approved in page" and Pi asks `y`. The page's server checks the signature, then the plugin records the approval, emits
+`jig-review:approved` and tells the agent. The checks, the store and the fallback are in
+[Passkeys](docs/passkeys.md).
 
 ## Rules
 

@@ -15,7 +15,7 @@ always blocked.`
 - **Names resolve in the proxy,** so HTTP clients work and `dig` and `getent` do not.
 - **A port on this machine** (a local database) is reachable when you list it in
   `network.localhost`. A `jig-core` tunnel on `localhost` is not, unless listed.
-- **A [background task's server](background.md#reaching-a-tasks-server)** is carried into
+- **A [background task's server](background-tasks.md#reaching-a-tasks-server)** is carried into
   later commands, and to you, at the same port.
 - **macOS:** `filtered` and `ask` are tested on Linux and WSL2, and mean `off` on a Mac;
   `/sandbox` says so.

@@ -23,72 +23,17 @@ Claude Opus 5.5 · high · ctx 182k · cache 3:41 · est. $4.21 · ↑12.4k ↓3
 
 *How a palette becomes a theme. Each palette names seventeen colours, and one role map spreads them over all of Pi's roles. Your own palette starts from a built-in one and changes only what you list.*
 
-## Palettes
+## Palettes and colours
 
-| Palette | Look |
-|---|---|
-| `jig-lime` | dark, lime with cyan and pink |
-| `jig-signal` | dark, cyan with blue and violet |
-| `jig-ember` | dark, amber with coral |
-| `jig-orchid` | dark, violet with pink and blue |
-| `jig-mono` | dark, greys with one accent, the highest contrast |
-| `jig-paper` | light, dark ink on warm white |
-
-Each palette names seventeen colours, such as `text`, `muted`, `accent`, `link`,
-`heading`, `warning` and `error`. One role map turns them into all of Pi's roles.
-
-Body text keeps a 7:1 contrast on its backgrounds, and muted text 4.5:1, with one named
-exception. The names, the map and the rules are in [Palettes](docs/palettes.md).
-
-## Your own palettes
-
-Write them in `~/.pi/agent/jig.json`, under `theme`. Each one starts from a
-built-in palette and changes only what you list:
-
-```json
-{
-  "theme": {
-    "palettes": {
-      "sea": {
-        "base": "jig-signal",
-        "vars": { "accent": "#4FD6BE", "heading": "#C099FF" },
-        "colors": { "mdCode": "#FFB454" }
-      }
-    }
-  }
-}
-```
-
-- `vars` changes the palette's named colours, and every role that uses them.
-- `colors` sets single Pi roles, after the map.
-- A colour is any form Pi accepts: hex, `oklch()`, `okhsl()`, a 256-colour index, or `""`.
-
-At the start of a session in a terminal, and on `/theme reload`, each palette is written
-to `~/.pi/agent/themes/<name>.json`, where Pi finds it. Pi reloads the theme in use
-when its file changes, so a change shows at once.
-
-A file it did not write, or that you changed, is never overwritten
-([Your palettes](docs/your-palettes.md)).
+Six built-in palettes, each naming seventeen colours that one role map spreads over Pi's roles; names, contrast and the
+exception are in [Palettes](docs/palettes.md). Your own palette starts from one and changes only the colours you list,
+in `~/.pi/agent/jig.json` under `theme` ([Your palettes](docs/your-palettes.md)).
 
 ## The footer
 
-The parts are `model`, `thinking`, `context`, `cache`, `cost` and `tokens`, then `branch` and `cwd`,
-`statuses` (what other extensions set with Pi's `setStatus`) and `plugins` (parts other plugins add, below).
-- **Off by default:** `branch` and `cwd`.
-- **Colours:** `context` is amber from 150k tokens or 70% of the window and red from 250k or 90%; `cache` is amber in
-  its last minute, and reads `cache cold` once it has expired.
-- **Unknowns:** `ctx ?` right after a compaction, and `est. $?` when a model has no price.
-
-On a narrow terminal the footer drops parts in the `dropFirst` order, and cuts the model's name to what is left, not below 8
-cells until nothing else can go. Every part, colour and limit is in [The footer](docs/footer.md).
-
-**Adding a part from another plugin.** Emit on Pi's event bus. Nothing needs to import
-`jig-theme`, and nothing breaks without it. `tone` is `normal`, `muted`, `accent`,
-`success`, `warning` or `error`, and an empty `label` removes the part:
-
-```ts
-pi.events.emit("jig-theme:segment", { id: "spend", label: "Oct $120 / $200", tone: "warning" });
-```
+The parts are `model`, `thinking`, `context`, `cache`, `cost` and `tokens`, plus optional `branch`, `cwd`, `statuses`
+and other plugins' segments. Add one by emitting `jig-theme:segment` on Pi's event bus; every part, colour and limit is in
+[The footer](docs/footer.md).
 
 ## Commands
 

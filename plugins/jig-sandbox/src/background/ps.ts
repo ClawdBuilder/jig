@@ -1,7 +1,7 @@
 // `/ps`: the background tasks of this session. In the terminal interface it lists them, shows a task's output as it grows,
 // and stops one; everywhere else `/ps list`, `/ps view <id>` and `/ps kill <id|all>` do the same in plain text. The log view
 // (follows the end while you are at the bottom, refreshes once a second) is adapted from gvanderclay/pi-bg-bash's `/bg` (MIT,
-// see docs/background.md, "Credit").
+// see docs/background-tasks.md, "Credit").
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";

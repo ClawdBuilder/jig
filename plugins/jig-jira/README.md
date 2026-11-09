@@ -89,40 +89,16 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 
 | Field | Default | Meaning |
 |---|---|---|
-| `site` | required | The https address of the Jira, such as `https://example.atlassian.net` |
-| `auth` | required | How requests are signed in: exactly one of the five forms below |
-| `projects` | none | Project keys, such as `["PROJ"]`, for `search` without JQL; `create` and links take only these |
-| `updateFields` | `summary`, `description`, `labels`, `priority`, `assignee` | The fields `update` may set, by name or id |
-| `fields` | none | Friendly names for field ids, such as `"Story Points": "customfield_10016"` |
-| `createDefaults` | none | Values `create` gives a field when the call does not set it, by field name or id |
-| `privateNames` | none | Folder or host names to flag in outgoing text, up to 100 |
-| `environment` | `external` | The environment name that rules and classification know this Jira by |
-| `me` | none | Your account id (Cloud) or user name (Data Center), for when `/myself` is unavailable |
-| `othersComments` | `false` | `true` lets `edit_comment` and `delete_comment` change other people's comments |
-| `commentSearch` | `auto` | How `commented` finds issues: `auto`, `scriptrunner` or `read` (see [Commented by](docs/commented.md)) |
+| `site` | required | The https address of the Jira |
+| `auth` | required | How requests are signed in ([five forms](docs/configuration.md#auth-forms)) |
+| `projects` | none | Project keys for `search` without JQL, `create` and links |
+| `updateFields` | five common fields | The fields `update` may set |
+
+[Configuration](docs/configuration.md) has every field and auth form.
 
 A screen field whose schema says `array` takes one value as a one-item list; the preview says when it wrapped one.
 
 The fields in detail are in [Configuration](docs/configuration.md).
-
-| `auth` | Signs in with | For |
-|---|---|---|
-| `{ "email": "...", "token": "<secret reference>" }` | Basic authentication with an API token | Jira Cloud |
-| `{ "token": "<secret reference>" }` | A personal access token, sent as a Bearer token | Jira Data Center |
-| `{ "signIn": "<service name>" }` | The headers of a company sign-in service, asked for on every request | A company's single sign-on |
-| `{ "transport": "<name>" }` | A company transport: every request goes through it, and the tool holds no token | A company that reaches Jira only through a local sign-in proxy |
-| `{ "oauth": "cmd:<name>", "cloudId": "<id>" }` | An OAuth access token printed by a declared command, sent as Bearer; `cloudId` selects the Cloud API address | Cloud 3LO ([guide](docs/oauth-cloud.md)) |
-| `{ "oauth": "cmd:<name>" }` | The same Bearer token, sent to the site URL | Data Center OAuth ([guide](docs/oauth-data-center.md)) |
-
-The `oauth` value is a secret reference to a command, and the command is declared in `secrets.commands`. The other tokens
-are secret references such as `pass:work/jira-token` (see
-[Secrets](../../docs/secrets.md)); a token written into the file is refused, and
-the error does not repeat it.
-
-A token or a header is never put in a result or an error, and `jig-core` removes
-it from output as well. With a transport, `site` still builds the URL of every
-request, and the answer's status, headers and body are read as an HTTP answer
-is.
 
 ```json
 {

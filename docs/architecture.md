@@ -156,7 +156,7 @@ company plugin (separate, private repository)
   only reads them.
 - **Tools are registered through `jig-core`'s kit** (`registerJigTool`), so `tools.deferred` in `jig.json` can keep a tool's
   description out of the context until Pi's `tool_search` finds it, and a workflow stage can bring tools in
-  ([Deferred tools](../plugins/jig-core/docs/configuration.md#deferred-tools)).
+  ([Deferred tools](../plugins/jig-core/docs/tools-and-codemode.md)).
 
 ## Platforms
 

@@ -401,7 +401,7 @@ Each step ships with its escape and keep-working tests.
 | A moved-aside folder could replace a locked file | The kernel refuses to move a folder that holds a mounted path; what can be replaced is a locked link, which the audit puts back |
 | `PATH` folders are locked | Those in your home folder, outside the working folder |
 | The question about a host shares `jig-core`'s queue | Done through a new `jig-core` call, `approvals.inTurn`; the question about a write uses it too, so nothing overlaps |
-| A server started by a command is reachable by the next one | A command ends with its processes. A server that must outlive it is a [background task](background.md) |
+| A server started by a command is reachable by the next one | A command ends with its processes. A server that must outlive it is a [background task](background-tasks.md) |
 | Task logs are in a private folder of the session | They are under `<agent folder>/jig-sandbox/background`, which the sandbox cannot write: in `/tmp` a command could swap a log for a link to a file Pi can read and it cannot, and `bg_output` would show it |
 | Background tasks start through the same path as `bash` | Pi's side starts them itself, to own the process group and the pipes, and wraps them with the same rules; a task's output is cleaned and its credential values taken out before it is written |
 | A task wakes the agent on text it prints | The patterns are regular expressions, checked first for the constructs that make matching slow |

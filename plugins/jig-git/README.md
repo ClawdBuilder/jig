@@ -181,5 +181,7 @@ Every file: [Code map](docs/code-map.md).
 
 **Trust it**
 - [Writes](docs/writes.md): Read before a write asks.
-- [Scope](docs/scope.md): Read when a call is refused.
-- [Not verified yet](docs/not-verified.md): Read before you rely on it.
+- [Not verified](docs/not-verified.md): Read before you rely on it.
+
+**Change it**
+- [Code map](docs/code-map.md): Read before you change the code.
