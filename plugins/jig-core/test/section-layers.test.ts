@@ -305,12 +305,18 @@ describe("keys that replace the company's instead of merging into it", () => {
         assert.deepEqual((api.config.section("jira") as { auth: unknown }).auth, { transport: "corp-proxy" });
     });
 
-    test("registering the section again is refused, and the first keys stay", () => {
+    test("the same plugin registering again replaces the keys; another plugin is refused", () => {
         const { state, api, load } = setup({
             jira: { site: "https://jira.example.com", auth: { token: "pass:work/jira" } },
         });
+        api.config.registerSection("jira", jiraCheck, REPLACE);
         assert.deepEqual(state.sectionReplace.get("jira"), ["auth"]);
-        assert.throws(() => api.config.registerSection("jira", jiraCheck), /already registered by another plugin/);
+        api.config.registerSection("jira", jiraCheck);
+        assert.equal(state.sectionReplace.has("jira"), false);
+        api.config.registerSection("jira", jiraCheck, { replace: [] });
+        assert.equal(state.sectionReplace.has("jira"), false);
+        api.config.registerSection("jira", jiraCheck, REPLACE);
+        assert.throws(() => api.config.registerSection("jira", () => []), /already registered by another plugin/);
         assert.deepEqual(state.sectionReplace.get("jira"), ["auth"]);
         api.config.addSectionDefaults("jira", COMPANY_AUTH);
         load();
@@ -514,7 +520,7 @@ describe("lists that add up (union)", () => {
         assert.deepEqual(mine, { folders: ["/b"] });
     });
 
-    test("registering checks the list, and a second registration is refused", () => {
+    test("registering checks the list, and registering again replaces it", () => {
         const state = createState(undefined as unknown as ExtensionAPI);
         const api: JigApi = buildApi(state);
         const check = () => [];
@@ -525,8 +531,8 @@ describe("lists that add up (union)", () => {
         assert.throws(() => api.config.registerSection("logs", check, { union: [""] }), /union must be a list/);
         api.config.registerSection("logs", check, { union: ["folders"] });
         assert.deepEqual(state.sectionUnion.get("logs"), ["folders"]);
-        assert.throws(() => api.config.registerSection("logs", check), /already registered by another plugin/);
-        assert.deepEqual(state.sectionUnion.get("logs"), ["folders"]);
+        api.config.registerSection("logs", check);
+        assert.equal(state.sectionUnion.has("logs"), false);
     });
 
     test("through the loader: the company's list and yours are one list in what the plugin gets", () => {

@@ -265,12 +265,16 @@ export function buildApi(state: JigState): JigApi {
                 ) {
                     throw new Error(`registerSection: "${name}" is jig-core's section, so a plugin cannot use it`);
                 }
-                if (state.sectionChecks.has(name))
+                // A plugin loaded again in the same process (a reload, a test) brings the same validator and replaces its
+                // own registration; another plugin's validator for a taken name is refused.
+                const registered = state.sectionChecks.get(name);
+                if (registered !== undefined && registered !== validate)
                     throw new Error(`registerSection: "${name}" is already registered by another plugin`);
                 const declared = options?.methods;
                 const nextMethods = new Map(state.onboardingMethods);
                 const checkedMethods = declared === undefined ? undefined : checkOnboardingMethods(name, declared);
                 if (checkedMethods !== undefined) nextMethods.set(name, checkedMethods);
+                else nextMethods.delete(name);
                 // Validate the company entries against the prospective methods before any state is written.
                 let nextOnboarding = state.onboarding;
                 const nextCompanyOnboarding = new Map<string, typeof state.onboarding>();
@@ -291,6 +295,7 @@ export function buildApi(state: JigState): JigApi {
                 }
                 state.sectionChecks.set(name, validate);
                 if (checkedMethods !== undefined) state.onboardingMethods.set(name, checkedMethods);
+                else state.onboardingMethods.delete(name);
                 state.onboarding = nextOnboarding;
                 for (const [company, entry] of nextCompanyOnboarding) {
                     const target = state.companies.get(company);

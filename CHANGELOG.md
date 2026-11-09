@@ -11,7 +11,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Changed
 
 - Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
-- A second `registerSection` of an existing section is refused: plugin authors register a section once, with its methods.
+- Another plugin's `registerSection` of a section that is already registered is refused; the same plugin loaded again replaces its own registration.
 
 ## [0.5.4] - 2026-11-09
 

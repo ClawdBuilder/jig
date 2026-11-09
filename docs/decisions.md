@@ -72,8 +72,9 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## 2026-11-09: sign-in methods are declared with their section
 
-**Decision.** A plugin declares a section's sign-in methods in the same `registerSection` call. A second
-`registerSection` of an existing name is refused. A company may set `default`, `hide`, or `add` a fixed
+**Decision.** A plugin declares a section's sign-in methods in the same `registerSection` call. Another
+plugin's `registerSection` of a taken name is refused; the same plugin loaded again (a reload, a test) brings the same
+validator and replaces its own registration. A company may set `default`, `hide`, or `add` a fixed
 sign-in/transport method as a prefill. No method id is written; setup infers the method from its required paths.
 
 **Why:** ownership is structural, not a token or a later call, and a company cannot replace another plugin's methods.

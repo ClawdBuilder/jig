@@ -240,3 +240,20 @@ test("a refused registration writes nothing, and a no-method section is refused"
         /section "other" has no methods/,
     );
 });
+
+test("a reload-style second load keeps the same validator and replaces its methods", () => {
+    const state = createState(fakePi().pi);
+    const api = buildApi(state);
+    const check = () => [];
+    api.config.registerSection("jira", check, { methods });
+    api.config.registerSection("jira", check, { methods });
+    assert.equal(state.sectionChecks.get("jira"), check);
+    assert.deepEqual(
+        state.onboardingMethods.get("jira")?.map((method) => method.id),
+        ["token", "transport"],
+    );
+    assert.throws(
+        () => api.config.registerSection("jira", () => [], { methods }),
+        /already registered by another plugin/,
+    );
+});

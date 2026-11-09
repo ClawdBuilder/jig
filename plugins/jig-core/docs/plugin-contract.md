@@ -119,8 +119,9 @@ closed instead of running ungoverned.
     up instead, such as `folders`: the company's entries first, then the
     user's, each once. `{ methods }` declares the section's sign-in methods in
     the same call, so ownership is structural. A method gives `id`, `label`,
-    `who`, `fields` and an optional `requires` path. A section is registered
-    once; a second registration is refused. The company overlay lives in its
+    `who`, `fields` and an optional `requires` path. A section belongs to the
+    plugin that registers it: another plugin's registration of the name is
+    refused, and the same plugin loaded again replaces its own. The company overlay lives in its
     onboarding entry: `default`, `hide`, or `add` a fixed signIn/transport
     method as a prefill. No method id is written; setup infers the method from
     the required paths.
