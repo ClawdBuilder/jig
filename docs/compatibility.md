@@ -70,4 +70,6 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 - **A pin is never loosened to get green.** When a pin test fails, either the change was a slip and is undone, or it is on purpose and
   the decision comes first. Deleting a literal, or swapping an exact comparison for a looser one, is not a fix.
 
+The front-end surfaces are listed in [Front-end contracts](contracts.md).
+
 Back to the [README](../README.md).

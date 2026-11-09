@@ -63,6 +63,12 @@ Detail that would take it past that goes to `plugins/<name>/docs/`. A detail
 page opens with one sentence on what it covers, and ends with a link back to
 the README.
 
+## Where a page goes
+
+A page that describes one plugin lives in that plugin's `docs/` and is linked from its README; a page that spans plugins,
+or that an outside reader needs before choosing a plugin, lives in `docs/`. A contributor-only page (checks, releases,
+tests) is linked from CONTRIBUTING, not from README.
+
 ## The root README
 
 The repository README is about 100 to 120 lines. In this order: the name and a one-line purpose, badges, three or four
