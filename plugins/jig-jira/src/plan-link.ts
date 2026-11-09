@@ -4,6 +4,8 @@
 // ("is blocked by"). A call reads "key <phrase> to", so `link PROJ-1 to PROJ-2 as "blocks"` makes PROJ-1 block PROJ-2, and
 // the same link given as "is blocked by" from the other side is the same link. Jira's request names the two ends:
 // `outwardIssue` is the issue that reads the outward phrase, `inwardIssue` the one that reads the inward phrase.
+//
+// With `jira.projects` set, both ends of a link must be in those projects, for a link made and for one removed.
 import { issueHead, issueWithLinks, linkTypes, phraseOf } from "./api.ts";
 import type { Env, IssueLink, LinkType } from "./api.ts";
 import { about } from "./plan.ts";
@@ -62,6 +64,24 @@ function isOfType(link: IssueLink, wanted: string): boolean {
     return [type.name, type.id, type.outward, type.inward].some((text) => text !== "" && text.toLowerCase() === lower);
 }
 
+/**
+ * Refuses a link with an end outside `jira.projects`, when that is set. The keys are the ones Jira answered with, so an
+ * issue that moved to another project is judged where it is now.
+ */
+function checkProjects(env: Env, action: "link" | "unlink", keys: readonly string[]): void {
+    const { projects } = env.settings;
+    if (projects.length === 0) return;
+    for (const key of keys) {
+        const project = key.slice(0, key.lastIndexOf("-")).toUpperCase();
+        if (!projects.includes(project)) {
+            throw new InputError(
+                `jira ${action}: ${key} is in ${project}, which is not one of your projects (${shortList(projects, ", ", 40)}); ` +
+                    `jira.projects in jig.json lists the projects ${action} may use`,
+            );
+        }
+    }
+}
+
 /** A type whose two ends read the same, such as "relates to", has no direction. */
 const symmetric = (type: LinkType): boolean => type.inward.toLowerCase() === type.outward.toLowerCase();
 
@@ -71,6 +91,7 @@ export async function planLink(env: Env, call: CallOf<"link">): Promise<Plan> {
         issueHead(env, call.to),
         linkTypes(env),
     ]);
+    checkProjects(env, "link", [first.key, second.key]);
     const { type, outward } = pickLinkType(types, call.linkType);
     const phrase = outward ? type.outward : type.inward;
     const back = outward ? type.inward : type.outward;
@@ -154,6 +175,7 @@ export async function planUnlink(env: Env, call: CallOf<"unlink">): Promise<Plan
     }
     if (link.id === "")
         throw new InputError(`jira unlink: Jira gave no id for the link of ${call.key}, so it cannot be removed`);
+    checkProjects(env, "unlink", [issue.key, link.other.key]);
 
     const phrase = phraseOf(link);
     const other = link.other.summary === "" ? link.other.key : `${link.other.key} "${link.other.summary}"`;

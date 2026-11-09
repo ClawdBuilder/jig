@@ -16,6 +16,9 @@ beforeEach(() => h.reset());
 
 const issue = (key: string): FakeIssue => h.jira.issues.get(key) as FakeIssue;
 
+/** Sam Lee wrote comments 10001 and 10003. Only your own comments are edited or deleted, so a test of one signs in as him. */
+const signInAsSam = (): void => void (h.jira.me = h.jira.users[1] as typeof h.jira.me);
+
 /** The tags jig-core removes from a page a tool brings (its preview-html.ts). Whatever is written here must survive that. */
 const REMOVED =
     /<\/?(?:script|iframe|frame|frameset|object|embed|applet|meta|link|base|form|input|button|textarea|select|svg|math)\b[^>]*>/gi;
@@ -27,7 +30,7 @@ async function previewOf(input: Record<string, unknown>): Promise<Preview> {
 const CALLS: Array<Record<string, unknown>> = [
     { action: "comment", key: "PROJ-1", text: "Checked on *Safari 17*." },
     { action: "edit_comment", key: "PROJ-1", commentId: "10003", text: "Verified twice." },
-    { action: "delete_comment", key: "PROJ-1", commentId: "10002" },
+    { action: "delete_comment", key: "PROJ-1", commentId: "10001" },
     { action: "transition", key: "PROJ-1", transition: "Resolve Issue" },
     { action: "update", key: "PROJ-2", fields: { summary: "New title", labels: ["a"] } },
     { action: "create", project: "PROJ", type: "Bug", summary: "A bug", description: "Steps." },
@@ -35,6 +38,7 @@ const CALLS: Array<Record<string, unknown>> = [
 
 describe("the fingerprint", () => {
     test("every write's preview has one, and it is a digest and not the text", async () => {
+        signInAsSam();
         for (const input of CALLS) {
             const preview = await previewOf(input);
             assert.match(preview.fingerprint ?? "", /^[0-9a-f]{32}$/, String(input.action));
@@ -51,6 +55,7 @@ describe("the fingerprint", () => {
     });
 
     test("it covers what the person relied on, not only the request", async () => {
+        signInAsSam();
         const before = {
             transition: (await previewOf(CALLS[3] as Record<string, unknown>)).fingerprint,
             edit: (await previewOf(CALLS[1] as Record<string, unknown>)).fingerprint,
@@ -60,7 +65,6 @@ describe("the fingerprint", () => {
         issue("PROJ-1").fields.status = { name: "Open" };
         issue("PROJ-1").comments.find((comment) => comment.id === "10003")!.body = "Someone else edited this.";
         issue("PROJ-2").fields.summary = "Renamed by someone else";
-        h.jira.me = h.jira.users[1] as typeof h.jira.me;
         assert.notEqual(
             (await previewOf(CALLS[3] as Record<string, unknown>)).fingerprint,
             before.transition,
@@ -76,6 +80,7 @@ describe("the fingerprint", () => {
             before.update,
             "the values it changes",
         );
+        h.jira.me = h.jira.users[0] as typeof h.jira.me;
         assert.notEqual(
             (await previewOf(CALLS[0] as Record<string, unknown>)).fingerprint,
             before.comment,
@@ -135,6 +140,7 @@ describe("flags for text that points at things readers cannot open", () => {
             updateFields: ["summary", "description", "labels", "customfield_10600"],
         });
         const flagged = async (input: Record<string, unknown>) => (await h.call(input)).preview?.summary ?? "";
+        signInAsSam();
         assert.match(
             await flagged({ action: "edit_comment", key: "PROJ-1", commentId: "10003", text: "see ~/notes.md" }),
             /\[1 pointer flagged\]$/,
@@ -192,7 +198,9 @@ describe("flags for text that points at things readers cannot open", () => {
             { action: "transition", key: "PROJ-1", transition: "Resolve Issue" },
             { action: "delete_comment", key: "PROJ-1", commentId: "10001" },
         ]) {
+            signInAsSam();
             const result = await h.call(input);
+            assert.equal(result.error, undefined, String(input.action));
             assert.doesNotMatch(result.preview?.summary ?? "", /flagged/);
             assert.doesNotMatch(result.preview?.body ?? "", /WARNING/);
             assert.doesNotMatch(result.text, /Note:/);
@@ -202,13 +210,16 @@ describe("flags for text that points at things readers cannot open", () => {
 
     test("a comment already on the issue is not checked when it is deleted", async () => {
         issue("PROJ-1").comments[0]!.body = "Old note: /home/alice/x.md";
+        signInAsSam();
         const result = await h.call({ action: "delete_comment", key: "PROJ-1", commentId: "10001" });
+        assert.match(result.preview?.summary ?? "", /^Delete comment 10001 /);
         assert.doesNotMatch(result.preview?.summary ?? "", /flagged/);
     });
 });
 
 describe("the page for o", () => {
     test("is markup for jig-core's page: no document of its own, and nothing jig-core would remove", async () => {
+        signInAsSam();
         for (const input of [
             CALLS[0],
             CALLS[1],
@@ -238,6 +249,7 @@ describe("the page for o", () => {
     });
 
     test("shows the text as Jira will, and what it replaces", async () => {
+        signInAsSam();
         const html =
             (
                 await previewOf({

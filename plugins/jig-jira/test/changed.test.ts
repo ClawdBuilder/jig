@@ -51,6 +51,7 @@ describe("a write whose plan differs from the approved preview is refused", () =
     });
 
     test("edit_comment and delete_comment: the comment was edited by someone else", async () => {
+        h.jira.me = h.jira.users[1] as typeof h.jira.me; // Sam Lee, who wrote comment 10003
         const edit = () =>
             void (issue("PROJ-1").comments.find((comment) => comment.id === "10003")!.body = "Edited meanwhile.");
         const edited = await h.call(
