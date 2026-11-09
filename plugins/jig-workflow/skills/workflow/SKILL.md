@@ -31,7 +31,7 @@ No workflow yet? `workflow start` picks the one whose pattern matches the ticket
 
 ## When a call is held
 
-A refusal that says `held by workflow` names the condition and what is missing. Do the thing it names, then try again. Do not look for another way around it (the shell, another tool, editing the workflow files or `workflow.json`); the files are protected, and a hold only ever waits for evidence.
+A refusal that says `held by workflow` names the condition and what is missing. Do the thing it names, then try again; the files are protected, and a hold only ever waits for evidence.
 
 ## Moving on
 

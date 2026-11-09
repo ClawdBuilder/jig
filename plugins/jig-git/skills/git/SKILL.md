@@ -18,7 +18,7 @@ merge request, and `pr` and `release` work the same way with these differences:
   `thread`. A single comment has a thread too, and replying to it makes it a thread.
 - `pr create` with `draft` makes a title that starts with `Draft: `. `pr ready` takes it off.
 - `pr merge` cannot `rebase`, and `release_create` cannot `draft`, `prerelease` or `generate_notes`: each is refused with a line
-  that says the GitLab way. Do not try to work around a refusal; tell the user.
+  that says the GitLab way. Report it and stop.
 - `pr review` publishes a review. If the user has draft comments waiting in GitLab it refuses, because they would go out too.
 - If a call is refused because the host is not known, `git.forges` in `jig.json` must name it (or, for an ssh alias such as `github.com-work`, map it to the real host); ask the user to add it. Never try to name a host in a call.
 - A call that finds `glab` not signed in says to run `glab auth login`; the user does that, never you.
@@ -76,8 +76,7 @@ with the author, the file and line, the text and the id of each comment. Do not 
 
 ## When a reply is lost
 
-A write that times out or loses its connection may still have gone through. The tool then checks once and tells you
-what GitHub shows. It never sends the request again. Do not repeat the call yourself until you have read the result.
+If a write loses its reply, the tool checks once and says what GitHub shows; read it and do not send the write again.
 
 ## What is not offered
 

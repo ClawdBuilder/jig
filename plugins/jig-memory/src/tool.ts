@@ -144,8 +144,7 @@ export function ticketTool(host: TicketHost): ToolDefinition<typeof parameters> 
         name: TOOL_NAME,
         label: "Ticket",
         description: DESCRIPTION,
-        promptSnippet:
-            "ticket: search earlier tickets (recall); save pasted output (save_evidence); track open checks (add_check, list_checks, close_check); close a finished ticket (close), which drafts its card",
+        promptSnippet: "The active ticket's handoff record: evidence, checks, recall, close",
         parameters,
         executionMode: "sequential",
         async execute(toolCallId, params) {

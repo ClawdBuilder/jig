@@ -49,8 +49,8 @@ describe("the actions", () => {
     test("the schema lists the same actions, and says what each needs", () => {
         const action = (parameters.properties as any).action;
         assert.deepEqual(action.enum, ACTION_NAMES);
-        assert.match(action.description, /find\(database,collection\)/);
-        assert.match(action.description, /update\(database,collection,filter,which\)/);
+        assert.match(action.description, /find, distinct, sample/);
+        assert.match(action.description, /update, replace, delete/);
     });
 
     test("the usage line names the required parameters and marks the optional ones", () => {

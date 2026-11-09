@@ -54,10 +54,12 @@ describe("the schema", () => {
         ]);
     });
 
-    test("names what each action needs in the action's own description, and keeps descriptions short", () => {
+    test("lists each action in the description and its needs in the usage line, and keeps descriptions short", () => {
         const description = schema.properties.action?.description ?? "";
-        for (const name of ACTION_NAMES)
-            assert.match(description, new RegExp(`${name}\\(${ACTIONS[name].required.join(",")}\\)`));
+        for (const name of ACTION_NAMES) {
+            assert.match(description, new RegExp(`\\b${name}\\b`));
+            assert.ok(usage(name).includes(ACTIONS[name].required.join(", ")), `${name}: ${usage(name)}`);
+        }
         for (const [name, property] of Object.entries(schema.properties)) {
             assert.ok(
                 (property.description ?? "").length <= (name === "action" ? 360 : 120),
