@@ -153,7 +153,7 @@ describe("the README is the specification", () => {
     });
 
     test("the configuration example is valid, and shows production with an allow list and a route", () => {
-        const json = /```json\n([\s\S]*?)\n```/.exec(readme)?.[1] ?? "";
+        const json = /```json\n([\s\S]*?)\n```/.exec(read("docs", "configuration.md"))?.[1] ?? "";
         const section = (JSON.parse(json) as { mongo: unknown }).mongo;
         assert.deepEqual(validateMongo(section), []);
         assert.match(json, /"allow"/);
