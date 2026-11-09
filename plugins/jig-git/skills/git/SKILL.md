@@ -1,6 +1,6 @@
 ---
 name: git
-description: How to work with the git, pr and release tools - branch, commit, push, open and review pull requests (GitHub) and merge requests (GitLab), and hand CI to the ci tool. Use for any change that ends in a pull request or merge request, and whenever you would reach for git, gh or glab.
+description: How to work with the git, pr and release tools - branch, commit, push, open and review pull requests (GitHub) and merge requests (GitLab), and hand CI to the ci tool. Use for any change that ends in a pull request or merge request, and whenever you would reach for git, gh or glab. Not for a code edit with no git step; use edit/write.
 ---
 
 # Git, pull requests and CI
@@ -84,3 +84,11 @@ work or decide for a person. If one is truly needed, ask the user to run it.
 
 `release tag_create` makes an annotated tag locally. `tag_push` and `release_create` ask. A tag that is already on the
 remote is never forced. Deploying is not done here: a tag or a build being ready is announced by `jig-ops` for other tools to act on.
+
+## Example
+
+```json
+{"action":"status"}
+{"action":"commit","message":"PROJ-123 Round the totals","paths":["src/totals.ts"]}
+{"action":"branch","operation":"create","branch":"feature/PROJ-123","base":"develop"}
+```

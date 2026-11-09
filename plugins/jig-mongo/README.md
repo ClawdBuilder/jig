@@ -144,3 +144,4 @@ jig-mongo/
 - [Connections](docs/connections.md): the configuration, several connections in one environment, the SSH route and its key file, the tunnel (forward or SOCKS), how connections are kept
 - [Results](docs/results.md): Extended JSON in and out, partial results, schema and explain output, the record
 - [Not verified yet](docs/not-verified.md): what needs a real MongoDB
+- [Refusals](docs/refusals.md): the common reasons and what to change

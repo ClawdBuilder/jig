@@ -28,7 +28,9 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
     if (operation === "create") {
         checkBranchPattern(name, call);
         if (await isProtected(repo, name, call.settings, signal))
-            throw new RefusedError(`refusing to create protected branch ${name}`);
+            throw new RefusedError(
+                `refusing to create protected branch ${name}; create a working branch from it instead`,
+            );
         if (await refExists(repo.root, `refs/heads/${name}`, signal))
             throw new Error(`branch ${name} already exists; use operation switch`);
         await requireClean(repo, `creating ${name}`, signal);
@@ -140,7 +142,9 @@ export async function planBranch(params: BranchParams, call: Call): Promise<Plan
     }
     // delete
     if (await isProtected(repo, name, call.settings, signal))
-        throw new RefusedError(`refusing to delete protected branch ${name}`);
+        throw new RefusedError(
+            `refusing to delete protected branch ${name}; keep it and delete a working branch instead`,
+        );
     if ((await currentBranch(repo.root, signal)) === name)
         throw new Error(`${name} is checked out; switch to another branch before deleting it`);
     if (!(await refExists(repo.root, `refs/heads/${name}`, signal)))
@@ -228,7 +232,9 @@ export async function planWorktree(params: WorktreeParams, call: Call): Promise<
         if (!exists) {
             checkBranchPattern(name, call);
             if (await isProtected(repo, name, call.settings, signal))
-                throw new RefusedError(`refusing to create protected branch ${name}`);
+                throw new RefusedError(
+                    `refusing to create protected branch ${name}; create a working branch from it instead`,
+                );
             base =
                 params.base === undefined
                     ? await baseBranch(repo, call.settings, signal)

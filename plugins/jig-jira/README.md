@@ -169,3 +169,4 @@ jig-jira/
 - [Configuration](docs/configuration.md): the fields of the `jira` section in detail
 - [Writes](docs/writes.md): the rules for writes in full, and what each preview shows
 - [Not verified yet](docs/not-verified.md): what needs a real Jira
+- [Wiki markup](docs/wiki-markup.md): the Jira syntax and its traps

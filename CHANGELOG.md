@@ -4,6 +4,11 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Changed
+
+- The `git`, `pr` and role refusals name the next step; the `bash` description points to the sandbox reference instead of
+  carrying the whole catalogue.
+
 ### Fixed
 
 - `jig doctor` no longer reports “GitHub login — not signed in” when `gh` is signed in: it runs the supported
