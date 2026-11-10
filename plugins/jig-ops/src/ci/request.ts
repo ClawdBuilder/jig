@@ -156,6 +156,9 @@ function describe(error: unknown, timeoutMs: number): unknown {
     }
     // A credential that could not be read: the store or the command said why, in its own words. An adapter that knows
     // how the user renews it can add that.
+    // A transport that failed may have sent the request before it broke. Keep its words and mark it lost, so a write
+    // reads once before answering instead of reporting a failure a retry could duplicate.
+    if (error.code === "transport_failed") return new RequestFailure("connection_lost", error.message);
     if (error.code === "auth_failed") return new RequestFailure("auth", error.message);
     // A transport that failed or is not registered: jig-core's own words.
     return new Error(error.message);

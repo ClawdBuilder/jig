@@ -15,6 +15,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
 - Another plugin's `registerSection` of a section that is already registered is refused; the same plugin loaded again replaces its own registration.
 
+### Fixed
+
+- A `jig-ops` write through a transport that fails is treated as a lost reply: it is read back once and never sent again.
+
 ## [0.5.4] - 2026-11-09
 
 Shorter, clearer tool text, a local-read codemode, and a doctor that trusts `gh`.
