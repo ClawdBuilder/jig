@@ -469,6 +469,22 @@ describe("signing in", () => {
         assert.deepEqual(g.h.jig.resolved, []);
     });
 
+    test("a transport that breaks after a trigger sent is a lost reply, read once and never resent", async (t) => {
+        const world = usual();
+        world.authorized = () => true;
+        const inner = jenkinsResponder(world);
+        const g = await ciWorld(t, {
+            ci: jenkinsCi({ url: "http://jenkins.internal.example.test", auth: { transport: "corp" } }),
+            transport: "corp",
+            responder: (request, n) => (request.method === "POST" ? { reset: true } : inner(request, n)),
+        });
+        const error = (await g.call({ action: "trigger", parameters: { A: "1" } })).error?.message ?? "";
+        assert.match(error, /the reply was lost \(transport "corp" failed/);
+        assert.match(error, /Nothing was sent twice/);
+        assert.equal(g.transport?.requests.filter((request) => request.method === "POST").length, 1);
+        assert.ok((g.transport?.requests.length ?? 0) > 1, "one read after the lost write");
+    });
+
     test("no credential reaches a result or an error", async (t) => {
         const g = await start(t);
         const texts = [

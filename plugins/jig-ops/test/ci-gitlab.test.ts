@@ -538,6 +538,33 @@ describe("signing in", () => {
         assert.deepEqual(g.h.jig.resolved, []);
     });
 
+    test("a transport that breaks after a rerun sent is lost, read once and never resent", async (t) => {
+        const world = usual();
+        world.authorized = () => true;
+        const inner = gitlabResponder(world);
+        const g = await ciWorld(t, {
+            ci: gitlabCi({ url: "http://gitlab.internal.example.test", auth: { transport: "corp" } }),
+            transport: "corp",
+            responder: (request, n) => (request.method === "POST" ? { reset: true } : inner(request, n)),
+        });
+        const error = (await g.call({ action: "rerun", run_id: 8 })).error?.message ?? "";
+        assert.match(error, /the reply was lost \(transport "corp" failed/);
+        assert.match(error, /Nothing was sent twice/);
+        assert.equal(g.transport?.requests.filter((request) => request.method === "POST").length, 1);
+    });
+
+    test("a read through a failed transport still fails plainly, with no lost-reply claim", async (t) => {
+        const world = usual();
+        world.authorized = () => true;
+        const g = await ciWorld(t, {
+            ci: gitlabCi({ url: "http://gitlab.internal.example.test", auth: { transport: "corp" } }),
+            transport: "corp",
+            responder: () => ({ reset: true }),
+        });
+        const error = (await g.call({ action: "status", ref: "main" })).error?.message ?? "";
+        assert.doesNotMatch(error, /reply was lost/i);
+    });
+
     test("a transport that fails is reported by name, and a write through it is still sent once", async (t) => {
         const world = usual();
         world.authorized = () => true;
