@@ -469,6 +469,21 @@ describe("trigger", () => {
         assert.equal(posts(g).length, 1, "sent once, and not asked again");
     });
 
+    test("a transport that breaks after a trigger sent is lost, read once and never resent", async (t) => {
+        const world = usual();
+        world.authorized = () => true;
+        const inner = concourseResponder(world);
+        const g = await ciWorld(t, {
+            ci: concourseCi({ url: "http://concourse.internal.example.test", auth: { transport: "corp" } }),
+            transport: "corp",
+            responder: (request, n) => (request.method === "POST" ? { reset: true } : inner(request, n)),
+        });
+        const error = (await g.call({ action: "trigger" })).error?.message ?? "";
+        assert.match(error, /the reply was lost \(transport "corp" failed/);
+        assert.match(error, /Nothing was sent twice/);
+        assert.equal(g.transport?.requests.filter((request) => request.method === "POST").length, 1);
+    });
+
     test("a reply that is lost is read once: a newer build means it started, and nothing is sent twice", async (t) => {
         const world = usual();
         const inner = concourseResponder(world);
