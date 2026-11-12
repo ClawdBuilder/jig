@@ -9,6 +9,7 @@ import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts"
 import { backendOf } from "./backends/index.ts";
 import { requireSettings, targetFor } from "./config.ts";
 import { checkParams, logsParameters, resolveQuery, resolveView } from "./params.ts";
+import { transportFacts } from "./failure.ts";
 import { sender } from "./request.ts";
 import { runSearch } from "./search.ts";
 import { summarize } from "./summary.ts";
@@ -52,7 +53,14 @@ export function createLogsTool(deps: LogsDeps = {}): JigTool {
                 timeoutMs: deps.timeoutMs,
             });
             const progress = (text: string) => onUpdate?.({ content: [{ type: "text", text }], details: undefined });
-            const outcome = await runSearch(query, { send, signal, now, progress });
+            let outcome: Awaited<ReturnType<typeof runSearch>>;
+            try {
+                outcome = await runSearch(query, { send, signal, now, progress });
+            } catch (error) {
+                const facts = transportFacts(error);
+                if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
+                throw error;
+            }
             const summary = summarize(query, outcome, view);
 
             jig().addFacts(toolCallId, {

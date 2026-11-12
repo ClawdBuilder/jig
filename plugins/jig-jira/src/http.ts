@@ -36,9 +36,14 @@ export class JiraError extends Error {
 }
 
 export class NotSentError extends Error {
-    constructor(message: string) {
+    /** For a transport refusal: its code and request id, kept for the record. */
+    readonly transportCode?: string;
+    readonly requestId?: string;
+    constructor(message: string, transportCode?: string, requestId?: string) {
         super(message);
         this.name = "NotSentError";
+        this.transportCode = transportCode;
+        this.requestId = requestId;
     }
 }
 
@@ -46,10 +51,15 @@ export class LostReplyError extends Error {
     /** True when the transport that carried the request threw. A sign-in proxy that does not serve a path does that. */
     readonly viaTransport: boolean;
 
-    constructor(message: string, viaTransport = false) {
+    /** For a transport refusal: its code and request id, kept for the record. */
+    readonly transportCode?: string;
+    readonly requestId?: string;
+    constructor(message: string, viaTransport = false, transportCode?: string, requestId?: string) {
         super(message);
         this.name = "LostReplyError";
         this.viaTransport = viaTransport;
+        this.transportCode = transportCode;
+        this.requestId = requestId;
     }
 }
 
@@ -191,6 +201,11 @@ function failed(error: unknown, timeoutMs: number): unknown {
     if (error.code === "auth_failed") return new NotSentError(`could not sign in to Jira: ${error.message}`);
     // No transport has this name, or the request itself was wrong: nothing was sent.
     if (error.code === "no_transport" || error.code === "invalid_request") return new NotSentError(error.message);
+    if (error.code === "transport_refused") {
+        return error.notSent
+            ? new NotSentError(`Jira was not changed: ${error.message}`, error.transportCode, error.requestId)
+            : new LostReplyError(`no answer from Jira (${error.message})`, true, error.transportCode, error.requestId);
+    }
     return new LostReplyError(`no answer from Jira (${whyLost(error, timeoutMs)})`, error.code === "transport_failed");
 }
 

@@ -12,7 +12,7 @@ import type { HttpAuth } from "../../jig-core/src/contract.ts";
 import { isHttpError } from "../../jig-core/src/kit/http.ts";
 import type { Wire } from "./backends/backend.ts";
 import type { Auth, Backend } from "./config.ts";
-import { RequestError } from "./failure.ts";
+import { RequestError, TransportFailure } from "./failure.ts";
 
 /** One request may take this long, whichever way it travels. */
 export const REQUEST_TIMEOUT_MS = 30_000;
@@ -98,6 +98,16 @@ function describe(error: unknown): unknown {
     // The user stopped the call: that is the answer, whatever the network reported.
     if (error.code === "aborted") return error.cause ?? error;
     if (error.code === "timeout") return new RequestError("timeout");
+    if (error.code === "transport_refused") {
+        return new TransportFailure(
+            error.notSent
+                ? `the log backend was not changed: ${error.message}`
+                : `no answer from the log backend: ${error.message}`,
+            error.notSent,
+            error.transportCode,
+            error.requestId,
+        );
+    }
     if (CONNECTION_LOST.has(error.code)) return new RequestError("connection_lost");
     if (error.code === "network_error") {
         const cause = error.cause;

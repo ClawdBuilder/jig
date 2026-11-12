@@ -5,6 +5,7 @@ import { after, before, beforeEach, describe, test } from "node:test";
 import type { Transport, TransportRequest, TransportResponse } from "../../jig-core/src/contract.ts";
 import { readJira } from "../src/config.ts";
 import { createHttp, JiraError, LostReplyError, NotSentError, TIMEOUTS } from "../src/http.ts";
+import { TransportRefusal } from "../../jig-core/src/kit/http-error.ts";
 import type { FakeJira } from "./support/fake-jira.ts";
 import { ok, setupHarness, SHORT_TIMEOUTS, SITE, TOKEN, TOKEN_REFERENCE } from "./support/harness.ts";
 import type { Harness } from "./support/harness.ts";
@@ -365,6 +366,32 @@ describe("a company transport", () => {
             result.error?.message,
             'no answer from Jira (transport "company-proxy" failed: the proxy is not running)',
         );
+    });
+
+    test("a transport refusal keeps its code, request id and whether Jira changed", async () => {
+        h.jig.transports.set("company-proxy", {
+            request: async () => {
+                throw new TransportRefusal("SIGN_IN_REQUIRED", "sign in first", true, "req-1");
+            },
+        });
+        const read = await h.call(GET_ISSUE);
+        assert.match(read.error?.message ?? "", /^Jira was not changed: sign in first$/);
+        assert.doesNotMatch(read.error?.message ?? "", /token/i);
+        const write = await h.call({ action: "comment", key: "PROJ-1", text: "hi" }, { ask: false });
+        assert.equal(write.error?.message, "Jira was not changed: sign in first");
+        assert.equal((write.error?.message ?? "").includes("Nothing was sent"), false);
+        assert.deepEqual(h.jig.facts.get(write.id), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
+    });
+
+    test("a refusal that may have changed Jira is a lost reply", async () => {
+        h.jig.transports.set("company-proxy", {
+            request: async () => {
+                throw new TransportRefusal("OUTSIDE_LIMITS", "the relay lost the reply", false, "req-2");
+            },
+        });
+        const read = await h.call(GET_ISSUE);
+        assert.match(read.error?.message ?? "", /^no answer from Jira \(the relay lost the reply\)$/);
+        assert.equal((read.error as LostReplyError).viaTransport, true);
     });
 
     test("a name no company plugin registered means nothing was sent", async () => {

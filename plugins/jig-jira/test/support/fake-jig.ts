@@ -2,6 +2,7 @@
 // jig-core. Only what jig-jira uses is real: the section of jig.json, secrets, sign-in services, transports, the approved
 // preview and the facts. Everything the plugin tells jig-core or asks of it is recorded for the tests.
 import { publishJig, withdrawJig } from "../../../jig-core/src/client.ts";
+import { isTransportRefusal } from "../../../jig-core/src/kit/http-error.ts";
 import { createHttp } from "../../../jig-core/src/kit/http.ts";
 import type {
     Facts,
@@ -115,6 +116,7 @@ export function installFakeJig(): FakeJig {
                 try {
                     return checked(await transport.request(request, signal));
                 } catch (error) {
+                    if (isTransportRefusal(error)) throw error;
                     throw new Error(
                         `transport "${name}" failed: ${error instanceof Error ? error.message : String(error)}`,
                     );

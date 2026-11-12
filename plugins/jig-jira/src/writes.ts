@@ -63,14 +63,24 @@ export async function runWrite(
     const record = (key: string | undefined): void => {
         if (key !== undefined) jig().addFacts(toolCallId, { issue: key });
     };
+    const recordTransport = (error: unknown): void => {
+        const refusal = error as { transportCode?: unknown; requestId?: unknown };
+        const facts: Record<string, string> = {};
+        if (typeof refusal.transportCode === "string") facts.transportCode = refusal.transportCode;
+        if (typeof refusal.requestId === "string") facts.requestId = refusal.requestId;
+        if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
+    };
     try {
         const reply = await env.http.request({ method: plan.send.method, path: plan.send.path, body: plan.send.body });
         const done = plan.done(reply);
         record(done.key);
         return { text: done.text + flagNote(plan), key: done.key };
     } catch (error) {
+        recordTransport(error);
         if (error instanceof NotSentError) {
-            throw new Error(`${where(call, plan)}: ${sentence(error)}. Nothing was sent.`);
+            throw new Error(
+                `${where(call, plan)}: ${sentence(error)}.${error.transportCode === undefined ? " Nothing was sent." : ""}`,
+            );
         }
         if (error instanceof JiraError && error.refused) {
             throw new Error(`${where(call, plan)}: ${sentence(error)}. Jira changed nothing.`);
