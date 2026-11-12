@@ -318,6 +318,15 @@ export interface Transport {
     request(request: TransportRequest, signal?: AbortSignal): Promise<TransportResponse>;
 }
 
+/** A transport's refusal, as a structural shape. `notSent: true` means the far end was not changed by this request, so
+ *  sending it again cannot repeat a change; it does not promise that nothing left the transport. */
+export interface TransportRefusal {
+    code: string;
+    notSent: boolean;
+    message: string;
+    requestId?: string;
+}
+
 /** The methods a request may use. A transport carries only GET, POST, PUT, PATCH and DELETE. */
 export type HttpMethod = "GET" | "HEAD" | "OPTIONS" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -421,10 +430,13 @@ export interface HttpResponse {
 export interface HttpErrorInfo extends Error {
     readonly name: "HttpError";
     readonly code: string;
-    /** True when the request cannot have reached the server (a bad request, a credential that could not be read, no
-     *  connection, a certificate that was refused, a call cancelled first). False when it may have, so a write may have
-     *  happened. */
+    /** True when the request cannot have changed anything at the far end: it was never sent, or a transport refused it
+     *  and promises that nothing changed. False when it may have changed something. */
     readonly notSent: boolean;
+    /** For `transport_refused`: the transport's own code. */
+    readonly transportCode?: string;
+    /** For `transport_refused`: the transport's request id, to match its own log line. */
+    readonly requestId?: string;
 }
 
 /** One path that Pi's file tools must not touch, as `protectedPaths.list()` gives it. */

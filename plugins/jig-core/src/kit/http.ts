@@ -25,12 +25,12 @@ import type {
     TransportResponse,
 } from "../contract.ts";
 import { untilAborted } from "./abort.ts";
-import { HttpError, isHttpError } from "./http-error.ts";
+import { HttpError, TransportRefusal, isHttpError, isTransportRefusal } from "./http-error.ts";
 import { createTokens } from "./oauth.ts";
 import type { Tokens } from "./oauth.ts";
 import { isObject } from "./values.ts";
 
-export { HttpError, isHttpError };
+export { HttpError, TransportRefusal, isHttpError, isTransportRefusal };
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
 export const MAX_TIMEOUT_MS = 10 * 60 * 1000;
@@ -559,6 +559,14 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
         } catch (error) {
             if (caller?.aborted === true) throw stopped(caller, false, error);
             if (deadline.aborted) throw new HttpError("timeout", "timed out", false);
+            if (isTransportRefusal(error)) {
+                const message = error.message
+                    .replace(/[\u0000-\u001f\u007f]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim()
+                    .slice(0, 300);
+                throw new HttpError("transport_refused", message, error.notSent, error, error.code, error.requestId);
+            }
             const message = error instanceof Error ? error.message : String(error);
             // jig-core says so when no transport has this name; then nothing was sent.
             if (/^no transport named /.test(message)) throw new HttpError("no_transport", message, true, error);
