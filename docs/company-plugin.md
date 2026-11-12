@@ -122,6 +122,12 @@ The calls are in [Credential sources](../plugins/jig-core/docs/sign-in-and-trans
 
 `transports.register(name, transport)` carries a whole request, for a system that only the company's proxy may talk to. A plugin
 that names it (`transport` in its section) holds no credential at all.
+
+A company that uses a **relay** does not write this code. Set the relay's `kind`, `url`, `services` and `fields` as defaults
+for `transports` with `addSectionDefaults("transports", ...)`, and let the person add the `token`. A name registered by
+your plugin cannot also be declared in `transports`, in either order. Prefer this for a session relay that follows the
+[relay protocol](relay-protocol.md); write a transport only for a route that needs code the protocol does not
+carry.
 [`transport.ts`](../examples/jig-acme/src/transport.ts) hands the request to a gateway on this machine, as an HTTP proxy is asked.
 
 - **A transport gets** the system, method, address, headers and a text body, and **returns** a status, headers in lower case and

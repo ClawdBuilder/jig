@@ -157,6 +157,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `secrets.ts` | Resolves a reference such as `pass:work/token` just before a tool needs it | `state.ts` |
 | `signin.ts` | Sign-in services: how a company plugin signs requests in to its own systems | `state.ts` |
 | `transports.ts` | How a company plugin carries requests to its own systems itself | `state.ts` |
+| `transports-section.ts` | The `transports` relay section: URL, token and field checks, and company defaults | `state.ts`, `doctor-checks.ts` |
+| `relay.ts` | The built-in relay transport: health, the request body, and the three answers | `state.ts`, `doctor-checks.ts` |
 | `tunnels.ts` | How a company plugin gives a tool a network route of its own, such as a database behind a jump host | `state.ts` |
 | `exec.ts` | Runs programs for tools: an argument list, never a shell, with a timeout and a minimal environment | `api.ts`, `preview-html.ts`, `secrets.ts` |
 | `git-config-guard.ts` | Refuses a repository whose own configuration would run a command when git runs | `exec.ts` |

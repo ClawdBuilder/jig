@@ -261,7 +261,7 @@ function responseOf(
 function fromTransport(reply: TransportResponse, maxBytes: number): HttpResponse {
     const text = reply.body.length > maxBytes ? reply.body.slice(0, maxBytes) : reply.body;
     let bytes: Uint8Array = Buffer.from(text, "utf8");
-    let truncated = text !== reply.body;
+    let truncated = reply.truncated === true || text !== reply.body;
     if (bytes.byteLength > maxBytes) {
         bytes = bytes.subarray(0, maxBytes);
         truncated = true;
@@ -553,10 +553,12 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
         if (request.body !== undefined && typeof request.body !== "string") {
             throw invalid("a transport carries a text body, and not a file or a multipart form");
         }
+        const transportUrl = new URL(request.url);
+        transportUrl.hash = "";
         const sent: TransportRequest = {
             system: request.system,
             method: request.method as TransportRequest["method"],
-            url: request.url,
+            url: transportUrl.href,
             headers,
             ...(request.body === undefined ? {} : { body: request.body }),
             maxBytes,

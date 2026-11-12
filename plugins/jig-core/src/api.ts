@@ -19,6 +19,8 @@ import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
 import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
+import { TRANSPORTS_SECTION } from "./transports-section.ts";
+
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";
 import { callRecord, writeRecord } from "./records.ts";
@@ -167,7 +169,12 @@ export function buildApi(state: JigState): JigApi {
         },
 
         transports: {
-            register: (name, transport) => state.transports.register(name, transport),
+            register(name, transport) {
+                state.transports.register(name, transport);
+                // A clash is a configuration problem, not a reason to fail the plugin or the other relays. Re-read so
+                // the order of plugin load and file read does not decide which side disappears.
+                if (state.configLoaded) loadPersonalConfig(state, state.personal.file);
+            },
             request: (name, request, signal) => state.transports.request(name, request, signal),
         },
 
@@ -259,6 +266,7 @@ export function buildApi(state: JigState): JigApi {
                 }
                 if (
                     name === TOOLS_SECTION ||
+                    name === TRANSPORTS_SECTION ||
                     name === UPDATES_SECTION ||
                     name === PROFILES_SECTION ||
                     name === PROFILE_SECTION

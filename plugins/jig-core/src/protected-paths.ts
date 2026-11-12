@@ -60,6 +60,8 @@ export interface DefaultsInput extends PathContext {
     env?: Env;
     /** The folders `secrets.pass` of `jig.json` binds `pass` to, as written (absolute, or starting with `~/`). */
     pass?: { storeDir?: string | undefined; gnupgHome?: string | undefined };
+    /** Files a `file:` secret reference reads, such as a relay token: secret, so no Jig file tool reads them. */
+    secretFiles?: readonly string[];
 }
 
 /** What a tool's input is checked against. */
@@ -225,6 +227,7 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
         for (const name of AGENT_SECRETS) out.push(make(pathApi.join(agentDir, name), "secret"));
     }
     if (home !== "") for (const name of HOME_SECRETS) out.push(make(pathApi.join(home, ...name.split("/")), "secret"));
+    for (const file of input.secretFiles ?? []) out.push(make(file, "secret"));
 
     const xdg = input.env?.XDG_CONFIG_HOME;
     if (xdg !== undefined && pathApi.isAbsolute(xdg)) {

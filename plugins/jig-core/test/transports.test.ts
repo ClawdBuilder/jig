@@ -148,3 +148,15 @@ test("a refusal is passed on as a clean structural refusal", async () => {
         return true;
     });
 });
+
+test("keeps a transport's truncated flag, and only true", async () => {
+    const transports = createTransports();
+    transports.register("company", {
+        request: async () => ({ status: 200, headers: {}, body: "cut", truncated: true }),
+    });
+    assert.equal((await transports.request("company", REQUEST)).truncated, true);
+    transports.register("plain", {
+        request: async () => ({ status: 200, headers: {}, body: "whole" }),
+    });
+    assert.equal((await transports.request("plain", REQUEST)).truncated, undefined);
+});

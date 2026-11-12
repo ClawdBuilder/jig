@@ -95,6 +95,8 @@ export interface DoctorContext {
     stateDir: string;
     workingDir: string;
     secrets: { passStoreDir(): string };
+    /** The HTTP client the relay checks use; absent when doctor has no runtime. */
+    relay?: { http: () => import("./relay.ts").RelayHttp };
     now: () => Date;
 }
 

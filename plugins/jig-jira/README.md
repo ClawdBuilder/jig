@@ -114,8 +114,8 @@ A screen field whose schema says `array` takes one value as a one-item list; the
 ## Company part (in the company plugin)
 
 - the Jira site;
-- the sign-in: a company sign-in service, a company transport, or an API token
-  through a secret reference;
+- the sign-in: a company sign-in service, a company transport, a relay configured
+  in `transports`, or an API token through a secret reference;
 - the project keys, so that `search` needs no JQL for them and `create`, `link`
   and `unlink` cannot reach another project;
 - default fields: friendly names, the fields `update` may set, and private names — its `privateNames` and yours add up;
