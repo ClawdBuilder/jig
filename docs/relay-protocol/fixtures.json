@@ -1,0 +1,248 @@
+{
+    "protocol": 1,
+    "health": {
+        "request": { "method": "GET", "path": "/v1/health" },
+        "answer": {
+            "ok": true,
+            "protocol": 1,
+            "service": "orders-api relay",
+            "services": { "jira": true, "logs": false }
+        }
+    },
+    "request": {
+        "protocol": 1,
+        "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405162",
+        "client": "jig",
+        "service": "jira",
+        "method": "GET",
+        "url": "https://jira.example.com/rest/api/2/issue/ABC-1?fields=summary",
+        "headers": { "accept": "application/json" },
+        "maxBytes": 8388608,
+        "timeoutMs": 30000
+    },
+    "cases": [
+        {
+            "name": "response",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405162",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1?fields=summary",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405162",
+                "outcome": "response",
+                "status": 200,
+                "headers": { "content-type": "application/json" },
+                "body": "{\"key\":\"ABC-1\"}",
+                "truncated": false
+            }
+        },
+        {
+            "name": "refused:SIGN_IN_REQUIRED",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405163",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/myself",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405163",
+                "outcome": "refused",
+                "code": "SIGN_IN_REQUIRED",
+                "status": 401,
+                "message": "sign in to Jira in the relay"
+            }
+        },
+        {
+            "name": "refused:SERVICE_OFF",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405164",
+                "client": "jig",
+                "service": "logs",
+                "method": "POST",
+                "url": "https://logs.example.com/app-*/_search",
+                "headers": { "accept": "application/json", "content-type": "application/json" },
+                "body": "{}",
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405164",
+                "outcome": "refused",
+                "code": "SERVICE_OFF",
+                "status": 403,
+                "message": "logs are turned off in the relay; turn them on in the relay settings"
+            }
+        },
+        {
+            "name": "refused:PAUSED",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405165",
+                "client": "jig",
+                "service": "jira",
+                "method": "PUT",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
+                "headers": { "accept": "application/json", "content-type": "application/json" },
+                "body": "{\"fields\":{\"summary\":\"orders-api\"}}",
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405165",
+                "outcome": "refused",
+                "code": "PAUSED",
+                "status": 409,
+                "message": "the relay is paused"
+            }
+        },
+        {
+            "name": "refused:BUSY",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405166",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405166",
+                "outcome": "refused",
+                "code": "BUSY",
+                "status": 429,
+                "message": "the relay is busy; try again shortly"
+            }
+        },
+        {
+            "name": "refused:OUTSIDE_LIMITS",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405167",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/project/ORDERS",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405167",
+                "outcome": "refused",
+                "code": "OUTSIDE_LIMITS",
+                "status": 403,
+                "message": "ORDERS is not in this relay's project list"
+            }
+        },
+        {
+            "name": "refused:INVALID_REQUEST",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405168",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 16777216,
+                "timeoutMs": 120000,
+                "tenant": "orders"
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405168",
+                "outcome": "refused",
+                "code": "INVALID_REQUEST",
+                "status": 400,
+                "message": "the relay does not know the field \"tenant\""
+            }
+        },
+        {
+            "name": "unknown",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405169",
+                "client": "jig",
+                "service": "jira",
+                "method": "POST",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1/comment",
+                "headers": { "accept": "application/json", "content-type": "application/json" },
+                "body": "{\"body\":\"deploying\"}",
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405169",
+                "outcome": "unknown",
+                "code": "TIMEOUT",
+                "message": "the site did not answer in time"
+            }
+        },
+        {
+            "name": "unauthorized",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405170",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405170",
+                "outcome": "refused",
+                "code": "UNAUTHORIZED",
+                "status": 401,
+                "message": "the relay token is missing or wrong"
+            }
+        },
+        {
+            "name": "malformed",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405171",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
+                "headers": { "accept": "application/json" },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": "not json"
+        }
+    ],
+    "healthErrors": [
+        {
+            "name": "unknown protocol",
+            "answer": { "ok": true, "protocol": 2, "service": "orders-api relay" }
+        }
+    ]
+}
