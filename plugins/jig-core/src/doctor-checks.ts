@@ -166,6 +166,27 @@ export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]>
     return lines;
 }
 
+/** The row naming the folder Pi runs with: the Jig home in the `jig` command, Pi's folder inside Pi. */
+function folderRow(context: DoctorContext, folder: string, why: string, standalone: boolean): DoctorLine {
+    if (context.agentDir === "") {
+        return {
+            id: "machine.agent",
+            group: "machine",
+            level: "fail",
+            title: standalone ? "Jig home" : "Pi's folder",
+            detail: "Jig cannot find the folder where Pi keeps its settings.",
+            fix: "Restart Pi.",
+        };
+    }
+    return {
+        id: "machine.agent",
+        group: "machine",
+        level: "ok",
+        title: standalone ? "Jig home" : "Pi's folder",
+        detail: `${folder}, ${why}`,
+    };
+}
+
 function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
     const requirement = currentPiRequirement();
     const platform = options.platform ?? process.platform;
@@ -299,24 +320,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
         { id: "machine.system", group: "machine", level: "ok", title: "System", detail: system },
     ];
 
-    if (context.agentDir === "") {
-        lines.push({
-            id: "machine.agent",
-            group: "machine",
-            level: "fail",
-            title: standalone ? "Jig home" : "Pi's folder",
-            detail: "Jig cannot find the folder where Pi keeps its settings.",
-            fix: "Restart Pi.",
-        });
-    } else {
-        lines.push({
-            id: "machine.agent",
-            group: "machine",
-            level: "ok",
-            title: standalone ? "Jig home" : "Pi's folder",
-            detail: `${folder}, ${folderWhy}`,
-        });
-    }
+    lines.push(folderRow(context, folder, folderWhy, standalone));
     return lines;
 }
 
