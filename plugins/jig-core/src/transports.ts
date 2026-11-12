@@ -38,6 +38,10 @@ function checkResponse(name: string, value: unknown): TransportResponse {
         throw new TypeError(`${who} returned a response without a valid HTTP status`);
     }
     if (typeof body !== "string") throw new TypeError(`${who} returned a response whose body is not text`);
+    const truncated = response.truncated;
+    if (truncated !== undefined && typeof truncated !== "boolean") {
+        throw new TypeError(`${who} returned a truncated field that is not true/false`);
+    }
     const copy: Record<string, string | string[]> = {};
     if (headers !== undefined) {
         if (typeof headers !== "object" || headers === null || Array.isArray(headers)) {
@@ -53,7 +57,7 @@ function checkResponse(name: string, value: unknown): TransportResponse {
             else copy[lower] = [...(before === undefined ? [] : [before].flat()), ...(values as string[])];
         }
     }
-    return { status, headers: copy, body };
+    return { status, headers: copy, body, ...(truncated === true ? { truncated: true } : {}) };
 }
 
 /** The limits a transport is told, when the caller (a plugin that calls `transports.request` itself) gave none. */

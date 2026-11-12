@@ -113,7 +113,14 @@ function transport() {
 test("every fixture case has the outcome and code it names", async () => {
     for (const entry of fixtures.cases) {
         seen = [];
-        next = entry.answer;
+        next =
+            typeof entry.answer === "string"
+                ? entry.answer
+                : {
+                      ...(entry.answer as Record<string, unknown>),
+                      __httpStatus:
+                          entry.name === "unauthorized" ? 401 : entry.name === "refused:REQUEST_TOO_LARGE" ? 413 : 200,
+                  };
         const answer =
             typeof entry.answer === "string"
                 ? undefined
@@ -133,8 +140,12 @@ test("every fixture case has the outcome and code it names", async () => {
                     entry.name,
                 );
             }
-            if (answer?.code !== undefined && error.code !== "BAD_ANSWER")
+            if (entry.name === "unauthorized") {
+                assert.equal(error.code, "RELAY_TOKEN", entry.name);
+                assert.match(error.message, /transports\.orders\.token/);
+            } else if (answer?.code !== undefined && error.code !== "BAD_ANSWER") {
                 assert.equal(error.code, answer.code, entry.name);
+            }
         }
         assert.equal(seen.length, 1, `${entry.name}: one relay request`);
     }
@@ -298,8 +309,15 @@ test("a missing token is RELAY_TOKEN, and a cut answer is REPLY_TOO_LARGE", asyn
         relayRequest("orders", { ...CONFIG, url }, requestFor(fixtures.cases[0]!), { http: () => cutHttp }),
         (error: unknown) => isTransportRefusal(error) && error.code === "REPLY_TOO_LARGE" && error.notSent === false,
     );
-    assert.equal(asked.maxBytes, 8388609 * 4 + 65536);
+    assert.equal(asked.maxBytes, 8388609 * 6 + 65536);
     assert.equal(asked.timeoutMs, 30000);
+});
+
+test("the relay deadline is always below Jig's, even at four seconds", async () => {
+    seen = [];
+    next = fixtures.cases[0]?.answer;
+    await transport().request({ ...requestFor(fixtures.cases[0]!), timeoutMs: 4000 });
+    assert.equal(seen[0]?.body.timeoutMs, 2000);
 });
 
 test("a relay that is not running is a not-sent refusal", async () => {
@@ -530,4 +548,24 @@ test("jig-logs searches through a relay, and reports a refusal in its own words"
     } finally {
         await new Promise<void>((resolve) => relay.close(() => resolve()));
     }
+});
+
+test("doctor warns when the relay reports a mapped service off", async () => {
+    const health = {
+        status: 200,
+        headers: {},
+        cookies: [],
+        body: JSON.stringify({ ok: true, protocol: 1, service: "orders-api relay", services: { tickets: false } }),
+        bytes: 0,
+        truncated: false,
+        binary: false,
+    };
+    const context = {
+        sections: new Map([["transports", { orders: { ...CONFIG, url } }]]),
+        relay: { http: () => ({ request: async () => health }) },
+    } as unknown as DoctorContext;
+    const lines = await relayChecks(context);
+    const warning = lines.find((line) => line.id === "relay.orders.services");
+    assert.equal(warning?.level, "warn");
+    assert.match(warning?.detail ?? "", /tickets off/);
 });

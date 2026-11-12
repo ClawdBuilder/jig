@@ -13,6 +13,7 @@ const MAX_RELAY_TIMEOUT_MS = 120_000;
 const MIN_RELAY_TIMEOUT_MS = 1_000;
 const HEALTH_TIMEOUT_MS = 5_000;
 const ANSWER_SLACK = 64 * 1024;
+const ANSWER_FACTOR = 6;
 const CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
 const HEADERS = new Set(["accept", "content-type"]);
 
@@ -107,10 +108,22 @@ function answerOf(value: unknown, requestId: string): TransportResponse {
 }
 
 /** Why a relay's HTTP request failed, in terms a tool can act on. */
-function relayFailure(name: string, config: RelayTransportConfig, error: unknown): TransportRefusal {
+function relayFailure(
+    name: string,
+    config: RelayTransportConfig,
+    error: unknown,
+    callerTimeoutMs: number,
+): TransportRefusal {
     if (isHttpError(error)) {
         if (error.code === "auth_failed") {
             return new TransportRefusal("RELAY_TOKEN", `transports.${name}.token: ${error.message}`, true);
+        }
+        if (error.code === "timeout") {
+            return new TransportRefusal(
+                "CONNECTION_LOST",
+                `the relay did not answer within ${callerTimeoutMs} ms`,
+                false,
+            );
         }
         if (error.notSent) {
             return new TransportRefusal(
@@ -154,8 +167,9 @@ export async function relayRequest(
     }
     if (request.body !== undefined) headers["content-type"] = headers["content-type"] ?? "application/json";
     const maxBytes = Math.min(request.maxBytes + 1, MAX_RELAY_BYTES);
-    const timeoutMs = Math.min(Math.max(request.timeoutMs - 2_000, MIN_RELAY_TIMEOUT_MS), MAX_RELAY_TIMEOUT_MS);
-    const answerBytes = Math.min(maxBytes * 4 + ANSWER_SLACK, 64 * 1024 * 1024);
+    const margin = Math.min(2_000, request.timeoutMs / 2);
+    const timeoutMs = Math.min(Math.max(request.timeoutMs - margin, MIN_RELAY_TIMEOUT_MS), MAX_RELAY_TIMEOUT_MS);
+    const answerBytes = Math.min(maxBytes * ANSWER_FACTOR + ANSWER_SLACK, 64 * 1024 * 1024);
     const body: RelayBody = {
         ...config.fields,
         protocol: RELAY_PROTOCOL,
@@ -185,7 +199,7 @@ export async function relayRequest(
             signal,
         );
     } catch (error) {
-        throw relayFailure(name, config, error);
+        throw relayFailure(name, config, error, request.timeoutMs);
     }
     if (reply.truncated) {
         throw new TransportRefusal("REPLY_TOO_LARGE", "the relay's answer is too large to read", false, id);
@@ -197,6 +211,15 @@ export async function relayRequest(
         throw badAnswer("the relay's answer is not JSON", id);
     }
     if (reply.status !== 200) {
+        const refused = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+        if (reply.status === 401) {
+            const why = typeof refused.message === "string" ? refused.message : "the relay refused the token";
+            throw new TransportRefusal(
+                "RELAY_TOKEN",
+                `transports.${name}.token: the relay refused the token (${why})`,
+                true,
+            );
+        }
         if (typeof value === "object" && value !== null) {
             const answer = value as Record<string, unknown>;
             if (answer.outcome === "refused") {

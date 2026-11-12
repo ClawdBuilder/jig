@@ -85,10 +85,18 @@ Content-Type: application/json
 | `timeoutMs` | Required. How long the site request may take, from 1,000 to 120,000 ms. |
 | other fields | Extra fields for one service, such as a tenant. A relay refuses one it does not know. |
 
+`fields` values are sent as typed, so a relay that wants text needs `"tenant": "123"`, not `"tenant": 123`.
+
+A relay may allow only some of the five methods (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) and refuse the others with
+`INVALID_REQUEST`. It must not invent a method outside the five.
+
 A relay **never follows a redirect for the client**. It may return the `3xx` as a `response`, refuse a redirected read
 with `OUTSIDE_LIMITS`, or answer `unknown` with `REDIRECTED` for a redirected write; the client never sends the request
 to the `Location` itself. A request field the relay does not know is refused, with `INVALID_REQUEST`; it is never
 ignored.
+
+A relay may set its own request limits, such as a whole JSON request at most 256 KiB; Jig reports the relay's refusal. The protocol's `maxBytes` and `timeoutMs` are for the site reply; a relay's own request-size limit is
+its business, and its refusal is shown to the person as a refusal.
 
 ## Answer
 

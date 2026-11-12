@@ -88,7 +88,7 @@
                 "client": "jig",
                 "service": "logs",
                 "method": "POST",
-                "url": "https://logs.example.com/app-*/_search",
+                "url": "https://logs.example.com/_dashboards/api/console/proxy?path=%2Fapp-*%2F_search&method=POST",
                 "headers": {
                     "accept": "application/json",
                     "content-type": "application/json"
@@ -163,8 +163,8 @@
                 "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405167",
                 "client": "jig",
                 "service": "jira",
-                "method": "GET",
-                "url": "https://jira.example.com/rest/api/2/project/ORDERS",
+                "method": "DELETE",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
                 "headers": {
                     "accept": "application/json"
                 },
@@ -298,7 +298,6 @@
             },
             "answer": {
                 "protocol": 1,
-                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405174",
                 "outcome": "refused",
                 "code": "REQUEST_TOO_LARGE",
                 "status": 413,

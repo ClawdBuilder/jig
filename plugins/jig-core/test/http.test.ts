@@ -1076,6 +1076,23 @@ describe("a transport", () => {
         assert.equal(broken.message, 'transport "broken" failed: the proxy is not running second line');
     });
 
+    test("a transport receives the normalized URL, without a fragment", async () => {
+        const t = rig();
+        let seen = "";
+        t.transports.set("proxy", (request) => {
+            seen = request.url;
+            return { status: 200, headers: {}, body: "" };
+        });
+        await t.http.request({
+            ...base,
+            url: "https://JIRA.Example.com:443/a b?q=café#fragment",
+            transport: "proxy",
+        });
+        const expected = new URL("https://JIRA.Example.com:443/a b?q=café");
+        expected.hash = "";
+        assert.equal(seen, expected.href);
+    });
+
     test("a valid refusal keeps its code, notSent and request id; a plain error keeps transport_failed", async () => {
         const t = rig();
         t.transports.set("refusing", () => {

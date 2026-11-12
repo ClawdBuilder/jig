@@ -134,6 +134,19 @@ export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]>
                     title: `Relay ${name} token`,
                     detail: "the token resolves and the relay accepts it",
                 });
+                const off = Object.entries(config.services)
+                    .filter(([, service]) => health.services?.[service] === false)
+                    .map(([, service]) => service);
+                if (off.length > 0) {
+                    lines.push({
+                        id: `${prefix}.services`,
+                        group: "config",
+                        level: "warn",
+                        title: `Relay ${name} services`,
+                        detail: `the relay reports ${off.join(", ")} off`,
+                        fix: `Turn ${off.join(", ")} on in the relay, or remove the mapping.`,
+                    });
+                }
             }
         } catch (error) {
             lines.push({
