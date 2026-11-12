@@ -70,14 +70,28 @@ export function sender(backend: Backend, wire: (request: object) => Wire, option
 
     return async (request) => {
         const http = wire(request);
+        const proxied =
+            backend.consoleProxy === undefined
+                ? undefined
+                : {
+                      method: "POST" as const,
+                      path: `${backend.consoleProxy}?path=${encodeURIComponent(http.path)}&method=${http.method}`,
+                      body: http.body,
+                  };
+        const sent = proxied ?? http;
+        const headers = headersOf(http);
+        if (proxied !== undefined && backend.kind === "direct") {
+            headers["osd-xsrf"] = "true";
+            headers["kbn-xsrf"] = "true";
+        }
         try {
             const reply = await jig().http.request(
                 {
                     system: "logs",
-                    url: `${backend.url}${http.path}`,
-                    method: http.method,
-                    headers: headersOf(http),
-                    ...(http.body === undefined ? {} : { body: http.body }),
+                    url: `${backend.url}${sent.path}`,
+                    method: sent.method,
+                    headers,
+                    ...(sent.body === undefined ? {} : { body: sent.body }),
                     ...how,
                     timeoutMs,
                     maxBytes: MAX_REPLY_BYTES,
@@ -99,11 +113,17 @@ function describe(error: unknown): unknown {
     if (error.code === "aborted") return error.cause ?? error;
     if (error.code === "timeout") return new RequestError("timeout");
     if (error.code === "transport_refused") {
+        if (!error.notSent) {
+            // A relay's unknown is a lost read: the search halves the bucket and tries again, as a 504 did before.
+            return new RequestError(
+                error.transportCode === "TIMEOUT" ? "timeout" : "connection_lost",
+                error.transportCode,
+                error.requestId,
+            );
+        }
         const suffix = error.transportCode === undefined ? "" : ` (${error.transportCode})`;
         return new TransportFailure(
-            error.notSent
-                ? `the log backend was not changed: ${error.message}${suffix}`
-                : `no answer from the log backend: ${error.message}${suffix}`,
+            `the log backend was not changed: ${error.message}${suffix}`,
             error.notSent,
             error.transportCode,
             error.requestId,

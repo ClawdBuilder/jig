@@ -31,11 +31,16 @@ export interface Failure {
 /** A request that failed in a way that concerns only its own window. `request.ts` throws it. */
 export class RequestError extends Error {
     readonly reason: "timeout" | "connection_lost" | "response_too_large";
+    /** A relay failure's code and request id, kept for the call's facts. */
+    readonly transportCode?: string;
+    readonly requestId?: string;
 
-    constructor(reason: RequestError["reason"]) {
+    constructor(reason: RequestError["reason"], transportCode?: string, requestId?: string) {
         super(`the request failed: ${reason}`);
         this.name = "RequestError";
         this.reason = reason;
+        this.transportCode = transportCode;
+        this.requestId = requestId;
     }
 }
 

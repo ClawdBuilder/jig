@@ -143,10 +143,22 @@ export const elasticsearch: LogBackend = {
     type: "elasticsearch",
 
     config: {
-        backendFields: [],
+        backendFields: ["consoleProxy"],
         environmentFields: ["index", "timeField", "messageField", "filter"],
         needs: "an index",
         exampleUrl: "https://logs.example.com:9200",
+    },
+
+    checkBackendFields(raw, key, errors) {
+        const proxy = raw.consoleProxy;
+        if (
+            proxy !== undefined &&
+            (typeof proxy !== "string" || !proxy.startsWith("/") || proxy.length > 200 || /[?#]/.test(proxy))
+        ) {
+            errors.push(
+                `${key}.consoleProxy: must be a path starting with "/", at most 200 characters, with no query or fragment`,
+            );
+        }
     },
 
     checkEnvironmentFields(raw, key, errors) {

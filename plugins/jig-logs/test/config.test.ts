@@ -72,6 +72,36 @@ test("a field nobody defined is an error that names it, at every depth", () => {
     ]);
 });
 
+test("consoleProxy is a path on the backend origin, only for Elasticsearch", () => {
+    const backend = { ...direct, consoleProxy: "/api/console/proxy" };
+    assert.deepEqual(errorsOf(section({ backend })), []);
+    assert.deepEqual(
+        errorsOf(section({ backend: { ...transport, consoleProxy: "/_dashboards/api/console/proxy" } })),
+        [],
+    );
+    for (const consoleProxy of [
+        "api/console/proxy",
+        "/api/console/proxy?x=1",
+        "/api/console/proxy#x",
+        `/${"x".repeat(200)}`,
+    ]) {
+        assert.match(
+            errorsOf(section({ backend: { ...direct, consoleProxy } }))[0] ?? "",
+            /^logs\.backend\.consoleProxy: must be a path starting with/,
+        );
+    }
+    const loki = {
+        type: "loki",
+        url: "https://logs.example.com",
+        auth: { token: "env:LOGS_TOKEN" },
+        consoleProxy: "/api/console/proxy",
+    };
+    assert.match(
+        errorsOf({ backend: loki, environments: { staging: { selector: '{app="orders-api"}' } } })[0] ?? "",
+        /consoleProxy.*only used when logs\.backend\.type is "elasticsearch"/,
+    );
+});
+
 test("the backend and the environments are both needed", () => {
     assert.deepEqual(errorsOf({}), [
         "logs.backend is needed: where the search backend is",

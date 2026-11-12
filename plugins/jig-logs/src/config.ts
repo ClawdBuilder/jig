@@ -69,9 +69,9 @@ export type Auth =
 /** How requests reach the backend. `tenant` is Loki's, sent as the header `X-Scope-OrgID`. */
 export type Backend =
     /** Straight to the backend over HTTPS, signed in with `auth`. */
-    | { kind: "direct"; url: string; auth: Auth; tenant?: string }
+    | { kind: "direct"; url: string; auth: Auth; tenant?: string; consoleProxy?: string }
     /** Through a transport a company plugin registered. The transport signs the request in, so there is no `auth`. */
-    | { kind: "transport"; url: string; transport: string; tenant?: string };
+    | { kind: "transport"; url: string; transport: string; tenant?: string; consoleProxy?: string };
 
 export interface LogsSettings {
     type: BackendType;
@@ -305,8 +305,10 @@ function backendFrom(raw: Record<string, unknown>): Backend {
     const parsed = new URL(raw.url as string);
     const url = `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "");
     const tenant = raw.tenant === undefined ? {} : { tenant: raw.tenant as string };
-    if (raw.transport !== undefined) return { kind: "transport", url, transport: raw.transport as string, ...tenant };
-    return { kind: "direct", url, auth: authFrom(raw.auth as Record<string, unknown>), ...tenant };
+    const proxy = raw.consoleProxy === undefined ? {} : { consoleProxy: raw.consoleProxy as string };
+    if (raw.transport !== undefined)
+        return { kind: "transport", url, transport: raw.transport as string, ...tenant, ...proxy };
+    return { kind: "direct", url, auth: authFrom(raw.auth as Record<string, unknown>), ...tenant, ...proxy };
 }
 
 /** The settings with every default filled in, or undefined when the section is absent or not valid. Pure, so tests can
