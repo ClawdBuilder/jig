@@ -109,6 +109,9 @@ function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv 
         TERM: "dumb",
         NO_COLOR: "1",
         LANG: "C.UTF-8",
+        // The fake Pi is found on PATH; a host the runner names would win over it.
+        PI_HOST_DIR: undefined,
+        JIG_PI_HOST: undefined,
         AWS_PROFILE: undefined,
         BROWSER: "true",
         ...extra,
