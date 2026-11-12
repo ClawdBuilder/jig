@@ -609,6 +609,31 @@ describe("timeouts", () => {
         assert.deepEqual(TIMEOUTS, { normal: 30_000, search: 60_000 });
     });
 
+    test("jira settings set both timeouts, and the normal one reaches a transport", async () => {
+        h.jig.publish();
+        const section = {
+            site: SITE,
+            auth: { transport: "company" },
+            timeoutSeconds: 5,
+            searchTimeoutSeconds: 10,
+        };
+        const read = readJira(section);
+        assert.deepEqual(read.errors, []);
+        const settings = read.settings;
+        assert.ok(settings !== undefined);
+        let sent: number | undefined;
+        h.jig.transports.set("company", {
+            request: async (request) => {
+                sent = request.timeoutMs;
+                throw new Error("stop here");
+            },
+        });
+        const http = createHttp(settings);
+        assert.deepEqual(http.timeouts, { normal: 5_000, search: 10_000 });
+        await assert.rejects(http.request({ method: "GET", path: "/myself" }));
+        assert.equal(sent, 5_000);
+    });
+
     test("a search is given longer than other requests", async () => {
         // Between the two timeouts: in time for a search, too late for anything else.
         const between = (SHORT_TIMEOUTS.normal + SHORT_TIMEOUTS.search) / 2;
