@@ -149,12 +149,16 @@ export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]>
                 }
             }
         } catch (error) {
+            const why = error instanceof Error ? error.message : String(error);
+            const refused = why.startsWith("the relay refused health: ")
+                ? `transports.${name}.token: the relay refused the token (${why.slice("the relay refused health: ".length)})`
+                : `the relay did not accept the token: ${why}`;
             lines.push({
                 id: `${prefix}.token`,
                 group: "config",
                 level: "fail",
                 title: `Relay ${name} token`,
-                detail: `the relay did not accept the token: ${error instanceof Error ? error.message : String(error)}`,
+                detail: refused,
                 fix: `Fix transports.${name}.token, or sign in to the relay.`,
             });
         }

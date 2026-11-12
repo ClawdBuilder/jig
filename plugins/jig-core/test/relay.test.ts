@@ -569,3 +569,25 @@ test("doctor warns when the relay reports a mapped service off", async () => {
     assert.equal(warning?.level, "warn");
     assert.match(warning?.detail ?? "", /tickets off/);
 });
+
+test("doctor words a wrong token like a request does", async () => {
+    const context = {
+        sections: new Map([["transports", { orders: { ...CONFIG, url } }]]),
+        relay: {
+            http: () => ({
+                request: async () => ({
+                    status: 401,
+                    headers: {},
+                    cookies: [],
+                    body: JSON.stringify({ protocol: 1, outcome: "refused", code: "UNAUTHORIZED", status: 401, message: "bad token" }),
+                    bytes: 0,
+                    truncated: false,
+                    binary: false,
+                }),
+            }),
+        },
+    } as unknown as DoctorContext;
+    const token = (await relayChecks(context)).find((line) => line.id === "relay.orders.token");
+    assert.equal(token?.level, "fail");
+    assert.match(token?.detail ?? "", /^transports\.orders\.token: the relay refused the token \(bad token\)$/);
+});
