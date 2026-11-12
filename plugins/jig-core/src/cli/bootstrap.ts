@@ -6,7 +6,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync }
 import { homedir } from "node:os";
 import path from "node:path";
 import { currentPiRequirement, jigPackage, meetsMinimum, npmInstall } from "../pi-version.ts";
-import { HOME_FOLDER, homeCommand, homeVersion } from "./home.ts";
+import { HOME_FOLDER, homeCommand, homeNpmFolder, homeVersion } from "./home.ts";
 import { findPi, piArgv } from "./pi-command.ts";
 import type { PiProgram } from "./pi-command.ts";
 
@@ -56,7 +56,16 @@ function personHome(env: NodeJS.ProcessEnv): string {
 }
 
 /** The shim: a shell script that runs the home's own `bin/jig.mjs`, following `JIG_HOME` at run time. */
-export function shimText(home: string, homeFolder: string): string {
+export function shimText(home: string, homeFolder: string, command?: string): string {
+    const npm = path.join(homeNpmFolder(home), "bin", "jig.mjs");
+    if (command !== undefined && command !== npm) {
+        // A package Pi lists from a folder is that folder's command; JIG_HOME moves the home, not that folder.
+        return `#!/bin/sh
+${SHIM_MARKER}
+# The Jig home's command; safe to delete.
+exec node ${quote(command)} "$@"
+`;
+    }
     const fallback =
         home === path.join(homeFolder, HOME_FOLDER) ? `$HOME/${HOME_FOLDER}` : home.replace(/(["\\$`])/g, "\\$1");
     return `#!/bin/sh
@@ -65,6 +74,11 @@ ${SHIM_MARKER}
 home="\${JIG_HOME:-${fallback}}"
 exec node "$home/npm/node_modules/@clawdbuilder/jig/bin/jig.mjs" "$@"
 `;
+}
+
+/** A shell word that survives spaces and quotes in a path. */
+function quote(value: string): string {
+    return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 /** Whether the file is the shim this writes, and not somebody else's `jig`. */
@@ -198,7 +212,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<BootstrapRes
     result.version = homeVersion(home);
     const binDir = options.binDir ?? path.join(personHome(env), ".local", "bin");
     const shim = path.join(binDir, SHIM_NAME);
-    const expected = shimText(home, personHome(env));
+    const expected = shimText(home, personHome(env), homeCommand(home));
     if (existsSync(shim) && !isShim(shim)) {
         result.problems.push(
             `There is a file at ${shim} that is not the Jig command, so it was left alone. Move it, or run jig setup --bin <folder>.`,

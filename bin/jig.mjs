@@ -45,14 +45,41 @@ const real = (file) => {
 };
 
 // --- One Jig version: a copy started from anywhere else runs the home's copy, with the same arguments and the home set.
-const homeCommand = path.join(home, "npm", "node_modules", JIG, "bin", "jig.mjs");
-if (real(homeCommand) !== undefined && real(homeCommand) !== real(self)) {
+// The home's Jig is Pi's npm copy, or a package the home's settings list from a folder (a packed copy in a test).
+// home.ts is the same rule with types, for the commands; this is the copy the early path can use without loading TypeScript.
+function homeJigCommand() {
+    const npm = path.join(home, "npm", "node_modules", JIG, "bin", "jig.mjs");
+    if (existsSync(npm)) return npm;
+    try {
+        const settings = JSON.parse(readFileSync(path.join(home, "settings.json"), "utf8"));
+        for (const entry of Array.isArray(settings.packages) ? settings.packages : []) {
+            const source = typeof entry === "string" ? entry : entry?.source;
+            if (typeof source !== "string" || source.startsWith("git:")) continue;
+            const folder = source.startsWith("npm:")
+                ? path.join(home, "npm", "node_modules", ...source.slice(4).replace(/@[^@/]*$/, "").split("/"))
+                : path.resolve(home, source);
+            const file = path.join(folder, "bin", "jig.mjs");
+            if (!existsSync(file)) continue;
+            try {
+                if (JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")).name === JIG) return file;
+            } catch {
+                // Not a package: the next entry.
+            }
+        }
+    } catch {
+        // No settings file, or one that cannot be read: the npm copy is all there is.
+    }
+    return undefined;
+}
+
+const homeCommand = homeJigCommand();
+if (homeCommand !== undefined && real(homeCommand) !== real(self)) {
     const handed = spawnSync(process.execPath, [homeCommand, ...args], { stdio: "inherit", env: process.env });
     process.exit(handed.status ?? 1);
 }
 
 // --- No Jig in the home: only the bootstrap, the help and the version can run.
-if (!existsSync(homeCommand) && !["setup", "help", "--help", "-h", "--version", "-v"].includes(first ?? "")) {
+if (homeCommand === undefined && !["setup", "help", "--help", "-h", "--version", "-v"].includes(first ?? "")) {
     process.stderr.write(`Jig is not installed in ${home}. Run: npx ${JIG} setup\n`);
     process.exit(2);
 }

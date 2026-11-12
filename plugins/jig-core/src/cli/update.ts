@@ -11,7 +11,7 @@ import { companyRanges } from "../update-company.ts";
 import { selectTarget } from "../update-versions.ts";
 import type { RegistryMetadata, RegistryRelease } from "../update-versions.ts";
 import { helpFor, strayWordsMessage } from "./help.ts";
-import { homeCommand, homeVersion, jigHome } from "./home.ts";
+import { homeCommand, homeFolder, homeVersion, jigHome } from "./home.ts";
 import { findPi } from "./pi-command.ts";
 import type { PiProgram } from "./pi-command.ts";
 import { parseNpmSource, readPackages } from "./packages.ts";
@@ -433,9 +433,11 @@ export async function update(args: readonly string[], options: UpdateOptions = {
 /** The Pi requirement of the Jig now installed in the home, read from its own manifest. */
 export function installedRequirement(home: string, name: string): { minimum: string; tested: string } | undefined {
     try {
-        const manifest = JSON.parse(
-            readFileSync(path.join(home, "npm", "node_modules", ...name.split("/"), "package.json"), "utf8"),
-        ) as { jig?: { agents?: { pi?: { minimum?: string; tested?: string } } } };
+        const folder = homeFolder(home, name);
+        if (folder === undefined) return undefined;
+        const manifest = JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")) as {
+            jig?: { agents?: { pi?: { minimum?: string; tested?: string } } };
+        };
         return piPair(manifest);
     } catch {
         return undefined;

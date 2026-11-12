@@ -290,6 +290,34 @@ describe("one Jig copy", () => {
     });
 });
 
+describe("a home whose Jig Pi lists from a folder", () => {
+    /** The shape `pi install ./packed` leaves: the folder in the settings, nothing under the home's npm folder. */
+    function listedFolder(): string {
+        const folder = path.join(root, "packed-jig");
+        symlinkSync(ROOT, folder, "dir");
+        writeFileSync(path.join(jig, "settings.json"), JSON.stringify({ packages: [folder] }));
+        return folder;
+    }
+
+    test("is the home's copy: commands run, and jig list reaches Pi", async () => {
+        listedFolder();
+        const version = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { version: string };
+        const result = await run(["--version"]);
+        assert.equal(result.code, 0, result.stderr);
+        assert.equal(result.stdout.trim(), version.version);
+        const list = await run(["list"]);
+        assert.equal(list.code, 0, list.stderr);
+        assert.deepEqual(piArgs(), ["list"]);
+    });
+
+    test("setup's jig command runs that folder's bin/jig.mjs", async () => {
+        const folder = listedFolder();
+        const result = await run(["setup", "--yes"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(readFileSync(path.join(home, ".local", "bin", "jig"), "utf8"), new RegExp(`exec node '${folder}/bin/jig\\.mjs'`));
+    });
+});
+
 describe("the home", () => {
     test("JIG_HOME wins over an outer PI_CODING_AGENT_DIR, and Pi gets the home", async () => {
         installedHome();
