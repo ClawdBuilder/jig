@@ -18,6 +18,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - A `jig-ops` write through a transport that fails is treated as a lost reply: it is read back once and never sent again.
 
+### Fixed
+
+- A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
+
 ## [0.5.4] - 2026-11-09
 
 Shorter, clearer tool text, a local-read codemode, and a doctor that trusts `gh`.
