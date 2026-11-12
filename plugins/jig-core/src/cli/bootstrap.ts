@@ -101,7 +101,7 @@ function onPath(binDir: string, env: NodeJS.ProcessEnv): boolean {
 /** Where `pi install` says it put the package, checked once after it succeeds. */
 function installedProblem(home: string): string | undefined {
     return homeCommand(home) === undefined
-        ? `Pi install did not put Jig in ${home}; run: pi install ${npmInstall(jigPackage().name, jigPackage().version)}`
+        ? `Pi install did not put Jig in ${home}; run jig setup again and check what pi install says.`
         : undefined;
 }
 
@@ -183,7 +183,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<BootstrapRes
         const required = currentPiRequirement();
         if (pi === undefined) {
             result.problems.push(
-                `Jig needs Pi, and Pi is not installed. Install it with: npm install -g ${"@earendil-works/pi-coding-agent"}`,
+                "Jig needs Pi, and Pi is not installed. Install it with: npm install -g @earendil-works/pi-coding-agent",
             );
             return result;
         }
