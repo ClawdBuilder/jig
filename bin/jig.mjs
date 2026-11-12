@@ -56,7 +56,15 @@ function homeJigCommand() {
             const source = typeof entry === "string" ? entry : entry?.source;
             if (typeof source !== "string" || source.startsWith("git:")) continue;
             const folder = source.startsWith("npm:")
-                ? path.join(home, "npm", "node_modules", ...source.slice(4).replace(/@[^@/]*$/, "").split("/"))
+                ? path.join(
+                      home,
+                      "npm",
+                      "node_modules",
+                      ...source
+                          .slice(4)
+                          .replace(/@[^@/]*$/, "")
+                          .split("/"),
+                  )
                 : path.resolve(home, source);
             const file = path.join(folder, "bin", "jig.mjs");
             if (!existsSync(file)) continue;

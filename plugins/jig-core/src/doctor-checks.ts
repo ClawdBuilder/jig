@@ -180,13 +180,13 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const standalone = context.standalone === true;
     const namedJigHome = context.env.JIG_HOME !== undefined && context.env.JIG_HOME.trim() !== "";
     const folder = shorten(context.agentDir, home);
-    const folderWhy = standalone
-        ? namedJigHome
-            ? "from JIG_HOME"
-            : "the default home"
+    const folderWhy = namedJigHome
+        ? "from JIG_HOME"
         : fromEnv
           ? "from PI_CODING_AGENT_DIR"
-          : "the default folder";
+          : standalone
+            ? "the default home"
+            : "the default folder";
     const wsl =
         platform === "linux" && (context.env.WSL_DISTRO_NAME !== undefined || context.env.WSL_INTEROP !== undefined);
     const system = platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : wsl ? "Linux (WSL)" : "Linux";
@@ -313,8 +313,8 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
             id: "machine.agent",
             group: "machine",
             level: "ok",
-            title: "Pi's folder",
-            detail: `${folder}, ${fromEnv ? "from PI_CODING_AGENT_DIR" : "the default"}`,
+            title: standalone ? "Jig home" : "Pi's folder",
+            detail: `${folder}, ${folderWhy}`,
         });
     }
     return lines;

@@ -314,7 +314,10 @@ describe("a home whose Jig Pi lists from a folder", () => {
         const folder = listedFolder();
         const result = await run(["setup", "--yes"]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
-        assert.match(readFileSync(path.join(home, ".local", "bin", "jig"), "utf8"), new RegExp(`exec node '${folder}/bin/jig\\.mjs'`));
+        assert.match(
+            readFileSync(path.join(home, ".local", "bin", "jig"), "utf8"),
+            new RegExp(`exec node '${folder}/bin/jig\\.mjs'`),
+        );
     });
 });
 
@@ -340,9 +343,14 @@ describe("the home", () => {
 
     test("doctor names the home it checked, with ~ for the person's own folder", async () => {
         installedHome();
-        const result = await run(["doctor", "--quiet"]);
+        const result = await run(["doctor", "--json"]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
-        assert.match(result.stdout.split("\n")[0] ?? "", /^Jig doctor · ~\/\.jig · /);
+        const report = JSON.parse(result.stdout) as {
+            lines: Array<{ id: string; title: string; detail?: string }>;
+        };
+        const row = report.lines.find((line) => line.id === "machine.agent");
+        assert.equal(row?.title, "Jig home");
+        assert.match(row?.detail ?? "", /^~\/\.jig, from JIG_HOME$/);
     });
 });
 

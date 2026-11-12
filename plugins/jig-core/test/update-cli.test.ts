@@ -146,7 +146,8 @@ describe("the checks", () => {
 
     test("the Pi requirement of the Jig now in the home is read from its manifest", () => {
         const folder = path.join(root, "npm", "node_modules", "@clawdbuilder", "jig");
-        mkdirSync(folder, { recursive: true });
+        mkdirSync(path.join(folder, "bin"), { recursive: true });
+        writeFileSync(path.join(folder, "bin", "jig.mjs"), "#!/usr/bin/env node\n");
         writeFileSync(
             path.join(folder, "package.json"),
             JSON.stringify({

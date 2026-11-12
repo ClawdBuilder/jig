@@ -21,12 +21,10 @@ Jig doctor · 8 ok · 1 warning · 2 failures · 7 skipped
 This machine
   ✓ System — Linux, Node.js 24.15.0
   ! Pi — 1.4.0; this Jig is tested with 1.5.2
-  ✗ Jig — not installed in ~/.pi/agent (the default folder), so Pi does not
-       load Jig's plugins.
-       If your Pi runs with PI_CODING_AGENT_DIR, run jig doctor with the same
-       variable.
-       fix: pi install npm:@clawdbuilder/jig
-  ✓ Pi's folder — ~/.pi/agent, the default
+  ✗ Jig — not installed in ~/.jig (the default home), so Pi does not load
+       Jig's plugins.
+       fix: jig install npm:@clawdbuilder/jig
+  ✓ Jig home — ~/.jig, the default home
 ...
 ```
 
@@ -34,9 +32,9 @@ A check starts with **✓** (ok), **!** (warning), **✗** (failure) or **–** 
 `TERM=dumb`, or the locale (`LC_ALL`, `LC_CTYPE` or `LANG`) is not UTF-8, so a plain terminal still reads `ok`, `warn`,
 `fail` and `skip`. The summary line keeps its words. `--json` is unchanged.
 
-This machine names the Pi folder it checked and why: `~/.pi/agent, the default` or the path `from PI_CODING_AGENT_DIR`.
-When Jig is not installed there, the `Jig` row names the folder and carries the hint: "If your Pi runs with
-`PI_CODING_AGENT_DIR`, run `jig doctor` with the same variable."
+This machine names the folder it checked and why: for `jig`, the home (`~/.jig, the default home`, or the path
+`from JIG_HOME`); inside Pi, Pi's folder (`~/.pi/agent, the default`, or the path `from PI_CODING_AGENT_DIR`). When Jig
+is not installed there, the `Jig` row names the folder, and the fix installs it where the command runs.
 
 Exit code `0` means no failures, `1` means at least one; `--json` prints one JSON report with `"schema": 1` on stdout and
 nothing else (failures still exit 1); every line carries `durationMs`, the milliseconds its check took. The exit codes are the same for every command: 0 success, 1 a failure, 2 a usage error

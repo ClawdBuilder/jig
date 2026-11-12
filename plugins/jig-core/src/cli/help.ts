@@ -30,7 +30,7 @@ const HELP: Record<string, string> = {
     doctor: `Usage: jig doctor [--json] [--network] [--quiet]
 
 Check this machine, the Jig home, the settings, the plugins and the secret stores.
-The first line names the home it checked. Changes nothing.
+It names the Jig home it checked. Changes nothing.
 
 Options:
   --json     print one JSON report; failures still exit 1

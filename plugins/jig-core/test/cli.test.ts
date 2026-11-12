@@ -419,8 +419,8 @@ describe("jig doctor", () => {
         assert.equal(result.code, 1);
         assert.match(result.stdout, /fail Jig/);
         assert.match(result.stdout, /not installed in/);
-        assert.match(result.stdout, /If your Pi runs with PI_CODING_AGENT_DIR/);
-        assert.match(result.stdout, /Install it: pi install npm:@clawdbuilder\/jig/);
+        // `jig` sets PI_CODING_AGENT_DIR from the home, so the fix installs into the home, not the person's own Pi.
+        assert.match(result.stdout, /Install it: jig install npm:@clawdbuilder\/jig/);
     });
 
     test("two copies of Jig with different versions are a warning", { timeout: 60_000 }, async () => {
