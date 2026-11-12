@@ -1,12 +1,18 @@
 {
     "protocol": 1,
     "health": {
-        "request": { "method": "GET", "path": "/v1/health" },
+        "request": {
+            "method": "GET",
+            "path": "/v1/health"
+        },
         "answer": {
             "ok": true,
             "protocol": 1,
             "service": "orders-api relay",
-            "services": { "jira": true, "logs": false }
+            "services": {
+                "jira": true,
+                "logs": false
+            }
         }
     },
     "request": {
@@ -16,7 +22,9 @@
         "service": "jira",
         "method": "GET",
         "url": "https://jira.example.com/rest/api/2/issue/ABC-1?fields=summary",
-        "headers": { "accept": "application/json" },
+        "headers": {
+            "accept": "application/json"
+        },
         "maxBytes": 8388608,
         "timeoutMs": 30000
     },
@@ -30,7 +38,9 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1?fields=summary",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
             },
@@ -39,7 +49,9 @@
                 "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405162",
                 "outcome": "response",
                 "status": 200,
-                "headers": { "content-type": "application/json" },
+                "headers": {
+                    "content-type": "application/json"
+                },
                 "body": "{\"key\":\"ABC-1\"}",
                 "truncated": false
             }
@@ -53,7 +65,9 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/myself",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
             },
@@ -75,7 +89,10 @@
                 "service": "logs",
                 "method": "POST",
                 "url": "https://logs.example.com/app-*/_search",
-                "headers": { "accept": "application/json", "content-type": "application/json" },
+                "headers": {
+                    "accept": "application/json",
+                    "content-type": "application/json"
+                },
                 "body": "{}",
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
@@ -98,7 +115,10 @@
                 "service": "jira",
                 "method": "PUT",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
-                "headers": { "accept": "application/json", "content-type": "application/json" },
+                "headers": {
+                    "accept": "application/json",
+                    "content-type": "application/json"
+                },
                 "body": "{\"fields\":{\"summary\":\"orders-api\"}}",
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
@@ -121,7 +141,9 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
             },
@@ -143,7 +165,9 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/project/ORDERS",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
             },
@@ -165,7 +189,9 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 16777216,
                 "timeoutMs": 120000,
                 "tenant": "orders"
@@ -188,7 +214,10 @@
                 "service": "jira",
                 "method": "POST",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1/comment",
-                "headers": { "accept": "application/json", "content-type": "application/json" },
+                "headers": {
+                    "accept": "application/json",
+                    "content-type": "application/json"
+                },
                 "body": "{\"body\":\"deploying\"}",
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
@@ -202,6 +231,81 @@
             }
         },
         {
+            "name": "refused:OUTSIDE_LIMITS:redirected-read",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405172",
+                "client": "jig",
+                "service": "jira",
+                "method": "GET",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
+                "headers": {
+                    "accept": "application/json"
+                },
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405172",
+                "outcome": "refused",
+                "code": "OUTSIDE_LIMITS",
+                "status": 302,
+                "message": "the site redirected to another host; the relay did not follow it"
+            }
+        },
+        {
+            "name": "unknown:REDIRECTED",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405173",
+                "client": "jig",
+                "service": "jira",
+                "method": "POST",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1/comment",
+                "headers": {
+                    "accept": "application/json",
+                    "content-type": "application/json"
+                },
+                "body": "{\"body\":\"deploying\"}",
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405173",
+                "outcome": "unknown",
+                "code": "REDIRECTED",
+                "message": "the site redirected after the write; the relay did not follow it"
+            }
+        },
+        {
+            "name": "refused:REQUEST_TOO_LARGE",
+            "request": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405174",
+                "client": "jig",
+                "service": "jira",
+                "method": "POST",
+                "url": "https://jira.example.com/rest/api/2/issue/ABC-1/comment",
+                "headers": {
+                    "accept": "application/json",
+                    "content-type": "application/json"
+                },
+                "body": "{\"body\":\"a very long comment\"}",
+                "maxBytes": 8388608,
+                "timeoutMs": 30000
+            },
+            "answer": {
+                "protocol": 1,
+                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405174",
+                "outcome": "refused",
+                "code": "REQUEST_TOO_LARGE",
+                "status": 413,
+                "message": "the request body is larger than the relay accepts"
+            }
+        },
+        {
             "name": "unauthorized",
             "request": {
                 "protocol": 1,
@@ -210,13 +314,14 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
             },
             "answer": {
                 "protocol": 1,
-                "id": "4f3c2a9e-8d71-4c55-9b0a-1d2e3f405170",
                 "outcome": "refused",
                 "code": "UNAUTHORIZED",
                 "status": 401,
@@ -232,7 +337,9 @@
                 "service": "jira",
                 "method": "GET",
                 "url": "https://jira.example.com/rest/api/2/issue/ABC-1",
-                "headers": { "accept": "application/json" },
+                "headers": {
+                    "accept": "application/json"
+                },
                 "maxBytes": 8388608,
                 "timeoutMs": 30000
             },
@@ -242,7 +349,12 @@
     "healthErrors": [
         {
             "name": "unknown protocol",
-            "answer": { "ok": true, "protocol": 2, "service": "orders-api relay" }
+            "answer": {
+                "ok": true,
+                "protocol": 2,
+                "service": "orders-api relay"
+            }
         }
-    ]
+    ],
+    "note": "Only outcome, code and id are exact. status and message are examples; a relay may use its own."
 }

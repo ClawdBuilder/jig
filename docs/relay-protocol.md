@@ -81,16 +81,19 @@ Content-Type: application/json
 | `url` | The full address of the site request. |
 | `headers` | Only `accept` and `content-type`. The relay sets every other header itself, including the sign-in. |
 | `body` | Text, absent on `GET`. |
-| `maxBytes` | The most reply bytes to read, from 1 to 16 MiB. |
-| `timeoutMs` | How long the site request may take, from 1,000 to 120,000 ms. |
+| `maxBytes` | Required. The most reply bytes to read, from 1 to 16 MiB. |
+| `timeoutMs` | Required. How long the site request may take, from 1,000 to 120,000 ms. |
 | other fields | Extra fields for one service, such as a tenant. A relay refuses one it does not know. |
 
-A relay **never follows redirects**. A `3xx` from the site is returned as a `response`, so the tool can decide what to do
-with it. A request field the relay does not know is refused, with `INVALID_REQUEST`; it is never ignored.
+A relay **never follows a redirect for the client**. It may return the `3xx` as a `response`, refuse a redirected read
+with `OUTSIDE_LIMITS`, or answer `unknown` with `REDIRECTED` for a redirected write; the client never sends the request
+to the `Location` itself. A request field the relay does not know is refused, with `INVALID_REQUEST`; it is never
+ignored.
 
 ## Answer
 
-The relay answers `200` with exactly one of three outcomes. Every answer repeats the request's `id` and `protocol`.
+The relay answers `200` with exactly one of three outcomes. A `200` answer repeats the request's `id` and `protocol`; an
+answer with any other status may leave `id` out when the relay could not read the request.
 
 ### `response`: the site answered
 
@@ -106,8 +109,9 @@ The relay answers `200` with exactly one of three outcomes. Every answer repeats
 }
 ```
 
-`status` is the site's status. `headers` are the site's headers, with names in lower case. `body` is text. `truncated`
-says the relay stopped at `maxBytes`; the client must not assume the body is complete.
+`status` is the site's status. `headers` are the site's headers, or the subset the relay passes; never cookies or
+credentials. Names are in lower case; each value is a string, or a list of strings for a header the site sent more than
+once. `body` is text. `truncated` says the relay stopped at `maxBytes`; the client must not assume the body is complete.
 
 ### `refused`: no reply, and the site was not changed
 
@@ -122,9 +126,9 @@ says the relay stopped at `maxBytes`; the client must not assume the body is com
 }
 ```
 
-**The site was not changed by this request**, so sending it again cannot repeat a change. This does not promise that
-nothing left the relay: it may have sent a read and thrown the answer away, for example. `status` is a hint for the
-HTTP-shaped reply. The client treats a refusal with `notSent: true`.
+**The site was not changed by this request**, so a client may send it again safely. This does not promise that nothing
+left the relay: it may have sent a read and thrown the answer away, for example. `status` is a hint for the HTTP-shaped
+reply.
 
 ### `unknown`: the request may have reached the site
 
@@ -151,7 +155,7 @@ The relay's codes are its own. The protocol names these six for a client that ac
 | Code | The client reads it as |
 |---|---|
 | `SIGN_IN_REQUIRED` | The person must sign in to the relay or the service. |
-| `SERVICE_OFF` | The person turned this service off in the relay. |
+| `SERVICE_OFF` | The service is off or not set up in the relay; show the relay's message, which says how to fix it. |
 | `PAUSED` | The relay is paused, usually by the person. |
 | `BUSY` | The relay cannot take this request now; retrying later may work. |
 | `OUTSIDE_LIMITS` | The request, service or tenant is outside what this relay allows. |
@@ -162,7 +166,8 @@ lost reply when the outcome is `unknown`.
 
 ## A status other than 200
 
-A status other than `200` means the relay could not read the request at all. It answers with the `refused` body:
+A status other than `200` means the relay could not read the request at all. It answers with the `refused` body. The
+`id` is absent or `null` when the relay could not parse the request:
 
 ```json
 {
@@ -188,5 +193,6 @@ relay's log and the client's message can be matched.
 ## Fixtures
 
 The request and answer pairs in [relay-protocol/fixtures.json](relay-protocol/fixtures.json) are examples a relay's
-own tests can copy. They cover the three outcomes, every listed code, a `401`, a malformed answer, a service turned
+own tests can copy. Only `outcome`, `code` and `id` are exact; `status` and `message` are examples, so a relay may use
+its own status and wording. Jig's tests do not depend on a fixture's status or message. They cover the three outcomes, every listed code, a `401`, a malformed answer, a service turned
 off with its own fix, and a health answer with an unknown protocol.
