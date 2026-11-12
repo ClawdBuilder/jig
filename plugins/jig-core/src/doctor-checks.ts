@@ -24,6 +24,8 @@ import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionState } from "./section-state.ts";
 import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
+import { relayHealth } from "./relay.ts";
+import { TRANSPORTS_SECTION, relayNames, relayOf } from "./transports-section.ts";
 
 /** The checks, in the order the report shows their groups. */
 export const DOCTOR_CHECKS: ReadonlyArray<
@@ -32,6 +34,7 @@ export const DOCTOR_CHECKS: ReadonlyArray<
     ["machine", machineChecks],
     ["config", configChecks],
     ["secrets", checkSecrets],
+    ["config", relayChecks],
     ["logins", loginChecks],
     ["network", networkChecks],
     ["sandbox", sandboxChecks],
@@ -57,9 +60,93 @@ export function doctorContext(state: JigState): DoctorContext {
         stateDir: stateDir(state.env),
         workingDir: state.workingDir,
         secrets: { passStoreDir: () => state.secrets.passStoreDir() },
+        relay: { resolve: (ref, signal) => state.secrets.resolve(ref, signal) },
         now: state.now,
         onboarding: activeOnboarding(state),
     };
+}
+
+/** The relays declared in jig.json: health, the protocol it speaks, and whether the token resolves. */
+export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]> {
+    const relays = context.sections.get(TRANSPORTS_SECTION);
+    if (context.relay === undefined) return [];
+    const lines: DoctorLine[] = [];
+    for (const name of relayNames(relays)) {
+        const config = relayOf(relays, name);
+        if (config === undefined) continue;
+        const prefix = `relay.${name}`;
+        let protocol = 0;
+        try {
+            const health = await relayHealth(name, config, context.relay);
+            protocol = health.protocol;
+            lines.push({
+                id: `${prefix}.health`,
+                group: "config",
+                level: "ok",
+                title: `Relay ${name}`,
+                detail: `health answers${health.service === "" ? "" : ` (${health.service})`}`,
+            });
+        } catch (error) {
+            lines.push({
+                id: `${prefix}.health`,
+                group: "config",
+                level: "fail",
+                title: `Relay ${name}`,
+                detail: `health does not answer: ${error instanceof Error ? error.message : String(error)}`,
+                fix: `Check transports.${name}.url, and that the relay is running.`,
+            });
+        }
+        lines.push({
+            id: `${prefix}.protocol`,
+            group: "config",
+            level: protocol === 1 ? "ok" : "fail",
+            title: `Relay ${name} protocol`,
+            detail: protocol === 0 ? "no protocol was read" : `speaks protocol ${protocol}`,
+            ...(protocol === 1 ? {} : { fix: "Use a relay that speaks protocol 1." }),
+        });
+        if (config.token === undefined) {
+            lines.push({
+                id: `${prefix}.token`,
+                group: "config",
+                level: "fail",
+                title: `Relay ${name} token`,
+                detail: `transports.${name}.token is not set`,
+                fix: `Add transports.${name}.token as a secret reference.`,
+            });
+            continue;
+        }
+        try {
+            const health = await relayHealth(name, config, context.relay, { token: true });
+            if (health.tokenError !== undefined) {
+                lines.push({
+                    id: `${prefix}.token`,
+                    group: "config",
+                    level: "fail",
+                    title: `Relay ${name} token`,
+                    detail: health.tokenError,
+                    fix: `Fix transports.${name}.token.`,
+                });
+            } else {
+                lines.push({
+                    id: `${prefix}.token`,
+                    group: "config",
+                    level: "ok",
+                    title: `Relay ${name} token`,
+                    detail: "the token resolves and the relay accepts it",
+                });
+            }
+        } catch (error) {
+            lines.push({
+                id: `${prefix}.token`,
+                group: "config",
+                level: "fail",
+                title: `Relay ${name} token`,
+                detail: `the relay did not accept the token: ${error instanceof Error ? error.message : String(error)}`,
+                fix: `Fix transports.${name}.token, or sign in to the relay.`,
+            });
+        }
+    }
+    return lines;
 }
 
 function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {

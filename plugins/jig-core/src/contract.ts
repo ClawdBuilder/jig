@@ -278,6 +278,8 @@ export interface TransportResponse {
      *  Names may be in any case; jig-core lower-cases them. */
     headers: Readonly<Record<string, string | readonly string[]>>;
     body: string;
+    /** The transport read only part of the body (a relay says so); the caller must treat it as truncated. */
+    truncated?: boolean;
 }
 
 /** What a tunnel's port is: `forward` reaches one host and port, `socks` reaches any host the far side can. */

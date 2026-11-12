@@ -261,7 +261,7 @@ function responseOf(
 function fromTransport(reply: TransportResponse, maxBytes: number): HttpResponse {
     const text = reply.body.length > maxBytes ? reply.body.slice(0, maxBytes) : reply.body;
     let bytes: Uint8Array = Buffer.from(text, "utf8");
-    let truncated = text !== reply.body;
+    let truncated = reply.truncated === true || text !== reply.body;
     if (bytes.byteLength > maxBytes) {
         bytes = bytes.subarray(0, maxBytes);
         truncated = true;
