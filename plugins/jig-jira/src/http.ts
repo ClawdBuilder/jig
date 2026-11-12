@@ -63,6 +63,15 @@ export class LostReplyError extends Error {
     }
 }
 
+/** The transport facts a refusal carries, if any; one shape for the record. */
+export function transportFacts(error: unknown): Record<string, string> {
+    const refused = error as { transportCode?: unknown; requestId?: unknown };
+    return {
+        ...(typeof refused.transportCode === "string" ? { transportCode: refused.transportCode } : {}),
+        ...(typeof refused.requestId === "string" ? { requestId: refused.requestId } : {}),
+    };
+}
+
 export interface JiraRequest {
     method: "GET" | "POST" | "PUT" | "DELETE";
     /** Below `/rest/api/2`, such as `/issue/PROJ-1`. */
@@ -202,9 +211,15 @@ function failed(error: unknown, timeoutMs: number): unknown {
     // No transport has this name, or the request itself was wrong: nothing was sent.
     if (error.code === "no_transport" || error.code === "invalid_request") return new NotSentError(error.message);
     if (error.code === "transport_refused") {
+        const suffix = error.transportCode === undefined ? "" : ` (${error.transportCode})`;
         return error.notSent
-            ? new NotSentError(`Jira was not changed: ${error.message}`, error.transportCode, error.requestId)
-            : new LostReplyError(`no answer from Jira (${error.message})`, true, error.transportCode, error.requestId);
+            ? new NotSentError(`Jira was not changed: ${error.message}${suffix}`, error.transportCode, error.requestId)
+            : new LostReplyError(
+                  `no answer from Jira (${error.message})${suffix}`,
+                  true,
+                  error.transportCode,
+                  error.requestId,
+              );
     }
     return new LostReplyError(`no answer from Jira (${whyLost(error, timeoutMs)})`, error.code === "transport_failed");
 }

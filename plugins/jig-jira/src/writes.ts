@@ -7,7 +7,7 @@
 //     happened is unknown, so it is not repeated: the issue is read once, and the tool says what that read shows.
 import { jig } from "../../jig-core/src/client.ts";
 import type { Env } from "./api.ts";
-import { JiraError, LostReplyError, NotSentError } from "./http.ts";
+import { JiraError, LostReplyError, NotSentError, transportFacts } from "./http.ts";
 import type { Call } from "./params.ts";
 import { fingerprintOf } from "./plan.ts";
 import type { Finding, Plan } from "./plan.ts";
@@ -64,10 +64,7 @@ export async function runWrite(
         if (key !== undefined) jig().addFacts(toolCallId, { issue: key });
     };
     const recordTransport = (error: unknown): void => {
-        const refusal = error as { transportCode?: unknown; requestId?: unknown };
-        const facts: Record<string, string> = {};
-        if (typeof refusal.transportCode === "string") facts.transportCode = refusal.transportCode;
-        if (typeof refusal.requestId === "string") facts.requestId = refusal.requestId;
+        const facts = transportFacts(error);
         if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
     };
     try {

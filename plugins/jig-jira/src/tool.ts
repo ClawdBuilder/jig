@@ -14,6 +14,7 @@ import type { Call, ParseOptions } from "./params.ts";
 import { fingerprintOf } from "./plan.ts";
 import { buildPlan } from "./plans.ts";
 import { runRead } from "./reads.ts";
+import { transportFacts } from "./http.ts";
 import { previewOf } from "./shown.ts";
 import { InputError } from "./values.ts";
 import { runWrite } from "./writes.ts";
@@ -114,10 +115,7 @@ export function createTool(options: JiraOptions = {}): JiraTool {
                         details: { action: call.action, ...key },
                     };
                 } catch (error) {
-                    const refused = error as { transportCode?: unknown; requestId?: unknown };
-                    const facts: Record<string, string> = {};
-                    if (typeof refused.transportCode === "string") facts.transportCode = refused.transportCode;
-                    if (typeof refused.requestId === "string") facts.requestId = refused.requestId;
+                    const facts = transportFacts(error);
                     if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
                     throw error;
                 }

@@ -375,12 +375,28 @@ describe("a company transport", () => {
             },
         });
         const read = await h.call(GET_ISSUE);
-        assert.match(read.error?.message ?? "", /^Jira was not changed: sign in first$/);
+        assert.match(read.error?.message ?? "", /^Jira was not changed: sign in first \(SIGN_IN_REQUIRED\)$/);
         assert.doesNotMatch(read.error?.message ?? "", /token/i);
         const write = await h.call({ action: "comment", key: "PROJ-1", text: "hi" }, { ask: false });
-        assert.equal(write.error?.message, "Jira was not changed: sign in first");
+        assert.equal(write.error?.message, "Jira was not changed: sign in first (SIGN_IN_REQUIRED)");
         assert.equal((write.error?.message ?? "").includes("Nothing was sent"), false);
         assert.deepEqual(h.jig.facts.get(write.id), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
+    });
+
+    test("a refusal on /myself does not stop a write that can go on", async () => {
+        const forward = proxyTo(h.jira, { "x-proxy-session": "p-77" });
+        h.configure({ site: SITE, auth: { transport: "company-proxy" } });
+        h.jig.transports.set("company-proxy", {
+            request: async (request, signal) => {
+                if (request.method === "GET" && request.url.endsWith("/myself")) {
+                    throw new TransportRefusal("OUTSIDE_LIMITS", "/myself is not in the allow-list", true, "req-me");
+                }
+                return forward.request(request, signal);
+            },
+        });
+        const result = await h.call({ action: "comment", key: "PROJ-1", text: "hi" }, { ask: false });
+        assert.equal(result.error, undefined);
+        assert.ok(h.jira.requests.some((request) => request.method === "POST"));
     });
 
     test("a refusal that may have changed Jira is a lost reply", async () => {
@@ -390,7 +406,10 @@ describe("a company transport", () => {
             },
         });
         const read = await h.call(GET_ISSUE);
-        assert.match(read.error?.message ?? "", /^no answer from Jira \(the relay lost the reply\)$/);
+        assert.match(
+            read.error?.message ?? "",
+            /^no answer from Jira \(the relay lost the reply\) \(OUTSIDE_LIMITS\)$/,
+        );
         assert.equal((read.error as LostReplyError).viaTransport, true);
     });
 
