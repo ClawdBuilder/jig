@@ -60,6 +60,24 @@ describe("ci.yml", () => {
         assert.doesNotMatch(text, /github\.com\/[^\s"]+\/releases\/download/, "no GitHub release downloads");
     });
 
+    test("every apt-get has a timeout and retries, and update is retried", () => {
+        for (const file of workflows) {
+            const text = read(`.github/workflows/${file}`);
+            const apt = text.split("\n").filter((line) => /^\s*sudo apt-get\b/.test(line));
+            if (apt.length === 0) continue;
+            for (const line of apt) {
+                assert.match(line, /-o Acquire::http::Timeout=30/, `${file}: ${line}`);
+                assert.match(line, /-o Acquire::Retries=3/, `${file}: ${line}`);
+            }
+            assert.match(
+                text,
+                /for attempt in 1 2 3; do[\s\S]*?apt-get[\s\S]*?update && break[\s\S]*?done/,
+                `${file}: apt-get update is not retried`,
+            );
+        }
+    });
+
+
     test("npm ci never runs a dependency's install script", () => {
         for (const file of workflows) {
             for (const match of read(`.github/workflows/${file}`).matchAll(/run: (npm ci.*)$/gm)) {

@@ -64,8 +64,12 @@ jobs:
       # Ubuntu 24.04 stops unprivileged programs from making a user namespace, which bubblewrap needs.
       - name: Install the programs the sandbox needs
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bubblewrap socat ripgrep python3
+          for attempt in 1 2 3; do
+            sudo apt-get -o Acquire::http::Timeout=30 -o Acquire::Retries=3 update && break
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 5
+          done
+          sudo apt-get -o Acquire::http::Timeout=30 -o Acquire::Retries=3 install -y bubblewrap socat ripgrep python3
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Commit email guard
