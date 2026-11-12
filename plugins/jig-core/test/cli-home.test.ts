@@ -83,7 +83,7 @@ if (args[0] === "view" && process.env.FAKE_RELEASE) {
 }
 if (args[0] === "view") {
     const version = String(args[1] ?? "").split("@").pop();
-    process.stdout.write(JSON.stringify({ version, jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } } }));
+    process.stdout.write(JSON.stringify({ version, jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.2" } } } }));
     process.exit(0);
 }
 process.exit(0);
@@ -112,6 +112,8 @@ function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv 
         // The fake Pi is found on PATH; a host the runner names would win over it.
         PI_HOST_DIR: undefined,
         JIG_PI_HOST: undefined,
+        // A runner's CI=true would make `jig update` apply without a prompt; each test sets what it needs.
+        CI: undefined,
         AWS_PROFILE: undefined,
         BROWSER: "true",
         ...extra,
@@ -140,6 +142,8 @@ function run(
             children.delete(child);
             resolve({ code, stdout, stderr });
         });
+        // No terminal: stdin is a pipe that carries nothing, and closing it is what a command that reads sees.
+        child.stdin.end();
     });
 }
 
@@ -405,7 +409,7 @@ describe("the home", () => {
 });
 
 describe("jig update", () => {
-    const release = (minimum: string, tested = "1.5.0") =>
+    const release = (minimum: string, tested = "1.5.2") =>
         JSON.stringify({ version: "0.6.0", jig: { agents: { pi: { minimum, tested } } } });
 
     beforeEach(() => installedHome());
@@ -515,13 +519,20 @@ describe("jig update", () => {
         assert.deepEqual(calls(), []);
     });
 
-    test("without a terminal it refuses before anything runs", async () => {
-        const result = await run(["update"]);
+    test("without a terminal, and no CI, it refuses before anything runs", async () => {
+        // The runner may set CI, which is the script path; this is the person at a terminal-less prompt.
+        const result = await run(["update"], { env: { CI: undefined } });
         assert.equal(result.code, 2);
         assert.equal(result.stdout, "");
         assert.match(result.stderr, /no terminal to confirm on/);
         assert.match(result.stderr, /--check/);
-        assert.deepEqual(calls(), []);
+        assert.deepEqual(calls(), [], "nothing ran");
+    });
+
+    test("without a terminal, CI=true applies the update, as a script expects", async () => {
+        const result = await run(["update"], { env: { CI: "true" } });
+        assert.equal(result.code, 0, result.stderr);
+        assert.deepEqual(piArgs(), [`install npm:${NAME}@0.6.0`, "update --extensions"]);
     });
 });
 
