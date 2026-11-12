@@ -18,7 +18,7 @@ approvals through the `workflow` tool, and moves on when `advance` finds every e
 
 ## A workflow file
 
-One JSON file per workflow, named after it, such as `~/.pi/agent/workflows/feature.json`:
+One JSON file per workflow, named after it, such as `~/.jig/workflows/feature.json`:
 
 ```json
 {
@@ -100,7 +100,7 @@ At session start, a line says which stage the active ticket is in and what is mi
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `workflow`. [Configuration](docs/configuration.md) has every field.
+In `~/.jig/jig.json`, under `workflow`. [Configuration](docs/configuration.md) has every field.
 ## Company part (in the company plugin)
 
 - its workflow files, in a folder given through `config.addSectionDefaults("workflow", { folders })` (a user's

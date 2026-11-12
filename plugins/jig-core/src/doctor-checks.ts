@@ -166,6 +166,27 @@ export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]>
     return lines;
 }
 
+/** The row naming the folder Pi runs with: the Jig home in the `jig` command, Pi's folder inside Pi. */
+function folderRow(context: DoctorContext, folder: string, why: string, standalone: boolean): DoctorLine {
+    if (context.agentDir === "") {
+        return {
+            id: "machine.agent",
+            group: "machine",
+            level: "fail",
+            title: standalone ? "Jig home" : "Pi's folder",
+            detail: "Jig cannot find the folder where Pi keeps its settings.",
+            fix: "Restart Pi.",
+        };
+    }
+    return {
+        id: "machine.agent",
+        group: "machine",
+        level: "ok",
+        title: standalone ? "Jig home" : "Pi's folder",
+        detail: `${folder}, ${why}`,
+    };
+}
+
 function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
     const requirement = currentPiRequirement();
     const platform = options.platform ?? process.platform;
@@ -176,8 +197,17 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const pi = (options.piVersion ?? piVersion)();
     const jig = options.jigVersion === null ? undefined : (options.jigVersion ?? pkg.version);
     const fromEnv = context.env.PI_CODING_AGENT_DIR !== undefined && context.env.PI_CODING_AGENT_DIR.trim() !== "";
+    // The `jig` command checks the Jig home, which it sets as Pi's folder; inside Pi this is Pi's own folder.
+    const standalone = context.standalone === true;
+    const namedJigHome = context.env.JIG_HOME !== undefined && context.env.JIG_HOME.trim() !== "";
     const folder = shorten(context.agentDir, home);
-    const folderWhy = fromEnv ? "from PI_CODING_AGENT_DIR" : "the default folder";
+    const folderWhy = namedJigHome
+        ? "from JIG_HOME"
+        : fromEnv
+          ? "from PI_CODING_AGENT_DIR"
+          : standalone
+            ? "the default home"
+            : "the default folder";
     const wsl =
         platform === "linux" && (context.env.WSL_DISTRO_NAME !== undefined || context.env.WSL_INTEROP !== undefined);
     const system = platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : wsl ? "Linux (WSL)" : "Linux";
@@ -232,9 +262,10 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                     title: "Jig",
                     detail:
                         context.jigListedButMissing === undefined
-                            ? `not installed in ${folder} (${folderWhy}), so Pi does not load Jig's plugins.\nIf your Pi runs with PI_CODING_AGENT_DIR, run jig doctor with the same variable.`
+                            ? `not installed in ${folder} (${folderWhy}), so Pi does not load Jig's plugins.`
                             : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
-                    fix: `Install it: pi install ${npmInstall(pkg.name)}`,
+                    // The command installs into its home; Pi's own folder takes `pi install`.
+                    fix: `Install it: ${context.standalone === true ? "jig" : "pi"} install ${npmInstall(pkg.name)}`,
                 }
               : {
                     id: "machine.jig",
@@ -289,24 +320,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
         { id: "machine.system", group: "machine", level: "ok", title: "System", detail: system },
     ];
 
-    if (context.agentDir === "") {
-        lines.push({
-            id: "machine.agent",
-            group: "machine",
-            level: "fail",
-            title: "Pi's folder",
-            detail: "Jig cannot find the folder where Pi keeps its settings.",
-            fix: "Restart Pi.",
-        });
-    } else {
-        lines.push({
-            id: "machine.agent",
-            group: "machine",
-            level: "ok",
-            title: "Pi's folder",
-            detail: `${folder}, ${fromEnv ? "from PI_CODING_AGENT_DIR" : "the default"}`,
-        });
-    }
+    lines.push(folderRow(context, folder, folderWhy, standalone));
     return lines;
 }
 

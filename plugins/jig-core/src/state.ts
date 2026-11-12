@@ -376,6 +376,8 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
                         env,
                         pass: state.personal.config.secrets.pass,
                         secretFiles: tokenFilePaths(state.personal.sections.get(TRANSPORTS_SECTION), home),
+                        // Every other Pi folder on the machine: the code its settings load is guarded too.
+                        codePaths: (folder) => loadedCodePaths({ agentDir: folder, cwd: "", home }),
                     }),
                     // The code Pi loads at its next start, with no sandbox: the local packages and extensions of its settings.
                     loadedCodePaths({

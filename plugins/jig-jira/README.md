@@ -84,7 +84,7 @@ The rules, limits and failures are in [Commented by](docs/commented.md).
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `jira`. An unknown field is an error, and the
+In `~/.jig/jig.json`, under `jira`. An unknown field is an error, and the
 tool then does nothing until the file is fixed (`/jig` lists the problems).
 
 | Field | Default | Meaning |

@@ -4,7 +4,7 @@ The fields of the `sandbox` section of `jig.json`. Back to the [jig-sandbox over
 
 ## The fields
 
-In `~/.pi/agent/jig.json`, under `sandbox`. Every field is optional.
+In `~/.jig/jig.json`, under `sandbox`. Every field is optional.
 
 | Field | Default | Meaning |
 |---|---|---|

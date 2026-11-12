@@ -49,7 +49,7 @@ local / local-model  $0.00+
 
 ## What it reads
 
-Only Pi's session files, under `<agent folder>/sessions`: `~/.pi/agent/sessions`, or
+Only Pi's session files, under `<agent folder>/sessions`: `~/.jig/sessions`, or
 what `PI_CODING_AGENT_DIR` names. It opens them for reading, and nothing leaves the
 machine.
 

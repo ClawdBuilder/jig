@@ -67,13 +67,13 @@ describe("the files", () => {
         }
     });
 
-    test("tmux.conf takes the clipboard helper from JIG_HOME, and the helper is there", () => {
+    test("tmux.conf takes the clipboard helper from JIG_PACKAGE_DIR, and the helper is there", () => {
         const conf = readFileSync(path.join(REPO, "bin", "tmux.conf"), "utf8");
-        assert.ok(conf.includes('"$JIG_HOME/bin/clipboard-copy"'));
+        assert.ok(conf.includes('"$JIG_PACKAGE_DIR/bin/clipboard-copy"'));
         assert.equal(
-            /\$JIG_[A-Z_]+/.exec(conf.replaceAll("$JIG_HOME/", ""))?.[0],
+            /\$JIG_[A-Z_]+/.exec(conf.replaceAll("$JIG_PACKAGE_DIR/", ""))?.[0],
             undefined,
-            "JIG_HOME is the only variable",
+            "JIG_PACKAGE_DIR is the only variable",
         );
         accessSync(path.join(REPO, "bin", "clipboard-copy"), constants.X_OK);
     });
@@ -109,13 +109,14 @@ describe("a run that is not interactive", () => {
             AWS_PROFILE: undefined,
             WSL_INTEROP: undefined,
             PI_BIN: undefined,
-            JIG_HOME: REPO,
+            JIG_PACKAGE_DIR: REPO,
+            JIG_COMMAND: undefined,
             JIG_TMUX_SESSION: undefined,
         });
         assert.deepEqual(world.calls(), [], "no tmux, timeout or probe");
     });
 
-    test("the only variable the launcher sets for Pi is JIG_HOME; what you export is left as it is", async () => {
+    test("the only variable the launcher sets for Pi is JIG_PACKAGE_DIR; what you export is left as it is", async () => {
         const result = await world.run(["-p", "hi"], {
             PI_CODING_AGENT_DIR: "/custom/agent",
             PASSWORD_STORE_DIR: "/custom/store",
@@ -129,7 +130,8 @@ describe("a run that is not interactive", () => {
             AWS_PROFILE: "team-profile",
             WSL_INTEROP: undefined,
             PI_BIN: undefined,
-            JIG_HOME: REPO,
+            JIG_PACKAGE_DIR: REPO,
+            JIG_COMMAND: undefined,
             JIG_TMUX_SESSION: undefined,
         });
     });
@@ -426,7 +428,7 @@ describe("tmux", () => {
             "lower_case_name",
             "HOME",
             "PATH",
-            "JIG_HOME",
+            "JIG_PACKAGE_DIR",
         ])
             assert.ok(names.includes(name), `${name} is named`);
         assert.equal(new Set(names).size, names.length, "each name once");
@@ -440,7 +442,7 @@ describe("tmux", () => {
         const env = clientEnv(world);
         assert.equal(env.MY_SETTING, "a value with spaces", "the values travel in the tmux client's environment");
         assert.equal(env.AWS_SECRET_ACCESS_KEY, secret);
-        assert.equal(env.JIG_HOME, REPO);
+        assert.equal(env.JIG_PACKAGE_DIR, REPO);
         for (const text of [result.stdout, result.stderr]) assert.equal(text.includes(secret), false);
     });
 
@@ -536,6 +538,10 @@ describe("tmux", () => {
         const still = await world.run([], { ...TERMINAL, FAKE_TMUX_ALIVE: alive });
         assert.equal(still.status, 0);
         assert.match(still.stderr, /^jig: Pi is still running \(pi-work-\d+\); run `pi` in this folder to reattach\n$/);
+        // `jig` sets JIG_COMMAND, so the hint names the command the person typed, not `pi`, which would start another agent.
+        world.forget();
+        const asJig = await world.run([], { ...TERMINAL, FAKE_TMUX_ALIVE: alive, JIG_COMMAND: "jig" });
+        assert.match(asJig.stderr, /run `jig` in this folder to reattach/);
     });
 
     test("is not used inside another tmux, without tmux installed, or outside a terminal", async () => {

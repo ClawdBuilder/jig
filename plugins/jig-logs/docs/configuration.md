@@ -1,6 +1,6 @@
 # Configuration: every field of the `logs` section
 
-The fields of `logs` in `~/.pi/agent/jig.json`, with their defaults and limits.
+The fields of `logs` in `~/.jig/jig.json`, with their defaults and limits.
 Back to the [jig-logs overview](../README.md).
 
 `backend` and `environments` are both needed, and `maxWindow` is optional. `jig-core` reports an unknown or

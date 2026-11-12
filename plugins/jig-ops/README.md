@@ -17,7 +17,7 @@ you with the exact command, and `runtime` checks it.
 
 ## The service catalog
 
-In `~/.pi/agent/jig.json`, under `ops`:
+In `~/.jig/jig.json`, under `ops`:
 
 ```json
 {"ops": {"services": {"orders-api": {
@@ -129,7 +129,7 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `ops`. [The catalog](docs/catalog.md) has every field and what is checked.
+In `~/.jig/jig.json`, under `ops`. [The catalog](docs/catalog.md) has every field and what is checked.
 
 ## Company part (in the company plugin)
 

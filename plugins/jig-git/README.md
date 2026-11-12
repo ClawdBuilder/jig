@@ -112,7 +112,7 @@ The notes on single actions are in [Actions](docs/actions.md).
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `git`. All fields are optional; a company
+In `~/.jig/jig.json`, under `git`. All fields are optional; a company
 plugin can set them for its repositories. `jig-core` reports an unknown or
 invalid field, and the defaults apply instead.
 

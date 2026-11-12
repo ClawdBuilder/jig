@@ -1,90 +1,69 @@
-// `jig update`: move the global `jig` command and Pi's Jig copy to one published version, with Pi only when the release
-// needs it. It reads the registry first, refuses before changing anything it cannot finish, and puts every recorded version
-// back when a step fails. `--check` says what it would do and changes nothing.
+// `jig update`: move the packages in the Jig home through Pi's own update, and never the Pi binary, which the person's own
+// `pi` and other Jig homes share. Jig's entry is pinned by setup, so `jig update --self` reads npm and installs the newest
+// release with `pi install`; every other form is Pi's `pi update` with the home as PI_CODING_AGENT_DIR. `--check` says what
+// would happen and changes nothing, and a release that needs a newer Pi stops the run before anything else moves.
 import { spawn } from "node:child_process";
-import { accessSync, constants, existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
-
+import { accessSync, constants, readFileSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { errorMessage } from "../errors.ts";
-import { helpFor } from "./help.ts";
-import { jigPackage, piVersion } from "../pi-version.ts";
-
-import { compareVersions } from "../pi-version.ts";
-import { selectTarget } from "../update-versions.ts";
+import { compareVersions, currentPiRequirement, jigPackage, meetsMinimum, npmInstall } from "../pi-version.ts";
 import { companyRanges } from "../update-company.ts";
-import type { CompanyRange, RegistryMetadata, RegistryRelease } from "../update-versions.ts";
-import type { JigEntry } from "./packages.ts";
-import { describePlan, planUpdate, statedRequirement } from "../update-plan.ts";
-import type { UpdateCopy } from "../update-plan.ts";
-import { executeUpdate } from "../update-run.ts";
-import type { CommandResult, InstallCommand, UpdateIo } from "../update-run.ts";
-import { agentDirFor, ownPackage } from "./headless.ts";
-import { globalNpmRoot, manifestOf, packageFolder, parseGitSource, parseNpmSource, readPackages } from "./packages.ts";
+import { selectTarget } from "../update-versions.ts";
+import type { RegistryMetadata, RegistryRelease } from "../update-versions.ts";
+import { helpFor, strayWordsMessage } from "./help.ts";
+import { homeCommand, homeFolder, homeVersion, jigHome } from "./home.ts";
+import { findPi } from "./pi-command.ts";
+import type { PiProgram } from "./pi-command.ts";
+import { manifestOf, parseNpmSource, readPackages } from "./packages.ts";
 
-const PI = "@earendil-works/pi-coding-agent";
 const MAX_OUTPUT = 512 * 1024;
+const PI_REFSUSAL = `Jig never updates Pi itself (your pi and others share it). Run: pi update --self`;
 
-export interface PiConfigModule {
-    detectInstallMethod(): string;
-    getSelfUpdateCommand(
-        packageName: string,
-        npmCommand?: string[],
-        target?: string | { packageName: string; installSpec?: string },
-    ):
-        | {
-              command: string;
-              args: string[];
-              display: string;
-              steps?: Array<{ command: string; args: string[]; display: string }>;
-          }
-        | undefined;
-    getConfiguredSelfUpdateArgv(setting: string[] | undefined): string[] | undefined;
-    makeConfiguredSelfUpdateCommand(
-        argv: string[],
-        release: { packageName: string; version: string },
-    ): { command: string; args: string[]; display: string };
-    getSelfUpdateUnavailableInstruction(
-        packageName: string,
-        npmCommand?: string[],
-        target?: string | { packageName: string; installSpec?: string },
-    ): string;
+/** One form of the command, before anything runs. */
+type Form =
+    | { kind: "all" }
+    | { kind: "self" }
+    | { kind: "extensions" }
+    | { kind: "models" }
+    | { kind: "source"; source: string };
+
+export interface UpdateOptions {
+    /** The home. Default: `JIG_HOME`, else `~/.jig`. */
+    home?: string;
+    /** Pi's package folder. Default: found on PATH. */
+    pi?: PiProgram;
+    env?: NodeJS.ProcessEnv;
+    /** For a test: the prompt's answer. */
+    ask?: (question: string) => Promise<boolean>;
 }
 
-function run(command: string, args: readonly string[], cwd: string, signal?: AbortSignal): Promise<CommandResult> {
+interface CommandResult {
+    code: number;
+    stdout: string;
+    stderr: string;
+}
+
+function run(
+    command: string,
+    args: readonly string[],
+    options: { cwd: string; env: NodeJS.ProcessEnv },
+): Promise<CommandResult> {
     return new Promise((resolve) => {
         const child = spawn(command, [...args], {
-            cwd,
-            env: process.env,
+            cwd: options.cwd,
+            env: options.env,
             stdio: ["ignore", "pipe", "pipe"],
         });
-        const stop = (): void => {
-            child.kill("SIGTERM");
-        };
-        signal?.addEventListener("abort", stop, { once: true });
         let stdout = "";
         let stderr = "";
-        let timedOut = false;
-        const timer = setTimeout(() => {
-            timedOut = true;
-            child.kill("SIGTERM");
-        }, 180_000);
         child.stdout.on("data", (chunk: Buffer) => {
             if (stdout.length < MAX_OUTPUT) stdout += chunk.toString();
         });
         child.stderr.on("data", (chunk: Buffer) => {
             if (stderr.length < MAX_OUTPUT) stderr += chunk.toString();
         });
-        child.on("error", (error) => {
-            clearTimeout(timer);
-            signal?.removeEventListener("abort", stop);
-            resolve({ code: 1, stdout, stderr: error.message, ...(timedOut ? { timedOut } : {}) });
-        });
-        child.on("close", (code) => {
-            clearTimeout(timer);
-            signal?.removeEventListener("abort", stop);
-            resolve({ code: code ?? 1, stdout, stderr, ...(timedOut ? { timedOut } : {}) });
-        });
+        child.on("error", (error) => resolve({ code: 1, stdout, stderr: error.message }));
+        child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
     });
 }
 
@@ -101,171 +80,18 @@ function writable(target: string): boolean {
     }
 }
 
-/** Pi's config module, loaded from the package `bin/jig` found. It is not an exported subpath, so this uses its file. */
-async function piConfig(host: string): Promise<PiConfigModule> {
-    return (await import(pathToFileURL(path.join(host, "dist", "config.js")).href)) as PiConfigModule;
-}
-
-/** The Pi version a package folder holds, or undefined. */
-function versionAt(folder: string | undefined): string | undefined {
-    return folder === undefined ? undefined : manifestOf(folder)?.version;
-}
-
-export function piSelfUpdateCommands(
-    config: PiConfigModule,
-    settings: { selfUpdateCommand?: string[] },
-    version: string,
-): InstallCommand[] | { problem: string } {
-    if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-        return {
-            problem: `Pi ${JSON.stringify(version)} is not a version jig update can install. Nothing was changed.`,
-        };
-    }
-    const method = config.detectInstallMethod();
-    const fromEnv = process.env.PI_SELF_UPDATE_COMMAND?.trim();
-    const configured = config.getConfiguredSelfUpdateArgv(settings.selfUpdateCommand);
-    if (configured !== undefined) {
-        const text = fromEnv !== undefined && fromEnv !== "" ? fromEnv : configured.join(" ");
-        if (!/\{(version|installSpec)\}/.test(text)) {
-            return {
-                problem:
-                    "Pi's self-update command is configured without {version} or {installSpec}, so jig update cannot pin the tested Pi. Nothing was changed.",
-            };
-        }
-        const command = config.makeConfiguredSelfUpdateCommand(configured, { packageName: PI, version });
-        return [{ command: command.command, args: [...command.args], display: command.display }];
-    }
-    const command = config.getSelfUpdateCommand(PI, undefined, {
-        packageName: PI,
-        installSpec: `${PI}@${version}`,
-    });
-    if (command === undefined) {
-        return {
-            problem: `Pi was installed by ${method}. ${config.getSelfUpdateUnavailableInstruction(PI, undefined, {
-                packageName: PI,
-                installSpec: `${PI}@${version}`,
-            })} Nothing was changed.`,
-        };
-    }
-    const steps = command.steps ?? [command];
-    return steps.map((step) => ({ command: step.command, args: [...step.args], display: step.display }));
-}
-
-/** The path to a package inside the global npm root, for a scoped name too. */
-/** A package folder is linked when its own real path is not the expected one under the real root. A symlinked
- *  parent (an nvm prefix, for example) is not a linked package. */
-export function linkedPackageFolder(root: string, folder: string, name: string): boolean {
-    try {
-        if (lstatSync(folder).isSymbolicLink()) return true;
-        const expected = path.join(realpathSync(root), ...name.split("/"));
-        return realpathSync(folder) !== expected;
-    } catch {
-        return false;
-    }
-}
-
-/** A global command that is linked or a development checkout is not replaced. */
-async function linkedGlobal(name: string, root: string, folder: string, cwd: string): Promise<boolean> {
-    if (linkedPackageFolder(root, folder, name)) return true;
-    const listed = await run("npm", ["ls", "-g", name, "--json"], cwd);
-    if (listed.code !== 0) return false;
-    try {
-        const parsed = JSON.parse(listed.stdout) as {
-            dependencies?: Record<string, { link?: unknown }>;
-        };
-        return parsed.dependencies?.[name]?.link === true;
-    } catch {
-        return false;
-    }
-}
-
-function globalFolder(root: string, name: string): string {
-    return path.join(root, ...name.split("/"));
-}
-
-/** npm's global prefix: `<prefix>/lib/node_modules` on Unix, `<prefix>/node_modules` on Windows. */
-function npmPrefix(root: string): string {
-    if (path.basename(root) !== "node_modules") return path.dirname(root);
-    const parent = path.dirname(root);
-    return path.basename(parent) === "lib" ? path.dirname(parent) : parent;
-}
-
-/** Reads the packages once and finds Jig's Pi copy and every company range. */
-export function discover(
-    agentDir: string,
-    cwd: string,
-    name: string,
-): {
-    piCopy?: UpdateCopy;
-    company: CompanyRange[];
-    problem?: string;
-    jigEntries: JigEntry[];
-    listed: ReturnType<typeof readPackages>["listed"];
-} {
-    const listed = readPackages(agentDir, cwd, { globalRoot: () => globalNpmRoot() }).listed;
-    const jigEntries: JigEntry[] = [];
-    const looksLikeJig = (source: string): boolean => {
-        const npm = parseNpmSource(source)?.name;
-        if (npm === name) return true;
-        const git = parseGitSource(source);
-        return git !== undefined && git.host === "github.com" && git.path.toLowerCase() === "clawdbuilder/jig";
-    };
-    let piCopy: UpdateCopy | undefined;
-    for (const entry of listed) {
-        const manifest = entry.folder === undefined ? undefined : manifestOf(entry.folder);
-        const packageName = manifest?.name ?? parseNpmSource(entry.source)?.name;
-        if (packageName !== name && !looksLikeJig(entry.source)) continue;
-        jigEntries.push({
-            source: entry.source,
-            scope: entry.scope,
-            ...(manifest?.version === undefined ? {} : { version: manifest.version }),
-        });
-        if (packageName === name && (piCopy === undefined || entry.scope === "user")) {
-            piCopy = {
-                ...(manifest?.version === undefined ? {} : { version: manifest.version }),
-                source: entry.source,
-                scope: entry.scope,
-                ...(entry.folder === undefined ? {} : { folder: entry.folder }),
-            };
-        }
-    }
-    if (jigEntries.length > 1) {
-        const lines = jigEntries.map(
-            (entry) =>
-                `${entry.scope}: ${entry.source}${entry.version === undefined ? "" : ` (${entry.version})`} — pi remove ${entry.source}${entry.scope === "project" ? " -l" : ""}`,
-        );
-        return {
-            problem: `Pi lists ${jigEntries.length} Jig entries. jig update will not choose which to keep; remove all but one first:\n${lines.join("\n")}`,
-            jigEntries,
-            company: companyRanges(listed, name),
-            listed,
-        };
-    }
-    return {
-        ...(piCopy === undefined ? {} : { piCopy }),
-        company: companyRanges(listed, name),
-        jigEntries,
-        listed,
-    };
-}
-
-function piSetting(agentDir: string): { selfUpdateCommand?: string[] } {
-    try {
-        const value = JSON.parse(readFileSync(path.join(agentDir, "settings.json"), "utf8")) as {
-            selfUpdateCommand?: unknown;
-        };
-        return Array.isArray(value.selfUpdateCommand) &&
-            value.selfUpdateCommand.every((item) => typeof item === "string")
-            ? { selfUpdateCommand: value.selfUpdateCommand as string[] }
-            : {};
-    } catch {
-        return {};
-    }
+/** Whether a word is a package source Pi could install or update, rather than a stray word of a message. */
+export function looksLikeSource(word: string): boolean {
+    const trimmed = word.trim();
+    if (/^(npm|git):/.test(trimmed)) return trimmed.length > 4;
+    if (/^(https?|ssh|git):\/\//i.test(trimmed)) return true;
+    if (/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}\/.+/.test(trimmed)) return true;
+    return /^(\.{0,2}\/|~\/)/.test(trimmed) || trimmed.endsWith(".tgz");
 }
 
 /** The published versions, asked of npm itself so its registry scope, auth and .npmrc rules apply. */
-async function fetchRegistry(name: string, cwd: string): Promise<RegistryMetadata> {
-    const result = await run("npm", ["view", name, "versions", "--json"], cwd);
+async function fetchRegistry(name: string, cwd: string, env: NodeJS.ProcessEnv): Promise<RegistryMetadata> {
+    const result = await run("npm", ["view", name, "versions", "--json"], { cwd, env });
     if (result.code !== 0) throw new Error(npmViewProblem(name, result.stdout, result.stderr));
     if (result.stdout.trim() === "") throw new Error(`npm view returned no versions for ${name}; is it published?`);
     let parsed: unknown;
@@ -298,8 +124,16 @@ function npmViewProblem(name: string, stdout: string, stderr: string): string {
 }
 
 /** One release's package.json fields, again from npm view. */
-async function fetchRelease(name: string, version: string, cwd: string): Promise<RegistryRelease> {
-    const result = await run("npm", ["view", `${name}@${version}`, "jig", "version", "deprecated", "--json"], cwd);
+async function fetchRelease(
+    name: string,
+    version: string,
+    cwd: string,
+    env: NodeJS.ProcessEnv,
+): Promise<RegistryRelease> {
+    const result = await run("npm", ["view", `${name}@${version}`, "jig", "version", "deprecated", "--json"], {
+        cwd,
+        env,
+    });
     if (result.code !== 0) throw new Error(npmViewProblem(name, result.stdout, result.stderr));
     if (result.stdout.trim() === "") throw new Error(`npm view returned no metadata for ${name}@${version}.`);
     let parsed: unknown;
@@ -315,6 +149,17 @@ async function fetchRelease(name: string, version: string, cwd: string): Promise
     return (value ?? {}) as RegistryRelease;
 }
 
+/** The Pi pair a release states, or undefined when it is missing or malformed. */
+function piPair(
+    release: RegistryRelease | { jig?: { agents?: { pi?: { minimum?: string; tested?: string } } } },
+): { minimum: string; tested: string } | undefined {
+    const pi = release.jig?.agents?.pi;
+    if (typeof pi?.minimum !== "string" || typeof pi?.tested !== "string") return undefined;
+    if (!/^\d+\.\d+\.\d+$/.test(pi.minimum) || !/^\d+\.\d+\.\d+$/.test(pi.tested)) return undefined;
+    if (compareVersions(pi.tested, pi.minimum) < 0) return undefined;
+    return { minimum: pi.minimum, tested: pi.tested };
+}
+
 async function promptYes(question: string): Promise<boolean> {
     const { createInterface } = await import("node:readline/promises");
     const readline = createInterface({ input: process.stdin, output: process.stderr, terminal: false });
@@ -327,40 +172,129 @@ async function promptYes(question: string): Promise<boolean> {
     }
 }
 
-/** The `jig update` command. Returns the process exit code; `host` is Pi's package folder. */
 /** Whether a check should say the running Jig is already the newest it may use. */
 export function upToDate(current: string, target: string, requested: string | undefined): boolean {
     return requested === undefined && compareVersions(target, current) <= 0;
 }
 
-export async function update(args: readonly string[], host: string | undefined): Promise<number> {
-    if (args.includes("--help") || args.includes("-h")) {
-        process.stdout.write(`${helpFor("update")}\n`);
-        return 0;
+/** The Pi commands a form runs, in order, as a person would type them after `pi `. */
+export function piCommands(form: Form, name: string, approve: string[], target: string | undefined): string[][] {
+    const tail = approve.length === 0 ? [] : [approve[0] as string];
+    if (form.kind === "models") return [["update", "--models", ...tail]];
+    if (form.kind === "extensions") return [["update", "--extensions", ...tail]];
+    if (form.kind === "all") {
+        if (target === undefined) return [["update", "--extensions", ...tail]];
+        return [
+            ["install", npmInstall(name, target), ...tail],
+            ["update", "--extensions", ...tail],
+        ];
     }
+    if (form.kind === "self") {
+        return target === undefined ? [] : [["install", npmInstall(name, target), ...tail]];
+    }
+    if (isJigSource(form.source, name)) {
+        return target === undefined ? [] : [["install", npmInstall(name, target), ...tail]];
+    }
+    return [["update", "--extension", form.source, ...tail]];
+}
+
+/** Parses the words, or returns the message to print and exit 2 with. */
+export function parse(
+    args: readonly string[],
+):
+    | { form: Form; approve: string[]; check: boolean; json: boolean; yes: boolean; requested?: string }
+    | { problem: string } {
+    let form: Form | undefined;
+    let approve: string[] = [];
     let check = false;
     let json = false;
     let yes = false;
     let requested: string | undefined;
+    const usage = "\nRun jig update --help for usage.";
+    const setForm = (next: Form): { problem: string } | undefined => {
+        if (form !== undefined) {
+            return {
+                problem: `jig update takes one target at a time: name one of --all, --self, --extensions, --models or a package.${usage}`,
+            };
+        }
+        form = next;
+        return undefined;
+    };
     for (let index = 0; index < args.length; index++) {
-        const word = args[index];
+        const word = args[index] as string;
         if (word === "--check") check = true;
         else if (word === "--json") json = true;
         else if (word === "--yes" || word === "-y") yes = true;
-        else if (word === "--to") {
+        else if (word === "--all") {
+            const problem = setForm({ kind: "all" });
+            if (problem !== undefined) return problem;
+        } else if (word === "--self") {
+            const problem = setForm({ kind: "self" });
+            if (problem !== undefined) return problem;
+        } else if (word === "--extensions") {
+            const problem = setForm({ kind: "extensions" });
+            if (problem !== undefined) return problem;
+        } else if (word === "--models") {
+            const problem = setForm({ kind: "models" });
+            if (problem !== undefined) return problem;
+        } else if (word === "--extension") {
             const value = args[++index];
             if (value === undefined || value.startsWith("-")) {
-                process.stderr.write("jig update: --to needs a version.\nRun jig update --help for usage.\n");
-                return 2;
+                return { problem: `jig update: --extension needs a package source.${usage}` };
+            }
+            const problem = setForm({ kind: "source", source: value });
+            if (problem !== undefined) return problem;
+        } else if (word === "--to") {
+            const value = args[++index];
+            if (value === undefined || value.startsWith("-")) {
+                return { problem: `jig update: --to needs a version.${usage}` };
             }
             requested = value;
+        } else if (word === "--approve" || word === "-a") {
+            approve = ["--approve"];
+        } else if (word === "--no-approve" || word === "-na") {
+            approve = ["--no-approve"];
+        } else if (word === "--force" || word === "pi") {
+            return { problem: PI_REFSUSAL };
+        } else if (word === "self") {
+            const problem = setForm({ kind: "self" });
+            if (problem !== undefined) return problem;
+        } else if (word.startsWith("-")) {
+            return { problem: `jig update: unknown option ${word}.${usage}` };
+        } else if (looksLikeSource(word)) {
+            const problem = setForm({ kind: "source", source: word });
+            if (problem !== undefined) return problem;
         } else {
-            process.stderr.write(`jig update: unknown option ${word}.\nRun jig update --help for usage.\n`);
-            return 2;
+            return { problem: strayWordsMessage("update", args, word) };
         }
     }
+    return {
+        form: form ?? { kind: "all" },
+        approve,
+        check,
+        json,
+        yes,
+        ...(requested === undefined ? {} : { requested }),
+    };
+}
+
+/** The `jig update` command. Returns the process exit code. */
+export async function update(args: readonly string[], options: UpdateOptions = {}): Promise<number> {
+    if (args.includes("--help") || args.includes("-h")) {
+        process.stdout.write(`${helpFor("update")}\n`);
+        return 0;
+    }
+    const parsed = parse(args);
+    if ("problem" in parsed) {
+        process.stderr.write(`${parsed.problem}\n`);
+        return 2;
+    }
+    const { form, approve, check, json, yes, requested } = parsed;
+    const env = options.env ?? process.env;
+    const home = options.home ?? jigHome(env);
+    const cwd = process.cwd();
     const nonTTY = process.stdin.isTTY !== true || process.stdout.isTTY !== true;
-    const assumeYes = yes || (process.env.CI === "true" && nonTTY);
+    const assumeYes = yes || (env.CI === "true" && nonTTY);
     if (json && !check && !assumeYes && nonTTY) {
         process.stderr.write("jig update --json needs --check (a plan) or --yes (a result).\n");
         return 2;
@@ -371,310 +305,169 @@ export async function update(args: readonly string[], host: string | undefined):
         );
         return 2;
     }
-    if (host === undefined) {
+    const pi = options.pi ?? findPi(env);
+    if (pi === undefined) {
         process.stderr.write("jig update needs Pi installed; install Pi first.\n");
         return 1;
     }
-    const own = ownPackage();
-    const name = own.name ?? jigPackage().name ?? "@clawdbuilder/jig";
-    const current = own.version ?? jigPackage().version;
-    if (current === undefined) {
-        process.stderr.write("jig update cannot read Jig's own version. Nothing was changed.\n");
+    const own = jigPackage();
+    const name = own.name ?? "@clawdbuilder/jig";
+    const installed = homeVersion(home, name);
+    if (homeCommand(home, name) === undefined || installed === undefined) {
+        process.stderr.write(`Jig is not installed in ${home}. Run: npx ${name} setup\n`);
         return 1;
     }
-    const env = process.env;
-    const agentDir = agentDirFor(env);
-    const cwd = process.cwd();
-    // PATH lookup without starting anything.
-    const lookup = (program: string): string | undefined => {
-        const folders = (env.PATH ?? "").split(path.delimiter).filter(Boolean);
-        const extensions = process.platform === "win32" ? (env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";") : [""];
-        for (const folder of folders) {
-            for (const extension of extensions) {
-                const candidate = path.join(folder, program + extension);
-                if (existsSync(candidate)) return candidate;
-            }
-        }
-        return undefined;
-    };
-
-    const discovered = discover(agentDir, cwd, name);
-    // The CLI may be a checkout newer than the copy being moved; the installed copy is what "current" means.
-    const installedCurrent = discovered.piCopy?.version ?? current;
-    if (discovered.problem !== undefined) {
-        process.stderr.write(`${discovered.problem}\nNothing was changed.\n`);
-        return 1;
-    }
-    let metadata: RegistryMetadata;
-    try {
-        metadata = await fetchRegistry(name, cwd);
-    } catch (error) {
-        process.stderr.write(
-            `jig update could not read ${name} from npm: ${errorMessage(error)}. Nothing was changed.\n`,
+    const touchesJig =
+        form.kind === "all" || form.kind === "self" || (form.kind === "source" && isJigSource(form.source, name));
+    const listed = readPackages(home, cwd).listed;
+    if (touchesJig) {
+        // Two Jig entries would load two copies; the move would pick one of them silently.
+        const jigEntries = listed.filter(
+            (entry) =>
+                parseNpmSource(entry.source)?.name === name ||
+                (entry.folder !== undefined && manifestOf(entry.folder)?.name === name),
         );
-        return 1;
-    }
-    const chosen = selectTarget(metadata, discovered.company, requested);
-    if ("problem" in chosen) {
-        process.stderr.write(`${chosen.problem} Nothing was changed.\n`);
-        return 1;
-    }
-    if (upToDate(installedCurrent, chosen.target.version, requested)) {
-        if (json)
-            process.stdout.write(
-                `${JSON.stringify({ schema: 1, current: installedCurrent, target: chosen.target.version, action: "up-to-date", changes: false }, null, 2)}\n`,
+        if (jigEntries.length > 1) {
+            const lines = jigEntries.map(
+                (entry) => `${entry.scope}: ${entry.source}${entry.scope === "user" ? "" : " -l"}`,
             );
-        else process.stdout.write(`Jig ${installedCurrent} is up to date.\n`);
-        return 0;
+            process.stderr.write(
+                `The home lists ${jigEntries.length} Jig entries. jig update will not choose which to keep; remove all but one first:\n${lines.join("\n")}\nNothing was changed.\n`,
+            );
+            return 1;
+        }
     }
-    try {
-        chosen.target.release = await fetchRelease(name, chosen.target.version, cwd);
-    } catch (error) {
-        process.stderr.write(
-            `jig update could not read Jig ${chosen.target.version} from npm: ${errorMessage(error)}. Nothing was changed.\n`,
-        );
-        return 1;
-    }
-    if (statedRequirement(chosen.target) === undefined) {
-        process.stderr.write(
-            `Jig ${chosen.target.version} does not say which Pi version it needs. Nothing was changed.\n`,
-        );
-        return 1;
-    }
-    const rootResult = await run("npm", ["root", "-g"], cwd);
-    if (rootResult.code !== 0 || outputOf(rootResult) === "") {
-        process.stderr.write(
-            `jig update could not find the global npm folder: ${outputOf(rootResult)}. Nothing was changed.\n`,
-        );
-        return 1;
-    }
-    const root = outputOf(rootResult).split("\n")[0] as string;
-    const globalCandidate = globalFolder(root, name);
-    const globalManifest = manifestOf(globalCandidate);
-    if (globalManifest?.name !== name) {
-        process.stderr.write(
-            `This jig command is not installed in npm's global folder. Install it with: npm install -g --ignore-scripts ${name}@${chosen.target.version}\nNothing was changed.\n`,
-        );
-        return 1;
-    }
-    const globalVersion = globalManifest.version ?? current;
-    const globalLinked = await linkedGlobal(name, root, globalCandidate, cwd);
-    const prefix = npmPrefix(root);
-    const built = planUpdate({
-        name,
-        current: installedCurrent,
-        target: chosen.target,
-        piVersion: piVersion(),
-        ...(discovered.piCopy === undefined ? {} : { piCopy: discovered.piCopy }),
-        globalVersion,
-        globalLinked,
-    });
-    if ("problem" in built) {
-        process.stderr.write(`${built.problem}\n`);
-        return 1;
-    }
-    const plan = built.plan;
-    let piTarget: InstallCommand[] | { problem: string } | undefined;
-    let piBack: InstallCommand[] | { problem: string } | undefined;
-    if (plan.pi !== undefined) {
-        let config: PiConfigModule;
+    let target: string | undefined;
+    let requirement: { minimum: string; tested: string } | undefined;
+    if (touchesJig) {
+        let metadata: RegistryMetadata;
         try {
-            config = await piConfig(host);
+            metadata = await fetchRegistry(name, cwd, env);
         } catch (error) {
             process.stderr.write(
-                `jig update could not read how Pi was installed: ${errorMessage(error)}. Nothing was changed.\n`,
+                `jig update could not read ${name} from npm: ${errorMessage(error)}. Nothing was changed.\n`,
             );
             return 1;
         }
-        piTarget = piSelfUpdateCommands(config, piSetting(agentDir), plan.pi.to);
-        if ("problem" in piTarget) {
-            process.stderr.write(`${piTarget.problem}\n`);
+        const chosen = selectTarget(metadata, companyRanges(listed, name), requested ?? versionOfSource(form));
+        if ("problem" in chosen) {
+            process.stderr.write(`${chosen.problem} Nothing was changed.\n`);
             return 1;
         }
-        piBack = piSelfUpdateCommands(config, piSetting(agentDir), plan.pi.from);
-        if ("problem" in piBack) {
-            process.stderr.write(`${piBack.problem}\n`);
+        target = chosen.target.version;
+        try {
+            chosen.target.release = await fetchRelease(name, target, cwd, env);
+        } catch (error) {
+            process.stderr.write(
+                `jig update could not read Jig ${target} from npm: ${errorMessage(error)}. Nothing was changed.\n`,
+            );
+            return 1;
+        }
+        requirement = piPair(chosen.target.release) ?? currentPiRequirement();
+        if (upToDate(installed, target, requested ?? versionOfSource(form))) {
+            target = undefined;
+        } else if (!meetsMinimum(pi.version, requirement.minimum)) {
+            process.stderr.write(
+                `Jig ${target} needs Pi ${requirement.minimum} or later; this is ${pi.version ?? "an unknown version"}.\n${PI_REFSUSAL}\nNothing was changed.\n`,
+            );
             return 1;
         }
     }
-    if (check && json) {
-        process.stdout.write(
-            `${JSON.stringify(
-                {
-                    schema: 1,
-                    current: installedCurrent,
-                    target: plan.target,
-                    action: plan.changes ? "update" : "up-to-date",
-                    changes: plan.changes,
-                    pi: plan.pi ?? null,
-                    code: 0,
-                },
-                null,
-                2,
-            )}\n`,
-        );
-        return 0;
-    }
+    const commands = piCommands(form, name, approve, target);
     if (check) {
-        for (const line of describePlan(plan)) process.stdout.write(`${line}\n`);
-        if (piTarget !== undefined && !("problem" in piTarget)) {
-            for (const command of piTarget) process.stdout.write(`Pi installs with: ${command.display}\n`);
-        }
-        if (plan.piCopy?.needed === true) process.stdout.write(`Pi's copy: pi install npm:${name}@${plan.target}\n`);
-        if (plan.global?.needed === true) {
+        if (json) {
             process.stdout.write(
-                `The jig command: npm install -g --ignore-scripts --min-release-age=0 ${name}@${plan.target}\n`,
+                `${JSON.stringify(
+                    {
+                        schema: 1,
+                        home,
+                        current: installed,
+                        target: target ?? installed,
+                        action: target === undefined && touchesJig ? "up-to-date" : "update",
+                        commands: commands.map((one) => `pi ${one.join(" ")}`),
+                        code: 0,
+                    },
+                    null,
+                    2,
+                )}\n`,
+            );
+            return 0;
+        }
+        if (touchesJig) {
+            process.stdout.write(
+                target === undefined
+                    ? `Jig ${installed} is up to date.\n`
+                    : `Jig ${installed} -> ${target} in ${home}.\n`,
             );
         }
+        for (const one of commands) process.stdout.write(`Runs in ${home}: pi ${one.join(" ")}\n`);
         process.stdout.write("No changes were made.\n");
         return 0;
     }
-    if (plan.changes && !assumeYes) {
-        if (!(await promptYes(`Update Jig ${installedCurrent} → ${plan.target}?`))) {
+    if (commands.length === 0) {
+        process.stdout.write(`Nothing to do: Jig ${installed} is up to date.\n`);
+        return 0;
+    }
+    if (!assumeYes) {
+        const question = `Update the packages in ${home}?`;
+        const answer = options.ask === undefined ? await promptYes(question) : await options.ask(question);
+        if (!answer) {
             process.stdout.write("Nothing was changed.\n");
             return 0;
         }
     }
-    if (lookup("npm") === undefined) {
-        process.stderr.write("jig update needs npm on PATH to move the global command. Nothing was changed.\n");
+    if (!writable(home)) {
+        process.stderr.write(`Jig cannot write ${home}. Nothing was changed.\n`);
         return 1;
     }
-    if (lookup("pi") === undefined) {
-        process.stderr.write("jig update needs Pi's command on PATH. Nothing was changed.\n");
-        return 1;
+    for (const one of commands) {
+        process.stdout.write(`pi ${one.join(" ")}\n`);
+        const result = await run(pi.command, [...pi.prefix, ...one], {
+            cwd,
+            env: { ...env, PI_CODING_AGENT_DIR: home },
+        });
+        const shown = outputOf(result);
+        if (shown !== "") process.stdout.write(`${shown}\n`);
+        if (result.code !== 0) {
+            process.stderr.write(`pi ${one[0]} exited ${result.code} in ${home}; the update stopped there.\n`);
+            return 1;
+        }
     }
-    if (!writable(existsSync(path.join(agentDir, "settings.json")) ? path.join(agentDir, "settings.json") : agentDir)) {
-        process.stderr.write(
-            `Jig cannot write ${path.join(agentDir, "settings.json")} because its folder is missing or read-only. Nothing was changed.\n`,
-        );
-        return 1;
+    // After moving Jig: the version now in the home is the one that says which Pi it needs. Jig never installs or moves Pi.
+    if (target !== undefined) {
+        const needs = installedRequirement(home, name) ?? currentPiRequirement();
+        if (!meetsMinimum(pi.version, needs.minimum)) {
+            process.stderr.write(
+                `Jig is now ${homeVersion(home, name) ?? target} in ${home}, and it needs Pi ${needs.minimum} or later; this is ${pi.version ?? "an unknown version"}.\n${PI_REFSUSAL}\n`,
+            );
+            return 1;
+        }
     }
-    if (!writable(agentDir)) {
-        process.stderr.write(`Jig cannot write its package list in ${agentDir}. Nothing was changed.\n`);
-        return 1;
+    process.stdout.write(`Updated the packages in ${home}.\n`);
+    return 0;
+}
+
+/** The Pi requirement of the Jig now installed in the home, read from its own manifest. */
+export function installedRequirement(home: string, name: string): { minimum: string; tested: string } | undefined {
+    try {
+        const folder = homeFolder(home, name);
+        if (folder === undefined) return undefined;
+        const manifest = JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")) as {
+            jig?: { agents?: { pi?: { minimum?: string; tested?: string } } };
+        };
+        return piPair(manifest);
+    } catch {
+        return undefined;
     }
-    if (plan.changes && !json) {
-        for (const line of describePlan(plan)) process.stdout.write(`${line}\n`);
-    }
-    const piFolder = discovered.piCopy?.folder;
-    const piAfter = (): string | undefined => {
-        const folder = packageFolder(`npm:${name}`, agentDir).folder;
-        return versionAt(folder) ?? versionAt(piFolder);
-    };
-    const confirm = async (title: string, message: string, signal?: AbortSignal): Promise<boolean> => {
-        if (signal?.aborted === true) return false;
-        if (assumeYes) return true;
-        return promptYes(`${title} ${message}`);
-    };
-    const io: UpdateIo = {
-        run: (command, commandArgs, signal) => run(command, commandArgs, cwd, signal),
-        notify: (text, level) => {
-            if (json) {
-                if (level === "error") process.stderr.write(`${text}\n`);
-                return;
-            }
-            (level === "error" ? process.stderr : process.stdout).write(`${text}\n`);
-        },
-        confirm,
-        async piInstall(version) {
-            const chosenCommand = version === plan.pi?.to ? piTarget : version === plan.pi?.from ? piBack : undefined;
-            if (chosenCommand === undefined) return { problem: `Cannot build the command for Pi ${version}.` };
-            if ("problem" in chosenCommand) return chosenCommand;
-            return chosenCommand;
-        },
-        piCopyInstall: (version) => ({
-            command: "pi",
-            args: ["install", `npm:${name}@${version}`],
-            display: `pi install npm:${name}@${version}`,
-        }),
-        piCopyRestore: (version) => ({
-            command: "pi",
-            args: ["install", `npm:${name}@${version}`],
-            display: `pi install npm:${name}@${version}`,
-        }),
-        globalInstall: (version) => ({
-            command: "npm",
-            args: [
-                "install",
-                "-g",
-                "--prefix",
-                prefix,
-                "--ignore-scripts",
-                "--min-release-age=0",
-                `${name}@${version}`,
-            ],
-            display: `npm install -g --prefix ${prefix} --ignore-scripts --min-release-age=0 ${name}@${version}`,
-        }),
-        async verify() {
-            return {
-                pi: piVersion(),
-                piCopy: piAfter(),
-                global: versionAt(globalCandidate),
-            };
-        },
-        async doctor() {
-            const verify = await this.verify();
-            const expected = plan.target;
-            const wrong = [
-                verify.piCopy !== expected ? `Pi's copy is ${verify.piCopy ?? "missing"}` : "",
-                verify.global !== expected ? `the jig command is ${verify.global ?? "missing"}` : "",
-            ].filter(Boolean);
-            const globalJig = lookup("jig");
-            if (globalJig === undefined) wrong.push("the global jig command is not on PATH");
-            else {
-                const launched = await run(globalJig, ["--version", "--json"], cwd);
-                let reported: string | undefined;
-                try {
-                    reported = (JSON.parse(launched.stdout) as { version?: string }).version;
-                } catch {
-                    const plain = await run(globalJig, ["--version"], cwd);
-                    reported = plain.code === 0 ? plain.stdout.trim() : undefined;
-                }
-                if (launched.code !== 0 || reported !== expected)
-                    wrong.push(`the global jig command reports ${reported ?? "no version"}`);
-            }
-            let settings = "";
-            try {
-                settings = readFileSync(path.join(agentDir, "settings.json"), "utf8");
-            } catch {
-                // reported as not naming the version
-            }
-            if (!settings.includes(`@${expected}`)) wrong.push("Pi's settings do not name the new version");
-            const output =
-                wrong.length > 0
-                    ? `Updated, but ${wrong.join("; ")}. Run jig doctor in a project folder.`
-                    : `Checked: both Jig copies are ${expected}, the global jig command answers ${expected}, and Pi's settings name it.\nFull check: jig doctor (run it in a project folder; company checks depend on the folder)`;
-            return { code: wrong.length === 0 ? 0 : 1, output };
-        },
-    };
-    const controller = new AbortController();
-    const interrupt = (): void => {
-        if (!controller.signal.aborted)
-            process.stderr.write("Update interrupted; putting the changed versions back.\n");
-        controller.abort();
-    };
-    process.once("SIGINT", interrupt);
-    process.once("SIGTERM", interrupt);
-    const result = await executeUpdate(plan, io, controller.signal).finally(() => {
-        process.removeListener("SIGINT", interrupt);
-        process.removeListener("SIGTERM", interrupt);
-    });
-    if (json) {
-        process.stdout.write(
-            `${JSON.stringify(
-                {
-                    schema: 1,
-                    current: installedCurrent,
-                    target: plan.target,
-                    action: result.changed ? "updated" : "up-to-date",
-                    changes: result.changed,
-                    pi: plan.pi ?? null,
-                    code: result.code,
-                },
-                null,
-                2,
-            )}\n`,
-        );
-    }
-    return result.code;
+}
+
+function isJigSource(source: string, name: string): boolean {
+    return parseNpmSource(source)?.name === name;
+}
+
+/** The version a source pins, for `jig update npm:@clawdbuilder/jig@0.6.0`. */
+function versionOfSource(form: Form): string | undefined {
+    if (form.kind !== "source") return undefined;
+    const match = /^npm:(?:@[^/]+\/)?[^@]+@(.+)$/.exec(form.source.trim());
+    return match?.[1];
 }

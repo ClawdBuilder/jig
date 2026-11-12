@@ -1,6 +1,6 @@
 # The service catalog
 
-Every field of the `ops` section of `~/.pi/agent/jig.json`, and what is checked.
+Every field of the `ops` section of `~/.jig/jig.json`, and what is checked.
 Back to the [jig-ops overview](../README.md).
 
 `jig-core` checks the section when a session starts. An unknown field is an

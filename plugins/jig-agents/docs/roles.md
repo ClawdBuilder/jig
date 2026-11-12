@@ -81,7 +81,7 @@ names a company's model: they come from [configuration](configuration.md).
 
 - **A worker gets a worktree:** a new folder beside the repository, on a new branch, made through `jig-core`'s
   git. The report names the branch. `git push` asks by default, so the worker needs no `ask` line.
-- **Read from three places:** the plugin's `agents/`, `agents.folders`, and `~/.pi/agent/agents/`. Never from the
+- **Read from three places:** the plugin's `agents/`, `agents.folders`, and `~/.jig/agents/`. Never from the
   project, because the model can write there. A bad file is skipped, and `/agents roles` names it and the field.
 - **`/agents roles` shows the result:** per role, its tools, actions, ask, writes, skills (the list as it will be),
   preload, context, thinking, model and limits, and for each whether it came from the file or from configuration.

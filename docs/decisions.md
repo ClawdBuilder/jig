@@ -4,6 +4,8 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-12: `jig update` moves the home's packages, never the Pi binary](#2026-11-12-jig-update-moves-the-homes-packages-never-the-pi-binary)
+- [2026-11-12: Jig lives in its own Pi folder, and `jig` is Pi for it](#2026-11-12-jig-lives-in-its-own-pi-folder-and-jig-is-pi-for-it)
 - [2026-11-09: sediment moved out of plugin design pages](#2026-11-09-sediment-moved-out-of-plugin-design-pages)
 - [2026-11-09: sign-in methods are declared with their section](#2026-11-09-sign-in-methods-are-declared-with-their-section)
 - [2026-11-06: Jig is published as a scoped npm package](#2026-11-06-jig-is-published-as-a-scoped-npm-package)
@@ -70,6 +72,37 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-12: Jig lives in its own Pi folder, and `jig` is Pi for it
+
+**Decision.** Jig's settings, sessions and packages live in a home of its own: `~/.jig`, or `JIG_HOME`. The home is used
+directly as Pi's agent folder. `jig` is Pi for that home: every command sets `PI_CODING_AGENT_DIR` from the home and
+ignores an outer one, so the person's own `pi` and its folder are untouched. The first word decides what runs: a Jig
+command, Pi's own package command, or Pi itself for a flag or a message; a sub-command refuses words it does not take
+instead of guessing. `jig` always runs the Jig installed in the home — a copy started anywhere else hands over to it —
+so the command and the extensions are one version. The launcher's own folder variable, formerly `JIG_HOME`, is now
+`JIG_PACKAGE_DIR`.
+
+**Why.** Jig changes how Pi behaves, so it should not go into the agent folder the person uses for everything else. Two
+folders give each its own settings, sessions and packages, and any Pi package can go into either with `pi install` or
+`jig install`. One Jig version avoids a command that says one thing and extensions that do another.
+
+**The cost.** `JIG_HOME` changes meaning: it named the package folder in the launcher, and now names the home. A script
+that set it for the launcher must use `JIG_PACKAGE_DIR`; the launcher, `docs/launcher.md` and the pinned `JIG_*` list in
+`surface.test.ts` changed together. A misspelled `jig` command now starts Pi with the word as its message, because
+anything that is not a command is a message.
+
+## 2026-11-12: `jig update` moves the home's packages, never the Pi binary
+
+**Decision.** `jig update` runs Pi's own `pi update` in the home, and `jig update pi` and `--force` are refused with
+`Run: pi update --self`. Jig's entry is pinned by setup, and Pi's update leaves pinned packages alone, so Jig's own move
+is Jig's step: it reads the registry and runs `pi install npm:@clawdbuilder/jig@<target>`. `--self` is Jig only (Pi's
+`--self` means Pi itself), `--extensions` and `--models` are Pi's own update, and `--check` still says what would change.
+After moving Jig, when the new Jig needs a newer Pi, the command says so and stops.
+
+**Why.** The Pi binary is shared with the person's `pi` and with other Jig homes; a Jig update that moves it can break
+all of them. Delegating to `pi update` also keeps Pi's own package handling, approval flags and pinned-package rules.
+The old two-copy move, its undo and its Pi install are gone with the second copy.
 
 ## 2026-11-09: sign-in methods are declared with their section
 

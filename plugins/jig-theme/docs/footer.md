@@ -87,7 +87,7 @@ The footer is not shown, and Pi's own stays:
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `theme.footer`. Every field is optional. `jig-core`
+In `~/.jig/jig.json`, under `theme.footer`. Every field is optional. `jig-core`
 checks them when a session starts, and a mistake names the key.
 
 ```json

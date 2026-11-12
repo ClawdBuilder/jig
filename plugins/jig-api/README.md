@@ -96,7 +96,7 @@ Parameters and their checks: [Parameters](docs/parameters.md).
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `api`. An unknown field is an error, and the tool
+In `~/.jig/jig.json`, under `api`. An unknown field is an error, and the tool
 then does nothing until the file is fixed (`/jig` lists the problems).
 
 ```json

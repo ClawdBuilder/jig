@@ -564,9 +564,12 @@ describe("environment variables", () => {
         assert.deepEqual([...found].filter((name) => !notVariables.includes(name)).sort(), [
             "JIG_AGENT_ROLE",
             "JIG_CONDITION",
+            "JIG_HOME",
             "JIG_LENS_DASHBOARDS",
             "JIG_LENS_INDEX",
+            "JIG_OUTER_PI_DIR",
             "JIG_PARENT_SESSION",
+            "JIG_PI_HOST",
             "JIG_ROLE_POLICY",
             "JIG_STATE_DIR",
             "JIG_THEME_FOOTER",

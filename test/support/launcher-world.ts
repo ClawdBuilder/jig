@@ -37,7 +37,7 @@ const LOG = `{ printf "%s" "\${0##*/}"; for a in "$@"; do printf "\\t%s" "$a"; d
 
 const PI = `#!/bin/bash
 for a in "$@"; do printf 'arg:%s\\n' "$a"; done
-for n in PI_CODING_AGENT_DIR PASSWORD_STORE_DIR GNUPGHOME AWS_PROFILE WSL_INTEROP PI_BIN JIG_HOME JIG_TMUX_SESSION; do
+for n in PI_CODING_AGENT_DIR PASSWORD_STORE_DIR GNUPGHOME AWS_PROFILE WSL_INTEROP PI_BIN JIG_PACKAGE_DIR JIG_COMMAND JIG_TMUX_SESSION; do
     if [ -n "\${!n+x}" ]; then printf 'env:%s=%s\\n' "$n" "\${!n}"; else printf 'env:%s=<unset>\\n' "$n"; fi
 done
 `;
