@@ -401,7 +401,7 @@ test("transport: a refusal says the backend was not changed, or that the reply w
         },
     });
     const refused = await w.call(call);
-    assert.equal(refused.error?.message, "the log backend was not changed: sign in first");
+    assert.equal(refused.error?.message, "the log backend was not changed: sign in first (SIGN_IN_REQUIRED)");
     assert.deepEqual([...w.jig.facts.values()].flat(), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
 
     w.jig.transports.set("corp", {
@@ -410,7 +410,7 @@ test("transport: a refusal says the backend was not changed, or that the reply w
         },
     });
     const lost = await w.call(call);
-    assert.equal(lost.error?.message, "no answer from the log backend: the relay lost the reply");
+    assert.equal(lost.error?.message, "no answer from the log backend: the relay lost the reply (OUTSIDE_LIMITS)");
 });
 
 test("transport: one that ignores its signal still cannot hold the call past the request timeout", async (t) => {

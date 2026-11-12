@@ -160,10 +160,12 @@ function describe(error: unknown, timeoutMs: number): unknown {
     // reads once before answering instead of reporting a failure a retry could duplicate.
     if (error.code === "transport_failed") return new RequestFailure("connection_lost", error.message);
     // A refusal that promises the far end was not changed is not lost; one that does not is.
-    if (error.code === "transport_refused")
+    if (error.code === "transport_refused") {
+        const suffix = error.transportCode === undefined ? "" : ` (${error.transportCode})`;
         return error.notSent
-            ? new RequestFailure("refused", error.message)
-            : new RequestFailure("connection_lost", error.message);
+            ? new RequestFailure("refused", `${error.message}${suffix}`)
+            : new RequestFailure("connection_lost", `${error.message}${suffix}`);
+    }
     if (error.code === "auth_failed") return new RequestFailure("auth", error.message);
     // A transport that failed or is not registered: jig-core's own words.
     return new Error(error.message);

@@ -7,6 +7,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Added
 
 - `jig setup <section>` asks about one section even when it is already valid, and plugins declare their sign-in methods so setup can offer them.
+- A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
 
 ### Changed
 
@@ -17,10 +18,6 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Fixed
 
 - A `jig-ops` write through a transport that fails is treated as a lost reply: it is read back once and never sent again.
-
-### Fixed
-
-- A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
 
 ## [0.5.4] - 2026-11-09
 

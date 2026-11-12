@@ -99,10 +99,11 @@ function describe(error: unknown): unknown {
     if (error.code === "aborted") return error.cause ?? error;
     if (error.code === "timeout") return new RequestError("timeout");
     if (error.code === "transport_refused") {
+        const suffix = error.transportCode === undefined ? "" : ` (${error.transportCode})`;
         return new TransportFailure(
             error.notSent
-                ? `the log backend was not changed: ${error.message}`
-                : `no answer from the log backend: ${error.message}`,
+                ? `the log backend was not changed: ${error.message}${suffix}`
+                : `no answer from the log backend: ${error.message}${suffix}`,
             error.notSent,
             error.transportCode,
             error.requestId,
