@@ -42,7 +42,7 @@ the one company plugin in this repository, and its tests run with `npm test`.
   `surface.test.ts`, `plugin-surface.test.ts` and `boundaries.test.ts`; adding is fine when the pin is updated in the same
   commit. See [Compatibility](docs/compatibility.md).
 - **Changing the Pi or Node version, or a dependency:** read
-  [Moving the Pi version](docs/compatibility.md#moving-the-pi-version) and [Releases](docs/releases.md). The tested Pi is `pi-coding-agent@1.5.0`. Dependencies are exact pins, enforced by
+  [Moving the Pi version](docs/compatibility.md#moving-the-pi-version) and [Releases](docs/releases.md). The tested Pi is `pi-coding-agent@1.5.2`. Dependencies are exact pins, enforced by
   `npm run check`; an `@anthropic-ai/sandbox-runtime` update runs the real-sandbox tests.
 - **Changing `bin/` or the launcher:** read [The launcher](docs/launcher.md); it is not a plugin.
 - **No secret-shaped literals, even fake ones.** Build a test value from parts, such as `["PMAK", "1a2b"].join("-")`; push

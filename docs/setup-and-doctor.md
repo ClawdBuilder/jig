@@ -20,7 +20,7 @@ Jig doctor · 8 ok · 1 warning · 2 failures · 7 skipped
 
 This machine
   ✓ System — Linux, Node.js 24.15.0
-  ! Pi — 1.4.0; this Jig is tested with 1.5.0
+  ! Pi — 1.4.0; this Jig is tested with 1.5.2
   ✗ Jig — not installed in ~/.pi/agent (the default folder), so Pi does not
        load Jig's plugins.
        If your Pi runs with PI_CODING_AGENT_DIR, run jig doctor with the same

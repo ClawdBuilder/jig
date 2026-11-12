@@ -25,12 +25,12 @@ short version for a person, in the order you meet the work.
 | What | Why |
 |---|---|
 | Node 22.19 or later | Pi runs the TypeScript directly, with no build step |
-| Pi 1.5.0, installed globally | The type check reads its types, and its tests start the real Pi |
+| Pi 1.5.2, installed globally | The type check reads its types, and its tests start the real Pi |
 | The repository's dependencies | `npm ci` at the root |
 | `bwrap`, `socat`, `rg` and `python3` | Only for `jig-sandbox`'s tests, which run the real sandbox |
 
 ```bash
-npm install -g @earendil-works/pi-coding-agent@1.5.0
+npm install -g @earendil-works/pi-coding-agent@1.5.2
 npm ci
 sudo apt install bubblewrap socat ripgrep python3   # Debian, Ubuntu and WSL2
 ```

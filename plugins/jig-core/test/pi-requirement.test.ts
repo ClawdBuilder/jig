@@ -14,7 +14,7 @@ function read(file: string): string {
 
 describe("the Pi requirement", () => {
     test("is the minimum and tested version the package states", () => {
-        assert.deepEqual(piRequirement(), { minimum: "1.4.0", tested: "1.5.0" });
+        assert.deepEqual(piRequirement(), { minimum: "1.4.0", tested: "1.5.2" });
     });
 
     test("names the tested version everywhere AGENTS.md says it is named", () => {

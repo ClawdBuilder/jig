@@ -10,7 +10,7 @@ the npm its Node line provides.
 
 | Pi | Node | Checked |
 |---|---|---|
-| 1.5.0 | 22.19.0, 24, 26 | 2026-11-02 |
+| 1.5.2 | 22.19.0, 24, 26 | 2026-11-12 |
 
 - **Every push and pull request** runs the `Checks` job on all three Node lines with exactly this Pi, installed in `.github/workflows/ci.yml`.
 - **Every week** the [Pi canary](../.github/workflows/pi-canary.yml) runs `npm run check`, `npm test` and `npm run check:install` on the

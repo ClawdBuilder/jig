@@ -87,7 +87,7 @@ export function piRequirement(
 
 /** The requirement this Jig runs with; a package that does not state one is treated as the old floor. */
 export function currentPiRequirement(file?: string | URL): PiRequirement {
-    return piRequirement(file) ?? { minimum: "1.4.0", tested: "1.5.0" };
+    return piRequirement(file) ?? { minimum: "1.4.0", tested: "1.5.2" };
 }
 
 /** Where `pi install git:` should fetch Jig from, from its `repository` field: `host/path`, without a scheme or `.git`.

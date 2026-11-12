@@ -196,7 +196,7 @@ describe("checkUpdateAtStart", () => {
             pi: "1.6.0",
             fetchJson: async () => registry,
         });
-        assert.match(notes.join("\n"), /Pi 1\.6\.0 is newer than 1\.5\.0/);
+        assert.match(notes.join("\n"), /Pi 1\.6\.0 is newer than 1\.5\.2/);
         await checkUpdateAtStart(state(), (message) => notes.push(message), {
             pi: "1.6.0",
             now: new Date("2026-11-06T12:00:00.000Z").getTime(),
