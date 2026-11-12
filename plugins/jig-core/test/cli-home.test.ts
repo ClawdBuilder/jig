@@ -329,8 +329,12 @@ describe("the home", () => {
         writeFileSync(path.join(outer, "jig.json"), "{ not json");
         const doctor = await run(["doctor", "--json"], { env: { PI_CODING_AGENT_DIR: outer } });
         assert.equal(doctor.code, 0, doctor.stdout + doctor.stderr);
-        const report = JSON.parse(doctor.stdout) as { meta: { home?: string }; lines: Array<{ detail?: string }> };
-        assert.equal(report.meta.home, jig);
+        const report = JSON.parse(doctor.stdout) as {
+            lines: Array<{ id: string; title?: string; detail?: string }>;
+        };
+        const row = report.lines.find((line) => line.id === "machine.agent");
+        assert.equal(row?.title, "Jig home");
+        assert.match(row?.detail ?? "", /^~\/\.jig, from JIG_HOME$/);
         assert.equal(
             report.lines.some((line) => (line.detail ?? "").includes(outer)),
             false,
