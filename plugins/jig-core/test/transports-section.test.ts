@@ -10,6 +10,7 @@ import { buildApi } from "../src/api.ts";
 import { describeProblem } from "../src/config.ts";
 import { createState, loadPersonalConfig } from "../src/state.ts";
 import { validateTransportsSection } from "../src/transports-section.ts";
+import { isTransportRefusal } from "../src/kit/http-error.ts";
 import type { Transport } from "../src/contract.ts";
 
 const RELAY: Transport = { request: async () => ({ status: 200, headers: {}, body: "{}" }) };
@@ -111,22 +112,82 @@ describe("the relays section", () => {
         );
     });
 
-    test("a name declared in the file cannot be registered by a company plugin, in either order", () => {
-        const first = stateWith({ transports: { acme: COMPANY } });
+    test("the protected file token follows a reload, changed or removed", () => {
+        const { load, state, file } = stateWith({ transports: { acme: { ...COMPANY, token: "file:/tmp/relay-one" } } });
+        load();
+        assert.ok(state.policy().protectedPaths.some((entry) => entry.path === "/tmp/relay-one"));
+        writeFileSync(file, JSON.stringify({ transports: { acme: { ...COMPANY, token: "file:/tmp/relay-two" } } }));
+        load();
+        assert.ok(state.policy().protectedPaths.some((entry) => entry.path === "/tmp/relay-two"));
+        assert.equal(
+            state.policy().protectedPaths.some((entry) => entry.path === "/tmp/relay-one"),
+            false,
+        );
+        writeFileSync(file, JSON.stringify({ transports: { acme: { ...COMPANY, token: "env:RELAY_TOKEN" } } }));
+        load();
+        assert.equal(
+            state.policy().protectedPaths.some((entry) => entry.path === "/tmp/relay-two"),
+            false,
+        );
+    });
+
+    test("a clashing name is unusable in both orders, and the other relay keeps working", async () => {
+        const first = stateWith({
+            transports: { acme: COMPANY, other: { ...COMPANY, url: "https://other.example.com" } },
+        });
         first.load();
-        assert.throws(() => first.api.transports.register("acme", RELAY), /transport "acme" is declared in transports/);
+        first.api.transports.register("acme", RELAY);
+        let refused: unknown;
+        try {
+            await first.api.transports.request("acme", {
+                system: "jira",
+                method: "GET",
+                url: "https://jira.example.com/",
+                headers: {},
+                maxBytes: 1024,
+                timeoutMs: 1000,
+            });
+        } catch (error) {
+            refused = error;
+        }
+        assert.ok(isTransportRefusal(refused));
+        assert.match(refused.message, /transports\.acme|declared in transports/);
+        assert.ok(
+            first.state
+                .policy()
+                .problems.some(
+                    (problem) =>
+                        problem.key === "transports.acme" && describeProblem(problem).includes("one of them must go"),
+                ),
+        );
+        first.api.transports.register("other", RELAY);
+        const section = first.api.config.section("transports") as Record<string, unknown>;
+        assert.ok(section.other !== undefined, "the other relay is still declared");
 
         const second = stateWith({ transports: { acme: COMPANY } });
         second.api.transports.register("acme", RELAY);
         second.load();
-        assert.ok(
-            second.state
-                .policy()
-                .problems.some((problem) =>
-                    describeProblem(problem).includes('transport "acme" is declared in transports'),
-                ),
+        assert.equal(
+            second.api.config.section("transports") !== undefined,
+            true,
+            "one clash does not delete the section",
         );
-        assert.equal(second.api.config.section("transports"), undefined);
+        assert.ok(second.state.relayClashes.has("acme"));
+    });
+
+    test("a reload keeps a clash and leaves a second relay alone", () => {
+        const { state, api, file, load } = stateWith({ transports: { acme: COMPANY } });
+        api.transports.register("acme", RELAY);
+        load();
+        assert.ok(state.relayClashes.has("acme"));
+        writeFileSync(
+            file,
+            JSON.stringify({ transports: { acme: COMPANY, other: { ...COMPANY, url: "https://other.example.com" } } }),
+        );
+        load();
+        assert.ok(state.relayClashes.has("acme"));
+        assert.equal(state.personal.problems.filter((problem) => problem.key === "transports.acme").length, 1);
+        assert.ok(api.config.section("transports") !== undefined);
     });
 });
 
@@ -152,6 +213,9 @@ describe("the protocol fixtures", () => {
                 "refused:OUTSIDE_LIMITS",
                 "refused:INVALID_REQUEST",
                 "unknown",
+                "refused:OUTSIDE_LIMITS:redirected-read",
+                "unknown:REDIRECTED",
+                "refused:REQUEST_TOO_LARGE",
                 "unauthorized",
                 "malformed",
             ],
@@ -159,8 +223,11 @@ describe("the protocol fixtures", () => {
         for (const entry of fixtures.cases) {
             assert.equal(entry.request.protocol, 1);
             if (typeof entry.answer !== "string") {
-                assert.equal((entry.answer as { id?: string }).id, entry.request.id, entry.name);
-                assert.equal((entry.answer as { protocol?: number }).protocol, 1, entry.name);
+                const answer = entry.answer as { id?: string; protocol?: number; status?: number };
+                if (answer.status === 200) assert.equal(answer.id, entry.request.id, entry.name);
+                if (answer.id !== undefined && answer.id !== null)
+                    assert.equal(answer.id, entry.request.id, entry.name);
+                assert.equal(answer.protocol, 1, entry.name);
             }
         }
         assert.equal(fixtures.healthErrors[0]?.name, "unknown protocol");

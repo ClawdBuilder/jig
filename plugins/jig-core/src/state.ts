@@ -53,7 +53,14 @@ import { createTunnels } from "./tunnels.ts";
 import type { Tunnels } from "./tunnels.ts";
 import type { Transports } from "./transports.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
-import { TRANSPORTS_SECTION, relayNames, tokenFilePaths, validateTransportsSection } from "./transports-section.ts";
+import {
+    TRANSPORTS_SECTION,
+    relayNames,
+    relayOf,
+    tokenFilePaths,
+    validateTransportsSection,
+} from "./transports-section.ts";
+import { relayRequest } from "./relay.ts";
 import { UPDATES_SECTION, validateUpdatesSection } from "./updates-section.ts";
 import { validateToolsSection } from "./tool-exposure.ts";
 import { createWatchEngine } from "./watch/engine.ts";
@@ -172,6 +179,10 @@ export interface JigState {
     http: JigApi["http"];
     signIn: SignIn;
     transports: Transports;
+    /** Config-declared relay names that a plugin also registered: unusable, with the reason. */
+    relayClashes: Map<string, string>;
+    /** The relay transports this state registered from the section, so a reload can replace them. */
+    relayRegistered: Set<string>;
     tunnels: Tunnels;
     approvals: Approvals;
     /** The local server that shows previews in the browser. Starts on the first preview; closed when the session ends. */
@@ -289,6 +300,8 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         http: undefined as unknown as JigApi["http"],
         signIn: createSignIn({ redactor }),
         transports: createTransports(),
+        relayClashes: new Map(),
+        relayRegistered: new Set(),
         tunnels: createTunnels(),
         previews,
         approvals: createApprovals({
@@ -434,16 +447,31 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
     // The profile is chosen from the file, and the chosen company's section defaults lie under the file's sections:
     // when the choice changed, the file is read again with them.
     if (settleProfile(state)) state.personal = read();
+    state.relayClashes.clear();
+    state.transports.clearBlocked();
     const relays = state.personal.sections.get(TRANSPORTS_SECTION);
     for (const name of relayNames(relays)) {
-        if (!state.transports.has(name)) continue;
-        state.personal.problems.push({
-            source: state.personal.file,
-            key: `transports.${name}`,
-            message: `transport "${name}" is declared in ${TRANSPORTS_SECTION}, but a company plugin already registered it`,
-        });
-        state.personal.invalid.add(TRANSPORTS_SECTION);
-        state.personal.sections.delete(TRANSPORTS_SECTION);
+        if (!state.transports.hasPlugin(name)) continue;
+        const message = `transport "${name}" is declared in ${TRANSPORTS_SECTION} in jig.json, but a plugin registered the same name; one of them must go`;
+        state.relayClashes.set(name, message);
+        state.transports.block(name, message);
+        state.personal.problems.push({ source: state.personal.file, key: `transports.${name}`, message });
+    }
+    for (const name of state.relayRegistered) state.transports.unregister(name);
+    state.relayRegistered.clear();
+    for (const name of relayNames(relays)) {
+        if (state.relayClashes.has(name)) continue;
+        const config = relayOf(relays, name);
+        if (config === undefined) continue;
+        state.transports.register(
+            name,
+            {
+                request: (request, signal) =>
+                    relayRequest(name, config, request, { resolve: state.secrets.resolve }, signal),
+            },
+            "relay",
+        );
+        state.relayRegistered.add(name);
     }
     announce(state);
     state.invalidatePolicy();

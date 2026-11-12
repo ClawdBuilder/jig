@@ -8,11 +8,18 @@ import type { Transport, TransportRequest, TransportResponse } from "./contract.
 import { errorMessage } from "./errors.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from "./kit/http.ts";
 import { printable } from "./kit/text.ts";
-import { isTransportRefusal } from "./kit/http-error.ts";
+import { isTransportRefusal, TransportRefusal } from "./kit/http-error.ts";
 
+export type TransportSource = "plugin" | "relay";
 export interface Transports {
-    register(name: string, transport: Transport): void;
+    /** A plugin's transport, or a relay the section declared; the source keeps a clash from counting the relay itself. */
+    register(name: string, transport: Transport, source?: TransportSource): void;
     has(name: string): boolean;
+    hasPlugin(name: string): boolean;
+    unregister(name: string): void;
+    /** A name that is declared and also registered: a request fails before sending. */
+    block(name: string, message: string): void;
+    clearBlocked(): void;
     request(name: string, request: TransportRequest, signal?: AbortSignal): Promise<TransportResponse>;
 }
 
@@ -62,21 +69,43 @@ function withLimits(request: TransportRequest): TransportRequest {
 
 export function createTransports(): Transports {
     const transports = new Map<string, Transport>();
+    const sources = new Map<string, TransportSource>();
+    const blocked = new Map<string, string>();
 
     return {
-        register(name, transport) {
+        register(name, transport, source = "plugin") {
             if (typeof name !== "string" || name.trim() === "") throw new TypeError("a transport needs a name");
             if (typeof transport !== "object" || transport === null || typeof transport.request !== "function") {
                 throw new TypeError(`transport "${printable(name)}" must have a request function`);
             }
             transports.set(name, transport);
+            sources.set(name, source);
         },
 
         has(name) {
             return transports.has(name);
         },
 
+        hasPlugin(name) {
+            return sources.get(name) === "plugin";
+        },
+
+        unregister(name) {
+            transports.delete(name);
+            sources.delete(name);
+        },
+
+        block(name, message) {
+            blocked.set(name, message);
+        },
+
+        clearBlocked() {
+            blocked.clear();
+        },
+
         async request(name, request, signal) {
+            const clash = blocked.get(name);
+            if (clash !== undefined) throw new TransportRefusal("NAME_CLASH", clash, true);
             const transport = transports.get(name);
             if (transport === undefined) {
                 const names = [...transports.keys()].slice(0, MAX_NAMES_SHOWN).map(printable);
