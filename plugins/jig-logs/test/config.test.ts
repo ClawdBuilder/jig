@@ -234,6 +234,32 @@ test("a secret is a reference, and an error about one never repeats what was wri
 
 // ---- the environments -----------------------------------------------------------------------------------------
 
+test("timeoutSeconds is a whole number from 5 to 120, and 30 by default", () => {
+    assert.equal(settingsFrom(section())?.timeoutMs, 30_000);
+    assert.equal(settingsFrom(section({ timeoutSeconds: 5 } as never))?.timeoutMs, 5_000);
+    assert.equal(settingsFrom(section({ timeoutSeconds: 120 } as never))?.timeoutMs, 120_000);
+    for (const value of [4, 121, 5.5, "30", null]) {
+        assert.match(
+            errorsOf({ ...section(), timeoutSeconds: value })[0] ?? "",
+            /^logs\.timeoutSeconds: must be a whole number of seconds from 5 to 120/,
+        );
+    }
+});
+
+test("local is not an environment of a remote log backend", () => {
+    assert.match(
+        errorsOf(section({ environments: { local: { index: "app-*" } } }))[0] ?? "",
+        /^logs\.environments\.local: logs are a remote system/,
+    );
+    assert.match(
+        errorsOf(section({ environments: { staging: { ...staging, jigEnvironment: "local" } } }))[0] ?? "",
+        /^logs\.environments\.staging\.jigEnvironment: logs are a remote system/,
+    );
+    assert.deepEqual(errorsOf(section({ environments: { local: { index: "app-*", jigEnvironment: "staging" } } })), [
+        "logs.environments.local: logs are a remote system, so the environment cannot be local; use a defined name such as staging",
+    ]);
+});
+
 test("an environment needs an index, written as a name or pattern that can go in a request path", () => {
     const index = (value: unknown) => errorsOf(section({ environments: { staging: { index: value } } }));
     assert.deepEqual(errorsOf(section({ environments: { staging: {} } })), [

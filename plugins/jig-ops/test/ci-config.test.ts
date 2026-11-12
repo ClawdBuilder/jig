@@ -237,6 +237,10 @@ describe("a ci entry", () => {
             errors(gitlabCi({ environment: "Not Valid" }))[0] ?? "",
             /environment: must be the name of a jig-core environment/,
         );
+        assert.match(
+            errors(gitlabCi({ environment: "local" }))[0] ?? "",
+            /environment: CI is a remote system, so its environment cannot be local/,
+        );
     });
 });
 

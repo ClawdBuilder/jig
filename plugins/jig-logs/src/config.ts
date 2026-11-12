@@ -80,6 +80,8 @@ export interface LogsSettings {
     environments: ReadonlyMap<string, Target>;
     /** The longest window one call searches, from `maxWindow`. 7 days by default. */
     maxWindowMs: number;
+    /** One request's timeout, in milliseconds, from `timeoutSeconds` (5 to 120; default 30). */
+    timeoutMs: number;
 }
 
 const MAX_ENVIRONMENTS = 50;
@@ -248,6 +250,8 @@ function checkEnvironment(raw: unknown, key: string, backend: LogBackend, errors
         (typeof raw.jigEnvironment !== "string" || !NAME.test(raw.jigEnvironment))
     ) {
         errors.push(`${key}.jigEnvironment must be the name of a jig-core environment`);
+    } else if (raw.jigEnvironment === "local") {
+        errors.push(`${key}.jigEnvironment: logs are a remote system, so this cannot be local`);
     }
 }
 
@@ -265,10 +269,24 @@ function checkEnvironments(raw: unknown, backend: LogBackend | undefined, errors
             errors.push(
                 `logs.environments: ${shown(name)} is not a usable name: use letters, digits and . _ -, at most 64`,
             );
+        } else if (name === "local") {
+            errors.push(
+                `logs.environments.${name}: logs are a remote system, so the environment cannot be local; use a defined name such as staging`,
+            );
         } else if (backend !== undefined) {
             checkEnvironment(raw[name], `logs.environments.${name}`, backend, errors);
         }
     }
+}
+
+/** `timeoutSeconds` is a whole number from 5 to 120; 30 when absent. */
+function checkTimeoutSeconds(raw: unknown, errors: string[]): number {
+    if (raw === undefined) return 30;
+    if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 5 || raw > 120) {
+        errors.push("logs.timeoutSeconds: must be a whole number of seconds from 5 to 120");
+        return 30;
+    }
+    return raw;
 }
 
 /** `maxWindow` is written like the tool's `window`. The value is not repeated, as no value in this section is. */
@@ -283,13 +301,14 @@ function checkMaxWindow(raw: unknown, errors: string[]): void {
 export function validateLogsSection(raw: unknown): string[] {
     if (!isObject(raw)) return ["logs must be an object"];
     const errors: string[] = [];
-    unknownFields(raw, ["backend", "environments", "maxWindow"], "logs", errors);
+    unknownFields(raw, ["backend", "environments", "maxWindow", "timeoutSeconds"], "logs", errors);
     const backend = backendFor(raw.backend, errors);
     if (raw.backend === undefined) errors.push("logs.backend is needed: where the search backend is");
     else checkBackend(raw.backend, backend, errors);
     if (raw.environments === undefined) errors.push("logs.environments is needed: at least one environment to search");
     else checkEnvironments(raw.environments, backend, errors);
     if (raw.maxWindow !== undefined) checkMaxWindow(raw.maxWindow, errors);
+    checkTimeoutSeconds(raw.timeoutSeconds, errors);
     return errors;
 }
 
@@ -325,6 +344,7 @@ export function settingsFrom(raw: unknown): LogsSettings | undefined {
         backend: backendFrom(raw.backend as Record<string, unknown>),
         environments,
         maxWindowMs: raw.maxWindow === undefined ? MAX_RANGE_MS : (windowSpan(raw.maxWindow as string) as number),
+        timeoutMs: checkTimeoutSeconds(raw.timeoutSeconds, []) * 1000,
     };
 }
 
