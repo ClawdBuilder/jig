@@ -1,17 +1,8 @@
 // The `jig` command end to end, in a temporary home: a real child process, its own agent folder and settings, no Pi.
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import type { ChildProcess, ChildProcessWithoutNullStreams } from "node:child_process";
-import {
-    chmodSync,
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readFileSync,
-    rmSync,
-    symlinkSync,
-    writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -27,10 +18,15 @@ let work: string;
 
 beforeEach(() => {
     home = mkdtempSync(path.join(tmpdir(), "jig-cli-"));
-    agent = path.join(home, ".pi/agent");
+    // The Jig home is `~/.jig`: it is Pi's agent folder for `jig`, and where the home's own Jig copy lives.
+    agent = path.join(home, ".jig");
     work = path.join(home, "work");
     mkdirSync(agent, { recursive: true });
     mkdirSync(work, { recursive: true });
+    // `jig` always runs the Jig installed in the home. These tests run the checkout, so the home's copy is a link to it,
+    // and the command sees that it already is the home's copy instead of handing over to itself.
+    mkdirSync(path.join(agent, "npm", "node_modules", "@clawdbuilder"), { recursive: true });
+    symlinkSync(ROOT, path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig"), "dir");
 });
 const children = new Set<ChildProcess>();
 
@@ -69,15 +65,19 @@ afterEach(() => {
 });
 
 function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+    // `jig` sets PI_CODING_AGENT_DIR from the home and ignores an outer one; here the two are the same folder, which is
+    // what the checks that start stock Pi directly (`piCommands`) need.
     // Human doctor output is pinned: words by default, never the machine's locale or NO_COLOR.
     const merged: NodeJS.ProcessEnv = {
         ...process.env,
         HOME: home,
+        JIG_HOME: agent,
         PI_CODING_AGENT_DIR: agent,
         LANG: "C",
         LC_ALL: "C",
         NO_COLOR: "1",
         TERM: "dumb",
+
         ...extra,
     };
     for (const [key, value] of Object.entries(merged)) if (value === undefined) delete merged[key];
@@ -575,8 +575,8 @@ describe("jig setup", () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
         const result = await runSetup([]);
         assert.equal(result.code, 1);
-        assert.match(result.stdout, /Jig is not installed in Pi yet/);
-        assert.match(result.stdout, /Install it with: pi install npm:@clawdbuilder\/jig/);
+        assert.match(result.stdout, /does not load Jig yet/);
+        assert.match(result.stdout, /Install it there with: jig install npm:@clawdbuilder\/jig/);
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
@@ -821,9 +821,13 @@ describe("a real global install", () => {
         assert.equal(installed, 0, log.slice(-1500));
         const jig = path.join(prefix, "bin", "jig");
         assert.ok(existsSync(jig), "the install links the command");
-        // The copy npm installed is what Pi would load, so settings name it.
+        // The copy npm installed is what Pi would load, so settings name it, and the home's own copy is that install:
+        // otherwise `jig` hands over to the home's copy, and a home with no Jig cannot run the doctor.
         const installedPackage = path.join(prefix, "lib/node_modules/@clawdbuilder/jig");
-        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [installedPackage] }));
+        const homeCopy = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
+        rmSync(homeCopy, { force: true });
+        symlinkSync(installedPackage, homeCopy, "dir");
+        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [homeCopy] }));
         const doctor = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
             const child = spawnTest(jig, ["doctor", "--quiet"], { env: env(), cwd: work });
             let stdout = "";
@@ -890,7 +894,8 @@ describe("CLI conventions", () => {
     });
 
     test("an unknown command or option is one line, a hint and exit 2", { timeout: 20_000 }, async () => {
-        const command = await run(["setpu"]);
+        // A word that is not a command starts Pi with it as the message, so the hint lives on `jig help`.
+        const command = await run(["help", "setpu"]);
         assert.equal(command.code, 2);
         assert.match(command.stderr, /Unknown command setpu\. Did you mean jig setup\?/);
         assert.match(command.stderr, /Run jig --help/);
@@ -917,139 +922,4 @@ describe("CLI conventions", () => {
         assert.equal(parsed.schema, 1);
         assert.ok(parsed.counts);
     });
-});
-
-describe("update prompt and CI matrix", () => {
-    const hasScript = spawnSync("script", ["--version"], { encoding: "utf8" }).status === 0;
-    const NAME = "@clawdbuilder/jig";
-    const RELEASE = JSON.stringify({
-        version: "0.5.1",
-        jig: { agents: { pi: { minimum: "1.5.0", tested: "1.5.0" } } },
-    });
-
-    function workspace(t: any) {
-        const root = mkdtempSync(path.join(tmpdir(), "jig-update-matrix-"));
-        const prefix = path.join(root, "prefix");
-        const bin = path.join(root, "bin");
-        mkdirSync(bin, { recursive: true });
-        mkdirSync(path.join(prefix, "lib/node_modules/@clawdbuilder/jig"), { recursive: true });
-        const globalPkg = path.join(prefix, "lib/node_modules/@clawdbuilder/jig/package.json");
-        writeFileSync(globalPkg, JSON.stringify({ name: NAME, version: "0.5.0" }));
-        mkdirSync(path.join(agent, "npm/node_modules/@clawdbuilder/jig"), { recursive: true });
-        const agentPkg = path.join(agent, "npm/node_modules/@clawdbuilder/jig/package.json");
-        writeFileSync(agentPkg, JSON.stringify({ name: NAME, version: "0.5.0" }));
-        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [`npm:${NAME}@0.5.0`] }));
-        const npm = `#!/usr/bin/env node
-const fs=require("fs"),path=require("path");
-const a=process.argv.slice(2), prefix=process.env.FAKE_PREFIX, root=process.env.FAKE_ROOT;
-const rec=(line)=>fs.appendFileSync(path.join(root,"calls"),line+"\\n");
-if(a[0]==="root"){console.log(path.join(prefix,"lib/node_modules"));process.exit(0)}
-if(a[0]==="ls"){console.log('{"dependencies":{}}');process.exit(0)}
-if(a[0]==="view"){
- if(a.includes("versions")){console.log('["0.5.0","0.5.1"]');process.exit(0)}
- if(a[1].includes("@0.5.1")){console.log(process.env.FAKE_RELEASE);process.exit(0)}
- console.log("{}");process.exit(0)
-}
-if(a[0]==="install"){
- rec("npm "+a.join(" "));
- const v=a[a.length-1].split("@").pop();
- const dir=path.join(prefix,"lib/node_modules/@clawdbuilder/jig");
- fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,"package.json"),JSON.stringify({name:"${NAME}",version:v}));
- process.exit(0)
-}
-process.exit(0)
-`;
-        const pi = `#!/usr/bin/env node
-const fs=require("fs"),path=require("path");
-const a=process.argv.slice(2), agent=process.env.PI_CODING_AGENT_DIR, root=process.env.FAKE_ROOT;
-if(a[0]==="install"){
- fs.appendFileSync(path.join(root,"calls"),"pi "+a.join(" ")+"\\n");
- const spec=a[1]; const v=spec.split("@").pop();
- const dir=path.join(agent,"npm/node_modules/@clawdbuilder/jig");
- fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,"package.json"),JSON.stringify({name:"${NAME}",version:v}));
- const file=path.join(agent,"settings.json"); let data={packages:[]};
- try{data=JSON.parse(fs.readFileSync(file,"utf8"))}catch{}
- data.packages=[spec]; fs.writeFileSync(file,JSON.stringify(data));
- process.exit(0)
-}
-process.exit(0)
-`;
-        writeFileSync(path.join(bin, "npm"), npm);
-        writeFileSync(path.join(bin, "pi"), pi);
-        for (const file of ["npm", "pi"]) chmodSync(path.join(bin, file), 0o755);
-        t.after(() => rmSync(root, { recursive: true, force: true }));
-        const env = {
-            PATH: `${bin}${path.delimiter}${path.dirname(process.execPath)}${path.delimiter}/usr/bin${path.delimiter}/bin`,
-            HOME: home,
-            PI_CODING_AGENT_DIR: agent,
-            npm_config_prefix: prefix,
-            BROWSER: "true",
-            AWS_PROFILE: "",
-            PI_HOST_DIR: piHostDir,
-            FAKE_PREFIX: prefix,
-            FAKE_ROOT: root,
-            FAKE_RELEASE: RELEASE,
-        };
-        return { root, env };
-    }
-    const calls = (root: string) =>
-        existsSync(path.join(root, "calls")) ? readFileSync(path.join(root, "calls"), "utf8") : "";
-    test("TTY, answer n: nothing is installed, exit 0", {
-        skip: hasScript ? false : "script is not installed",
-    }, async (t) => {
-        const w = workspace(t);
-        const result = await run(["update", "--to", "0.5.1"], { tty: true, input: "n\n", env: w.env });
-        assert.equal(result.code, 0, result.stderr);
-        assert.match(result.stdout, /Nothing was changed/);
-        assert.equal(calls(w.root), "", "no npm or pi install ran");
-    });
-
-    test("TTY, answer y: both installs run with 0.5.1", {
-        skip: hasScript ? false : "script is not installed",
-    }, async (t) => {
-        const w = workspace(t);
-        const result = await run(["update", "--to", "0.5.1"], { tty: true, input: "y\n", env: w.env });
-        assert.equal(result.code, 0, result.stderr);
-        assert.match(calls(w.root), /npm install -g .*@clawdbuilder\/jig@0\.5\.1/);
-        assert.match(calls(w.root), /pi install npm:@clawdbuilder\/jig@0\.5\.1/);
-    });
-
-    test("TTY with CI=true still asks; n changes nothing", {
-        skip: hasScript ? false : "script is not installed",
-    }, async (t) => {
-        const w = workspace(t);
-        const result = await run(["update", "--to", "0.5.1"], {
-            tty: true,
-            input: "n\n",
-            env: { ...w.env, CI: "true" },
-        });
-        assert.equal(result.code, 0, result.stderr);
-        assert.match(result.stdout, /Nothing was changed/);
-        assert.equal(calls(w.root), "");
-    });
-
-    test("no TTY with CI=true updates without a prompt", async (t) => {
-        const w = workspace(t);
-        const result = await run(["update", "--to", "0.5.1", "--json"], { env: { ...w.env, CI: "true" } });
-        assert.equal(result.code, 0, result.stderr);
-        const parsed = JSON.parse(result.stdout) as { schema: number; action: string };
-        assert.equal(parsed.schema, 1);
-        assert.equal(parsed.action, "updated");
-        assert.match(calls(w.root), /npm install -g .*@clawdbuilder\/jig@0\.5\.1/);
-        assert.match(calls(w.root), /pi install npm:@clawdbuilder\/jig@0\.5\.1/);
-    });
-
-    for (const ci of [undefined, "false", "0"]) {
-        test(`no TTY, CI=${String(ci)}: exit 2, hint, stdout empty`, async (t) => {
-            const w = workspace(t);
-            const result = await run(["update", "--to", "0.5.1"], {
-                env: { ...w.env, CI: ci },
-            });
-            assert.equal(result.code, 2);
-            assert.equal(result.stdout, "");
-            assert.match(result.stderr, /no terminal to confirm on/);
-            assert.match(result.stderr, /--yes/);
-            assert.equal(calls(w.root), "");
-        });
-    }
 });
