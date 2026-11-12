@@ -439,6 +439,37 @@ test("transport: a refusal says the backend was not changed", async (t) => {
 
 });
 
+test("a relay unknown is transient and lets the bucket be halved", async (t) => {
+    const w = await world(t, { backend: "transport", docs: docs(3) });
+    const original = w.transport;
+    assert.ok(original !== undefined);
+    let first = true;
+    w.jig.transports.set("corp", {
+        request: async (request, signal) => {
+            if (first) {
+                first = false;
+                throw new TransportRefusal("TIMEOUT", "the relay did not answer in time", false, "req-1");
+            }
+            return original.request(request, signal);
+        },
+    });
+    const result = await w.call({ ...call, window: "3d" });
+    assert.equal(result.error, undefined);
+    assert.ok(w.requests.length > 1, "the failed bucket was split and searched again");
+});
+
+test("a relay refusal is one clear failure, not a halving", async (t) => {
+    const w = await world(t, { backend: "transport", docs: docs(3) });
+    w.jig.transports.set("corp", {
+        request: async () => {
+            throw new TransportRefusal("OUTSIDE_LIMITS", "this index is outside the relay's limits", true, "req-2");
+        },
+    });
+    const result = await w.call({ ...call, window: "3d" });
+    assert.match(result.error?.message ?? "", /the log backend was not changed: .*OUTSIDE_LIMITS/);
+    assert.equal(w.jig.sent.length, 1, "one refusal, no halving");
+});
+
 test("transport: one that ignores its signal still cannot hold the call past the request timeout", async (t) => {
     const w = await world(t, {
         backend: "transport",
