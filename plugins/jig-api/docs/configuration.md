@@ -1,6 +1,6 @@
 # Configuration: every field of the `api` section
 
-The fields of `api` in `~/.pi/agent/jig.json`, with an example of each source. The
+The fields of `api` in `~/.jig/jig.json`, with an example of each source. The
 short table is in the [jig-api overview](../README.md#configure). Back to the
 overview.
 

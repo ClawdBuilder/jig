@@ -65,7 +65,7 @@ Parameters and results: [Results](docs/results.md).
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `mongo`. [Configuration](docs/configuration.md) has every field.
+In `~/.jig/jig.json`, under `mongo`. [Configuration](docs/configuration.md) has every field.
 ## Company part (in the company plugin)
 
 - its connections and routes, such as a tunnel through its own jump hosts. Your `mongo` section is laid

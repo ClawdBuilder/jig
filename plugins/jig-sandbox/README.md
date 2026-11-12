@@ -40,7 +40,7 @@ The broker (`broker/broker.mjs`) is the only place the runtime runs; it is a pla
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `sandbox`. [Configuration](docs/configuration.md) has every field.
+In `~/.jig/jig.json`, under `sandbox`. [Configuration](docs/configuration.md) has every field.
 ## Install
 
 Linux and WSL2: `sudo apt install bubblewrap socat ripgrep`, and `python3` (usually there

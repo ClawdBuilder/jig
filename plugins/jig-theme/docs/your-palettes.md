@@ -5,7 +5,7 @@ alone. Back to the [jig-theme overview](../README.md).
 
 ## A palette in jig.json
 
-In `~/.pi/agent/jig.json`, under `theme.palettes`. The key is the palette's name:
+In `~/.jig/jig.json`, under `theme.palettes`. The key is the palette's name:
 
 ```json
 {
@@ -74,7 +74,7 @@ At the start of a session in a terminal, and on `/theme reload`. Not in print or
 runs, and not in a child that another session started, so a child never writes the
 parent's files a second time.
 
-The file is `<agentDir>/themes/<name>.json`, where `<agentDir>` is `~/.pi/agent`, or
+The file is `<agentDir>/themes/<name>.json`, where `<agentDir>` is `~/.jig`, or
 what `PI_CODING_AGENT_DIR` names. It is written beside itself under a temporary name
 and moved into place, so Pi, which watches the folder, never reads half a theme. After
 writing, `jig-theme` asks Pi to load each palette, and names one that Pi cannot.

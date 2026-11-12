@@ -279,7 +279,7 @@ validator, and `plugins/jig-core/test/setup-onboarding.test.ts` shows the plan t
 
 ## How your `jig.json` layers over the defaults
 
-The user's own `~/.pi/agent/jig.json` is laid over the company's defaults before the plugin checks the result.
+The user's own `~/.jig/jig.json` is laid over the company's defaults before the plugin checks the result.
 
 | Your value | What happens |
 |---|---|

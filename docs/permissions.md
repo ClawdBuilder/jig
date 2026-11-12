@@ -164,7 +164,7 @@ paths.
 
 ## Configuration file
 
-Personal settings live in `~/.pi/agent/jig.json`. A company plugin adds its
+Personal settings live in `~/.jig/jig.json`. A company plugin adds its
 environments and classification rules at start-up, and the field names its data
 uses for personal data.
 

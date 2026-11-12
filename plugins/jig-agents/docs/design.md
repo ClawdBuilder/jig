@@ -299,7 +299,7 @@ An agent file is front matter and a prompt. Its fields, who may change each, and
 - **`ask` cannot name an action that `actions` does not allow,** and `preload` cannot name a skill that
   `skills` leaves out: each would never be reached.
 - **Where files are read,** lowest first: the plugin's `agents/`, `agents.folders`, then
-  `~/.pi/agent/agents/`. A file with an earlier name replaces it. Project folders are
+  `~/.jig/agents/`. A file with an earlier name replaces it. Project folders are
   never read. The tool's description lists the roles, and is registered again at session
   start when a company's or the user's files change the list.
 - **When the agent delegates** is one rule in the tool description and in the skill: if an

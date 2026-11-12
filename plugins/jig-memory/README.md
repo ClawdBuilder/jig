@@ -91,7 +91,7 @@ Two sessions on the same ticket may each receive the one close offer; each sessi
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `memory`. `jig-core` checks it with this
+In `~/.jig/jig.json`, under `memory`. `jig-core` checks it with this
 plugin's rules. An error names the key, and the plugin then uses its defaults.
 
 | Field | Default | Meaning |

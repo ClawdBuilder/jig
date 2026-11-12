@@ -40,23 +40,32 @@ Jig needs Pi 1.4 or later and Node.js 22.19 or later. [Compatibility](docs/compa
 versions and the names Jig keeps stable.
 
 ```bash
-pi install npm:@clawdbuilder/jig
-npm install -g @clawdbuilder/jig
+npx @clawdbuilder/jig setup
+jig
 ```
 
-The first command adds Jig's plugins to Pi. The second installs the `jig` command for terminal commands such as
-`jig setup` and `jig doctor`. Neither command starts a session.
+`jig` is Pi for Jig's own folder, the **home**: `~/.jig`, or `JIG_HOME` when you set it. The home has its own
+settings, sessions, packages and `jig.json`, so Jig never changes your own `pi`. `setup` makes the home, installs Jig
+in it with Pi, and puts the `jig` command in `~/.local/bin`.
 
-Start Pi and run `/jig`, or run `jig setup` in a terminal; [Setup and doctor](docs/setup-and-doctor.md) covers both.
+- **Your own Pi stays yours.** `pi` starts your Pi; `jig` starts Pi with the home. A Pi package goes into Jig with
+  `jig install npm:…`, into your Pi with `pi install npm:…`, or into both. `jig install -l` writes the project's
+  `.pi/settings.json`, which both read.
+- **One Jig.** `jig` always runs the Jig installed in the home, so the command and its plugins are one version.
+- **Updating.** `jig update` moves the packages in the home, Jig included. It never updates the Pi binary, because
+  your `pi` shares it: `pi update --self` does that.
+- **Uninstalling** is deleting the home and the `jig` command.
+
+Start Jig and run `/jig`, or run `jig doctor` in a terminal; [Setup and doctor](docs/setup-and-doctor.md) covers both.
 
 The launcher is optional; [The launcher](docs/launcher.md) covers it. Jig works without it.
 
 ### First session
 
-Start Pi in the folder you work in:
+Start Jig in the folder you work in:
 
 ```bash
-pi
+jig
 ```
 
 Then `/jig` shows the rules and setup state, `/jig doctor` names any missing piece, and `/lens` shows cost and
