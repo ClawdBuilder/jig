@@ -264,6 +264,25 @@ export function otherAgentFolders(input: {
     return out;
 }
 
+/** The other Pi folders: their logins, their settings, and the code those settings load at the next start. */
+function otherAgentPaths(input: DefaultsInput): ProtectedPath[] {
+    const pathApi = flavour(input.platform);
+    const make = (absolute: string, kind: ProtectedKind) => entry(absolute, kind, "default", input.home, pathApi);
+    const out: ProtectedPath[] = [];
+    const found = otherAgentFolders({
+        agentDir: input.agentDir,
+        home: input.home,
+        ...(input.env === undefined ? {} : { env: input.env }),
+        ...(input.platform === undefined ? {} : { platform: input.platform }),
+    });
+    for (const folder of found) {
+        for (const name of AGENT_SECRETS) out.push(make(pathApi.join(folder, name), "secret"));
+        out.push(make(pathApi.join(folder, "settings.json"), "guarded"));
+        for (const code of input.codePaths?.(folder) ?? []) out.push(code);
+    }
+    return out;
+}
+
 /** What is protected without any configuration. */
 export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     const pathApi = flavour(input.platform);
@@ -275,16 +294,7 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
         for (const name of AGENT_SECRETS) out.push(make(pathApi.join(agentDir, name), "secret"));
     }
     // The other Pi folders: their logins, their settings, and the code those settings load at the next start.
-    for (const folder of otherAgentFolders({
-        agentDir,
-        home,
-        ...(input.env === undefined ? {} : { env: input.env }),
-        ...(input.platform === undefined ? {} : { platform: input.platform }),
-    })) {
-        for (const name of AGENT_SECRETS) out.push(make(pathApi.join(folder, name), "secret"));
-        out.push(make(pathApi.join(folder, "settings.json"), "guarded"));
-        for (const found of input.codePaths?.(folder) ?? []) out.push(found);
-    }
+    out.push(...otherAgentPaths(input));
     if (home !== "") for (const name of HOME_SECRETS) out.push(make(pathApi.join(home, ...name.split("/")), "secret"));
     for (const file of input.secretFiles ?? []) out.push(make(file, "secret"));
 
