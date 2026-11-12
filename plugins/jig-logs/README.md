@@ -94,6 +94,7 @@ not configured instead of running half set up.
 | `environments` | Required, at least one. Each says where its logs are: an `index` or a `selector`, and may add a `filter` |
 | `maxWindow` | The longest window one call searches, `1h` to `90d`, written like `window`. Default `7d` |
 | `consoleProxy` | Optional. A Dashboards/Kibana console proxy path |
+| `timeoutSeconds` | One request's timeout, a whole number from 5 to 120 seconds. Default `30` |
 
 `consoleProxy` is a path on the backend's origin: `/_dashboards/api/console/proxy` for OpenSearch Dashboards, or
 `/api/console/proxy` for Kibana. A password, key or token in `auth` is a secret reference such as

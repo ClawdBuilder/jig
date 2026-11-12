@@ -8,6 +8,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - `jig setup <section>` asks about one section even when it is already valid, and plugins declare their sign-in methods so setup can offer them.
 - A relay transport can be set up under `transports` in `jig.json`, so Jira and logs can use a session relay without company plugin code.
+- `jira.timeoutSeconds`, `jira.searchTimeoutSeconds` and `logs.timeoutSeconds` set request timeouts from 5 to 120 seconds.
 - A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
 - `logs.backend.consoleProxy` reaches Elasticsearch or OpenSearch logs through an OpenSearch Dashboards or Kibana console proxy.
 
@@ -22,6 +23,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - A `jig-ops` write through a transport that fails is treated as a lost reply: it is read back once and never sent again.
 - A log search through a relay that loses a reply is retried in smaller windows again.
+- Jira, logs and CI configuration cannot label a remote system as `local`, so a Jira write cannot skip its prompt that way.
 
 ## [0.5.4] - 2026-11-09
 

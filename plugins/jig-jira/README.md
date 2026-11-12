@@ -93,6 +93,9 @@ tool then does nothing until the file is fixed (`/jig` lists the problems).
 | `auth` | required | How requests are signed in: five forms |
 | `projects` | none | Project keys for `search` without JQL, `create` and links |
 | `updateFields` | five common fields | The fields `update` may set |
+| `environment` | `external` | The rules environment for this Jira. It cannot be `local` |
+| `timeoutSeconds` | `30` | A normal request's timeout, a whole number from 5 to 120 seconds |
+| `searchTimeoutSeconds` | `60` | A search's timeout, a whole number from 5 to 120 seconds |
 
 A screen field whose schema says `array` takes one value as a one-item list; the preview says when it wrapped one.
 

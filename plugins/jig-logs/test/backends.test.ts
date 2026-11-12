@@ -405,6 +405,20 @@ test("consoleProxy sends the original search inside the proxy path", async (t) =
     assert.equal(sent.headers?.["kbn-xsrf"], undefined);
 });
 
+test("logs.timeoutSeconds reaches a transport", async (t) => {
+    const w = await world(t, {
+        backend: "transport",
+        docs: docs(1),
+        section: {
+            backend: { transport: "corp", url: "https://logs.test:9200" },
+            environments: { staging: { index: "app-*" } },
+            timeoutSeconds: 5,
+        },
+    });
+    await w.call({ ...call, window: "30m" });
+    assert.equal(w.jig.sent[0]?.timeoutMs, 5_000);
+});
+
 test("transport: a name nobody registered is an error from jig-core, and nothing is sent", async (t) => {
     const w = await world(t, {
         backend: "transport",

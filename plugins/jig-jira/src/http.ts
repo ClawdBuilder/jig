@@ -118,7 +118,10 @@ const HINTS: Readonly<Record<number, string>> = {
 };
 
 export function createHttp(settings: JiraSettings, options: HttpOptions = {}): Http {
-    const timeouts = options.timeouts ?? TIMEOUTS;
+    const timeouts = options.timeouts ?? {
+        normal: (settings.timeoutSeconds ?? 30) * 1_000,
+        search: (settings.searchTimeoutSeconds ?? 60) * 1_000,
+    };
     const oauth = settings.auth.kind === "oauth" ? settings.auth : undefined;
     const base =
         oauth?.cloudId === undefined

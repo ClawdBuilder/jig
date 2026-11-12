@@ -34,8 +34,12 @@ export interface JiraSettings {
     createDefaults: Readonly<Record<string, unknown>>;
     /** Folder or host names that must not appear in text sent to Jira. They are flagged in the preview. */
     privateNames: readonly string[];
-    /** The environment name that jig-core's rules know this Jira by. */
+    /** The environment name that jig-core's rules know this Jira by. Never `local`. */
     environment: string;
+    /** A normal request's timeout, in seconds (5 to 120). Default 30. */
+    timeoutSeconds: number;
+    /** A search's timeout, in seconds (5 to 120). Default 60. */
+    searchTimeoutSeconds: number;
     /** Who "me" is when the site does not answer `GET /myself`, for `search`'s `commented` filter and for the check that
      *  a comment being edited or deleted is yours: an account id (Jira Cloud), or a user name or key (Data Center).
      *  Undefined when not set. */
@@ -64,6 +68,8 @@ const SECTION_FIELDS: ReadonlySet<string> = new Set([
     "createDefaults",
     "privateNames",
     "environment",
+    "timeoutSeconds",
+    "searchTimeoutSeconds",
     "me",
     "othersComments",
     "commentSearch",
@@ -305,6 +311,16 @@ function checkCommentSearch(value: unknown, errors: string[]): CommentSearch {
     return mode ?? DEFAULT_COMMENT_SEARCH;
 }
 
+/** A timeout in seconds: a whole number from 5 to 120; the default when absent. */
+function checkSeconds(value: unknown, key: string, fallback: number, errors: string[]): number {
+    if (value === undefined) return fallback;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 5 || value > 120) {
+        errors.push(`${key}: must be a whole number of seconds from 5 to 120`);
+        return fallback;
+    }
+    return value;
+}
+
 /**
  * Checks a raw `jira` section and reads it. `errors` name their key; with any error there are no settings. A misspelt
  * field is an error and not a silent default: `updateField` would otherwise leave `update` on its default list.
@@ -332,7 +348,13 @@ export function readJira(raw: unknown): { settings?: JiraSettings; errors: strin
     const environment = raw.environment ?? DEFAULT_ENVIRONMENT;
     if (typeof environment !== "string" || !ENVIRONMENT_NAME.test(environment)) {
         errors.push("jira.environment: must be an environment name, such as external");
+    } else if (environment === "local") {
+        errors.push(
+            "jira.environment: Jira is a remote system, so its environment cannot be local; use external or a name defined in jig.json",
+        );
     }
+    const timeoutSeconds = checkSeconds(raw.timeoutSeconds, "jira.timeoutSeconds", 30, errors);
+    const searchTimeoutSeconds = checkSeconds(raw.searchTimeoutSeconds, "jira.searchTimeoutSeconds", 60, errors);
     const me = checkMe(raw.me, errors);
     const othersComments = raw.othersComments === undefined ? false : raw.othersComments;
     if (typeof othersComments !== "boolean") errors.push("jira.othersComments: must be true or false");
@@ -350,6 +372,8 @@ export function readJira(raw: unknown): { settings?: JiraSettings; errors: strin
             createDefaults,
             privateNames: privateNames ?? [],
             environment: String(environment),
+            timeoutSeconds,
+            searchTimeoutSeconds,
             me,
             othersComments: othersComments === true,
             commentSearch,

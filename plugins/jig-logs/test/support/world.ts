@@ -89,7 +89,10 @@ export async function world(t: TestContext, options: WorldOptions = {}): Promise
     }
 
     // What the plugin's factory does with jig-core, with the parts a test replaces.
-    const tool = createLogsTool({ now: () => NOW, timeoutMs: options.timeoutMs ?? 20_000 });
+    const tool = createLogsTool({
+        now: () => NOW,
+        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    });
     jig.api.declareTool(tool.declaration);
     jig.api.config.registerSection("logs", validateLogsSection);
     jig.setSection("logs", options.section ?? logsSection(options));

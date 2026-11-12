@@ -50,7 +50,7 @@ export function createLogsTool(deps: LogsDeps = {}): JigTool {
 
             const send = sender(settings.backend, backendOf(target).wire(target, settings.backend), {
                 signal,
-                timeoutMs: deps.timeoutMs,
+                timeoutMs: deps.timeoutMs ?? settings.timeoutMs,
             });
             const progress = (text: string) => onUpdate?.({ content: [{ type: "text", text }], details: undefined });
             let outcome: Awaited<ReturnType<typeof runSearch>>;

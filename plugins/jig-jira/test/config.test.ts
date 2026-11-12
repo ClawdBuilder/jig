@@ -67,6 +67,8 @@ describe("a valid section", () => {
         assert.deepEqual(found.createDefaults, {});
         assert.deepEqual(found.privateNames, []);
         assert.equal(found.environment, DEFAULT_ENVIRONMENT);
+        assert.equal(found.timeoutSeconds, 30);
+        assert.equal(found.searchTimeoutSeconds, 60);
         assert.equal(DEFAULT_ENVIRONMENT, "external");
         assert.equal(found.me, undefined);
         assert.equal(found.othersComments, false, "only your own comments are edited or deleted");
@@ -82,6 +84,8 @@ describe("a valid section", () => {
             createDefaults: { Priority: "Medium", " Components ": ["Web"], "Story Points": 1 },
             privateNames: [" payroll ", "corp.example.net"],
             environment: "staging",
+            timeoutSeconds: 5,
+            searchTimeoutSeconds: 120,
             me: " 5b10a2844c20165700ede21g ",
             othersComments: true,
             commentSearch: "read",
@@ -94,6 +98,8 @@ describe("a valid section", () => {
         assert.deepEqual(found.fields, { "Story Points": "customfield_10016", Epic: "customfield_10014" });
         assert.deepEqual(found.privateNames, ["payroll", "corp.example.net"]);
         assert.equal(found.environment, "staging");
+        assert.equal(found.timeoutSeconds, 5);
+        assert.equal(found.searchTimeoutSeconds, 120);
     });
 
     test("the address is kept without a trailing slash, and may have a path", () => {
@@ -402,14 +408,32 @@ describe("the other fields", () => {
     });
 
     test("environment is a name", () => {
-        for (const environment of ["staging", "qa-2", "ext_1"])
+        for (const environment of ["staging", "qa-2", "ext_1", "external"])
             assert.deepEqual(validateJira({ ...cloud, environment }), [], environment);
+        assert.match(
+            validateJira({ ...cloud, environment: "local" })[0] ?? "",
+            /^jira\.environment: .*cannot be local/,
+        );
         for (const environment of ["", "two words", "1abc", 5, "x".repeat(41)]) {
             assert.match(
                 validateJira({ ...cloud, environment })[0] ?? "",
                 /^jira\.environment: must be an environment name/,
                 String(environment),
             );
+        }
+    });
+
+    test("the request timeouts are whole seconds from 5 to 120", () => {
+        for (const key of ["timeoutSeconds", "searchTimeoutSeconds"]) {
+            for (const value of [5, 120])
+                assert.deepEqual(validateJira({ ...cloud, [key]: value }), [], `${key} ${value}`);
+            for (const value of [4, 121, 5.5, "30", null]) {
+                assert.match(
+                    validateJira({ ...cloud, [key]: value })[0] ?? "",
+                    new RegExp(`^jira\\.${key}: must be a whole number of seconds from 5 to 120`),
+                    `${key} ${String(value)}`,
+                );
+            }
         }
     });
 

@@ -317,9 +317,13 @@ export function checkCi(raw: unknown, at: string, repo: string | undefined, erro
     }
     let environment: string | undefined;
     if (raw.environment !== undefined) {
-        if (typeof raw.environment === "string" && ENVIRONMENT_NAME.test(raw.environment))
-            environment = raw.environment;
-        else errors.push(`${at}.environment: must be the name of a jig-core environment, such as staging`);
+        if (typeof raw.environment === "string" && ENVIRONMENT_NAME.test(raw.environment)) {
+            if (raw.environment === "local")
+                errors.push(
+                    `${at}.environment: CI is a remote system, so its environment cannot be local; use external or a name defined in jig.json`,
+                );
+            else environment = raw.environment;
+        } else errors.push(`${at}.environment: must be the name of a jig-core environment, such as staging`);
     }
     const more = environment === undefined ? {} : { environment };
 
