@@ -199,7 +199,7 @@ describe("/jig doctor checks", () => {
         const report = await runDoctor(context(), options({ piVersion: () => "1.6.0" }));
         const line = report.lines.find((entry) => entry.id === "machine.pi");
         assert.equal(line?.level, "warn");
-        assert.match(line?.detail ?? "", /newer than 1\.5\.0/);
+        assert.match(line?.detail ?? "", /newer than 1\.5\.2/);
         assert.equal(line?.fix, undefined);
     });
 
