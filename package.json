@@ -1,6 +1,6 @@
 {
     "name": "@clawdbuilder/jig",
-    "version": "0.5.4",
+    "version": "0.5.5",
     "description": "One tool manager and a set of plugins for the Pi coding agent: permissions per tool and environment, approvals, secrets and records.",
     "repository": "git+https://github.com/ClawdBuilder/jig.git",
     "type": "module",

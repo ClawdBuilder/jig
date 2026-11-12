@@ -63,9 +63,8 @@ What each one shows in full is in the
 
 ## Configure
 
-`jig.json` in Pi's agent folder: `~/.pi/agent/jig.json`, unless
-`PI_CODING_AGENT_DIR` points elsewhere. A separate Pi profile has its own file.
-All fields are optional.
+`jig.json` in the Jig home: `~/.jig/jig.json`, unless `JIG_HOME` names another folder. With `jig`, the home is
+Pi's agent folder; Jig installed into another Pi folder keeps its `jig.json` there. All fields are optional.
 
 | Field | Default | Meaning |
 |---|---|---|

@@ -67,7 +67,7 @@ In this order; a later file with the same `name` replaces an earlier one, and `/
 each one came from.
 
 1. The folders in `workflow.folders`: a company plugin's first, then yours from `jig.json`.
-2. `workflows/` in Pi's agent folder (`~/.pi/agent/workflows/`).
+2. `workflows/` in Pi's agent folder (`~/.jig/workflows/`).
 3. `.pi/workflows/` in Pi's working folder, only when Pi trusts the project
    (`ctx.isProjectTrusted()`).
 

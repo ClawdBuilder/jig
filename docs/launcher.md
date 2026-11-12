@@ -1,8 +1,9 @@
 # The launcher
 
 The optional launcher starts Pi in its own tmux session. It is a bash script, not a plugin, so Pi never loads it.
-[Jig's README](../README.md) covers install and the first hour; this page keeps the launcher's flags, variables and
-behaviour in one place.
+`jig` starts Pi through it, with the [Jig home](glossary.md) as `PI_CODING_AGENT_DIR`; `pi` starts it for your
+own Pi. [Jig's README](../README.md) covers install and the first hour; this page keeps the launcher's flags,
+variables and behaviour in one place.
 
 
 The launcher is optional: [`bin/pi`](../bin/pi) starts Pi inside its own tmux, so closing the terminal window only detaches it, and the
@@ -35,8 +36,9 @@ The launcher removes these flags before Pi sees the arguments. What it reads bes
 | `HC_TERMINAL_ID` | Set by herdr in its terminals. There the launcher skips tmux, because herdr keeps the terminal alive |
 | `JIG_TMUX` | `1` uses tmux in a herdr terminal too |
 | `WSL_INTEROP` | On WSL, set to the distro's own socket when it is missing (a shell started over SSH, such as a herdr terminal) or when the one in use does not answer |
+| `JIG_COMMAND` | The command to name in the reattach hints. `jig` sets it to `jig`; without it the hints say `pi` |
 
-The launcher exports one variable, `JIG_HOME`, the folder `bin/` is in, which `bin/tmux.conf` reads. When no Pi is found it exits 127.
+The launcher exports one variable, `JIG_PACKAGE_DIR`, the folder `bin/` is in, which `bin/tmux.conf` reads. When no Pi is found it exits 127.
 
 A run that is not interactive (no terminal, a print or help flag, or a subcommand such as `install`, `list` or `config`) starts Pi
 directly. Otherwise:
@@ -47,7 +49,7 @@ directly. Otherwise:
   `pbcopy`. When none works, tmux shows "Not copied" and why, instead of looking copied.
 - **tmux.** It starts its own server (`tmux -L jig -f bin/tmux.conf`), so your own tmux is never changed. The session is named
   `pi-<folder>-<pid>` and runs the launcher again inside. When tmux returns and the session is still there, it says how to come back.
-- **Reattach.** Before it starts a session, `pi` and `pi -c` look for detached sessions started in this folder. One is reattached with
+- **Reattach.** Before it starts a session, `pi` and `pi -c` (or `jig` and `jig -c`) look for detached sessions started in this folder. One is reattached with
   a one-line notice; several give a numbered menu, and Enter or `n` starts a new one.
 - **The environment.** Pi inside tmux sees this terminal's environment, as if started here. Every exported variable is passed on except
   those that describe the terminal or the shell (`TERM`, `TMUX`, `TERM_PROGRAM`, `SHLVL`, `PWD` and a few more; the list is in `bin/pi`).

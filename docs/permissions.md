@@ -118,6 +118,12 @@ paths.
     rest of the state folder stays readable: a spill file is the rest of a result the model was given.
   - *Guarded* (readable, not writable): the whole agent folder (`~/.pi/agent`,
     or where `PI_CODING_AGENT_DIR` points).
+  - *Secret and guarded*, every other Pi folder on the machine: each folder directly under `~/.pi` that holds a
+    `settings.json` or an `auth.json`, and the outer `PI_CODING_AGENT_DIR` that `jig` replaced (`JIG_OUTER_PI_DIR`).
+    Their `auth.json` and `mcp-auth.json` are secret; their `settings.json` and the code those settings load are
+    guarded. A `jig` session runs in `~/.jig`, but a plain path still reaches the person's own Pi folders. The whole
+    `~/.pi` folder is guarded too, so a folder made there before the person's own Pi first starts cannot be given
+    settings that load code.
   - *Guarded or asked*, everything else that runs later outside the sandbox: the shell and session files (`~/.bashrc`,
     `~/.profile`, `~/.zshrc`, fish, systemd user units, autostart, tmux), `~/.gitconfig` and `~/.config/git`, agent
     settings, build start-up files (`~/.gradle/init.gradle`, `~/.m2/extensions.xml`, Cargo and pip config), `~/.local/bin`
@@ -164,7 +170,7 @@ paths.
 
 ## Configuration file
 
-Personal settings live in `~/.pi/agent/jig.json`. A company plugin adds its
+Personal settings live in `~/.jig/jig.json`. A company plugin adds its
 environments and classification rules at start-up, and the field names its data
 uses for personal data.
 

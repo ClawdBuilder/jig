@@ -54,7 +54,7 @@ before `jig-core` or after it.
 ## Profiles
 
 `jig-acme` registers as `jig-acme`. With nothing else configured it is the only company, so it is active everywhere. A person who also
-works for another company names when Acme applies, in `~/.pi/agent/jig.json`:
+works for another company names when Acme applies, in `~/.jig/jig.json`:
 
 ```json
 {
@@ -70,7 +70,7 @@ skill whichever company it works for. The tests for this are in [`test/profiles.
 
 ## Configure
 
-In `~/.pi/agent/jig.json`. Everything is optional, and each plugin's own section is laid over the company's defaults, so a user
+In `~/.jig/jig.json`. Everything is optional, and each plugin's own section is laid over the company's defaults, so a user
 writes only what they change (see [Writing a company plugin](../../docs/company-plugin.md#how-your-jigjson-layers-over-the-defaults)).
 
 | Field | Default | Meaning |

@@ -71,7 +71,7 @@ does nothing: `Usage: /lens [ticket KEY | session [id] | days N | compare [days 
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `lens`. [Configuration](docs/configuration.md) has every field.
+In `~/.jig/jig.json`, under `lens`. [Configuration](docs/configuration.md) has every field.
 ## Company part (in the company plugin)
 
 None. Nothing here is specific to a company.

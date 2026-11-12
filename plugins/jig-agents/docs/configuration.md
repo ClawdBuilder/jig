@@ -2,7 +2,7 @@
 
 The `subagent` section and the defaults it lays over a role. Back to the [jig-agents README](../README.md).
 
-In `~/.pi/agent/jig.json`, under `agents`. Every field is optional.
+In `~/.jig/jig.json`, under `agents`. Every field is optional.
 
 ## Configure
 

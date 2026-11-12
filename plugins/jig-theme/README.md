@@ -27,7 +27,7 @@ Claude Opus 5.5 · high · ctx 182k · cache 3:41 · est. $4.21 · ↑12.4k ↓3
 
 Six built-in palettes, each naming seventeen colours that one role map spreads over Pi's roles; names, contrast and the
 exception are in [Palettes](docs/palettes.md). Your own palette starts from one and changes only the colours you list,
-in `~/.pi/agent/jig.json` under `theme` ([Your palettes](docs/your-palettes.md)).
+in `~/.jig/jig.json` under `theme` ([Your palettes](docs/your-palettes.md)).
 
 ## The footer
 
@@ -61,7 +61,7 @@ and does nothing. Without a terminal, `/theme` and `/theme <name>` say they need
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `theme`. Every field is optional. `jig-core`
+In `~/.jig/jig.json`, under `theme`. Every field is optional. `jig-core`
 checks the section at session start; a mistake names the key, and the defaults
 apply.
 

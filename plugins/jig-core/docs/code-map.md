@@ -107,9 +107,12 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
-| `cli/main.ts` | The `jig` command: arguments, help dispatch, the doctor's exit code and report, setup's company step and exit codes, and the update word | `bin/jig.mjs` |
-| `cli/help.ts` | The command help, exit-code line, and nearest-command suggestion, with no Pi import so help stays fast | `bin/jig.mjs`, `cli/main.ts` |
-| `cli/update.ts` | `jig update`: reads the registry, Pi's copy, the global npm copy and company ranges, builds Pi's exact install command, then runs or checks the plan | `cli/main.ts` |
+| `cli/main.ts` | The `jig` command's own words: the doctor's exit code and report, setup's bootstrap, company step and exit codes, and the update word | `bin/jig.mjs` |
+| `cli/help.ts` | The routing usage, every command's help, the exit-code line, the stray-word refusal and the nearest-command suggestion, with no Pi import so help stays fast | `bin/jig.mjs`, `cli/main.ts`, `cli/update.ts` |
+| `cli/home.ts` | The Jig home: `JIG_HOME` or `~/.jig`, the Pi package folder in it, its Jig command and version | `bin/jig.mjs` (its own copy), `cli/main.ts`, `cli/bootstrap.ts`, `cli/update.ts` |
+| `cli/pi-command.ts` | The Pi a command runs, found as the launcher finds it (skipping a shim called `pi`), and the words to start it | `cli/main.ts`, `cli/bootstrap.ts`, `cli/update.ts` |
+| `cli/bootstrap.ts` | The first setup: check Pi, make the home, `pi install` Jig into it, write the `jig` shim, say whether it is on PATH, offer the old folder's settings | `cli/main.ts` |
+| `cli/update.ts` | `jig update`: reads the registry for Jig's own new version, refuses a release that needs a newer Pi, then runs `pi install` or Pi's own `pi update` in the home | `cli/main.ts` |
 | `cli/headless.ts` | The packages Pi would load, their extension files loaded into a host that only records, and the person's settings read against their sections and defaults | `cli/main.ts` |
 | `cli/packages.ts` | Where Pi puts a package: local, npm and git layouts for user and project scope, and the entries listed but not found | `cli/headless.ts` |
 | `cli/package-filter.ts` | Pi's package filter read as Pi reads it: per-type patterns, `!`, `+`, `-`, empty lists and `autoload:false` | `cli/packages.ts`, `cli/headless.ts` |
@@ -122,8 +125,6 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `update-versions.ts` | The newest stable release, `--to`, and the highest version inside every company `jig.range`; a range it cannot read is refused | `cli/update.ts`, `update-notice.ts` |
-| `update-plan.ts` | What would change: Pi when the release needs a newer one, Pi's copy, the global copy, and the company cap; refuses pinned or non-npm copies | `cli/update.ts`, `update-run.ts` |
-| `update-run.ts` | Runs the plan in order, verifies both copies, runs the doctor, and puts every recorded version back after a failure | `cli/update.ts` |
 | `update-company.ts` | Reads every installed company package's `jig.range` for the cap | `cli/update.ts`, `update-notice.ts` |
 | `registry.ts` | The registry npm uses: `jig update` asks `npm config get registry`; the notice reads env and .npmrc files without starting a program | `cli/update.ts`, `update-notice.ts` |
 | `updates-section.ts` | The `updates.check` section: checked like a plugin's so a company can turn the notice off; the person's file wins | `state.ts`, `update-notice.ts` |

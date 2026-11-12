@@ -4,7 +4,7 @@ The fields of the `lens` section of `jig.json`. Back to the [jig-lens overview](
 
 ## The fields
 
-In `~/.pi/agent/jig.json`, under `lens`. The field is optional. `jig-core` checks
+In `~/.jig/jig.json`, under `lens`. The field is optional. `jig-core` checks
 the section when a session starts; a mistake names the key, and the defaults apply.
 
 | Field | Default | Meaning |

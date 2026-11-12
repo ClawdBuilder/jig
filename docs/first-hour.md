@@ -24,15 +24,16 @@ sudo apt install bubblewrap socat ripgrep
 ## 1. Install
 
 ```bash
-pi install npm:@clawdbuilder/jig
+npx @clawdbuilder/jig setup
 ```
 
-This installs every plugin. [`jig-core`](../plugins/jig-core/README.md) is the one that governs the others, so it
-must always be loaded. To load only some plugins, see [Install](../README.md#install) in the main README.
+This makes the Jig home (`~/.jig`), installs every plugin into it with Pi, and writes the `jig` command. Your own
+`pi` is not changed: `jig` is Pi for the home. [`jig-core`](../plugins/jig-core/README.md) is the one that governs
+the others, so it must always be loaded. To load only some plugins, see [Install](../README.md#install).
 
 ## 2. Run `/jig`
 
-Start Pi in your scratch repository and type:
+Start Jig in your scratch repository and type:
 
 ```text
 /jig
@@ -50,7 +51,7 @@ Three more commands help you look around:
 
 ## 3. Set up one plugin: `jig-git`
 
-Jig reads one file, `~/.pi/agent/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
+Jig reads one file, `~/.jig/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
 covers the questions, confirmation and backup.
 
 In this scratch repository no company plugin is loaded, so there is nothing for setup to fill in. Create the

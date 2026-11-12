@@ -4,7 +4,7 @@ The fields of the `mongo` section of `jig.json`. Back to the [jig-mongo overview
 
 ## The fields
 
-In `~/.pi/agent/jig.json`, under `mongo`. An unknown field is an error, and the tool then does nothing until the file is fixed
+In `~/.jig/jig.json`, under `mongo`. An unknown field is an error, and the tool then does nothing until the file is fixed
 (`/jig` lists the problems).
 
 ```json

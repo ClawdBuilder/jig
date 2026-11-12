@@ -8,6 +8,7 @@ first time it uses it, where that helps.
 | Term | Meaning |
 |---|---|
 | **Pi** | The coding agent Jig plugs into ([pi.dev](https://pi.dev)). Its extensions are TypeScript. |
+| **Jig home** | Pi's agent folder for Jig: `~/.jig`, or `JIG_HOME`. `jig` is Pi for it. |
 | **Plugin** | A Pi package of Jig's, such as `jig-core` or `jig-git`, or a private company plugin. |
 | **Company plugin** | A private plugin with one employer's environments, sign-in, tools and backends. See [Writing a company plugin](company-plugin.md). |
 | **Overlay skill** | A company's own rules (`overlays/<skill>.md`), merged into a generic plugin's skill so the model reads one skill. The tool stays the same. |

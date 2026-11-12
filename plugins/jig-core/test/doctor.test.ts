@@ -745,10 +745,14 @@ describe("the human marks", () => {
         assert.doesNotMatch(line?.detail ?? "", /If your Pi runs/);
         const jigLine = withEnv.lines.find((entry) => entry.id === "machine.jig");
         assert.match(jigLine?.detail ?? "", /not installed in .*from PI_CODING_AGENT_DIR/);
-        assert.match(jigLine?.detail ?? "", /If your Pi runs with PI_CODING_AGENT_DIR/);
+        // `jig` sets PI_CODING_AGENT_DIR from the home, so the fix installs into the home; the old hint would send that
+        // install into the person's own Pi folder instead.
+        assert.doesNotMatch(jigLine?.detail ?? "", /If your Pi runs/);
+        assert.match(jigLine?.fix ?? "", /Install it: jig install npm:@clawdbuilder\/jig/);
         const byDefault = await runDoctor(context({ overrides: { standalone: true, jigInPi: false } }), options());
         assert.match(byDefault.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /the default/);
-        assert.match(byDefault.lines.find((entry) => entry.id === "machine.jig")?.detail ?? "", /the default folder/);
+        // The `jig` command checks the home, so its row says so; inside Pi the same row names Pi's folder.
+        assert.match(byDefault.lines.find((entry) => entry.id === "machine.jig")?.detail ?? "", /the default home/);
     });
 
     test("repeated references with path axes collapse to a grid", () => {

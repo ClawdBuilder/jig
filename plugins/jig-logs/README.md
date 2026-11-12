@@ -84,7 +84,7 @@ Usage: logs {phrase or query, environment, window?, ...}`.
 
 ## Configure
 
-In `~/.pi/agent/jig.json`, under `logs`. `jig-core` reports an unknown or invalid
+In `~/.jig/jig.json`, under `logs`. `jig-core` reports an unknown or invalid
 field (one that belongs to the other type is named), and the tool then says it is
 not configured instead of running half set up.
 
