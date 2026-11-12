@@ -67,6 +67,9 @@ Every one of them passes before a commit; CI runs all of them on every push and 
 require. A test suite for a real service skips when its address is not set, so `npm test` never needs one; the integration
 suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
 
+`npm test` and `npm run test:it` pass `--test-timeout=600000`. Node applies that to a whole test file, not to each
+test, so it bounds a hung file at ten minutes.
+
 ### Commit emails
 
 A commit's author and committer addresses are part of the public history, so use a public identity. `npm run check:emails`

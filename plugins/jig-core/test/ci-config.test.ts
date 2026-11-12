@@ -80,7 +80,7 @@ describe("ci.yml", () => {
     test("npm test and test:it give every test a timeout", () => {
         const scripts = (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
         for (const name of ["test", "test:it"]) {
-            assert.match(scripts[name] ?? "", /--test-timeout=60000/, name);
+            assert.match(scripts[name] ?? "", /--test-timeout=600000/, name);
         }
     });
 
