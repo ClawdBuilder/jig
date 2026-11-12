@@ -67,7 +67,7 @@ describe("piRequirement", () => {
     test("is undefined when the release does not state a usable pair", () => {
         assert.equal(piRequirement(packageFile({})), undefined);
         assert.equal(piRequirement(packageFile({ jig: { agents: { pi: { minimum: "next" } } } })), undefined);
-        assert.deepEqual(currentPiRequirement(packageFile({})), { minimum: "1.4.0", tested: "1.5.0" });
+        assert.deepEqual(currentPiRequirement(packageFile({})), { minimum: "1.4.0", tested: "1.5.2" });
     });
 });
 

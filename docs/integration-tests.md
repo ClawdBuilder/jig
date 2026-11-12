@@ -90,7 +90,7 @@ a run for every combination.
 | Helm | 4.3.1 | 3.22.1 |
 
 - **The same on both:** Grafana Loki 3.7.9, go-httpbin 2.26.0, Keycloak 26.8.1, OpenSSH 10.3 (the jump host), kind v0.33.0 with
-  Kubernetes 1.37.0 nodes and kubectl 1.37.2, and Pi 1.5.0. Loki, Keycloak and the rest have no older line that the plugins claim.
+  Kubernetes 1.37.0 nodes and kubectl 1.37.2, and Pi 1.5.2. Loki, Keycloak and the rest have no older line that the plugins claim.
 - **Pi is installed at an exact version,** the latest one, because the type check and the `jig-agents` tests read its own packages.
   To move it, follow [Moving the Pi version](compatibility.md#moving-the-pi-version).
 - **The `checks` job** runs all three Node lines (22.19.0, 24, 26), and prints `node --version` first.

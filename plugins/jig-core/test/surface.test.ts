@@ -81,7 +81,7 @@ describe("the package", () => {
         const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
             jig?: unknown;
         };
-        assert.deepEqual(manifest.jig, { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } });
+        assert.deepEqual(manifest.jig, { agents: { pi: { minimum: "1.4.0", tested: "1.5.2" } } });
     });
 });
 
