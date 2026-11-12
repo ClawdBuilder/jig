@@ -166,7 +166,9 @@ The details are in [Sign-in services](#sign-in-services) below.
 A company that keeps the session in a local sign-in proxy supplies a
 **transport**, and a request names it with `transport: "corp-proxy"` instead of
 `auth`. The request is carried by the proxy, and the tool never holds a
-credential. The details are in [Transports](#transports) below.
+credential. A relay named in the `transports` section is set up without a
+plugin; see [Relay transports](#relay-transports) below. The details are in
+[Transports](#transports) below.
 
 ## A token endpoint (OAuth, with no browser)
 
@@ -258,6 +260,45 @@ jig().signIn.register("corp-hmac", {
 });
 ```
 
+## Relay transports
+
+A relay is a program that holds the session for a company's systems and makes
+requests for Jig: a browser extension's local host, or a company server. It is
+configured in `jig.json`, so no plugin code is needed for that route:
+
+```json
+{
+  "transports": {
+    "orders": {
+      "kind": "relay",
+      "url": "https://relay.example.com",
+      "token": "pass:work/relay-token",
+      "client": "jig",
+      "services": { "jira": "tickets", "logs": "logs" },
+      "fields": { "tenant": "orders" }
+    }
+  }
+}
+```
+
+Then a tool names it: `"auth": { "transport": "orders" }` for Jira, or
+`"backend": { "transport": "orders", "url": "..." }` for logs. A company plugin
+can give the `kind`, `url`, `services` and `fields` as defaults, and the person
+adds the `token`; the person's fields win. A transport name declared here cannot
+also be registered by a company plugin, in either order.
+
+Use a relay when the session already lives in one and a token cannot be handed
+to Jig. Write a transport in a company plugin when the route needs code of its
+own: a custom sign-in, a proxy that needs CONNECT, or a request shape the relay
+protocol does not carry. The [relay protocol](../../../docs/relay-protocol.md) is the
+wire contract, with examples in
+[fixtures](../../../docs/relay-protocol/fixtures.json).
+
+A `token` with a `file:` reference protects that file from Jig's file tools,
+like the other secret files. The URL rule is part of the configuration check:
+plain `http` only for `127.0.0.1`, `localhost` or `[::1]`; every other host must
+use `https`, with no user name, password, path (except `/`), query or fragment.
+
 ## Transports
 
 Some companies keep the session for their systems in a local sign-in proxy:
@@ -265,6 +306,12 @@ the agent's tools must send requests through it, and never hold a token at
 all. A company plugin supplies that path as a **transport**.
 - **The company plugin registers it** with `transports.register(name,
   transport)`. Registering the same name again replaces it.
+- **A relay needs no code.** A company whose systems are reached through a
+  session relay can set one up under `transports` in `jig.json` and name it
+  from `jira.auth.transport` or `logs.backend.transport`. The [relay
+  protocol](../../../docs/relay-protocol.md) is the contract between Jig and that
+  relay; a company plugin can supply the address, services and fixed fields as
+  defaults and leave the token to the person.
 - **A request is sent through it by name,** with `transport: name` in
   `http.request`. `transports.request(name, { system, method, url, headers, body,
   maxBytes, timeoutMs }, signal)` is the call underneath. Tools build the same

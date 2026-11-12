@@ -7,6 +7,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Added
 
 - `jig setup <section>` asks about one section even when it is already valid, and plugins declare their sign-in methods so setup can offer them.
+- A relay transport can be set up under `transports` in `jig.json`, so Jira and logs can use a session relay without company plugin code.
 - A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
 
 ### Changed

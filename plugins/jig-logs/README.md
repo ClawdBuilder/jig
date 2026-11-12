@@ -111,7 +111,9 @@ limits, and has an example for each type.
 - the sign-in: a company sign-in service (for example a single sign-on gateway),
   or a company transport registered with `jig-core`. A transport carries each
   request and signs it in, so `backend` holds `{ "transport": "<name>", "url" }`
-  in place of `auth`, and its `url` may be `http://`.
+  in place of `auth`, and its `url` may be `http://`. A relay configured under
+  `transports` is named the same way; see the
+  [relay protocol](../../docs/relay-protocol.md).
 
 ## Later
 
