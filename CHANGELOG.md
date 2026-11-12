@@ -4,39 +4,33 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-11-12
+
+Jig gets its own home (`~/.jig`, or `JIG_HOME`) and `jig` is Pi for it; a company's session relay is set up in `jig.json`.
+
 ### Added
 
-- `jig setup <section>` asks about one section even when it is already valid, and plugins declare their sign-in methods so setup can offer them.
-- A relay transport can be set up under `transports` in `jig.json`, so Jira and logs can use a session relay without company plugin code.
-- `jira.timeoutSeconds`, `jira.searchTimeoutSeconds` and `logs.timeoutSeconds` set request timeouts from 5 to 120 seconds.
-- A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
-- `logs.backend.consoleProxy` reaches Elasticsearch or OpenSearch logs through an OpenSearch Dashboards or Kibana console proxy.
-- `jig`: Pi for Jig's own folder, the home (`~/.jig`, or `JIG_HOME`). It takes Pi's own options and message, and runs
-  Pi's package commands (`install`, `remove`, `uninstall`, `list`, `config`, `auth`, `mcp`) in the home.
+- `jig` is Pi for Jig's own home. It takes Pi's options and message, and runs Pi's package commands (`install`, `remove`, `uninstall`, `list`, `config`, `auth`, `mcp`) in the home.
 - `jig setup` makes the home, installs Jig in it with `pi install`, and writes the `jig` command to `~/.local/bin`
   (`--bin` moves it). It offers to copy an older `~/.pi/jig-agent`'s `jig.json`, and its `auth.json` and `sessions/`
   only on a separate yes, and never moves the old folder.
-- `jig update` updates the packages in the home through Pi's own update and never the Pi binary. `--self` moves Jig
-  only, `--models` refreshes Pi's built-in catalogs and says so, and `pi` and `--force` are refused with the command
-  to run instead.
+- `jig setup <section>` asks about one section even when it is already valid, and plugins declare their sign-in methods with their section so setup can offer them.
+- `jig update` updates the packages in the home through Pi's own update, never the Pi binary, and `--to` moves Jig in the home only. `--self` moves Jig only, `--models` refreshes Pi's built-in catalogs and says so, and `pi` and `--force` are refused with the command to run instead.
+- A relay transport can be set up under `transports` in `jig.json`, so Jira and logs can use a session relay without company plugin code.
+- `jira.timeoutSeconds`, `jira.searchTimeoutSeconds` and `logs.timeoutSeconds` set request timeouts from 5 to 120 seconds.
+- `logs.backend.consoleProxy` reaches Elasticsearch or OpenSearch logs through an OpenSearch Dashboards or Kibana console proxy.
+- A company transport can refuse with its own code and say whether the far end was changed; Jira and logs report that instead of a lost reply.
 
 ### Changed
 
-- `jig doctor` uses status markers in a colour terminal, groups repeated secret rows, and names which Pi folder it checked and why.
-- For `jig`, that row names the Jig home it checked, and `--json` carries it too.
-- A bare `jig` now starts Pi for the home; it used to print the usage and exit 2. `jig -- "a message"` sends one that
-  starts with a command name.
-- `JIG_HOME` now names the Jig home. The launcher's own folder variable is `JIG_PACKAGE_DIR`, and when `jig` starts it
-  the reattach hints name `jig`, not `pi`.
-- A `jig` started outside the home hands over to the one installed in the home, so the command and its plugins are one
-  version. With no Jig in the home, only `setup`, `help` and `--version` run and the rest says what to install.
-- `jig update` no longer moves the global `jig` command or Pi, and `--to` moves Jig in the home only.
-- The floor protects every Pi folder on the machine, not only the one Jig runs with: the whole `~/.pi` folder, each
-  folder in it that holds settings or a login, and the outer `PI_CODING_AGENT_DIR` that `jig` replaced. A `jig` session
-  can neither read the plain Pi's logins nor add code to its settings, even in a folder that does not exist yet.
-- Tool descriptions and parameter text are shorter, and skills use one wording for refusals, untrusted output, lost replies and masked values.
-- Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
+- `jig doctor` uses status markers in a colour terminal, groups repeated secret rows, and names which Pi folder it checked and why; for `jig`, that row names the Jig home, and `--json` carries it too.
+- A bare `jig` starts Pi for the home; `jig -- "a message"` sends one that starts with a command name.
+- `JIG_HOME` now names the Jig home. The launcher's own folder variable is `JIG_PACKAGE_DIR`, and when `jig` starts it the reattach hints name `jig`, not `pi`.
+- A `jig` started outside the home hands over to the one installed in the home, so the command and its plugins are one version. With no Jig in the home, only `setup`, `help` and `--version` run and the rest says what to install.
+- The floor protects every Pi folder on the machine, not only the one Jig runs with: the whole `~/.pi` folder, each folder in it that holds settings or a login, and the outer `PI_CODING_AGENT_DIR` that `jig` replaced. A `jig` session can neither read the plain Pi's logins nor add code to its settings, even in a folder that does not exist yet.
+- Tool descriptions, parameter text and skills are shorter, and skills use one wording for refusals, untrusted output, lost replies and masked values; they also agree on the first step, the review action and the actions their tools offer.
 - Another plugin's `registerSection` of a section that is already registered is refused; the same plugin loaded again replaces its own registration.
+- Jig is tested with Pi 1.5.2 (it was 1.5.0); the minimum stays 1.4.0.
 
 ### Fixed
 
