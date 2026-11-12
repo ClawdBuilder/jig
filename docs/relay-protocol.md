@@ -90,6 +90,9 @@ Content-Type: application/json
 A relay may allow only some of the five methods (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) and refuse the others with
 `INVALID_REQUEST`. It must not invent a method outside the five.
 
+A client should ask for `timeoutMs` of at least 2,000 ms: the relay's own deadline is
+`timeoutMs − min(2,000, timeoutMs / 2)`, and a smaller value leaves it no time to answer.
+
 A relay **never follows a redirect for the client**. It may return the `3xx` as a `response`, refuse a redirected read
 with `OUTSIDE_LIMITS`, or answer `unknown` with `REDIRECTED` for a redirected write; the client never sends the request
 to the `Location` itself. A request field the relay does not know is refused, with `INVALID_REQUEST`; it is never

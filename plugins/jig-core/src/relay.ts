@@ -108,22 +108,10 @@ function answerOf(value: unknown, requestId: string): TransportResponse {
 }
 
 /** Why a relay's HTTP request failed, in terms a tool can act on. */
-function relayFailure(
-    name: string,
-    config: RelayTransportConfig,
-    error: unknown,
-    callerTimeoutMs: number,
-): TransportRefusal {
+function relayFailure(name: string, config: RelayTransportConfig, error: unknown): TransportRefusal {
     if (isHttpError(error)) {
         if (error.code === "auth_failed") {
             return new TransportRefusal("RELAY_TOKEN", `transports.${name}.token: ${error.message}`, true);
-        }
-        if (error.code === "timeout") {
-            return new TransportRefusal(
-                "CONNECTION_LOST",
-                `the relay did not answer within ${callerTimeoutMs} ms`,
-                false,
-            );
         }
         if (error.notSent) {
             return new TransportRefusal(
@@ -199,7 +187,7 @@ export async function relayRequest(
             signal,
         );
     } catch (error) {
-        throw relayFailure(name, config, error, request.timeoutMs);
+        throw relayFailure(name, config, error);
     }
     if (reply.truncated) {
         throw new TransportRefusal("REPLY_TOO_LARGE", "the relay's answer is too large to read", false, id);

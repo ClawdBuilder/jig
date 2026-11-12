@@ -306,6 +306,8 @@ the agent's tools must send requests through it, and never hold a token at
 all. A company plugin supplies that path as a **transport**.
 - **The company plugin registers it** with `transports.register(name,
   transport)`. Registering the same name again replaces it.
+- **Give a relay at least 2,000 ms.** Its deadline is `timeoutMs − min(2 s, timeoutMs/2)`;
+  a smaller caller timeout leaves it no time to answer before Jig's own.
 - **A relay needs no code.** A company whose systems are reached through a
   session relay can set one up under `transports` in `jig.json` and name it
   from `jira.auth.transport` or `logs.backend.transport`. The [relay
