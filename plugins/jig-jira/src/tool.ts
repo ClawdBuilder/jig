@@ -14,6 +14,7 @@ import type { Call, ParseOptions } from "./params.ts";
 import { fingerprintOf } from "./plan.ts";
 import { buildPlan } from "./plans.ts";
 import { runRead } from "./reads.ts";
+import { transportFacts } from "./http.ts";
 import { previewOf } from "./shown.ts";
 import { InputError } from "./values.ts";
 import { runWrite } from "./writes.ts";
@@ -102,13 +103,22 @@ export function createTool(options: JiraOptions = {}): JiraTool {
             async execute(toolCallId, params, signal) {
                 const call = parseCall(params, parsing());
                 const env = envFor(signal);
-                if (ACTIONS[call.action].kind === "read") {
-                    const text = await runRead(env, call, toolCallId);
-                    return { content: [{ type: "text", text }], details: { action: call.action } };
+                try {
+                    if (ACTIONS[call.action].kind === "read") {
+                        const text = await runRead(env, call, toolCallId);
+                        return { content: [{ type: "text", text }], details: { action: call.action } };
+                    }
+                    const written = await runWrite(env, call, toolCallId, signal);
+                    const key = written.key === undefined ? {} : { key: written.key };
+                    return {
+                        content: [{ type: "text", text: written.text }],
+                        details: { action: call.action, ...key },
+                    };
+                } catch (error) {
+                    const facts = transportFacts(error);
+                    if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
+                    throw error;
                 }
-                const written = await runWrite(env, call, toolCallId, signal);
-                const key = written.key === undefined ? {} : { key: written.key };
-                return { content: [{ type: "text", text: written.text }], details: { action: call.action, ...key } };
             },
         },
     };

@@ -6,6 +6,7 @@ import { errorReply, hit, rangeOf, searchReply } from "./support/fake-search.ts"
 import type { Answer, Recorded, Responder } from "./support/fake-search.ts";
 import { docs, NOW, ok, world } from "./support/world.ts";
 import type { World } from "./support/world.ts";
+import { TransportRefusal } from "../../jig-core/src/kit/http-error.ts";
 
 const BACKENDS = ["direct", "transport"] as const;
 /** A search that finds what `docs()` makes: its documents are in the last half hour. */
@@ -390,6 +391,26 @@ test("transport: a transport that fails is an error that names it, not a gap", a
     const result = await w.call({ ...call, window: "3d" });
     assert.equal(result.error?.message, 'transport "corp" failed: the connection was reset');
     assert.equal(w.requests.length, 1);
+});
+
+test("transport: a refusal says the backend was not changed, or that the reply was lost", async (t) => {
+    const w = await world(t, { backend: "transport" });
+    w.jig.transports.set("corp", {
+        request: async () => {
+            throw new TransportRefusal("SIGN_IN_REQUIRED", "sign in first", true, "req-1");
+        },
+    });
+    const refused = await w.call(call);
+    assert.equal(refused.error?.message, "the log backend was not changed: sign in first (SIGN_IN_REQUIRED)");
+    assert.deepEqual([...w.jig.facts.values()].flat(), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
+
+    w.jig.transports.set("corp", {
+        request: async () => {
+            throw new TransportRefusal("OUTSIDE_LIMITS", "the relay lost the reply", false, "req-2");
+        },
+    });
+    const lost = await w.call(call);
+    assert.equal(lost.error?.message, "no answer from the log backend: the relay lost the reply (OUTSIDE_LIMITS)");
 });
 
 test("transport: one that ignores its signal still cannot hold the call past the request timeout", async (t) => {

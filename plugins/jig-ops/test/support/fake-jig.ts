@@ -13,6 +13,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { publishJig, withdrawJig } from "../../../jig-core/src/client.ts";
 import { createHttp } from "../../../jig-core/src/kit/http.ts";
+import { isTransportRefusal } from "../../../jig-core/src/kit/http-error.ts";
 import type {
     EnvironmentKind,
     Facts,
@@ -237,6 +238,7 @@ export function installFakeJig(): FakeJig {
                     const response = await transport.request(request, signal);
                     return { ...response, headers: response.headers ?? {} };
                 } catch (error) {
+                    if (isTransportRefusal(error)) throw error;
                     throw new Error(
                         `transport "${name}" failed: ${error instanceof Error ? error.message : String(error)}`,
                     );

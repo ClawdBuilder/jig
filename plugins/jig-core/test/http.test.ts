@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { HttpRequest, HttpResponse, SignInRequest, TransportRequest, TransportResponse } from "../src/contract.ts";
 import { createHttp, isHttpError } from "../src/kit/http.ts";
+import { TransportRefusal, isTransportRefusal } from "../src/kit/http-error.ts";
 import type { HttpError } from "../src/kit/http.ts";
 
 // ---- fakes --------------------------------------------------------------------------------------------------------
@@ -63,6 +64,7 @@ function rig(options: { now?: () => number } = {}) {
                 try {
                     return await transport(request);
                 } catch (error) {
+                    if (isTransportRefusal(error)) throw error;
                     throw new Error(`transport "${name}" failed: ${error instanceof Error ? error.message : error}`);
                 }
             },
@@ -1072,6 +1074,71 @@ describe("a transport", () => {
         const broken = await failure(t.http.request({ ...base, transport: "broken" }));
         assert.deepEqual([broken.code, broken.notSent], ["transport_failed", false]);
         assert.equal(broken.message, 'transport "broken" failed: the proxy is not running second line');
+    });
+
+    test("a valid refusal keeps its code, notSent and request id; a plain error keeps transport_failed", async () => {
+        const t = rig();
+        t.transports.set("refusing", () => {
+            throw new TransportRefusal("SIGN_IN_REQUIRED", "sign in first\nwith your company login", true, "req-1");
+        });
+        const refused = await failure(t.http.request({ ...base, transport: "refusing" }));
+        assert.deepEqual(
+            [refused.code, refused.notSent, refused.transportCode, refused.requestId],
+            ["transport_refused", true, "SIGN_IN_REQUIRED", "req-1"],
+        );
+        assert.equal(refused.message, "sign in first with your company login");
+
+        const controlOnly = await (async () => {
+            t.transports.set("only-controls", () => {
+                throw new TransportRefusal("OUTSIDE_LIMITS", "\u0000\u009f\u202e", true);
+            });
+            return failure(t.http.request({ ...base, transport: "only-controls" }));
+        })();
+        assert.equal(controlOnly.message, "OUTSIDE_LIMITS");
+        const bidi = await (async () => {
+            t.transports.set("bidi", () => {
+                throw new TransportRefusal("SIGN_IN_REQUIRED", "keep\u202e\u200btext", true, "r");
+            });
+            return failure(t.http.request({ ...base, transport: "bidi" }));
+        })();
+        assert.equal(bidi.message, "keep text");
+
+        const long = "x".repeat(400);
+        t.transports.set("long", () => {
+            throw new TransportRefusal("OUTSIDE_LIMITS", long, false);
+        });
+        const cut = await failure(t.http.request({ ...base, transport: "long" }));
+        assert.equal(cut.code, "transport_refused");
+        assert.equal(cut.notSent, false);
+        assert.equal(cut.message.length, 300);
+
+        for (const bad of [
+            new TransportRefusal("lower", "bad", true),
+            new TransportRefusal("A".repeat(65), "bad", true),
+            new TransportRefusal("OK", "bad", true, "bad id"),
+        ]) {
+            t.transports.set("bad", () => {
+                throw bad;
+            });
+            const plain = await failure(t.http.request({ ...base, transport: "bad" }));
+            assert.equal(plain.code, "transport_failed", bad.code);
+            assert.equal(plain.notSent, false);
+        }
+    });
+
+    test("a refusal does not win over an abort or a deadline", async () => {
+        const t = rig();
+        t.transports.set("slow-refusal", () => {
+            return new Promise((_, reject) => {
+                setTimeout(() => reject(new TransportRefusal("SIGN_IN_REQUIRED", "late", true)), 40);
+            });
+        });
+        const deadline = await failure(t.http.request({ ...base, transport: "slow-refusal", timeoutMs: 5 }));
+        assert.equal(deadline.code, "timeout");
+        const controller = new AbortController();
+        const waiting = failure(t.http.request({ ...base, transport: "slow-refusal" }, controller.signal));
+        controller.abort();
+        assert.equal((await waiting).code, "aborted");
     });
 
     test("one that ignores its signal still times out and can be cancelled", async () => {

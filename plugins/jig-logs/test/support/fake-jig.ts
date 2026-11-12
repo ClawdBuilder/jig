@@ -7,6 +7,7 @@
 // Every credential the fake hands out is remembered in `issued`, so a test can check that none of them reaches an error
 // or a result.
 import { publishJig, withdrawJig } from "../../../jig-core/src/client.ts";
+import { isTransportRefusal } from "../../../jig-core/src/kit/http-error.ts";
 import { createHttp } from "../../../jig-core/src/kit/http.ts";
 import type {
     Facts,
@@ -119,6 +120,7 @@ export function installFakeJig(): FakeJig {
                     const response = await transport.request(request, signal);
                     return { ...response, headers: response.headers ?? {} };
                 } catch (error) {
+                    if (isTransportRefusal(error)) throw error;
                     throw new Error(
                         `transport "${name}" failed: ${error instanceof Error ? error.message : String(error)}`,
                     );

@@ -8,6 +8,7 @@ import { ciWorld } from "./support/ci-world.ts";
 import type { CiWorld } from "./support/ci-world.ts";
 import type { Answer, Responder } from "./support/fake-server.ts";
 import { gitlabResponder, gitlabWorld, job, pipeline, SHA, SHA2, TOKEN } from "./support/fake-gitlab.ts";
+import { TransportRefusal } from "../../jig-core/src/kit/http-error.ts";
 import type { GitlabWorld } from "./support/fake-gitlab.ts";
 import { gitlabCi } from "./support/section.ts";
 import type { Raw } from "./support/section.ts";
@@ -563,6 +564,44 @@ describe("signing in", () => {
         });
         const error = (await g.call({ action: "status", ref: "main" })).error?.message ?? "";
         assert.doesNotMatch(error, /reply was lost/i);
+    });
+
+    test("a transport refusal that promises no change is not read back; one that may have changed is", async (t) => {
+        const world = usual();
+        world.authorized = () => true;
+        const g = await ciWorld(t, {
+            ci: gitlabCi({ url: "http://gitlab.internal.example.test", auth: { transport: "corp" } }),
+            transport: "corp",
+            responder: gitlabResponder(world),
+        });
+        const original = g.transport!.request.bind(g.transport);
+        let afterPost = 0;
+        let posted = false;
+        g.transport!.request = async (request, signal) => {
+            if (request.method === "POST") {
+                posted = true;
+                throw new TransportRefusal("OUTSIDE_LIMITS", "not in the allow-list", true, "req-1");
+            }
+            if (posted) afterPost++;
+            return original(request, signal);
+        };
+        const refused = await g.call({ action: "rerun", run_id: 8 });
+        assert.match(refused.error?.message ?? "", /not in the allow-list \(OUTSIDE_LIMITS\)/);
+        assert.equal(afterPost, 0, "a refused write is not read back");
+
+        afterPost = 0;
+        posted = false;
+        g.transport!.request = async (request, signal) => {
+            if (request.method === "POST") {
+                posted = true;
+                throw new TransportRefusal("OUTSIDE_LIMITS", "the relay lost the answer", false, "req-2");
+            }
+            if (posted) afterPost++;
+            return original(request, signal);
+        };
+        const lost = await g.call({ action: "rerun", run_id: 8 });
+        assert.match(lost.error?.message ?? "", /the relay lost the answer \(OUTSIDE_LIMITS\)/);
+        assert.equal(afterPost, 1, "a lost write is read back once");
     });
 
     test("a transport that fails is reported by name, and a write through it is still sent once", async (t) => {

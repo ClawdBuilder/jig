@@ -93,11 +93,14 @@ of the address, or the address itself.
 | a TLS code such as `CERT_HAS_EXPIRED` | The certificate was not accepted. Certificate checks are never turned off | yes |
 | `ECONNRESET`, `EPIPE`, `UND_ERR_SOCKET`, other system codes, `network_error` | The connection failed or broke, and the server may have acted | no |
 | `transport_failed` | A transport threw or answered wrongly | no |
+| `transport_refused` | A transport refused with its own code; `transportCode` and `requestId` are on the error | yes when the transport promises the far end was not changed |
 | `timeout` | No answer within `timeoutMs` | no (yes when it ran out before anything was sent) |
 | `aborted` | The call was cancelled. `error.cause` is the signal's reason | no (yes when it was cancelled before anything was sent) |
 
-`notSent` is what a plugin needs for a write: when it is true, nothing happened
-on the other side, so it is safe to say so, and to send again.
+`notSent` is what a plugin needs for a write: when it is true, the far end was
+not changed, so sending again cannot repeat a change. For a transport refusal
+this does not promise that nothing left the transport; it promises only that
+the site was not changed. Every existing code keeps its old meaning.
 
 - **`auth_failed`** carries the reason as its message, without the reference.
 - **The connect codes** are `ECONNREFUSED`, `ENOTFOUND`, `EAI_AGAIN`,
@@ -282,6 +285,15 @@ all. A company plugin supplies that path as a **transport**.
   time: `"set-cookie": ["a=1", "b=2"]`. The tool still gets one text, folded with
   `, ` as a reply from the network is, and a `set-cookie` list becomes the cookies
   as they are, so a date with a comma in it is never split.
+- **A transport may refuse with its own code.** Throw a `TransportRefusal` from
+  `jig-core`'s kit:
+  `new TransportRefusal("SIGN_IN_REQUIRED", "the orders-api session expired", true, "req-123")`.
+  `code` is upper-case letters, digits and `_` (up to 64); `notSent: true` means the
+  far end was not changed by this request, so a retry cannot repeat a change. It does
+  not mean nothing left the transport. `requestId` is optional and matches the
+  transport's own log. jig-core turns it into `HttpError` code `transport_refused`,
+  keeping the code and id as `transportCode` and `requestId`; any other thrown error
+  keeps the old `transport_failed` handling.
 - **Errors never repeat the request.** Its URL or body may hold data that is
   masked only in the tool's result.
 - **The result is governed like any other:** it goes through the result hook,

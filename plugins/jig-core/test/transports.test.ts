@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { TransportRequest } from "../src/contract.ts";
 import { createTransports } from "../src/transports.ts";
+import { TransportRefusal, isTransportRefusal } from "../src/kit/http-error.ts";
 
 const REQUEST: TransportRequest = {
     system: "logs",
@@ -130,5 +131,20 @@ describe("transports", () => {
                 return true;
             },
         );
+    });
+});
+
+test("a refusal is passed on as a clean structural refusal", async () => {
+    const transports = createTransports();
+    transports.register("company", {
+        request: async () => {
+            throw new TransportRefusal("OUTSIDE_LIMITS", "too\nmuch", false, "req-2");
+        },
+    });
+    await assert.rejects(transports.request("company", REQUEST), (error: unknown) => {
+        assert.ok(isTransportRefusal(error));
+        assert.deepEqual([error.code, error.notSent, error.requestId], ["OUTSIDE_LIMITS", false, "req-2"]);
+        assert.equal(error.message, "too\nmuch", "the cleaner belongs to kit/http, not here");
+        return true;
     });
 });

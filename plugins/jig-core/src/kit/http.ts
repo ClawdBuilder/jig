@@ -25,12 +25,12 @@ import type {
     TransportResponse,
 } from "../contract.ts";
 import { untilAborted } from "./abort.ts";
-import { HttpError, isHttpError } from "./http-error.ts";
+import { HttpError, TransportRefusal, isHttpError, isTransportRefusal } from "./http-error.ts";
 import { createTokens } from "./oauth.ts";
 import type { Tokens } from "./oauth.ts";
 import { isObject } from "./values.ts";
 
-export { HttpError, isHttpError };
+export { HttpError, TransportRefusal, isHttpError, isTransportRefusal };
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
 export const MAX_TIMEOUT_MS = 10 * 60 * 1000;
@@ -39,6 +39,15 @@ export const MAX_MAX_BYTES = 64 * 1024 * 1024;
 /** Bytes looked at for a NUL, which text never holds. */
 const SNIFF_BYTES = 4096;
 export const REDACTED = "[redacted]";
+
+/** Clean a transport's words for the model: controls, bidi and zero-width are removed; a code if nothing remains. */
+function cleanRefusal(message: string, code: string): string {
+    const cleaned = message
+        .replace(/[\p{Cc}\p{Cf}]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    return (cleaned === "" ? code : cleaned).slice(0, 300);
+}
 
 /** What `createHttp` needs from the outside. jig-core passes its own; a test passes fakes. */
 export interface HttpDeps {
@@ -559,6 +568,16 @@ export function createHttp(deps: HttpDeps): JigApi["http"] {
         } catch (error) {
             if (caller?.aborted === true) throw stopped(caller, false, error);
             if (deadline.aborted) throw new HttpError("timeout", "timed out", false);
+            if (isTransportRefusal(error)) {
+                throw new HttpError(
+                    "transport_refused",
+                    cleanRefusal(error.message, error.code),
+                    error.notSent,
+                    error,
+                    error.code,
+                    error.requestId,
+                );
+            }
             const message = error instanceof Error ? error.message : String(error);
             // jig-core says so when no transport has this name; then nothing was sent.
             if (/^no transport named /.test(message)) throw new HttpError("no_transport", message, true, error);
