@@ -317,6 +317,41 @@ describe("the other Pi folders on the machine", () => {
         assert.equal(at(entries(), path.join(outer, "auth.json")), undefined, "without the variable it is not listed");
     });
 
+    test("the whole ~/.pi folder is guarded, so a folder made before plain Pi's first start cannot load code", () => {
+        // Nothing exists yet under this home's ~/.pi: a write there would create what the person's own Pi loads next.
+        const fresh = path.join(world, "fresh-home");
+        const list = defaultProtectedPaths({ agentDir: path.join(fresh, ".jig"), home: fresh, env: {} });
+        const checkIn = (tool: string, target: string) =>
+            checkFileTool(tool, { path: target }, { entries: list, cwd: fresh, home: fresh });
+        // Pi's default folder, and any folder it would load a package or extension from.
+        assert.match(checkIn("write", path.join(fresh, ".pi", "agent", "settings.json"))?.reason ?? "", /is guarded/);
+        assert.match(checkIn("write", path.join(fresh, ".pi", "new", "x"))?.reason ?? "", /is guarded/);
+        assert.match(checkIn("edit", path.join(fresh, ".pi", "agent", "settings.json"))?.reason ?? "", /is guarded/);
+        assert.equal(checkIn("read", path.join(fresh, ".pi", "agent", "settings.json")), undefined);
+        // The folder that does exist keeps the more precise entry: its own name, not ~/.pi.
+        assert.match(
+            check("write", path.join(plainPi, "settings.json"))?.reason ?? "",
+            /~\/\.pi\/agent\/settings\.json is guarded/,
+        );
+    });
+
+    test("a JIG_HOME inside ~/.pi keeps its own rules", () => {
+        const nested = path.join(personHome, ".pi", "jig");
+        mkdirSync(path.join(nested, "npm"), { recursive: true });
+        writeFileSync(path.join(nested, "settings.json"), JSON.stringify({ packages: [] }));
+        writeFileSync(path.join(nested, "auth.json"), "{}");
+        const list = defaultProtectedPaths({ agentDir: nested, home: personHome, env: {} });
+        const checkIn = (tool: string, target: string) =>
+            checkFileTool(tool, { path: target }, { entries: list, cwd: personHome, home: personHome });
+        assert.equal(at(list, path.join(nested, "auth.json"))?.kind, "secret", "the home's login is still secret");
+        assert.equal(checkIn("read", path.join(nested, "auth.json"))?.entry?.kind, "secret");
+        assert.equal(checkIn("read", path.join(nested, "settings.json")), undefined, "the home stays readable");
+        assert.match(checkIn("write", path.join(nested, "settings.json"))?.reason ?? "", /~\/\.pi\/jig is guarded/);
+        assert.match(checkIn("write", path.join(nested, "jig.json"))?.reason ?? "", /is guarded/);
+        // A sibling under ~/.pi is still covered by the folder above it.
+        assert.match(checkIn("write", path.join(personHome, ".pi", "sibling", "x"))?.reason ?? "", /is guarded/);
+    });
+
     test("the folder Pi runs with is guarded whole, and not listed twice", () => {
         const list = entries();
         assert.equal(list.filter((entry) => entry.path === jigHome).length, 1);
@@ -419,12 +454,14 @@ describe("stores that the environment moves", () => {
         assert.deepEqual(pathsOf(moved({ DOCKER_CONFIG: "/" })), ["/config.json"]);
     });
 
-    test("they are part of the defaults, after the built-in ones, and the agent folder stays last", () => {
+    test("they are part of the defaults, after the built-in ones, and the named folders come before ~/.pi", () => {
         const entries = defaultProtectedPaths({ agentDir: agent, home, env: { PASSWORD_STORE_DIR: "/srv/pass" } });
         const places = pathsOf(entries);
         assert.ok(places.indexOf("/srv/pass") > places.indexOf(`${home}/.pypirc`));
-        assert.equal(entries.at(-1)?.path, agent);
+        // The whole `~/.pi` folder is last, so a message about a folder inside it names that folder.
+        assert.equal(entries.at(-1)?.path, path.join(home, ".pi"));
         assert.equal(entries.at(-1)?.kind, "guarded");
+        assert.ok(places.indexOf(agent) < places.indexOf(path.join(home, ".pi")));
         assert.ok(!pathsOf(defaultProtectedPaths({ agentDir: agent, home, env: {} })).includes("/srv/pass"));
         assert.ok(!pathsOf(defaultProtectedPaths({ agentDir: agent, home })).includes("/srv/pass"));
     });

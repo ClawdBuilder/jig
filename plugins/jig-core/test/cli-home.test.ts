@@ -376,6 +376,21 @@ describe("the home", () => {
         assert.equal(calls()[0]?.outer, null, "with no outer folder there is nothing to keep");
     });
 
+    test("a JIG_HOME inside ~/.pi still works", async () => {
+        // The whole `~/.pi` folder is guarded, but the home Pi runs with keeps its own rules.
+        const nested = path.join(home, ".pi", "jig");
+        const folder = path.join(nested, "npm", "node_modules", "@clawdbuilder", "jig");
+        mkdirSync(path.dirname(folder), { recursive: true });
+        symlinkSync(ROOT, folder, "dir");
+        writeFileSync(path.join(nested, "settings.json"), JSON.stringify({ packages: [folder] }));
+        const result = await run(["list"], { env: { JIG_HOME: nested } });
+        assert.equal(result.code, 0, result.stderr);
+        assert.deepEqual(piArgs(), ["list"]);
+        assert.equal(calls()[0]?.home, nested, "Pi runs with the home inside ~/.pi");
+        const version = await run(["--version"], { env: { JIG_HOME: nested } });
+        assert.equal(version.code, 0, version.stderr);
+    });
+
     test("doctor names the home it checked, with ~ for the person's own folder", async () => {
         installedHome();
         const result = await run(["doctor", "--json"]);

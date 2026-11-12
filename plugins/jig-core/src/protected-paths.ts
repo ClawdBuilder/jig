@@ -384,6 +384,10 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     }
     // Last, so a message about a file inside it names the more specific secret entry first.
     if (agentDir !== "") out.push(make(agentDir, "guarded"));
+    // Every Pi folder, including one this session could make before the person's own Pi first starts: a `settings.json`
+    // there would load code on that first start. Reading stays allowed, and the secret entries above still win for logins.
+    // Added after the folders named above, so a message about one of them names that folder.
+    if (home !== "") out.push(make(pathApi.join(home, ".pi"), "guarded"));
     return dedupe(out, input.platform);
 }
 
