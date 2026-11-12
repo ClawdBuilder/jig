@@ -1,152 +1,168 @@
-// The facts `jig update` reads before changing anything: the installed copies and company ranges, and the exact Pi command
-// for the method Pi was installed by. Registry and command runs are faked in update-plan.test.ts and update-run.test.ts.
+// The words `jig update` takes, the Pi commands it builds from them, and the checks that stop it before anything moves.
+// Nothing here starts Pi or asks npm: the forms are pure, and the end-to-end runs are in cli-home.test.ts.
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { discover, linkedPackageFolder, piSelfUpdateCommands, upToDate, update } from "../src/cli/update.ts";
-import { executeUpdate } from "../src/update-run.ts";
-import type { InstallCommand, UpdateIo } from "../src/update-run.ts";
-import { planUpdate } from "../src/update-plan.ts";
-import type { UpdatePlan } from "../src/update-plan.ts";
-import type { PiConfigModule } from "../src/cli/update.ts";
+import { installedRequirement, looksLikeSource, parse, piCommands, upToDate, update } from "../src/cli/update.ts";
 
-let home: string;
-let agent: string;
-let work: string;
+const NAME = "@clawdbuilder/jig";
+let root: string;
 
 beforeEach(() => {
-    home = mkdtempSync(path.join(tmpdir(), "jig-update-"));
-    agent = path.join(home, "agent");
-    work = path.join(home, "work");
-    mkdirSync(agent, { recursive: true });
-    mkdirSync(work, { recursive: true });
+    root = mkdtempSync(path.join(tmpdir(), "jig-update-"));
 });
-afterEach(() => rmSync(home, { recursive: true, force: true }));
+afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-function packageAt(folder: string, value: unknown): void {
-    mkdirSync(folder, { recursive: true });
-    writeFileSync(path.join(folder, "package.json"), JSON.stringify(value));
+function parsed(args: string[]) {
+    const result = parse(args);
+    assert.ok(!("problem" in result), "problem" in result ? result.problem : "");
+    return result;
 }
 
-describe("discover", () => {
-    test("finds Jig's Pi copy by source even when its folder is there, and every company range", () => {
-        const jig = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
-        const company = path.join(agent, "npm", "node_modules", "acme-jig");
-        packageAt(jig, { name: "@clawdbuilder/jig", version: "0.4.1" });
-        packageAt(company, { name: "acme-jig", jig: { range: ">=0.4.1 <0.5.0" } });
-        writeFileSync(
-            path.join(agent, "settings.json"),
-            JSON.stringify({ packages: ["npm:@clawdbuilder/jig", "npm:acme-jig"] }),
-        );
-        const found = discover(agent, work, "@clawdbuilder/jig");
-        assert.deepEqual(found.piCopy, {
-            version: "0.4.1",
-            source: "npm:@clawdbuilder/jig",
-            scope: "user",
-            folder: jig,
-        });
-        assert.deepEqual(found.company, [{ package: "acme-jig", range: ">=0.4.1 <0.5.0" }]);
+describe("what jig update takes", () => {
+    test("no target means all of Jig and the unpinned packages", () => {
+        assert.deepEqual(parsed([]).form, { kind: "all" });
+        assert.deepEqual(parsed(["--all"]).form, { kind: "all" });
     });
 
-    test("a symlinked prefix holding a normal install is not a linked package", () => {
-        const realRoot = path.join(home, "real-prefix");
-        const linkedRoot = path.join(home, "linked-prefix");
-        const folder = path.join(realRoot, "lib", "node_modules", "@clawdbuilder", "jig");
-        packageAt(folder, { name: "@clawdbuilder/jig", version: "0.4.1" });
-        mkdirSync(linkedRoot, { recursive: true });
-        symlinkSync(realRoot, path.join(linkedRoot, "lib"), "dir");
-        assert.equal(
-            linkedPackageFolder(path.join(linkedRoot, "lib", "node_modules"), folder, "@clawdbuilder/jig"),
-            false,
-        );
-        assert.equal(
-            linkedPackageFolder(path.join(realRoot, "lib", "node_modules"), folder, "@clawdbuilder/jig"),
-            false,
-        );
+    test("--self and self are Jig only, which is not Pi's meaning", () => {
+        assert.deepEqual(parsed(["--self"]).form, { kind: "self" });
+        assert.deepEqual(parsed(["self"]).form, { kind: "self" });
     });
 
-    test("a look-alike local folder does not count as Jig", () => {
-        const impostor = path.join(work, "jig");
-        packageAt(impostor, { name: "not-jig", version: "0.4.1" });
-        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [impostor] }));
-        const found = discover(agent, work, "@clawdbuilder/jig");
-        assert.equal(found.jigEntries.length, 0);
-        assert.equal(found.problem, undefined);
+    test("--extensions and --models are the other packages and Pi's catalogs", () => {
+        assert.deepEqual(parsed(["--extensions"]).form, { kind: "extensions" });
+        assert.deepEqual(parsed(["--models"]).form, { kind: "models" });
     });
 
-    test("refuses two Jig entries and names a pi remove for each, without choosing", () => {
-        const first = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
-        const second = path.join(work, ".pi", "local-jig");
-        packageAt(first, { name: "@clawdbuilder/jig", version: "0.4.1" });
-        packageAt(second, { name: "@clawdbuilder/jig", version: "0.4.2" });
-        writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["npm:@clawdbuilder/jig"] }));
-        mkdirSync(path.join(work, ".pi"), { recursive: true });
-        writeFileSync(path.join(work, ".pi", "settings.json"), JSON.stringify({ packages: [second] }));
-        const found = discover(agent, work, "@clawdbuilder/jig");
-        assert.ok(found.problem);
-        assert.match(found.problem, /2 Jig entries/);
-        assert.match(found.problem, /pi remove npm:@clawdbuilder\/jig/);
-        assert.doesNotMatch(found.problem, /pi remove npm:@clawdbuilder\/jig -l/);
-        assert.match(found.problem, new RegExp(`pi remove ${second.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} -l`));
-        assert.equal(found.jigEntries.length, 2);
+    test("one package, by positional or --extension", () => {
+        assert.deepEqual(parsed(["npm:@scope/tools"]).form, { kind: "source", source: "npm:@scope/tools" });
+        assert.deepEqual(parsed(["--extension", NAME]).form, { kind: "source", source: NAME });
     });
 
-    test("does not ask npm when the agent-folder copy is already there", () => {
-        const bin = path.join(home, "lazy-bin");
-        const marker = path.join(home, "lazy-npm-ran");
-        mkdirSync(bin, { recursive: true });
-        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf ran > '${marker}'\n`, { mode: 0o755 });
-        const saved = process.env.PATH;
-        process.env.PATH = `${bin}${path.delimiter}${saved ?? ""}`;
-        try {
-            const jig = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
-            packageAt(jig, { name: "@clawdbuilder/jig", version: "0.4.1" });
-            writeFileSync(
-                path.join(agent, "settings.json"),
-                JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.4.1"] }),
-            );
-            assert.equal(discover(agent, work, "@clawdbuilder/jig").piCopy?.version, "0.4.1");
-            assert.equal(existsSync(marker), false, "a present copy never starts npm");
-        } finally {
-            if (saved === undefined) delete process.env.PATH;
-            else process.env.PATH = saved;
+    test("the flags Pi's update takes are understood: approve, no-approve and --to", () => {
+        const approve = parsed(["--extensions", "-a", "--to", "0.6.0", "--check", "--json", "--yes"]);
+        assert.deepEqual(approve.approve, ["--approve"]);
+        assert.equal(approve.requested, "0.6.0");
+        assert.equal(approve.check, true);
+        assert.equal(approve.json, true);
+        assert.equal(approve.yes, true);
+        assert.deepEqual(parsed(["--no-approve"]).approve, ["--no-approve"]);
+    });
+
+    test("a missing value for a flag is a usage error", () => {
+        for (const args of [["--to"], ["--extension"], ["--extension", "--models"]]) {
+            const result = parse(args);
+            assert.ok("problem" in result, args.join(" "));
+            assert.match(result.problem, /needs a (version|package source)/);
         }
     });
 
-    test("finds a package by its npm name when the folder is missing, using npm's own fake global root", () => {
-        const bin = path.join(home, "fake-bin");
-        const fakeRoot = path.join(home, "fake-global", "lib", "node_modules");
-        const marker = path.join(home, "fake-npm-ran");
-        mkdirSync(bin, { recursive: true });
-        writeFileSync(path.join(bin, "npm"), `#!/bin/sh\nprintf ran > '${marker}'\nprintf '%s\\n' '${fakeRoot}'\n`, {
-            mode: 0o755,
-        });
-        const savedPath = process.env.PATH;
-        const savedRoot = process.env.FAKE_NPM_ROOT;
-        process.env.PATH = `${bin}${path.delimiter}${savedPath ?? ""}`;
-        process.env.FAKE_NPM_ROOT = fakeRoot;
-        try {
-            writeFileSync(
-                path.join(agent, "settings.json"),
-                JSON.stringify({ packages: ["npm:@clawdbuilder/jig@0.4.1"] }),
+    test("two targets are refused instead of guessing", () => {
+        const result = parse(["--self", "--models"]);
+        assert.ok("problem" in result);
+        assert.match(result.problem, /takes one target at a time/);
+    });
+
+    test("pi and --force are refused, because in Pi they reinstall the Pi binary", () => {
+        for (const args of [["pi"], ["--force"], ["--all", "--force"]]) {
+            const result = parse(args);
+            assert.ok("problem" in result, args.join(" "));
+            assert.equal(
+                result.problem,
+                "Jig never updates Pi itself (your pi and others share it). Run: pi update --self",
             );
-            const found = discover(agent, work, "@clawdbuilder/jig");
-            assert.equal(found.piCopy?.source, "npm:@clawdbuilder/jig@0.4.1");
-            assert.equal(found.piCopy?.version, undefined);
-            assert.ok(existsSync(marker), "the CLI asks npm for its global root");
-        } finally {
-            if (savedPath === undefined) delete process.env.PATH;
-            else process.env.PATH = savedPath;
-            if (savedRoot === undefined) delete process.env.FAKE_NPM_ROOT;
-            else process.env.FAKE_NPM_ROOT = savedRoot;
+        }
+    });
+
+    test("a word that is not a source is a stray word, with the way to ask Pi", () => {
+        const result = parse(["the", "readme"]);
+        assert.ok("problem" in result);
+        assert.equal(result.problem, 'jig update takes no words like "the". To ask Pi, run: jig "update the readme"');
+    });
+
+    test("an unknown option says so and points at the help", () => {
+        const result = parse(["--nope"]);
+        assert.ok("problem" in result);
+        assert.match(result.problem, /^jig update: unknown option --nope\./);
+        assert.match(result.problem, /Run jig update --help/);
+    });
+
+    test("a source is an npm or git spec, a URL, a host/path, or a path", () => {
+        for (const word of [
+            "npm:@scope/tools",
+            "git:github.com/acme/tools",
+            "git:github.com/acme/tools@v1",
+            "https://example.com/tools.tgz",
+            "github.com/acme/tools",
+            "./tools",
+            "/opt/tools",
+            "~/tools",
+            "jig-0.5.4.tgz",
+        ]) {
+            assert.equal(looksLikeSource(word), true, word);
+        }
+        for (const word of ["the", "readme", "doctor", "install", "pip"]) {
+            assert.equal(looksLikeSource(word), false, word);
         }
     });
 });
 
-describe("the update command's gate", () => {
-    test("without a terminal it refuses in one line, before the registry or any change", async () => {
+describe("the Pi commands a form builds", () => {
+    test("Jig's own entry moves with pi install, because setup pins it", () => {
+        assert.deepEqual(piCommands({ kind: "self" }, NAME, [], "0.6.0"), [["install", `npm:${NAME}@0.6.0`]]);
+        assert.deepEqual(piCommands({ kind: "all" }, NAME, [], "0.6.0"), [
+            ["install", `npm:${NAME}@0.6.0`],
+            ["update", "--extensions"],
+        ]);
+    });
+
+    test("the other forms are Pi's own update", () => {
+        assert.deepEqual(piCommands({ kind: "extensions" }, NAME, [], undefined), [["update", "--extensions"]]);
+        assert.deepEqual(piCommands({ kind: "models" }, NAME, [], undefined), [["update", "--models"]]);
+        assert.deepEqual(piCommands({ kind: "source", source: "npm:x" }, NAME, [], undefined), [
+            ["update", "--extension", "npm:x"],
+        ]);
+    });
+
+    test("an up-to-date Jig runs nothing of its own, and an approve flag goes last", () => {
+        assert.deepEqual(piCommands({ kind: "self" }, NAME, [], undefined), []);
+        assert.deepEqual(piCommands({ kind: "all" }, NAME, [], undefined), [["update", "--extensions"]]);
+        assert.deepEqual(piCommands({ kind: "models" }, NAME, ["--approve"], undefined), [
+            ["update", "--models", "--approve"],
+        ]);
+    });
+});
+
+describe("the checks", () => {
+    test("a running Jig newer than the registry is up to date; an explicit target is still planned", () => {
+        assert.equal(upToDate("0.5.4", "0.5.3", undefined), true);
+        assert.equal(upToDate("0.5.4", "0.5.4", undefined), true);
+        assert.equal(upToDate("0.5.4", "0.6.0", undefined), false);
+        assert.equal(upToDate("0.5.4", "0.5.3", "0.5.3"), false);
+    });
+
+    test("the Pi requirement of the Jig now in the home is read from its manifest", () => {
+        const folder = path.join(root, "npm", "node_modules", "@clawdbuilder", "jig");
+        mkdirSync(folder, { recursive: true });
+        writeFileSync(
+            path.join(folder, "package.json"),
+            JSON.stringify({
+                name: NAME,
+                version: "0.6.0",
+                jig: { agents: { pi: { minimum: "1.6.0", tested: "1.7.0" } } },
+            }),
+        );
+        assert.deepEqual(installedRequirement(root, NAME), { minimum: "1.6.0", tested: "1.7.0" });
+        assert.equal(installedRequirement(path.join(root, "elsewhere"), NAME), undefined);
+    });
+});
+
+describe("the gate before a change", () => {
+    /** Runs the command with stderr captured, and gives the text and the code back. */
+    async function refused(args: string[]): Promise<{ code: number; text: string }> {
         const saved = process.stderr.write;
         const savedCi = process.env.CI;
         delete process.env.CI;
@@ -156,213 +172,37 @@ describe("the update command's gate", () => {
             return true;
         }) as typeof process.stderr.write;
         try {
-            const code = await update([], undefined);
-            assert.equal(code, 2);
-            assert.match(text, /no terminal to confirm on/);
-            assert.match(text, /jig update --check/);
+            const code = await update(args, { home: path.join(root, "no-home") });
+            return { code, text };
         } finally {
             process.stderr.write = saved;
             if (savedCi === undefined) delete process.env.CI;
             else process.env.CI = savedCi;
         }
-    });
-
-    test("unknown options are a usage error", async () => {
-        const saved = process.stderr.write;
-        let text = "";
-        process.stderr.write = ((chunk: string | Uint8Array) => {
-            text += String(chunk);
-            return true;
-        }) as typeof process.stderr.write;
-        try {
-            assert.equal(await update(["--nope"], undefined), 2);
-            assert.match(text, /jig update: unknown option --nope/);
-        } finally {
-            process.stderr.write = saved;
-        }
-    });
-});
-
-describe("two updates in a row", () => {
-    test("the exact pin Pi leaves is movable, and the filter survives the source replacement", async () => {
-        const name = "@clawdbuilder/jig";
-        const jig = path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig");
-        packageAt(jig, { name, version: "0.4.1" });
-        const settings = path.join(agent, "settings.json");
-        const source = (): string => {
-            const value = JSON.parse(readFileSync(settings, "utf8")) as { packages: Array<{ source: string }> };
-            return value.packages[0]?.source ?? "";
-        };
-        const manifestVersion = (): string =>
-            (JSON.parse(readFileSync(path.join(jig, "package.json"), "utf8")) as { version: string }).version;
-        const writeSource = (value: string): void => {
-            writeFileSync(
-                settings,
-                JSON.stringify({ packages: [{ source: value, extensions: ["!plugins/jig-lens/index.ts"] }] }),
-            );
-        };
-        writeSource(`npm:${name}`);
-
-        const target = (version: string) => ({
-            version,
-            release: { jig: { agents: { pi: { minimum: "1.4.0", tested: "1.5.0" } } } },
-            newest: version,
-            cappedBy: [],
-        });
-        const planFor = (version: string): UpdatePlan => {
-            const copy = discover(agent, work, name).piCopy;
-            assert.ok(copy);
-            const built = planUpdate({
-                name,
-                current: manifestVersion(),
-                target: target(version),
-                piVersion: "1.5.0",
-                piCopy: copy,
-                globalVersion: version,
-            });
-            if (!("plan" in built)) throw new Error(built.problem);
-            return built.plan;
-        };
-        let expected = "0.5.0";
-        const io: UpdateIo = {
-            async run(command, args) {
-                assert.equal(command, "pi");
-                const spec = args[1] ?? "";
-                const version = spec.slice(spec.lastIndexOf("@") + 1);
-                writeFileSync(path.join(jig, "package.json"), JSON.stringify({ name, version }));
-                // Pi 1.5.0's addSourceToSettings: an object entry is `{ ...existing, source }`, so its filter stays.
-                writeSource(spec);
-                return { code: 0, stdout: "", stderr: "" };
-            },
-            notify() {},
-            async confirm() {
-                return true;
-            },
-            async piInstall(version): Promise<InstallCommand[]> {
-                return [{ command: "pi-self", args: [version], display: `install Pi ${version}` }];
-            },
-            piCopyInstall(version): InstallCommand {
-                return { command: "pi", args: ["install", `npm:${name}@${version}`], display: `install ${version}` };
-            },
-            piCopyRestore(source): InstallCommand {
-                return { command: "pi", args: ["install", source], display: `restore ${source}` };
-            },
-            globalInstall(version): InstallCommand {
-                return { command: "npm", args: ["install", "-g", `@x/y@${version}`], display: `install ${version}` };
-            },
-            async verify() {
-                return { pi: "1.5.0", piCopy: manifestVersion(), global: expected };
-            },
-            async doctor() {
-                return { code: 0, output: "" };
-            },
-        };
-
-        const first = planFor("0.5.0");
-        assert.equal(first.piCopy?.pinned, undefined);
-        assert.equal((await executeUpdate(first, io)).code, 0);
-        assert.equal(source(), `npm:${name}@0.5.0`);
-
-        expected = "0.6.0";
-        const second = planFor("0.6.0");
-        assert.equal(second.piCopy?.pinned, true);
-        assert.equal(second.piCopy?.from, "0.5.0");
-        assert.equal((await executeUpdate(second, io)).code, 0);
-        assert.equal(source(), `npm:${name}@0.6.0`);
-        const kept = JSON.parse(readFileSync(settings, "utf8")) as {
-            packages: Array<{ extensions: string[] }>;
-        };
-        assert.deepEqual(kept.packages[0]?.extensions, ["!plugins/jig-lens/index.ts"]);
-    });
-});
-
-describe("Pi's settings writer", () => {
-    test("keeps an object entry's filter when it replaces the source", () => {
-        const file = path.resolve(
-            import.meta.dirname,
-            "../../../node_modules/@earendil-works/pi-coding-agent/dist/core/package-manager.js",
-        );
-        const source = readFileSync(file, "utf8");
-        const start = source.indexOf("addSourceToSettings(source, options) {");
-        assert.ok(start >= 0, "Pi's addSourceToSettings is in the installed package");
-        const block = source.slice(start, start + 1200);
-        assert.match(
-            block,
-            /typeof existing === "string" \? normalizedSource : \{ \.\.\.existing, source: normalizedSource \}/,
-            "an object entry keeps its filter; a string entry has no filter to keep",
-        );
-    });
-});
-
-describe("piSelfUpdateCommands", () => {
-    const saved = process.env.PI_SELF_UPDATE_COMMAND;
-    afterEach(() => {
-        if (saved === undefined) delete process.env.PI_SELF_UPDATE_COMMAND;
-        else process.env.PI_SELF_UPDATE_COMMAND = saved;
-    });
-
-    function config(overrides: Partial<PiConfigModule> = {}): PiConfigModule {
-        return {
-            detectInstallMethod: () => "npm",
-            getSelfUpdateCommand: () => ({
-                command: "npm",
-                args: ["install", "-g", "@earendil-works/pi-coding-agent@1.5.0"],
-                display: "npm install -g @earendil-works/pi-coding-agent@1.5.0",
-            }),
-            getConfiguredSelfUpdateArgv: (setting) => setting,
-            makeConfiguredSelfUpdateCommand: (argv, release) => ({
-                command: argv[0] ?? "",
-                args: [...argv.slice(1), release.version],
-                display: [...argv, release.version].join(" "),
-            }),
-            getSelfUpdateUnavailableInstruction: () => "Update Pi with the command that installed it.",
-            ...overrides,
-        };
     }
 
-    test("uses the method Pi reports, with the exact tested version", () => {
-        delete process.env.PI_SELF_UPDATE_COMMAND;
-        const commands = piSelfUpdateCommands(config(), {}, "1.5.0");
-        assert.ok(Array.isArray(commands));
-        assert.equal(commands[0]?.command, "npm");
-        assert.ok(commands[0]?.args.includes("@earendil-works/pi-coding-agent@1.5.0"));
+    test("without a terminal it refuses in one line, before the registry or any change", async () => {
+        const { code, text } = await refused([]);
+        assert.equal(code, 2);
+        assert.match(text, /no terminal to confirm on/);
+        assert.match(text, /jig update --check/);
     });
 
-    test("uses a configured self-update command only when it can pin a version", () => {
-        delete process.env.PI_SELF_UPDATE_COMMAND;
-        const pinned = piSelfUpdateCommands(
-            config(),
-            { selfUpdateCommand: ["custom", "--version", "{version}"] },
-            "1.5.0",
-        );
-        assert.ok(Array.isArray(pinned));
-        assert.equal(pinned[0]?.command, "custom");
-        const cannot = piSelfUpdateCommands(config(), { selfUpdateCommand: ["custom", "update"] }, "1.5.0");
-        assert.ok(!Array.isArray(cannot));
-        assert.match(cannot.problem, /without \{version\}/);
+    test("an unknown option is a usage error, not a change", async () => {
+        const { code, text } = await refused(["--nope"]);
+        assert.equal(code, 2);
+        assert.match(text, /jig update: unknown option --nope/);
     });
 
-    test("prints the exact instruction and stops when Pi's method cannot be handled", () => {
-        delete process.env.PI_SELF_UPDATE_COMMAND;
-        const commands = piSelfUpdateCommands(
-            config({
-                getSelfUpdateCommand: () => undefined,
-                getSelfUpdateUnavailableInstruction: () => "Run: pnpm add -g @earendil-works/pi-coding-agent@1.5.0",
-            }),
-            {},
-            "1.5.0",
-        );
-        assert.ok(!Array.isArray(commands));
-        assert.match(commands.problem, /pnpm add -g/);
-        assert.match(commands.problem, /Nothing was changed/);
+    test("pi itself is refused", async () => {
+        const { code, text } = await refused(["pi"]);
+        assert.equal(code, 2);
+        assert.match(text, /Run: pi update --self/);
     });
-});
 
-describe("a running Jig newer than the registry", () => {
-    test("says up to date instead of planning an older release", () => {
-        assert.equal(upToDate("0.5.0", "0.4.3", undefined), true);
-        assert.equal(upToDate("0.5.0", "0.5.0", undefined), true);
-        assert.equal(upToDate("0.5.0", "0.6.0", undefined), false);
-        assert.equal(upToDate("0.5.0", "0.4.3", "0.4.3"), false, "an explicit target is still planned");
+    test("a check with no Jig in the home refuses before it reads the registry", async () => {
+        const { code, text } = await refused(["--check"]);
+        assert.equal(code, 1);
+        assert.match(text, /Jig is not installed in .*no-home/);
     });
 });
