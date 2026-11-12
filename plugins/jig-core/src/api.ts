@@ -19,6 +19,7 @@ import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
 import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
+import { TRANSPORTS_SECTION, relayNames } from "./transports-section.ts";
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";
 import { callRecord, writeRecord } from "./records.ts";
@@ -167,7 +168,14 @@ export function buildApi(state: JigState): JigApi {
         },
 
         transports: {
-            register: (name, transport) => state.transports.register(name, transport),
+            register(name, transport) {
+                if (state.configLoaded && relayNames(state.personal.sections.get(TRANSPORTS_SECTION)).includes(name)) {
+                    throw new Error(
+                        `transport "${name}" is declared in ${TRANSPORTS_SECTION} in jig.json, so a company plugin cannot register it`,
+                    );
+                }
+                state.transports.register(name, transport);
+            },
             request: (name, request, signal) => state.transports.request(name, request, signal),
         },
 
@@ -259,6 +267,7 @@ export function buildApi(state: JigState): JigApi {
                 }
                 if (
                     name === TOOLS_SECTION ||
+                    name === TRANSPORTS_SECTION ||
                     name === UPDATES_SECTION ||
                     name === PROFILES_SECTION ||
                     name === PROFILE_SECTION

@@ -53,6 +53,7 @@ import { createTunnels } from "./tunnels.ts";
 import type { Tunnels } from "./tunnels.ts";
 import type { Transports } from "./transports.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
+import { TRANSPORTS_SECTION, relayNames, tokenFilePaths, validateTransportsSection } from "./transports-section.ts";
 import { UPDATES_SECTION, validateUpdatesSection } from "./updates-section.ts";
 import { validateToolsSection } from "./tool-exposure.ts";
 import { createWatchEngine } from "./watch/engine.ts";
@@ -361,6 +362,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
                         stateDir: stateDir(),
                         env,
                         pass: state.personal.config.secrets.pass,
+                        secretFiles: tokenFilePaths(state.personal.sections.get(TRANSPORTS_SECTION), home),
                     }),
                     // The code Pi loads at its next start, with no sandbox: the local packages and extensions of its settings.
                     loadedCodePaths({
@@ -412,6 +414,7 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
     // defaults for `tools`, but they are not a plugin's: they stay out of `sectionChecks`, which `/jig` lists as the plugins' sections.
     const checks = new Map([
         [TOOLS_SECTION, validateToolsSection],
+        [TRANSPORTS_SECTION, validateTransportsSection],
         [UPDATES_SECTION, validateUpdatesSection],
         [PROFILES_SECTION, validateProfilesSection],
         [PROFILE_SECTION, validateProfileSection],
@@ -431,6 +434,17 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
     // The profile is chosen from the file, and the chosen company's section defaults lie under the file's sections:
     // when the choice changed, the file is read again with them.
     if (settleProfile(state)) state.personal = read();
+    const relays = state.personal.sections.get(TRANSPORTS_SECTION);
+    for (const name of relayNames(relays)) {
+        if (!state.transports.has(name)) continue;
+        state.personal.problems.push({
+            source: state.personal.file,
+            key: `transports.${name}`,
+            message: `transport "${name}" is declared in ${TRANSPORTS_SECTION}, but a company plugin already registered it`,
+        });
+        state.personal.invalid.add(TRANSPORTS_SECTION);
+        state.personal.sections.delete(TRANSPORTS_SECTION);
+    }
     announce(state);
     state.invalidatePolicy();
 }

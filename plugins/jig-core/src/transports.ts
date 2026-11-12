@@ -12,6 +12,7 @@ import { isTransportRefusal } from "./kit/http-error.ts";
 
 export interface Transports {
     register(name: string, transport: Transport): void;
+    has(name: string): boolean;
     request(name: string, request: TransportRequest, signal?: AbortSignal): Promise<TransportResponse>;
 }
 
@@ -69,6 +70,10 @@ export function createTransports(): Transports {
                 throw new TypeError(`transport "${printable(name)}" must have a request function`);
             }
             transports.set(name, transport);
+        },
+
+        has(name) {
+            return transports.has(name);
         },
 
         async request(name, request, signal) {
