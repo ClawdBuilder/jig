@@ -387,10 +387,7 @@ test("consoleProxy sends the original search inside the proxy path", async (t) =
     });
     ok(await direct.call(call));
     assert.equal(direct.requests[0]?.method, "POST");
-    assert.equal(
-        direct.requests[0]?.path,
-        "/api/console/proxy?path=%2Fapp-staging-*%2F_search&method=POST",
-    );
+    assert.equal(direct.requests[0]?.path, "/api/console/proxy?path=%2Fapp-staging-*%2F_search&method=POST");
     assert.equal(direct.requests[0]?.headers["osd-xsrf"], "true");
     assert.equal(direct.requests[0]?.headers["kbn-xsrf"], "true");
 
@@ -436,7 +433,6 @@ test("transport: a refusal says the backend was not changed", async (t) => {
     const refused = await w.call(call);
     assert.equal(refused.error?.message, "the log backend was not changed: sign in first (SIGN_IN_REQUIRED)");
     assert.deepEqual([...w.jig.facts.values()].flat(), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
-
 });
 
 test("a relay unknown is transient and lets the bucket be halved", async (t) => {

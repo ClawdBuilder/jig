@@ -93,9 +93,10 @@ not configured instead of running half set up.
 | `backend` | Required. The `type` (`elasticsearch` or `loki`), its `url`, and `auth` or `transport` |
 | `environments` | Required, at least one. Each says where its logs are: an `index` or a `selector`, and may add a `filter` |
 | `maxWindow` | The longest window one call searches, `1h` to `90d`, written like `window`. Default `7d` |
-| `consoleProxy` | Optional. A Dashboards/Kibana console proxy path on the backend origin, such as `/_dashboards/api/console/proxy` or `/api/console/proxy` |
+| `consoleProxy` | Optional. A Dashboards/Kibana console proxy path |
 
-A password, key or token in `auth` is a secret reference such as
+`consoleProxy` is a path on the backend's origin: `/_dashboards/api/console/proxy` for OpenSearch Dashboards, or
+`/api/console/proxy` for Kibana. A password, key or token in `auth` is a secret reference such as
 `pass:logs/api-key` (see [Secrets](../../docs/secrets.md)), never the secret. A
 Loki `selector` comes from here and never from the model. An environment's
 `jigEnvironment` is the `jig-core` environment it is classified in, by default its

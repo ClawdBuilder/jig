@@ -155,7 +155,9 @@ export const elasticsearch: LogBackend = {
             proxy !== undefined &&
             (typeof proxy !== "string" || !proxy.startsWith("/") || proxy.length > 200 || /[?#]/.test(proxy))
         ) {
-            errors.push(`${key}.consoleProxy: must be a path starting with "/", at most 200 characters, with no query or fragment`);
+            errors.push(
+                `${key}.consoleProxy: must be a path starting with "/", at most 200 characters, with no query or fragment`,
+            );
         }
     },
 

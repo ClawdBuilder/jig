@@ -75,8 +75,16 @@ test("a field nobody defined is an error that names it, at every depth", () => {
 test("consoleProxy is a path on the backend origin, only for Elasticsearch", () => {
     const backend = { ...direct, consoleProxy: "/api/console/proxy" };
     assert.deepEqual(errorsOf(section({ backend })), []);
-    assert.deepEqual(errorsOf(section({ backend: { ...transport, consoleProxy: "/_dashboards/api/console/proxy" } })), []);
-    for (const consoleProxy of ["api/console/proxy", "/api/console/proxy?x=1", "/api/console/proxy#x", `/${"x".repeat(200)}`]) {
+    assert.deepEqual(
+        errorsOf(section({ backend: { ...transport, consoleProxy: "/_dashboards/api/console/proxy" } })),
+        [],
+    );
+    for (const consoleProxy of [
+        "api/console/proxy",
+        "/api/console/proxy?x=1",
+        "/api/console/proxy#x",
+        `/${"x".repeat(200)}`,
+    ]) {
         assert.match(
             errorsOf(section({ backend: { ...direct, consoleProxy } }))[0] ?? "",
             /^logs\.backend\.consoleProxy: must be a path starting with/,
