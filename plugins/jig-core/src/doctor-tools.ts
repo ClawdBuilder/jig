@@ -491,8 +491,7 @@ async function accountChecks(
                 group: "logins",
                 level: "skip",
                 title: "GitHub accounts per repository",
-                detail: "No git.accounts are set; gh uses the active account everywhere.",
-                fix: 'Map a remote to an account, such as "git": { "accounts": { "github.com:acme/*": "acme-work" } }.',
+                detail: 'No git.accounts are set; gh uses the active account everywhere. To map a remote to an account, set "git": { "accounts": { "github.com:acme/*": "acme-work" } }.',
             });
     }
     return lines;

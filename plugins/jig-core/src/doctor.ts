@@ -37,6 +37,8 @@ export interface DoctorLine {
     data?: Record<string, string | number | boolean>;
     /** Milliseconds the check took, in --json. */
     durationMs?: number;
+    /** The configuration path behind a secret row, for grouping; never written to --json. */
+    refPath?: string;
 }
 
 /** What the report is about, for the JSON file. Versions that could not be read are `null`. */
@@ -173,11 +175,128 @@ export async function runDoctor(context: DoctorContext, options: DoctorOptions =
     };
 }
 
+/** True when the terminal can show the level markers: no NO_COLOR, a real terminal, TERM not dumb, UTF-8 locale. */
+export function doctorMarkers(env: NodeJS.ProcessEnv = process.env): boolean {
+    if (env.NO_COLOR !== undefined && env.NO_COLOR !== "") return false;
+    if (env.TERM === "dumb") return false;
+    const locale = env.LC_ALL ?? env.LC_CTYPE ?? env.LANG ?? "";
+    return /utf-?8/i.test(locale);
+}
+
+/** The marker for a level, or the padded word when markers are off. */
+export function doctorLabel(level: DoctorLevel, markers: boolean): string {
+    if (!markers) return level.padEnd(4);
+    const marks: Record<DoctorLevel, string> = { ok: "✓", warn: "!", fail: "✗", skip: "–" };
+    return `${marks[level]} `;
+}
+
+/** Group repeated secret status rows for the human report only; --json keeps one entry per reference. */
+function collapseReferences(lines: readonly DoctorLine[]): DoctorLine[] {
+    const out: DoctorLine[] = [];
+    const groups = new Map<string, DoctorLine[]>();
+    const order: Array<{ line: DoctorLine; key?: string }> = [];
+    for (const line of lines) {
+        if (line.group !== "secrets" || (line.level !== "ok" && line.level !== "skip")) {
+            order.push({ line });
+            continue;
+        }
+        const signature = (line.detail ?? "").replaceAll(line.title, "{ref}");
+        const key = `${line.level}|${signature}`;
+        const group = groups.get(key);
+        if (group === undefined) {
+            groups.set(key, [line]);
+            order.push({ line, key });
+        } else group.push(line);
+    }
+    for (const item of order) {
+        if (item.key === undefined) {
+            out.push(item.line);
+            continue;
+        }
+        const group = groups.get(item.key) ?? [];
+        if (group.length < 2) {
+            out.push(item.line);
+            continue;
+        }
+        out.push(grid(group, item.line) ?? plainGroup(group, item.line));
+    }
+    return out;
+}
+
+/** The grid of values when the rows differ along path axes, such as service × environment. */
+function grid(group: readonly DoctorLine[], first: DoctorLine): DoctorLine | undefined {
+    const paths = group.map((line) => line.refPath?.split("."));
+    if (paths.some((path) => path === undefined)) return undefined;
+    const parts = paths as string[][];
+    const length = parts[0]?.length ?? 0;
+    if (length === 0 || parts.some((path) => path.length !== length)) return undefined;
+    const varying: number[] = [];
+    for (let i = 0; i < length; i++) if (new Set(parts.map((path) => path[i])).size > 1) varying.push(i);
+    if (varying.length < 2) return undefined;
+    const section = parts[0]?.[0] ?? "";
+    const statics = (parts[0] ?? []).filter((_, i) => !varying.includes(i) && i > 0);
+    const last = statics.at(-1) ?? "";
+    const plural = /s$/.test(last) ? last : `${last}s`;
+    let title = `${section.charAt(0).toUpperCase()}${section.slice(1)} ${plural}`;
+    if (["token", "password", "key"].includes(last)) {
+        const auth = statics.indexOf("auth");
+        const noun = auth > 0 ? (statics[auth - 1] ?? statics[0] ?? "") : (statics[0] ?? "");
+        title = `${section.charAt(0).toUpperCase()}${section.slice(1)} ${noun} ${plural}`;
+    }
+    const values = (index: number): string[] => [...new Set(parts.map((path) => path[index] ?? ""))];
+    const axis1 = varying[0] ?? 0;
+    const axis2 = varying[1] ?? 0;
+    const firstValues = values(axis1);
+    const secondValues = values(axis2);
+    const firstText =
+        firstValues.length > 4
+            ? `${firstValues.length} ${parts[0]?.[axis1 - 1] ?? "names"} (${firstValues.slice(0, 3).join(", ")}, …)`
+            : firstValues.join(", ");
+    const extra = [...new Set(varying.slice(2).flatMap((index) => values(index)))];
+    const extraText = extra.length > 0 ? ` (${extra.join(" and ")})` : "";
+    const source = /in a command/i.test(first.detail ?? "")
+        ? "come from a command, not read"
+        : /found in/i.test(first.detail ?? "")
+          ? "found in pass"
+          : "not checked";
+    return {
+        ...first,
+        title,
+        detail: `${group.length} ${group.length === 1 ? "reference" : "references"} ${source}: ${firstText} × ${secondValues.join(", ")}${extraText}`,
+    };
+}
+
+function plainGroup(group: readonly DoctorLine[], first: DoctorLine): DoctorLine {
+    const words = group.map((line) => line.title.split(/\s+/));
+    const prefix: string[] = [];
+    for (let i = 0; ; i++) {
+        const word = words[0]?.[i];
+        if (word === undefined || !words.every((parts) => parts[i] === word)) break;
+        prefix.push(word);
+    }
+    const title = (prefix.length > 0 ? prefix.join(" ") : "Secret references").replace(/[.,:]$/, "");
+    const samples = [
+        ...new Set(group.map((line) => line.title.split(/\s+/).slice(prefix.length).join(" ")).filter(Boolean)),
+    ];
+    const shown = samples.slice(0, 4);
+    const list = `${shown.join(", ")}${samples.length > shown.length ? ", …" : ""}`;
+    const source = /in a command/i.test(first.detail ?? "")
+        ? "come from a command, not read"
+        : /found in/i.test(first.detail ?? "")
+          ? "found"
+          : "not checked";
+    return {
+        ...first,
+        title,
+        detail: `${group.length} ${group.length === 1 ? "reference" : "references"} ${source}: ${list}`,
+    };
+}
+
 /** The report as lines for Pi's screen: a summary, one section per group, and what to do about it. `quiet` keeps only
  *  the warnings and failures, with the summary of the whole report. */
 export function formatDoctor(
     report: DoctorReport,
-    options: { quiet?: boolean; command?: string; width?: number; color?: boolean } = {},
+    options: { quiet?: boolean; command?: string; width?: number; color?: boolean; markers?: boolean } = {},
 ): string[] {
     const { ok, warn, fail, skip } = report.counts;
     const width = Math.max(40, options.width ?? 100);
@@ -193,19 +312,23 @@ export function formatDoctor(
         const code = level === "ok" ? "32" : level === "warn" ? "33" : level === "fail" ? "31" : "2";
         return `\u001b[${code}m${text}\u001b[0m`;
     };
+    const laid = collapseReferences(shown);
     for (const group of DOCTOR_GROUPS) {
-        const lines = shown.filter((line) => line.group === group.id);
+        const lines = laid.filter((line) => line.group === group.id);
         if (lines.length === 0) continue;
         out.push("", group.title);
         for (const line of lines) {
-            const label = line.level.padEnd(4);
+            const label = doctorLabel(line.level, options.markers === true);
             const head = `  ${label} ${line.title}`;
-            const body = line.detail === undefined ? head : `${head} — ${line.detail}`;
+            const detailParts = (line.detail ?? "").split("\n");
+            const first = detailParts.shift() ?? "";
+            const body = line.detail === undefined ? head : `${head} — ${first}`;
             const wrapped = wrapPlain(body, width, 7);
             if (options.color === true) {
                 wrapped[0] = (wrapped[0] ?? "").replace(`  ${label}`, `  ${colour(line.level, label)}`);
             }
             out.push(...wrapped);
+            for (const part of detailParts) out.push(...wrapPlain(`       ${part}`, width, 7));
             if (line.fix !== undefined) out.push(...wrapPlain(`       fix: ${line.fix}`, width, 7));
         }
     }

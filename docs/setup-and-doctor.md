@@ -15,6 +15,29 @@ jig doctor [--json] [--network] [--quiet]
 It says "Checking your setup…" at once, then loads the same packages Pi loads. The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
 the network, the sandbox and the records folder.
 
+```text
+Jig doctor · 8 ok · 1 warning · 2 failures · 7 skipped
+
+This machine
+  ✓ System — Linux, Node.js 24.15.0
+  ! Pi — 1.4.0; this Jig is tested with 1.5.0
+  ✗ Jig — not installed in ~/.pi/agent (the default folder), so Pi does not
+       load Jig's plugins.
+       If your Pi runs with PI_CODING_AGENT_DIR, run jig doctor with the same
+       variable.
+       fix: pi install npm:@clawdbuilder/jig
+  ✓ Pi's folder — ~/.pi/agent, the default
+...
+```
+
+A check starts with **✓** (ok), **!** (warning), **✗** (failure) or **–** (skipped). The words come back when `NO_COLOR` is set,
+`TERM=dumb`, or the locale (`LC_ALL`, `LC_CTYPE` or `LANG`) is not UTF-8, so a plain terminal still reads `ok`, `warn`,
+`fail` and `skip`. The summary line keeps its words. `--json` is unchanged.
+
+This machine names the Pi folder it checked and why: `~/.pi/agent, the default` or the path `from PI_CODING_AGENT_DIR`.
+When Jig is not installed there, the `Jig` row names the folder and carries the hint: "If your Pi runs with
+`PI_CODING_AGENT_DIR`, run `jig doctor` with the same variable."
+
 Exit code `0` means no failures, `1` means at least one; `--json` prints one JSON report with `"schema": 1` on stdout and
 nothing else (failures still exit 1); every line carries `durationMs`, the milliseconds its check took. The exit codes are the same for every command: 0 success, 1 a failure, 2 a usage error
 or a missing required flag. It works when `jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not
@@ -147,14 +170,18 @@ names `src/index.ts` matches nothing. Keep `jig-core` first in the list, because
 
 ## The four words
 
-| Word | What it means |
-|---|---|
-| `ok` | This works. |
-| `warn` | This works, but something is worth knowing. |
-| `fail` | A tool that needs this will fail. |
-| `skip` | This was not checked, or does not apply here. |
+| Mark | Word | What it means |
+|---|---|---|
+| ✓ | `ok` | This works. |
+| ! | `warn` | This works, but something is worth knowing. |
+| ✗ | `fail` | A tool that needs this will fail. |
+| – | `skip` | This was not checked, or does not apply here. |
 
 Each `warn` and `fail` has a `fix:` line under it. The fix is a command or an action for you; Jig does not run it.
+A `skip` has no fix line. Repeated secret rows with the same outcome and source collapse into one counted line. When the names form a grid, it
+shows the axes: `– Ops job tokens — 20 come from a command, not read: 10 services (orders-api, billing-api,
+payments-api, …) × staging, qa`. Mongo groups read `✓ Mongo connections — 12 found in pass: staging, qa, prod × app,
+reports (user and password)`. When they do not form a grid, it keeps the plain list. `--json` still has one entry per reference.
 
 ## What it looks at
 
