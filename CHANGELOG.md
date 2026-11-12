@@ -31,6 +31,9 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - A `jig` started outside the home hands over to the one installed in the home, so the command and its plugins are one
   version. With no Jig in the home, only `setup`, `help` and `--version` run and the rest says what to install.
 - `jig update` no longer moves the global `jig` command or Pi, and `--to` moves Jig in the home only.
+- The floor protects every Pi folder on the machine, not only the one Jig runs with: each `~/.pi/*` that holds
+  settings or a login, and the outer `PI_CODING_AGENT_DIR` that `jig` replaced, so a `jig` session cannot read the
+  plain Pi's logins or add code to its settings.
 - Tool descriptions and parameter text are shorter, and skills use one wording for refusals, untrusted output, lost replies and masked values.
 - Tool descriptions and skills now point at one skill and agree on the first step, the review action and the actions their tools offer.
 - Another plugin's `registerSection` of a section that is already registered is refused; the same plugin loaded again replaces its own registration.

@@ -322,7 +322,7 @@ async function setup(args: readonly string[]): Promise<number> {
             return 0;
         }
         process.stderr.write(
-            "jig setup needs a terminal: its company, profile and credential choices have no safe headless default. The home is ready; run jig setup in a terminal to finish, or jig setup --yes to skip the questions.\n",
+            "jig setup needs a terminal: the home is ready and Jig is installed, but the company, profile and credential questions have no safe headless default. Run jig setup in a terminal to answer them, or jig setup --yes to skip them.\n",
         );
         screen?.close();
         return 2;

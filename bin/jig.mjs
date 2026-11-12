@@ -29,11 +29,16 @@ const packageVersion = (() => {
     }
 })();
 
-// --- The home, before anything else. `jig` is Pi for this folder and ignores an outer PI_CODING_AGENT_DIR.
+// --- The home, before anything else. `jig` is Pi for this folder and ignores an outer PI_CODING_AGENT_DIR, but keeps it:
+// the floor protects every Pi folder on the machine, including that one (protected-paths.ts reads JIG_OUTER_PI_DIR).
 const home = (() => {
     const named = process.env.JIG_HOME?.trim();
     return named === undefined || named === "" ? path.join(homedir(), ".jig") : path.resolve(named);
 })();
+const outerPiDir = process.env.PI_CODING_AGENT_DIR?.trim();
+if (outerPiDir !== undefined && outerPiDir !== "" && path.resolve(outerPiDir) !== home) {
+    process.env.JIG_OUTER_PI_DIR = path.resolve(outerPiDir);
+}
 process.env.PI_CODING_AGENT_DIR = home;
 
 const real = (file) => {

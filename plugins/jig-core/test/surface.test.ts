@@ -567,6 +567,7 @@ describe("environment variables", () => {
             "JIG_HOME",
             "JIG_LENS_DASHBOARDS",
             "JIG_LENS_INDEX",
+            "JIG_OUTER_PI_DIR",
             "JIG_PARENT_SESSION",
             "JIG_PI_HOST",
             "JIG_ROLE_POLICY",

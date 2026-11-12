@@ -65,8 +65,8 @@ jig setup [section] [--bin <folder>] [--source <source>] [--from <folder>] [--ye
 ```
 
 On a machine with no home, setup does the install above, then asks its questions. `--bin` names where the `jig`
-command goes, `--source` names what `pi install` installs, and `--from` names an older Jig folder to offer settings
-from. A file at the `jig` command's path that is not Jig's is left alone, and setup stops and says so.
+command goes, and `--from` names an older Jig folder to offer settings from. `--source` is for the tests: a packed copy
+to install instead of the published package. A file at the `jig` command's path that is not Jig's is left alone, and setup stops and says so.
 
 **Migration.** When `~/.pi/jig-agent/jig.json` exists, or `--from` names a folder with one, setup offers to copy
 `jig.json` into the home. `auth.json` and `sessions/` are separate offers with their own yes, because they hold your
@@ -77,7 +77,7 @@ home and the `jig` command.
 
 The questions need a terminal: their company, profile and credential choices have no safe headless default. With
 `--yes` setup takes the safe answers and skips them, so a script can finish. Without a terminal and without `--yes` it
-does the install, says the questions need one, and exits 2. It starts with the company question: which installed
+does the install, says the home is ready and that the questions need a terminal, names those two ways, and exits 2. It starts with the company question: which installed
 company setup you use, or "None, just me", and for which folders (`everywhere` by default). That writes the `profiles`
 and `profile` entries a newcomer cannot be expected to know. Then setup asks one question at a time about the parts a
 company plugin or a validator says are incomplete or wrong.

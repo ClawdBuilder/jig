@@ -51,7 +51,8 @@ Running it again does the questions only, and repairs a missing \`jig\` command.
 Options:
   --bin <folder>   where the \`jig\` command goes (default: ~/.local/bin)
   --source <source>
-                   what \`pi install\` installs (default: this version on npm)
+                   for tests: a packed copy to install instead of the published
+                   package
   --from <folder>  an older Jig folder to offer settings from
   --yes, -y        take the safe answers and skip the questions; for scripts
   -h, --help       show this help

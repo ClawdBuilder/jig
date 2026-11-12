@@ -12,11 +12,10 @@
 //
 // This checks the file tools only. `bash` is the sandbox's job: until the sandbox runs, a shell command can still reach
 // these paths.
-import { lstatSync, readlinkSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readlinkSync, statSync } from "node:fs";
 import path from "node:path";
 import { PI_PROJECT_PATHS, projectFoldersBelowHome } from "./kit/pi-project-paths.ts";
 import { runsLaterPaths } from "./kit/runs-later.ts";
-import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export type ProtectedKind = "secret" | "guarded";
@@ -62,6 +61,9 @@ export interface DefaultsInput extends PathContext {
     pass?: { storeDir?: string | undefined; gnupgHome?: string | undefined };
     /** Files a `file:` secret reference reads, such as a relay token: secret, so no Jig file tool reads them. */
     secretFiles?: readonly string[];
+    /** The code a Pi folder's settings name, as guarded paths. `state.ts` passes `loadedCodePaths`, which reads the
+     *  folder's `settings.json`; a test may pass its own. */
+    codePaths?: (agentDir: string) => ProtectedPath[];
 }
 
 /** What a tool's input is checked against. */
@@ -216,6 +218,52 @@ export function relocatedStores(env: Env, home: string, platform?: NodeJS.Platfo
     return out;
 }
 
+/**
+ * Every other Pi folder on the machine, besides the one Pi and Jig run with: each folder directly under `~/.pi` that
+ * holds a `settings.json` or an `auth.json`, and the outer `PI_CODING_AGENT_DIR` that `jig` replaced (bin/jig.mjs passes
+ * it on as `JIG_OUTER_PI_DIR`). A `jig` session can reach all of them with a plain path, so the floor has to cover them:
+ * their logins are secret, and their settings and the code those name are guarded.
+ */
+export function otherAgentFolders(input: {
+    agentDir: string;
+    home: string;
+    env?: Env;
+    platform?: NodeJS.Platform;
+}): string[] {
+    const pathApi = flavour(input.platform);
+    const current = input.agentDir === "" ? undefined : pathApi.resolve(input.agentDir);
+    const out: string[] = [];
+    const add = (folder: string): void => {
+        const absolute = pathApi.resolve(folder);
+        if (absolute === current || out.includes(absolute) || coversHome(absolute, input.home, input.platform)) return;
+        out.push(absolute);
+    };
+    if (input.home !== "") {
+        const root = pathApi.join(input.home, ".pi");
+        try {
+            for (const name of readdirSync(root)) {
+                const folder = pathApi.join(root, name);
+                try {
+                    if (!statSync(folder).isDirectory()) continue;
+                } catch {
+                    continue;
+                }
+                if (
+                    existsSync(pathApi.join(folder, "settings.json")) ||
+                    existsSync(pathApi.join(folder, "auth.json"))
+                ) {
+                    add(folder);
+                }
+            }
+        } catch {
+            // No `~/.pi`: there is no other Pi folder here.
+        }
+    }
+    const outer = input.env?.JIG_OUTER_PI_DIR;
+    if (outer !== undefined && outer.trim() !== "") add(outer.trim());
+    return out;
+}
+
 /** What is protected without any configuration. */
 export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
     const pathApi = flavour(input.platform);
@@ -225,6 +273,17 @@ export function defaultProtectedPaths(input: DefaultsInput): ProtectedPath[] {
 
     if (agentDir !== "") {
         for (const name of AGENT_SECRETS) out.push(make(pathApi.join(agentDir, name), "secret"));
+    }
+    // The other Pi folders: their logins, their settings, and the code those settings load at the next start.
+    for (const folder of otherAgentFolders({
+        agentDir,
+        home,
+        ...(input.env === undefined ? {} : { env: input.env }),
+        ...(input.platform === undefined ? {} : { platform: input.platform }),
+    })) {
+        for (const name of AGENT_SECRETS) out.push(make(pathApi.join(folder, name), "secret"));
+        out.push(make(pathApi.join(folder, "settings.json"), "guarded"));
+        for (const found of input.codePaths?.(folder) ?? []) out.push(found);
     }
     if (home !== "") for (const name of HOME_SECRETS) out.push(make(pathApi.join(home, ...name.split("/")), "secret"));
     for (const file of input.secretFiles ?? []) out.push(make(file, "secret"));

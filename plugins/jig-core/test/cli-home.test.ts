@@ -52,7 +52,7 @@ function fakePi(): string {
     return `#!/usr/bin/env node
 const fs = require("node:fs"), path = require("node:path");
 const args = process.argv.slice(2);
-fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ args, home: process.env.PI_CODING_AGENT_DIR ?? null }) + "\\n");
+fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ args, home: process.env.PI_CODING_AGENT_DIR ?? null, outer: process.env.JIG_OUTER_PI_DIR ?? null }) + "\\n");
 const home = process.env.PI_CODING_AGENT_DIR;
 if (args[0] === "install" && home) {
     const folder = path.join(home, "npm", "node_modules", "@clawdbuilder", "jig");
@@ -143,13 +143,13 @@ function run(
     });
 }
 
-/** Every call the fake Pi took, newest last, with the home it was given. */
-function calls(): Array<{ args: string[]; home: string | null }> {
+/** Every call the fake Pi took, newest last, with the home it was given and the Pi folder `jig` replaced. */
+function calls(): Array<{ args: string[]; home: string | null; outer: string | null }> {
     if (!existsSync(log)) return [];
     return readFileSync(log, "utf8")
         .split("\n")
         .filter((line) => line !== "")
-        .map((line) => JSON.parse(line) as { args: string[]; home: string | null });
+        .map((line) => JSON.parse(line) as { args: string[]; home: string | null; outer: string | null });
 }
 
 const piArgs = (): string[] => calls().map((call) => call.args.join(" "));
@@ -346,6 +346,34 @@ describe("the home", () => {
         const pi = await run(["-p", "hi"], { env: { PI_CODING_AGENT_DIR: outer } });
         assert.equal(calls()[0]?.home, jig);
         assert.equal(pi.code, 0);
+    });
+
+    test("an outer PI_CODING_AGENT_DIR is kept as JIG_OUTER_PI_DIR, so the floor can protect it", async () => {
+        installedHome();
+        const outer = path.join(root, "outer-agent");
+        mkdirSync(outer, { recursive: true });
+        const result = await run(["-p", "hi"], { env: { PI_CODING_AGENT_DIR: outer } });
+        assert.equal(result.code, 0, result.stderr);
+        assert.equal(calls()[0]?.home, jig, "Pi still runs with the home");
+        assert.equal(calls()[0]?.outer, outer);
+        rmSync(log, { force: true });
+        // The test runner has a PI_CODING_AGENT_DIR of its own; removing it is the no-outer case.
+        await run(["-p", "hi"], { env: { PI_CODING_AGENT_DIR: undefined } });
+        assert.equal(calls()[0]?.outer, null, "with no outer folder there is nothing to keep");
+    });
+
+    test("an outer PI_CODING_AGENT_DIR is kept as JIG_OUTER_PI_DIR, so the floor can protect it", async () => {
+        installedHome();
+        const outer = path.join(root, "outer-agent");
+        mkdirSync(outer, { recursive: true });
+        const result = await run(["-p", "hi"], { env: { PI_CODING_AGENT_DIR: outer } });
+        assert.equal(result.code, 0, result.stderr);
+        assert.equal(calls()[0]?.home, jig, "Pi still runs with the home");
+        assert.equal(calls()[0]?.outer, outer);
+        rmSync(log, { force: true });
+        // The test runner has a PI_CODING_AGENT_DIR of its own; removing it is the no-outer case.
+        await run(["-p", "hi"], { env: { PI_CODING_AGENT_DIR: undefined } });
+        assert.equal(calls()[0]?.outer, null, "with no outer folder there is nothing to keep");
     });
 
     test("doctor names the home it checked, with ~ for the person's own folder", async () => {
