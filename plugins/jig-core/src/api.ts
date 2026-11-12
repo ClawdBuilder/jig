@@ -19,7 +19,7 @@ import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
 import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
-import { TRANSPORTS_SECTION, relayNames } from "./transports-section.ts";
+import { TRANSPORTS_SECTION } from "./transports-section.ts";
 
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";

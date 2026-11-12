@@ -185,6 +185,35 @@ describe("the API", () => {
         ]);
     });
 
+    test("transports is a core section a company can default, with these relay fields", async () => {
+        const { TRANSPORTS_SECTION, relayOf, validateTransportsSection } = await import("../src/transports-section.ts");
+        const { RELAY_PROTOCOL } = await import("../src/relay.ts");
+        assert.equal(TRANSPORTS_SECTION, "transports");
+        assert.equal(RELAY_PROTOCOL, 1);
+        const company = {
+            kind: "relay",
+            url: "https://relay.example.com",
+            services: { jira: "tickets" },
+            fields: { tenant: "orders" },
+        };
+        assert.deepEqual(
+            validateTransportsSection({ orders: company }),
+            [],
+            "a company may leave the token to the person",
+        );
+        const relay = relayOf({ orders: { ...company, token: "env:RELAY_TOKEN" } }, "orders");
+        assert.ok(relay !== undefined);
+        assert.equal(relay.kind, "relay");
+        assert.deepEqual(Object.keys(relay).sort(), ["client", "fields", "kind", "services", "token", "url"]);
+        const response: import("../src/contract.ts").TransportResponse = {
+            status: 200,
+            headers: {},
+            body: "",
+            truncated: true,
+        };
+        assert.equal(response.truncated, true);
+    });
+
     test("updates is a core section a company can default, so it can turn the notice off", async () => {
         const { UPDATES_SECTION, readUpdates, validateUpdatesSection } = await import("../src/updates-section.ts");
         assert.equal(UPDATES_SECTION, "updates");

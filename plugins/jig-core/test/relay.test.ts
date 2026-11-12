@@ -19,7 +19,6 @@ import type { DoctorContext } from "../src/doctor.ts";
 import { setupHarness, SHORT_TIMEOUTS, SITE } from "../../jig-jira/test/support/harness.ts";
 import { world as logsWorld } from "../../jig-logs/test/support/world.ts";
 import { searchReply } from "../../jig-logs/test/support/fake-search.ts";
-import { relayOf } from "../src/transports-section.ts";
 
 interface FixtureCase {
     name: string;

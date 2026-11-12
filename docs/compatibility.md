@@ -50,6 +50,7 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 | Which parts of `jig-core` a plugin may import | `boundaries.test.ts` |
 | The package's `jig.agents.pi` minimum and tested versions | `surface.test.ts`, `pi-requirement.test.ts` |
 | The `updates.check` setting | `surface.test.ts` |
+| The `transports` section and its relay fields | `surface.test.ts` |
 
 - **The handle** is `Symbol.for("jig.core.api/v1")` on `globalThis`, which holds the `JigApi`. Plugins that load before `jig-core` wait
   on `Symbol.for("jig.core.pending/v1")`. `JigApi.version` is `1`.
@@ -64,6 +65,8 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
   A company package may cap Jig with `jig.range` in its own package.json.
 - **The `updates` section** turns the background update notice off with `updates.check: false`; a company plugin can set
   that default, and the person's file wins.
+- **The `transports` section** declares relay transports. Its `kind` is `"relay"`; `url`, `token`, `client`, `services`
+  and `fields` are the entry's fields, and a company plugin can default all but the person's token.
 - **The variables** are `JIG_STATE_DIR`, `JIG_CONDITION`, `JIG_AGENT_ROLE`, `JIG_PARENT_SESSION`, `JIG_ROLE_POLICY`, `JIG_LENS_INDEX`,
   `JIG_LENS_DASHBOARDS` and `JIG_THEME_FOOTER`.
 - **Everything else in `jig-core`** is internal: any other file, the text of a message, the layout of `/jig`. It can change in any
