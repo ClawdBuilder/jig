@@ -4,7 +4,7 @@ import { buildSetupPlan } from "../setup-plan.ts";
 import { setupStateFrom, runSetup } from "../setup.ts";
 import type { SetupUi } from "../setup.ts";
 import { doctorContext } from "../doctor-checks.ts";
-import { formatDoctor, runDoctor } from "../doctor.ts";
+import { doctorMarkers, formatDoctor, runDoctor } from "../doctor.ts";
 import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
 import { helpFor, nearestCommand, USAGE } from "./help.ts";
@@ -139,6 +139,7 @@ async function doctor(args: readonly string[]): Promise<number> {
             quiet: flags.has("--quiet"),
             command: "jig",
             color: colour,
+            markers: doctorMarkers(process.env),
             width: columns > 0 ? columns : 80,
         });
         process.stdout.write(`${shown.join("\n")}\n`);

@@ -369,6 +369,7 @@ function referenceLine(
     options: DoctorOptions,
 ): DoctorLine {
     const title = found.label;
+    const refPath = `${found.section}.${found.path}`;
     switch (probe.status) {
         case "found":
             return {
@@ -376,6 +377,7 @@ function referenceLine(
                 group: "secrets",
                 level: probe.warning === undefined ? "ok" : "warn",
                 title,
+                refPath,
                 detail: [foundDetail(found, probe), probe.warning === undefined ? undefined : `${probe.warning}.`]
                     .filter((part): part is string => part !== undefined)
                     .join(" "),
@@ -386,6 +388,7 @@ function referenceLine(
                 group: "secrets",
                 level: "fail",
                 title,
+                refPath,
                 detail: missingDetail(found),
                 ...(probe.fix === undefined ? {} : { fix: probe.fix }),
             };
@@ -395,6 +398,7 @@ function referenceLine(
                 group: "secrets",
                 level: "warn",
                 title,
+                refPath,
                 detail:
                     probe.detail === undefined
                         ? `Your ${title} is in ${storeName(found.backend)}, but the store is locked.`
@@ -407,6 +411,7 @@ function referenceLine(
                 group: "secrets",
                 level: "fail",
                 title,
+                refPath,
                 detail: `Your ${title} cannot be used: ${probe.detail}.`,
                 fix: `Change it in ${shorten(context.configPath, home(options))}.`,
             };
@@ -416,6 +421,7 @@ function referenceLine(
                 group: "secrets",
                 level: "skip",
                 title,
+                refPath,
                 detail: `Your ${title} is in ${storeName(found.backend)}; Jig does not read it to check it.`,
             };
     }

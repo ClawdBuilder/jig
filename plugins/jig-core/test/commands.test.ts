@@ -22,7 +22,11 @@ afterEach(async () => {
     state.stop();
 });
 async function begin(options: StartOptions = {}): Promise<Harness> {
-    h = await start(options);
+    // Human doctor rows are pinned to words: tests must not depend on the machine's locale.
+    h = await start({
+        ...options,
+        env: { ...process.env, LANG: "C", LC_ALL: "C", NO_COLOR: "1", TERM: "dumb", ...options.env },
+    });
     return h;
 }
 
@@ -98,6 +102,16 @@ describe("/jig", () => {
         assert.match(shown, /\nLogins\n/);
         assert.match(shown, /\nSandbox\n/);
         assert.match(shown, /\nRecords\n/);
+    });
+
+    test("doctor uses markers when the Pi environment is a UTF-8 colour terminal", async () => {
+        const harness = await begin({
+            plugins: setupSections,
+            env: { ...process.env, LANG: "C.UTF-8", LC_ALL: undefined, NO_COLOR: undefined, TERM: "xterm-256color" },
+        });
+        const shown = await jigCommand(harness, "doctor --quiet");
+        assert.match(shown, /^  [!✗] /m);
+        assert.doesNotMatch(shown, /^  (warn|fail) /m);
     });
 
     test("doctor --json writes the report in the state folder and says where", async () => {

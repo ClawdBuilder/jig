@@ -3,6 +3,7 @@
 import { createInterface } from "node:readline/promises";
 import type { Interface } from "node:readline/promises";
 import type { SetupUi } from "../setup.ts";
+import { doctorMarkers } from "../doctor.ts";
 
 export interface TerminalScreen extends SetupUi {
     close(): void;
@@ -44,7 +45,14 @@ export function terminalUi(): TerminalScreen {
             return answer === "y" || answer === "yes";
         },
         notify(text, level) {
-            const mark = level === "error" ? "Error: " : level === "warning" ? "Note: " : "";
+            const plain = level === "error" ? "Error: " : level === "warning" ? "Note: " : "";
+            const mark = !doctorMarkers(process.env)
+                ? plain
+                : level === "error"
+                  ? "✗ "
+                  : level === "warning"
+                    ? "! "
+                    : "✓ ";
             for (const line of text.split("\n")) say(`${mark}${line}`);
         },
         close() {
