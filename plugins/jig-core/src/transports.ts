@@ -8,7 +8,7 @@ import type { Transport, TransportRequest, TransportResponse } from "./contract.
 import { errorMessage } from "./errors.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from "./kit/http.ts";
 import { printable } from "./kit/text.ts";
-import { isTransportRefusal, TransportRefusal } from "./kit/http-error.ts";
+import { isTransportRefusal } from "./kit/http-error.ts";
 
 export interface Transports {
     register(name: string, transport: Transport): void;
@@ -82,14 +82,7 @@ export function createTransports(): Transports {
             try {
                 response = await transport.request(withLimits(request), signal);
             } catch (error) {
-                if (isTransportRefusal(error)) {
-                    const message = error.message
-                        .replace(/[\u0000-\u001f\u007f]/g, " ")
-                        .replace(/\s+/g, " ")
-                        .trim()
-                        .slice(0, 300);
-                    throw new TransportRefusal(error.code, message, error.notSent, error.requestId);
-                }
+                if (isTransportRefusal(error)) throw error;
                 // The request is not repeated in the message: its URL or body may carry data the model should not
                 // see unmasked, and the tool knows what it asked for.
                 throw new Error(`transport "${printable(name)}" failed: ${errorMessage(error)}`);

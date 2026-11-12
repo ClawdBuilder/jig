@@ -263,7 +263,7 @@ describe("what plugins import", () => {
             "StartWatch",
             "ToolDeclaration",
             "Transport",
-            "TransportRefusal",
+            "TransportRefusalInfo",
             "TransportRequest",
             "TransportResponse",
             "Tunnel",

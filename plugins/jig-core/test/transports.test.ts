@@ -144,7 +144,7 @@ test("a refusal is passed on as a clean structural refusal", async () => {
     await assert.rejects(transports.request("company", REQUEST), (error: unknown) => {
         assert.ok(isTransportRefusal(error));
         assert.deepEqual([error.code, error.notSent, error.requestId], ["OUTSIDE_LIMITS", false, "req-2"]);
-        assert.equal(error.message, "too much");
+        assert.equal(error.message, "too\nmuch", "the cleaner belongs to kit/http, not here");
         return true;
     });
 });

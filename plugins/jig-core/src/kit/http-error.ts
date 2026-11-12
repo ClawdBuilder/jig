@@ -1,4 +1,5 @@
 // The errors a request throws and a transport may refuse with. See http.ts.
+import type { TransportRefusalInfo } from "../contract.ts";
 
 /** Why a request got no reply (see `HttpErrorInfo` in the contract). */
 export class HttpError extends Error {
@@ -42,7 +43,8 @@ export function isHttpError(error: unknown): error is HttpError {
  * was not changed by this request, so sending it again cannot repeat a change; it does not mean nothing left the
  * transport. Any error that is not a valid refusal keeps the plain `transport_failed` handling.
  */
-export class TransportRefusal extends Error {
+export class TransportRefusal extends Error implements TransportRefusalInfo {
+    readonly name = "TransportRefusal" as const;
     readonly code: string;
     /** True: the far end was not changed, so a retry cannot repeat a change. */
     readonly notSent: boolean;
@@ -50,7 +52,6 @@ export class TransportRefusal extends Error {
     readonly requestId?: string;
     constructor(code: string, message: string, notSent: boolean, requestId?: string) {
         super(message);
-        this.name = "TransportRefusal";
         this.code = code;
         this.notSent = notSent;
         this.requestId = requestId;

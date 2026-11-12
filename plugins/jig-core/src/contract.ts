@@ -320,11 +320,12 @@ export interface Transport {
 
 /** A transport's refusal, as a structural shape. `notSent: true` means the far end was not changed by this request, so
  *  sending it again cannot repeat a change; it does not promise that nothing left the transport. */
-export interface TransportRefusal {
-    code: string;
-    notSent: boolean;
-    message: string;
-    requestId?: string;
+export interface TransportRefusalInfo extends Error {
+    readonly name: "TransportRefusal";
+    readonly code: string;
+    readonly notSent: boolean;
+    readonly message: string;
+    readonly requestId?: string;
 }
 
 /** The methods a request may use. A transport carries only GET, POST, PUT, PATCH and DELETE. */

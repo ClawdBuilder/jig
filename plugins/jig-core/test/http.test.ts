@@ -1088,6 +1088,21 @@ describe("a transport", () => {
         );
         assert.equal(refused.message, "sign in first with your company login");
 
+        const controlOnly = await (async () => {
+            t.transports.set("only-controls", () => {
+                throw new TransportRefusal("OUTSIDE_LIMITS", "\u0000\u009f\u202e", true);
+            });
+            return failure(t.http.request({ ...base, transport: "only-controls" }));
+        })();
+        assert.equal(controlOnly.message, "OUTSIDE_LIMITS");
+        const bidi = await (async () => {
+            t.transports.set("bidi", () => {
+                throw new TransportRefusal("SIGN_IN_REQUIRED", "keep\u202e\u200btext", true, "r");
+            });
+            return failure(t.http.request({ ...base, transport: "bidi" }));
+        })();
+        assert.equal(bidi.message, "keep text");
+
         const long = "x".repeat(400);
         t.transports.set("long", () => {
             throw new TransportRefusal("OUTSIDE_LIMITS", long, false);
