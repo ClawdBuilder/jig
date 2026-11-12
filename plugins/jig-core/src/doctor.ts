@@ -93,8 +93,8 @@ export interface DoctorContext {
     stateDir: string;
     workingDir: string;
     secrets: { passStoreDir(): string };
-    /** A relay's token and network, for the relay checks; absent when doctor has no runtime. */
-    relay?: { resolve(ref: string, signal?: AbortSignal): Promise<string>; fetch?: typeof fetch };
+    /** The HTTP client the relay checks use; absent when doctor has no runtime. */
+    relay?: { http: () => import("./relay.ts").RelayHttp };
     now: () => Date;
 }
 

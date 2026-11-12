@@ -466,8 +466,7 @@ export function loadPersonalConfig(state: JigState, file: string = state.configP
         state.transports.register(
             name,
             {
-                request: (request, signal) =>
-                    relayRequest(name, config, request, { resolve: state.secrets.resolve }, signal),
+                request: (request, signal) => relayRequest(name, config, request, { http: () => state.http }, signal),
             },
             "relay",
         );

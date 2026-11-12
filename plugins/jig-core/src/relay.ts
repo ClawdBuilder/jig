@@ -1,8 +1,9 @@
 // A relay transport: sends a tool's request to a relay as JSON (docs/relay-protocol.md), reads one of its three answers,
-// and turns a refusal into a TransportRefusal. The relay holds the session; Jig holds only its own token.
+// and turns a refusal into a TransportRefusal. The relay holds the session; Jig holds only its own token. Every HTTP call
+// goes through jig-core's client, so limits, redirects, aborts and the redactor behave as they do for every request.
 import { randomUUID } from "node:crypto";
-import type { TransportRequest, TransportResponse } from "./contract.ts";
-import { TransportRefusal } from "./kit/http-error.ts";
+import type { HttpRequest, HttpResponse, TransportRequest, TransportResponse } from "./contract.ts";
+import { isHttpError, TransportRefusal } from "./kit/http-error.ts";
 import { printable } from "./kit/text.ts";
 import type { RelayTransportConfig } from "./transports-section.ts";
 
@@ -10,13 +11,18 @@ export const RELAY_PROTOCOL = 1;
 const MAX_RELAY_BYTES = 16 * 1024 * 1024;
 const MAX_RELAY_TIMEOUT_MS = 120_000;
 const MIN_RELAY_TIMEOUT_MS = 1_000;
+const HEALTH_TIMEOUT_MS = 5_000;
+const ANSWER_SLACK = 64 * 1024;
 const CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
 const HEADERS = new Set(["accept", "content-type"]);
 
-/** What a relay transport needs: the token, and a `fetch` a test can replace. */
+/** The jig-core HTTP client the relay uses; looked up at call time so a reload sees the current one. */
+export interface RelayHttp {
+    request(request: HttpRequest, signal?: AbortSignal): Promise<HttpResponse>;
+}
+
 export interface RelayDeps {
-    resolve(ref: string, signal?: AbortSignal): Promise<string>;
-    fetch?: typeof fetch;
+    http: () => RelayHttp;
 }
 
 /** A relay's request body, as the protocol names it. */
@@ -32,10 +38,6 @@ interface RelayBody {
     maxBytes: number;
     timeoutMs: number;
     [field: string]: unknown;
-}
-
-function text(value: unknown): string {
-    return typeof value === "string" ? value : "";
 }
 
 function codeOf(value: unknown): string {
@@ -95,12 +97,31 @@ function answerOf(value: unknown, requestId: string): TransportResponse {
         };
     }
     const code = codeOf(answer.code);
-    const message = text(answer.message);
+    const message = typeof answer.message === "string" ? answer.message : "";
     if (outcome === "refused")
         throw new TransportRefusal(code, message || "the relay refused the request", true, requestId);
-    if (outcome === "unknown")
+    if (outcome === "unknown") {
         throw new TransportRefusal(code, message || "the relay does not know whether it was sent", false, requestId);
+    }
     throw badAnswer("the relay's outcome is not response, refused or unknown", requestId);
+}
+
+/** Why a relay's HTTP request failed, in terms a tool can act on. */
+function relayFailure(name: string, config: RelayTransportConfig, error: unknown): TransportRefusal {
+    if (isHttpError(error)) {
+        if (error.code === "auth_failed") {
+            return new TransportRefusal("RELAY_TOKEN", `transports.${name}.token: ${error.message}`, true);
+        }
+        if (error.notSent) {
+            return new TransportRefusal(
+                "RELAY_NOT_RUNNING",
+                `the relay at ${config.url} is not running or not answering (${error.code})`,
+                true,
+            );
+        }
+        return new TransportRefusal("CONNECTION_LOST", error.message, false);
+    }
+    return new TransportRefusal("CONNECTION_LOST", error instanceof Error ? error.message : String(error), false);
 }
 
 /** Sends one request through a relay. Never retries. */
@@ -111,8 +132,11 @@ export async function relayRequest(
     deps: RelayDeps,
     signal?: AbortSignal,
 ): Promise<TransportResponse> {
-    const service =
-        config.services[request.system] ?? (Object.keys(config.services).length === 0 ? request.system : undefined);
+    const service = Object.hasOwn(config.services, request.system)
+        ? config.services[request.system]
+        : Object.keys(config.services).length === 0
+          ? request.system
+          : undefined;
     if (service === undefined) {
         throw new TransportRefusal(
             "INVALID_REQUEST",
@@ -121,18 +145,7 @@ export async function relayRequest(
         );
     }
     if (config.token === undefined) {
-        throw new TransportRefusal(
-            "SIGN_IN_REQUIRED",
-            `transports.${name}.token is not set; add a secret reference for the relay token`,
-            true,
-        );
-    }
-    let token: string;
-    try {
-        token = await deps.resolve(config.token, signal);
-    } catch (error) {
-        const why = error instanceof Error ? error.message : String(error);
-        throw new TransportRefusal("SIGN_IN_REQUIRED", `transports.${name}.token: ${why}`, true);
+        throw new TransportRefusal("RELAY_TOKEN", `transports.${name}.token is not set`, true);
     }
     const id = randomUUID();
     const headers: Record<string, string> = {};
@@ -141,8 +154,10 @@ export async function relayRequest(
     }
     if (request.body !== undefined) headers["content-type"] = headers["content-type"] ?? "application/json";
     const maxBytes = Math.min(request.maxBytes + 1, MAX_RELAY_BYTES);
-    const timeoutMs = Math.min(Math.max(request.timeoutMs, MIN_RELAY_TIMEOUT_MS), MAX_RELAY_TIMEOUT_MS);
+    const timeoutMs = Math.min(Math.max(request.timeoutMs - 2_000, MIN_RELAY_TIMEOUT_MS), MAX_RELAY_TIMEOUT_MS);
+    const answerBytes = Math.min(maxBytes * 4 + ANSWER_SLACK, 64 * 1024 * 1024);
     const body: RelayBody = {
+        ...config.fields,
         protocol: RELAY_PROTOCOL,
         id,
         client: config.client,
@@ -153,37 +168,31 @@ export async function relayRequest(
         ...(request.body === undefined ? {} : { body: request.body }),
         maxBytes,
         timeoutMs,
-        ...config.fields,
     };
-    const send = deps.fetch ?? fetch;
-    let reply: Response;
+    let reply: HttpResponse;
     try {
-        reply = await send(`${config.url.replace(/\/$/, "")}/v1/request`, {
-            method: "POST",
-            headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-            body: JSON.stringify(body),
-            redirect: "manual",
-            ...(signal === undefined ? {} : { signal }),
-        });
-    } catch (error) {
-        throw new TransportRefusal(
-            "UNREACHABLE",
-            `the relay at ${config.url} could not be reached: ${error instanceof Error ? error.message : String(error)}`,
-            false,
+        reply = await deps.http().request(
+            {
+                system: "relay",
+                method: "POST",
+                url: `${config.url.replace(/\/$/, "")}/v1/request`,
+                headers: { "content-type": "application/json", accept: "application/json" },
+                auth: { bearer: config.token },
+                body: JSON.stringify(body),
+                maxBytes: answerBytes,
+                timeoutMs: request.timeoutMs,
+            },
+            signal,
         );
+    } catch (error) {
+        throw relayFailure(name, config, error);
     }
-    let textBody: string;
-    try {
-        textBody = await reply.text();
-    } catch (error) {
-        throw badAnswer(
-            `the relay's answer could not be read: ${error instanceof Error ? error.message : String(error)}`,
-            id,
-        );
+    if (reply.truncated) {
+        throw new TransportRefusal("REPLY_TOO_LARGE", "the relay's answer is too large to read", false, id);
     }
     let value: unknown;
     try {
-        value = JSON.parse(textBody);
+        value = JSON.parse(reply.body);
     } catch {
         throw badAnswer("the relay's answer is not JSON", id);
     }
@@ -193,7 +202,7 @@ export async function relayRequest(
             if (answer.outcome === "refused") {
                 throw new TransportRefusal(
                     codeOf(answer.code),
-                    text(answer.message) || "the relay refused the request",
+                    typeof answer.message === "string" ? answer.message : "the relay refused the request",
                     true,
                 );
             }
@@ -210,29 +219,43 @@ export async function relayHealth(
     deps: RelayDeps,
     options: { token?: boolean; signal?: AbortSignal } = {},
 ): Promise<{ protocol: number; service: string; services?: Record<string, boolean>; tokenError?: string }> {
-    const headers: Record<string, string> = { accept: "application/json" };
+    let auth: { bearer: string } | undefined;
     if (options.token === true) {
         if (config.token === undefined) {
             return { protocol: 0, service: "", tokenError: `transports.${name}.token is not set` };
         }
-        try {
-            headers.authorization = `Bearer ${await deps.resolve(config.token, options.signal)}`;
-        } catch (error) {
-            return {
-                protocol: 0,
-                service: "",
-                tokenError: `transports.${name}.token: ${error instanceof Error ? error.message : String(error)}`,
-            };
-        }
+        auth = { bearer: config.token };
     }
-    const send = deps.fetch ?? fetch;
-    const reply = await send(`${config.url.replace(/\/$/, "")}/v1/health`, {
-        headers,
-        redirect: "manual",
-        ...(options.signal === undefined ? {} : { signal: options.signal }),
-    });
-    const body = (await reply.json().catch(() => undefined)) as Record<string, unknown> | undefined;
-    if (body === undefined) throw new Error(`the relay at ${config.url} did not answer with JSON`);
+    let reply: HttpResponse;
+    try {
+        reply = await deps.http().request(
+            {
+                system: "relay",
+                method: "GET",
+                url: `${config.url.replace(/\/$/, "")}/v1/health`,
+                headers: { accept: "application/json" },
+                ...(auth === undefined ? {} : { auth }),
+                timeoutMs: HEALTH_TIMEOUT_MS,
+                maxBytes: 64 * 1024,
+            },
+            options.signal,
+        );
+    } catch (error) {
+        if (isHttpError(error) && error.code === "auth_failed") {
+            return { protocol: 0, service: "", tokenError: `transports.${name}.token: ${error.message}` };
+        }
+        throw error;
+    }
+    if (reply.truncated) throw new Error("the relay's health answer is too large");
+    let body: Record<string, unknown>;
+    try {
+        body = JSON.parse(reply.body) as Record<string, unknown>;
+    } catch {
+        throw new Error(`the relay at ${config.url} did not answer with JSON`);
+    }
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+        throw new Error(`the relay at ${config.url} did not answer with JSON`);
+    }
     const protocol = typeof body.protocol === "number" ? body.protocol : 0;
     const service = typeof body.service === "string" ? body.service : "";
     if (reply.status !== 200) {

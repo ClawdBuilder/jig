@@ -60,7 +60,7 @@ export function doctorContext(state: JigState): DoctorContext {
         stateDir: stateDir(state.env),
         workingDir: state.workingDir,
         secrets: { passStoreDir: () => state.secrets.passStoreDir() },
-        relay: { resolve: (ref, signal) => state.secrets.resolve(ref, signal) },
+        relay: { http: () => state.http },
         now: state.now,
         onboarding: activeOnboarding(state),
     };
