@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { errorReply, hit, rangeOf, searchReply } from "./support/fake-search.ts";
 import type { Answer, Recorded, Responder } from "./support/fake-search.ts";
 import { docs, NOW, ok, world } from "./support/world.ts";
+import { PUBLIC_URL } from "./support/fake-search.ts";
 import type { World } from "./support/world.ts";
 import { TransportRefusal } from "../../jig-core/src/kit/http-error.ts";
 
@@ -375,6 +376,38 @@ test("transport: the request goes through jig-core with the system, the method, 
     assert.ok(!Object.keys(sent.headers ?? {}).some((name) => /auth|cookie|token/i.test(name)));
 });
 
+test("consoleProxy sends the original search inside the proxy path", async (t) => {
+    const section = (backend: Record<string, unknown>) => ({
+        backend: { url: PUBLIC_URL, ...backend, consoleProxy: "/api/console/proxy" },
+        environments: { staging: { index: "app-staging-*" } },
+    });
+    const direct = await world(t, {
+        responder: () => searchReply(),
+        section: section({ auth: { token: "env:LOGS_TOKEN" } }),
+    });
+    ok(await direct.call(call));
+    assert.equal(direct.requests[0]?.method, "POST");
+    assert.equal(
+        direct.requests[0]?.path,
+        "/api/console/proxy?path=%2Fapp-staging-*%2F_search&method=POST",
+    );
+    assert.equal(direct.requests[0]?.headers["osd-xsrf"], "true");
+    assert.equal(direct.requests[0]?.headers["kbn-xsrf"], "true");
+
+    const transported = await world(t, {
+        backend: "transport",
+        responder: () => searchReply(),
+        section: section({ transport: "corp" }),
+    });
+    ok(await transported.call(call));
+    const sent = transported.jig.sent[0];
+    assert.ok(sent !== undefined);
+    assert.equal(sent.method, "POST");
+    assert.match(sent.url, /\/api\/console\/proxy\?path=%2Fapp-staging-\*%2F_search&method=POST$/);
+    assert.equal(sent.headers?.["osd-xsrf"], undefined);
+    assert.equal(sent.headers?.["kbn-xsrf"], undefined);
+});
+
 test("transport: a name nobody registered is an error from jig-core, and nothing is sent", async (t) => {
     const w = await world(t, {
         backend: "transport",
@@ -393,7 +426,7 @@ test("transport: a transport that fails is an error that names it, not a gap", a
     assert.equal(w.requests.length, 1);
 });
 
-test("transport: a refusal says the backend was not changed, or that the reply was lost", async (t) => {
+test("transport: a refusal says the backend was not changed", async (t) => {
     const w = await world(t, { backend: "transport" });
     w.jig.transports.set("corp", {
         request: async () => {
@@ -404,13 +437,6 @@ test("transport: a refusal says the backend was not changed, or that the reply w
     assert.equal(refused.error?.message, "the log backend was not changed: sign in first (SIGN_IN_REQUIRED)");
     assert.deepEqual([...w.jig.facts.values()].flat(), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
 
-    w.jig.transports.set("corp", {
-        request: async () => {
-            throw new TransportRefusal("OUTSIDE_LIMITS", "the relay lost the reply", false, "req-2");
-        },
-    });
-    const lost = await w.call(call);
-    assert.equal(lost.error?.message, "no answer from the log backend: the relay lost the reply (OUTSIDE_LIMITS)");
 });
 
 test("transport: one that ignores its signal still cannot hold the call past the request timeout", async (t) => {

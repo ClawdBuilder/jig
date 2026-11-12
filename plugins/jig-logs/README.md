@@ -93,6 +93,7 @@ not configured instead of running half set up.
 | `backend` | Required. The `type` (`elasticsearch` or `loki`), its `url`, and `auth` or `transport` |
 | `environments` | Required, at least one. Each says where its logs are: an `index` or a `selector`, and may add a `filter` |
 | `maxWindow` | The longest window one call searches, `1h` to `90d`, written like `window`. Default `7d` |
+| `consoleProxy` | Optional. A Dashboards/Kibana console proxy path on the backend origin, such as `/_dashboards/api/console/proxy` or `/api/console/proxy` |
 
 A password, key or token in `auth` is a secret reference such as
 `pass:logs/api-key` (see [Secrets](../../docs/secrets.md)), never the secret. A
