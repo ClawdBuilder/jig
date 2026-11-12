@@ -129,3 +129,25 @@ export function nextStep(reason: FailureReason, backend: LogBackend): string {
             return "Skipped after an earlier rejection; fix that first.";
     }
 }
+/** A transport's refusal, kept with its code and request id for the record. */
+export class TransportFailure extends Error {
+    readonly notSent: boolean;
+    readonly transportCode?: string;
+    readonly requestId?: string;
+    constructor(message: string, notSent: boolean, transportCode?: string, requestId?: string) {
+        super(message);
+        this.name = "TransportFailure";
+        this.notSent = notSent;
+        this.transportCode = transportCode;
+        this.requestId = requestId;
+    }
+}
+
+/** The facts to keep for a transport failure, if it has any. */
+export function transportFacts(error: unknown): Record<string, string> {
+    const found = error as { transportCode?: unknown; requestId?: unknown };
+    return {
+        ...(typeof found.transportCode === "string" ? { transportCode: found.transportCode } : {}),
+        ...(typeof found.requestId === "string" ? { requestId: found.requestId } : {}),
+    };
+}

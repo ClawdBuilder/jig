@@ -1,7 +1,7 @@
 // Jira's REST endpoints (version 2), one function each. They return the shapes the rest of the plugin needs, and read
 // the answers so that they hold for Jira Cloud and for Jira Data Center alike.
 import type { JiraSettings } from "./config.ts";
-import { JiraError, LostReplyError } from "./http.ts";
+import { JiraError, LostReplyError, NotSentError } from "./http.ts";
 import type { Http } from "./http.ts";
 import { arr, InputError, int, isObject, nameOf, obj, str, userOf } from "./values.ts";
 import type { Obj, User } from "./values.ts";
@@ -75,8 +75,16 @@ export async function whoAmI(env: Env): Promise<Identity> {
         if (error instanceof JiraError && (error.status === 403 || error.status === 404)) {
             return { why: `Jira answered ${error.status} to GET /myself` };
         }
+        if (error instanceof NotSentError && error.transportCode !== undefined) {
+            return { why: `the transport refused GET /myself (${error.transportCode})` };
+        }
         if (error instanceof LostReplyError && error.viaTransport) {
-            return { why: "the transport did not carry GET /myself" };
+            return {
+                why:
+                    error.transportCode === undefined
+                        ? "the transport did not carry GET /myself"
+                        : `the transport refused GET /myself (${error.transportCode})`,
+            };
         }
         throw error;
     }

@@ -7,7 +7,7 @@
 //     happened is unknown, so it is not repeated: the issue is read once, and the tool says what that read shows.
 import { jig } from "../../jig-core/src/client.ts";
 import type { Env } from "./api.ts";
-import { JiraError, LostReplyError, NotSentError } from "./http.ts";
+import { JiraError, LostReplyError, NotSentError, transportFacts } from "./http.ts";
 import type { Call } from "./params.ts";
 import { fingerprintOf } from "./plan.ts";
 import type { Finding, Plan } from "./plan.ts";
@@ -63,14 +63,21 @@ export async function runWrite(
     const record = (key: string | undefined): void => {
         if (key !== undefined) jig().addFacts(toolCallId, { issue: key });
     };
+    const recordTransport = (error: unknown): void => {
+        const facts = transportFacts(error);
+        if (Object.keys(facts).length > 0) jig().addFacts(toolCallId, facts);
+    };
     try {
         const reply = await env.http.request({ method: plan.send.method, path: plan.send.path, body: plan.send.body });
         const done = plan.done(reply);
         record(done.key);
         return { text: done.text + flagNote(plan), key: done.key };
     } catch (error) {
+        recordTransport(error);
         if (error instanceof NotSentError) {
-            throw new Error(`${where(call, plan)}: ${sentence(error)}. Nothing was sent.`);
+            throw new Error(
+                `${where(call, plan)}: ${sentence(error)}.${error.transportCode === undefined ? " Nothing was sent." : ""}`,
+            );
         }
         if (error instanceof JiraError && error.refused) {
             throw new Error(`${where(call, plan)}: ${sentence(error)}. Jira changed nothing.`);
