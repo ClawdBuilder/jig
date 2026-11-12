@@ -427,6 +427,20 @@ describe("jig update", () => {
         assert.deepEqual(calls(), [], "nothing ran");
     });
 
+    test("two Jig entries in the home are refused, naming both", async () => {
+        const second = path.join(root, "second-jig");
+        symlinkSync(ROOT, second, "dir");
+        writeFileSync(
+            path.join(jig, "settings.json"),
+            JSON.stringify({ packages: [path.join(jig, "npm", "node_modules", "@clawdbuilder", "jig"), second] }),
+        );
+        const result = await run(["update", "--self", "--yes"], { env: { FAKE_RELEASE: release("1.4.0") } });
+        assert.equal(result.code, 1);
+        assert.match(result.stderr, /lists 2 Jig entries/);
+        assert.match(result.stderr, new RegExp(second.replaceAll(".", "\\.")));
+        assert.deepEqual(calls(), []);
+    });
+
     test("a release that needs a newer Pi stops the run before anything moves", async () => {
         const result = await run(["update", "--self", "--yes"], { env: { FAKE_RELEASE: release("2.0.0", "2.1.0") } });
         assert.equal(result.code, 1);

@@ -132,7 +132,8 @@ A release states the oldest Pi it runs with in `jig.agents.pi`. After moving Jig
 installed, update says so, names `pi update --self`, and stops before anything else moves. It never installs Pi. If Pi
 is newer than the tested version, it says so and continues.
 
-Before a step it cannot finish, update stops: no Jig in the home, no Pi found, or a home it cannot write. It asks npm
+Two Jig entries in the home are refused, with the `pi remove` that leaves one. Before a step it cannot finish,
+update stops: no Jig in the home, no Pi found, or a home it cannot write. It asks npm
 for the published versions (`npm view`), so npm's registry, scope mapping, credentials and `.npmrc` rules apply to the
 check and the install alike.
 

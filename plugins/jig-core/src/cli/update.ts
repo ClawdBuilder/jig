@@ -14,7 +14,7 @@ import { helpFor, strayWordsMessage } from "./help.ts";
 import { homeCommand, homeFolder, homeVersion, jigHome } from "./home.ts";
 import { findPi } from "./pi-command.ts";
 import type { PiProgram } from "./pi-command.ts";
-import { parseNpmSource, readPackages } from "./packages.ts";
+import { manifestOf, parseNpmSource, readPackages } from "./packages.ts";
 
 const MAX_OUTPUT = 512 * 1024;
 const PI_REFSUSAL = `Jig never updates Pi itself (your pi and others share it). Run: pi update --self`;
@@ -319,6 +319,24 @@ export async function update(args: readonly string[], options: UpdateOptions = {
     }
     const touchesJig =
         form.kind === "all" || form.kind === "self" || (form.kind === "source" && isJigSource(form.source, name));
+    const listed = readPackages(home, cwd).listed;
+    if (touchesJig) {
+        // Two Jig entries would load two copies; the move would pick one of them silently.
+        const jigEntries = listed.filter(
+            (entry) =>
+                parseNpmSource(entry.source)?.name === name ||
+                (entry.folder !== undefined && manifestOf(entry.folder)?.name === name),
+        );
+        if (jigEntries.length > 1) {
+            const lines = jigEntries.map(
+                (entry) => `${entry.scope}: ${entry.source}${entry.scope === "user" ? "" : " -l"}`,
+            );
+            process.stderr.write(
+                `The home lists ${jigEntries.length} Jig entries. jig update will not choose which to keep; remove all but one first:\n${lines.join("\n")}\nNothing was changed.\n`,
+            );
+            return 1;
+        }
+    }
     let target: string | undefined;
     let requirement: { minimum: string; tested: string } | undefined;
     if (touchesJig) {
@@ -331,7 +349,6 @@ export async function update(args: readonly string[], options: UpdateOptions = {
             );
             return 1;
         }
-        const listed = readPackages(home, cwd).listed;
         const chosen = selectTarget(metadata, companyRanges(listed, name), requested ?? versionOfSource(form));
         if ("problem" in chosen) {
             process.stderr.write(`${chosen.problem} Nothing was changed.\n`);
