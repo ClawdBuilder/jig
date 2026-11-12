@@ -7,8 +7,9 @@
 # PI_BIN overrides the Pi executable (default: the first `pi` on PATH that resolves into Pi's own npm package, so a shim called
 # `pi` that runs this launcher is skipped).
 # Pi inside tmux sees this terminal's environment, as if it had been started here (see session_names below).
-# The launcher never signs in to anything and never touches the network. It sets no variable of yours: it exports JIG_HOME (the
-# folder bin/tmux.conf reads for the clipboard helper), and on WSL it may replace a dead WSL_INTEROP.
+# The launcher never signs in to anything and never touches the network. It sets no variable of yours: it exports JIG_PACKAGE_DIR
+# (the folder bin/tmux.conf reads for the clipboard helper), and on WSL it may replace a dead WSL_INTEROP. It reads JIG_COMMAND
+# only to name itself in its messages: `jig` sets it to `jig`, so the hint is never `pi`, which would start another agent.
 # Needs bash 4.4 or later.
 #
 # For tests only: JIG_FORCE_INTERACTIVE=1 treats stdin and stdout as terminals, and JIG_TTY names the file the reattach menu is
@@ -19,7 +20,9 @@ say() { printf 'jig: %s\n' "$*" >&2; }
 self="$(readlink -f "${BASH_SOURCE[0]}")"
 home="$(dirname "$(dirname "$self")")"
 # bin/tmux.conf reads it for the clipboard helper's path.
-export JIG_HOME="$home"
+export JIG_PACKAGE_DIR="$home"
+# The command the person typed, for the reattach hints: `jig` sets JIG_COMMAND=jig when it starts this launcher.
+command_name="${JIG_COMMAND:-pi}"
 
 pi_bin="${PI_BIN:-}"
 if [ -z "$pi_bin" ]; then
@@ -73,7 +76,7 @@ fix_interop() {
 # After tmux returns: a Pi still running (window closed or detached) can be reattached.
 after_tmux() {
     if tmux -L jig has-session -t "=$1" 2>/dev/null; then
-        say "Pi is still running ($1); run \`pi\` in this folder to reattach"
+        say "Pi is still running ($1); run \`$command_name\` in this folder to reattach"
     fi
 }
 
@@ -102,11 +105,11 @@ reattach() {
     case ${#found[@]} in
         0) return ;;
         1)
-            say "reattaching to the Pi still running here (${found[0]#* }, last active $(when "${found[0]%% *}")); \`pi --new\` starts another"
+            say "reattaching to the Pi still running here (${found[0]#* }, last active $(when "${found[0]%% *}")); \`$command_name --new\` starts another"
             attach_to "${found[0]#* }"
             ;;
     esac
-    say "Pis still running in this folder (\`pi --new\` skips this):"
+    say "Pis still running in this folder (\`$command_name --new\` skips this):"
     for i in "${!found[@]}"; do
         printf '  %d) %s  last active %s\n' "$((i + 1))" "${found[$i]#* }" "$(when "${found[$i]%% *}")" >&2
     done
@@ -177,7 +180,7 @@ if [ "$interactive" = 1 ] && [ "$tmux" = 1 ] && [ -z "${TMUX:-}" ] && command -v
     done
     # One command line for tmux: name the variables, start the session, then put tmux's own list back so a later attach to any
     # session does not apply this one.
-    tmux -L jig -f "$JIG_HOME/bin/tmux.conf" \
+    tmux -L jig -f "$JIG_PACKAGE_DIR/bin/tmux.conf" \
         set-option -g update-environment "${session_names[*]}" \; \
         new-session -s "$name" -c "$PWD" -e "JIG_TMUX_SESSION=$name" -- "$self" "${session_args[@]}" \; \
         set-option -gu update-environment
