@@ -55,8 +55,9 @@
 
   <!-- one seam is one file: the kinds around the handle -->
   <rect class="chip" x="230" y="26" width="150" height="40" rx="10"/>
-  <circle class="accent" cx="250" cy="46" r="7"/>
-  <path class="accent" d="M243 46 h14 M250 39 a8.5 7 0 0 1 0 14 M250 39 a8.5 7 0 0 0 0 14"/>
+  <path class="accent" d="M250 37 l11 5 -11 5 -11 -5 z"/>
+  <path class="accent" d="M239 46 l11 5 11 -5"/>
+  <path class="accent" d="M239 51 l11 5 11 -5"/>
   <text class="label" x="268" y="51">environments</text>
   <path class="spoke" d="M305 66 V120"/>
 
@@ -76,8 +77,7 @@
   <path class="spoke" d="M295 264 V210"/>
 
   <rect class="chip" x="390" y="264" width="110" height="40" rx="10"/>
-  <circle class="accent" cx="410" cy="284" r="7"/>
-  <path class="accent" d="M406 282 h8 M406 288 h8"/>
+  <path class="accent" d="M397 284 h5 l3 -6 4 12 3 -6 h6"/>
   <text class="label" x="428" y="289">status</text>
   <path class="spoke" d="M445 264 V210"/>
 </svg>
