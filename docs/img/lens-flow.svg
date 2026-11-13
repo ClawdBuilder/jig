@@ -25,7 +25,7 @@
   <text class="sub" x="565" y="132" text-anchor="middle">in Pi</text>
 
   <rect class="node" x="700" y="60" width="170" height="80" rx="12"/>
-  <circle class="accent" cx="785" cy="77" r="6"/><path class="accent" d="M785 85 v13 M777 91 h16 M785 98 l-6 8 M785 98 l6 8"/>
+  <circle class="accent" cx="785" cy="73" r="5"/><path class="accent" d="M785 80 v12 M777 86 h16 M785 92 l-5 8 M785 92 l5 8"/>
   <text class="label" x="785" y="115" text-anchor="middle">you</text>
   <text class="sub" x="785" y="132" text-anchor="middle">reads it</text>
 
