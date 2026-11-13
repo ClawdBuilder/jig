@@ -1,62 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="860" height="580" viewBox="0 0 860 580" role="img" aria-label="Decision flow for the full run of checks: run the tests at HEAD; no test report fails; new tests that did not run fail; no failures passes with counts; otherwise compare each failure with the main branch by full test name; if all of them fail there too, pass with the old failures listed; otherwise fail, listing only the new failures." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="859" height="579" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="checkfull-head-18201c-10" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#18201C"/></marker>
-    <marker id="checkfull-head-1d64a8-10" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D64A8"/></marker>
-  </defs>
-  <!-- run the tests -->
-  <rect x="40" y="14" width="220" height="48" rx="6" fill="#FFFFFF" stroke="#18201C" stroke-width="1.2"/>
-  <text x="150" y="36" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">run the tests at HEAD</text>
-  <text x="150" y="53" font-size="12.5" fill="#56635D" text-anchor="middle">for that exact commit</text>
-  <path d="M150 62 V76" fill="none" stroke="#18201C" stroke-width="1.4" marker-end="url(#checkfull-head-18201c-10)"/>
-  <!-- question 1: a test report? -->
-  <polygon points="150,76 245,112 150,148 55,112" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="150" y="117" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">test report?</text>
-  <path d="M245 112 H328" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="287" y="104" font-size="12.5" fill="#56635D" text-anchor="middle">no</text>
-  <rect x="330" y="92" width="230" height="40" rx="6" fill="#F7E4DF" stroke="#A93C27" stroke-width="1.4"/>
-  <text x="445" y="117" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">fail: no test report</text>
-  <text x="580" y="108" font-size="12.5" fill="#A93C27">seen: passes that had</text>
-  <text x="580" y="124" font-size="12.5" fill="#A93C27">no test report at all</text>
-  <path d="M150 148 V166" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="158" y="162" font-size="12.5" fill="#56635D">yes</text>
-  <!-- question 2: did the new tests run? -->
-  <polygon points="150,166 245,202 150,238 55,202" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="150" y="207" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">new tests ran?</text>
-  <path d="M245 202 H328" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="287" y="194" font-size="12.5" fill="#56635D" text-anchor="middle">no</text>
-  <rect x="330" y="182" width="230" height="40" rx="6" fill="#F7E4DF" stroke="#A93C27" stroke-width="1.4"/>
-  <text x="445" y="207" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">fail: new tests did not run</text>
-  <text x="580" y="198" font-size="12.5" fill="#A93C27">seen: new tests tagged</text>
-  <text x="580" y="214" font-size="12.5" fill="#A93C27">integration never ran locally</text>
-  <path d="M150 238 V256" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="158" y="252" font-size="12.5" fill="#56635D">yes</text>
-  <!-- question 3: any failures? -->
-  <polygon points="150,256 245,292 150,328 55,292" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="150" y="297" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">any failures?</text>
-  <path d="M245 292 H328" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="287" y="284" font-size="12.5" fill="#56635D" text-anchor="middle">no</text>
-  <rect x="330" y="272" width="230" height="40" rx="6" fill="#E2F1E7" stroke="#2C7A4B" stroke-width="1.4"/>
-  <text x="445" y="297" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">pass: counts recorded</text>
-  <path d="M150 328 V352" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="158" y="346" font-size="12.5" fill="#56635D">yes</text>
-  <!-- compare with the main branch -->
-  <rect x="40" y="354" width="220" height="50" rx="6" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="150" y="376" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">compare with main</text>
-  <text x="150" y="394" font-size="12.5" fill="#56635D" text-anchor="middle">by full test name</text>
-  <path d="M150 404 V418" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <!-- question 4: do all the failures also fail on main? -->
-  <polygon points="150,418 245,454 150,490 55,454" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="150" y="459" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">all fail on main?</text>
-  <path d="M245 454 H328" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="287" y="446" font-size="12.5" fill="#56635D" text-anchor="middle">yes</text>
-  <rect x="330" y="434" width="230" height="40" rx="6" fill="#E2F1E7" stroke="#2C7A4B" stroke-width="1.4"/>
-  <text x="445" y="459" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">pass: old failures listed</text>
-  <text x="580" y="450" font-size="12.5" fill="#A93C27">seen: 5 tests failing on a</text>
-  <text x="580" y="466" font-size="12.5" fill="#A93C27">clean main branch</text>
-  <path d="M150 490 V516" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checkfull-head-1d64a8-10)"/>
-  <text x="158" y="508" font-size="12.5" fill="#56635D">no</text>
-  <!-- only the new failures block -->
-  <rect x="40" y="518" width="220" height="40" rx="6" fill="#F7E4DF" stroke="#A93C27" stroke-width="1.4"/>
-  <text x="150" y="543" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">fail: only new failures listed</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="190" viewBox="0 0 1000 190" role="img" aria-label="The full check run in one path: tests run at HEAD; reports and new tests are checked; failures are compared with main by full name; a gate passes old failures and blocks only new ones." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg{fill:#fff}.node{fill:#f6f7f9;stroke:#d9dde3;stroke-width:1.2}.label{fill:#1a1b1e;font-size:14px;font-weight:700}
+    .sub{fill:#5c626b;font-size:11px}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .path{fill:none;stroke:#2563eb;stroke-width:2}.arrowhead{fill:#2563eb}.marker{fill:#fff;stroke:#2563eb;stroke-width:1.5}
+    .glyph{fill:#2563eb;font-size:11px;font-weight:700}.ok{fill:#e6ffec;stroke:#1a7f37;stroke-width:1.2}.ok-text{fill:#1a7f37;font-size:12px;font-weight:700}
+    .no{fill:#ffebe9;stroke:#cf222e;stroke-width:1.2}.no-text{fill:#cf222e;font-size:12px;font-weight:700}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#111113}.node{fill:#18181b;stroke:#2c2c31}.label{fill:#e7e7ea}.sub{fill:#9a9aa2}
+      .accent{stroke:#7aa2f7}.path{stroke:#7aa2f7}.arrowhead{fill:#7aa2f7}.marker{fill:#18181b;stroke:#7aa2f7}.glyph{fill:#7aa2f7}
+      .ok{fill:#14251a;stroke:#6ccb8a}.ok-text{fill:#6ccb8a}.no{fill:#2a1618;stroke:#ff7b72}.no-text{fill:#ff7b72}
+    }
+  </style>
+  <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
+  <rect class="node" x="25" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M100 75 v8 l-7 14 h14 l-7 -14 v-8 z M96 89 h8"/>
+  <text class="label" x="110" y="125" text-anchor="middle">tests</text>
+  <text class="sub" x="110" y="140" text-anchor="middle">at HEAD</text>
+
+  <rect class="node" x="230" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M300 76 l3 3 5 -5 M300 86 l3 3 5 -5 M300 96 l3 3 5 -5 M314 76 h10 M314 87 h10 M314 98 h10"/>
+  <text class="label" x="315" y="125" text-anchor="middle">checks</text>
+  <text class="sub" x="315" y="140" text-anchor="middle">reports · new</text>
+
+  <rect class="node" x="435" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M510 74 v18 M500 78 h20 M500 78 l-4 8 h8 M520 78 l-4 8 h8"/>
+  <text class="label" x="520" y="125" text-anchor="middle">compare</text>
+  <text class="sub" x="520" y="140" text-anchor="middle">with main</text>
+
+  <rect class="node" x="640" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M710 74 v20 M724 74 v20 M708 88 l18 -6"/>
+  <text class="label" x="725" y="125" text-anchor="middle">gate</text>
+  <text class="sub" x="725" y="140" text-anchor="middle">jig-core</text>
+
+  <path class="path" d="M195 100 H230"/><path id="checkfull-c1-arrow-1" class="arrowhead" d="M222 95 L230 100 L222 105 z"/>
+  <path class="path" d="M400 100 H435"/><path id="checkfull-c1-arrow-2" class="arrowhead" d="M427 95 L435 100 L427 105 z"/>
+  <path class="path" d="M605 100 H640"/><path id="checkfull-c1-arrow-3" class="arrowhead" d="M632 95 L640 100 L632 105 z"/>
+  <path class="path" d="M810 90 H845"/><path id="checkfull-c1-arrow-4" class="arrowhead" d="M837 85 L845 90 L837 95 z"/>
+  <path class="path" d="M810 110 H845 V135 H860"/><path id="checkfull-c1-arrow-5" class="arrowhead" d="M852 130 L860 135 L852 140 z"/>
+  <rect class="ok" x="845" y="77" width="62" height="26" rx="13"/><text class="ok-text" x="876" y="94" text-anchor="middle">pass</text>
+  <rect class="no" x="860" y="122" width="62" height="26" rx="13"/><text class="no-text" x="891" y="139" text-anchor="middle">fail</text>
 </svg>
