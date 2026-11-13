@@ -13,23 +13,23 @@
   <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
   <rect class="node" x="25" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M95 75 h22 v18 h-22 z M100 80 h12 M100 85 h8 M100 90 h10"/>
-  <text class="label" x="110" y="125" text-anchor="middle">Context panel</text>
-  <text class="sub" x="110" y="140" text-anchor="middle">writes</text>
+  <text class="label" x="110" y="115" text-anchor="middle">Context panel</text>
+  <text class="sub" x="110" y="132" text-anchor="middle">writes</text>
 
   <rect class="node" x="240" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M310 76 h20 v16 h-20 z M310 76 l10 9 10 -9"/>
-  <text class="label" x="325" y="125" text-anchor="middle">request</text>
-  <text class="sub" x="325" y="140" text-anchor="middle">file</text>
+  <text class="label" x="325" y="115" text-anchor="middle">request</text>
+  <text class="sub" x="325" y="132" text-anchor="middle">file</text>
 
   <rect class="node" x="455" y="60" width="170" height="80" rx="12"/>
-  <circle class="accent" cx="540" cy="84" r="6"/><path class="accent" d="M540 74 v3 M540 91 v3 M529 84 h3 M548 84 h3 M532 76 l2 2 M548 76 l-2 2 M532 92 l2 -2 M548 92 l-2 -2"/>
-  <text class="label" x="540" y="125" text-anchor="middle">jig-session</text>
-  <text class="sub" x="540" y="140" text-anchor="middle">applies</text>
+  <path class="accent" d="M533 79 v-5 M543 79 v-5 M531 79 h14 v6 h-14 z M536 85 v3 M540 85 v3"/>
+  <text class="label" x="540" y="115" text-anchor="middle">jig-session</text>
+  <text class="sub" x="540" y="132" text-anchor="middle">applies</text>
 
   <rect class="node" x="670" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M740 75 l14 8 -14 8 z M735 75 v16"/>
-  <text class="label" x="755" y="125" text-anchor="middle">Pi</text>
-  <text class="sub" x="755" y="140" text-anchor="middle">tools · skills</text>
+  <text class="label" x="755" y="115" text-anchor="middle">Pi</text>
+  <text class="sub" x="755" y="132" text-anchor="middle">tools · skills</text>
 
   <path class="path" d="M195 100 H240"/><path id="sessionswitch-arrow-1" class="arrowhead" d="M232 95 L240 100 L232 105 z"/>
   <path class="path" d="M410 100 H455"/><path id="sessionswitch-arrow-2" class="arrowhead" d="M447 95 L455 100 L447 105 z"/>
