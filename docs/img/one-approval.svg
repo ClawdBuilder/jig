@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="260" viewBox="0 0 1000 260" role="img" aria-label="Two timelines of one ticket. Today, every push asks for approval, three times here, and a staging write asks too. With one approval per change, tests and a checker run first, scenarios run in staging, and you approve once before the pull request. Staging writes still ask." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg{fill:#fff}.label{fill:#1a1b1e;font-size:14px;font-weight:700}.small{fill:#5c626b;font-size:11px}
-    .line{fill:none;stroke:#2563eb;stroke-width:2}.dot{fill:#2563eb}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .line{fill:none;stroke:#2563eb;stroke-width:2}.dot{fill:#2563eb}.person{fill:#2563eb;stroke:#2563eb;stroke-width:2;stroke-linecap:round}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .dash{fill:none;stroke:#2563eb;stroke-width:1.6;stroke-dasharray:4 4}
     @media (prefers-color-scheme: dark){
-      .bg{fill:#111113}.label{fill:#e7e7ea}.small{fill:#9a9aa2}.line{stroke:#7aa2f7}.dot{fill:#7aa2f7}.accent{stroke:#7aa2f7}.dash{stroke:#7aa2f7}
+      .bg{fill:#111113}.label{fill:#e7e7ea}.small{fill:#9a9aa2}.line{stroke:#7aa2f7}.dot{fill:#7aa2f7}.person{fill:#7aa2f7;stroke:#7aa2f7;stroke-width:2;stroke-linecap:round}.accent{stroke:#7aa2f7}.dash{stroke:#7aa2f7}
     }
   </style>
   <rect class="bg" x="0.5" y="0.5" width="999" height="259" rx="12"/>
@@ -16,14 +16,17 @@
   <circle class="dot" cx="620" cy="88" r="5"/><text class="small" x="620" y="110" text-anchor="middle">staging</text>
   <text class="small" x="620" y="126" text-anchor="middle">confirm</text>
   <circle class="dot" cx="760" cy="88" r="5"/><text class="small" x="760" y="110" text-anchor="middle">PR</text>
-  <path class="accent" d="M145 58 H455 M160 52 v12 M300 52 v12 M440 52 v12"/>
-  <text class="small" x="300" y="42" text-anchor="middle">approve ×3</text>
+  <text class="small" x="300" y="32" text-anchor="middle">approve</text>
+  <g class="person"><circle cx="160" cy="50" r="5"/><path d="M160 57 v10 M153 61 h14 M160 67 l-4 6 M160 67 l4 6"/></g>
+  <g class="person"><circle cx="300" cy="50" r="5"/><path d="M300 57 v10 M293 61 h14 M300 67 l-4 6 M300 67 l4 6"/></g>
+  <g class="person"><circle cx="440" cy="50" r="5"/><path d="M440 57 v10 M433 61 h14 M440 67 l-4 6 M440 67 l4 6"/></g>
 
   <text class="label" x="25" y="194">once</text>
   <path class="line" d="M110 210 H900"/>
   <circle class="dot" cx="160" cy="210" r="5"/><text class="small" x="160" y="232" text-anchor="middle">tests</text>
   <circle class="dot" cx="300" cy="210" r="5"/><text class="small" x="300" y="232" text-anchor="middle">checker</text>
   <circle class="dot" cx="440" cy="210" r="5"/><text class="small" x="440" y="232" text-anchor="middle">scenarios</text>
+  <g class="person"><circle cx="620" cy="174" r="5"/><path d="M620 181 v10 M613 185 h14 M620 191 l-4 6 M620 191 l4 6"/></g>
   <circle class="dot" cx="620" cy="210" r="5"/><text class="small" x="620" y="232" text-anchor="middle">approve</text>
   <circle class="dot" cx="760" cy="210" r="5"/><text class="small" x="760" y="232" text-anchor="middle">PR</text>
 </svg>
