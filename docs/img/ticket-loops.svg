@@ -2,6 +2,7 @@
   <style>
     .bg { fill: #ffffff; }
     .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .node-later { fill: #f6f7f9; stroke: #5c626b; stroke-width: 1.3; stroke-dasharray: 5 4; }
     .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
     .sub { fill: #5c626b; font-size: 11px; }
     .muted { fill: #5c626b; font-size: 12px; }
@@ -14,6 +15,7 @@
     @media (prefers-color-scheme: dark) {
       .bg { fill: #111113; }
       .node { fill: #18181b; stroke: #2c2c31; }
+      .node-later { fill: #18181b; stroke: #9a9aa2; }
       .label { fill: #e7e7ea; }
       .sub { fill: #9a9aa2; }
       .muted { fill: #9a9aa2; }
@@ -49,14 +51,14 @@
   <text class="sub" x="535" y="140" text-anchor="middle">before each commit</text>
 
   <!-- 4. the checker: later -->
-  <rect class="node" x="660" y="55" width="170" height="90" rx="12"/>
+  <rect class="node-later" x="660" y="55" width="170" height="90" rx="12"/>
   <circle class="accent" cx="741" cy="75" r="9"/>
   <path class="accent" d="M748 82 l9 9"/>
   <text class="label" x="745" y="122" text-anchor="middle">checker</text>
   <text class="sub" x="745" y="140" text-anchor="middle">a fresh context</text>
 
   <!-- 5. your one approval: later -->
-  <rect class="node" x="870" y="55" width="170" height="90" rx="12"/>
+  <rect class="node-later" x="870" y="55" width="170" height="90" rx="12"/>
   <circle class="accent" cx="950" cy="70" r="4.4"/>
   <path class="accent" d="M940 88 Q940 78 950 78 Q960 78 960 88"/>
   <path class="accent" d="M964 82 l4 4 8 -9"/>

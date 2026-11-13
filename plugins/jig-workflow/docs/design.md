@@ -105,7 +105,7 @@ environment together cover it. A dashed item is planned.*
 
 *A ticket over time. Guides go into Pi before it writes code, and feedback returns at the edit loop, the checker, your one
 approval and after the pull request, where CI, reviews and teammates report through the review ledger. This plugin builds
-the edit loop and the stage gates; the checker, the one approval and the delivery loop, the dashed return, are later
+the edit loop and the stage gates. Dashed parts are later: the checker, the one approval and the CI · reviews return
 ([Where this comes from](#where-this-comes-from)).*
 
 **Later,** and not built:
