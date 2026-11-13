@@ -13,23 +13,23 @@
   <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
   <rect class="node" x="25" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M96 76 h5 v16 h-5 M105 80 h13 M105 86 h9 M105 92 h11"/>
-  <text class="label" x="110" y="125" text-anchor="middle">Pi events</text>
-  <text class="sub" x="110" y="140" text-anchor="middle">each turn</text>
+  <text class="label" x="110" y="115" text-anchor="middle">Pi events</text>
+  <text class="sub" x="110" y="132" text-anchor="middle">each turn</text>
 
   <rect class="node" x="240" y="60" width="170" height="80" rx="12"/>
-  <circle class="accent" cx="325" cy="84" r="6"/><path class="accent" d="M325 74 v3 M325 91 v3 M314 84 h3 M333 84 h3 M317 76 l2 2 M333 76 l-2 2 M317 92 l2 -2 M333 92 l-2 -2"/>
-  <text class="label" x="325" y="125" text-anchor="middle">jig-session</text>
-  <text class="sub" x="325" y="140" text-anchor="middle">writes it</text>
+  <path class="accent" d="M318 79 v-5 M328 79 v-5 M316 79 h14 v6 h-14 z M321 85 v3 M325 85 v3"/>
+  <text class="label" x="325" y="115" text-anchor="middle">jig-session</text>
+  <text class="sub" x="325" y="132" text-anchor="middle">writes it</text>
 
   <rect class="node" x="455" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M520 75 h20 v18 h-20 z M526 81 h8 M526 87 h8 M526 93 h6"/>
-  <text class="label" x="540" y="125" text-anchor="middle">status file</text>
-  <text class="sub" x="540" y="140" text-anchor="middle">sessions/id</text>
+  <text class="label" x="540" y="115" text-anchor="middle">status file</text>
+  <text class="sub" x="540" y="132" text-anchor="middle">sessions/id</text>
 
   <rect class="node" x="670" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M735 75 h22 v18 h-22 z M739 79 h8 M739 83 h14 M739 87 h10"/>
-  <text class="label" x="755" y="125" text-anchor="middle">Herdr panel</text>
-  <text class="sub" x="755" y="140" text-anchor="middle">reads it</text>
+  <text class="label" x="755" y="115" text-anchor="middle">Herdr panel</text>
+  <text class="sub" x="755" y="132" text-anchor="middle">reads it</text>
 
   <path class="path" d="M195 100 H240"/><path id="sessionfile-arrow-1" class="arrowhead" d="M232 95 L240 100 L232 105 z"/>
   <path class="path" d="M410 100 H455"/><path id="sessionfile-arrow-2" class="arrowhead" d="M447 95 L455 100 L447 105 z"/>
