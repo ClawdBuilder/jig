@@ -80,13 +80,43 @@ changelog, a plugin catalogue or an architecture page.
 
 ## Diagrams
 
-A diagram shows the plugin's real mechanism, not boxes with names. Draw it as
-an SVG in `docs/img/` and copy the frame, fonts and colours from
-[lens-flow.svg](img/lens-flow.svg).
-- **Labels are a few words.** Text is 11 to 13 px at drawn scale.
-- **Arrows say what moves,** such as `query` or `masked lines`.
-- **Each file has its own marker ids,** so two diagrams on one page never mix.
-- **It has `role="img"` and an `aria-label`** that says what the picture shows.
+A diagram shows the one path a reader should remember, not a box for every detail. The prose around it carries the
+details, and the picture carries the shape.
+
+1. **Name the path.** Write the one sequence as `A → B → C → D`, with 4 to 6 nodes. Everything else becomes a marker on
+   that path or moves to the prose. *Done when* the path fits on one line.
+2. **Budget the words.** Give each node, marker and outcome 1 to 3 words; the whole picture carries about 25 visible
+   words. *Done when* the visible text, not the `aria-label`, is 30 words or fewer. Count it with:
+
+   ```bash
+   python3 -c 'import sys,xml.etree.ElementTree as E; r=E.parse(sys.argv[1]).getroot(); print(sum(len(" ".join(t.itertext()).split()) for t in r.iter() if t.tag.endswith("text")))' docs/img/one-call.svg
+   ```
+3. **Draw.**
+   - Run the path left to right.
+   - Make a node a rounded box with a thin border, a line icon and 1 to 3 words.
+   - Put a marker on the path as a small glyph with 1 or 2 words: a gate, a switch, a key.
+   - Put outcomes in small chips where their path ends.
+   - Use Jig's own look: the lime mark in [assets/jig.svg](assets/jig.svg) and the UI tokens in
+     [theme.css](../plugins/jig-core/src/kit/theme.css) (`theme.ts` serves that file). Use the system sans stack in the
+     existing diagrams.
+   - Make it read in light and dark: colours that work on both, or a `@media (prefers-color-scheme: dark)` block inside
+     the SVG.
+   - Keep it self-contained: inline paths for icons and marks, a system font stack, and a full-sentence `aria-label`.
+   - Let arrows say what moves, give every file its own marker ids, and keep `role="img"`.
+4. **Render and look.** Render both backgrounds and open the images:
+
+   ```bash
+   convert -density 110 docs/img/one-call.svg -background white -flatten /tmp/one-call-light.png
+   convert -density 110 docs/img/one-call.svg -background '#111113' -flatten /tmp/one-call-dark.png
+   ```
+
+   *Done when* you have looked at both and fixed what one look showed.
+5. **Link the details.** Make the paragraph around the image point to the page that explains each part, such as
+   [Architecture](architecture.md) and [Permissions](permissions.md).
+
+**Before and after.** [`one-call.svg`](img/one-call.svg) had 231 visible words in 46 text blocks; the model now has 14 words in 13 text
+blocks: `tool call → classify → decide → run → result`, with `ask`, `deny` and `mask` on the path and `allowed` or
+`blocked` at the end.
 
 ## Checks
 
