@@ -1,109 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="646" viewBox="0 0 1200 646" role="img" aria-label="The files of the example company plugin jig-acme, each handed to one call of jig-core's global handle, and what in Jig reads it: environments, section defaults for nine plugins, a secret command, a sign-in service, a transport, a tunnel, masked field names, a protected path, a status line, and an overlay skill that Pi loads from the package manifest." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="1199" height="645" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="acme-seams-head-5d4b7c" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5D4B7C"/></marker>
-  </defs>
-  <!-- column heads -->
-  <text x="40" y="50" font-size="16" fill="#4E7A58" font-weight="700">jig-acme: one file per seam</text>
-  <text x="450" y="50" font-size="16" fill="#4E7A58" font-weight="700">what it calls on jig-core</text>
-  <text x="860" y="50" font-size="16" fill="#4E7A58" font-weight="700">what in Jig uses it</text>
-  <text x="40" y="72" font-size="13" fill="#5A645F">a Pi package that loads after jig-core, and uses only its public contract</text>
-  <!-- what the arrows say -->
-  <text x="394" y="104" font-size="12" fill="#5D4B7C" text-anchor="middle">calls</text>
-  <text x="804" y="104" font-size="12" fill="#5D4B7C" text-anchor="middle">is read by</text>
-  <!-- environments.ts -->
-  <rect x="40" y="96" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="119" font-size="13" fill="#FFFFFF" text-anchor="middle">environments.ts</text>
-  <path d="M342 114 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="96" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="119" font-size="13" fill="#FFFFFF" text-anchor="middle">config.addEnvironments</text>
-  <path d="M752 114 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="96" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="119" font-size="13" fill="#FFFFFF" text-anchor="middle">rules and masking know dev, staging, prod</text>
-  <!-- defaults/ (nine files) -->
-  <rect x="40" y="144" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="167" font-size="13" fill="#FFFFFF" text-anchor="middle">defaults/ (nine files)</text>
-  <path d="M342 162 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="144" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="167" font-size="13" fill="#FFFFFF" text-anchor="middle">config.addSectionDefaults</text>
-  <path d="M752 162 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="144" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="167" font-size="13" fill="#FFFFFF" text-anchor="middle">nine plugins read their section</text>
-  <!-- secrets.ts -->
-  <rect x="40" y="192" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="215" font-size="13" fill="#FFFFFF" text-anchor="middle">secrets.ts</text>
-  <path d="M342 210 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="192" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="215" font-size="13" fill="#FFFFFF" text-anchor="middle">config.addSecretCommands</text>
-  <path d="M752 210 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="192" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="215" font-size="13" fill="#FFFFFF" text-anchor="middle">cmd:acme-sso runs the acme tool</text>
-  <!-- signin.ts -->
-  <rect x="40" y="240" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="263" font-size="13" fill="#FFFFFF" text-anchor="middle">signin.ts</text>
-  <path d="M342 258 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="240" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="263" font-size="13" fill="#FFFFFF" text-anchor="middle">signIn.register</text>
-  <path d="M752 258 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="240" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="263" font-size="13" fill="#FFFFFF" text-anchor="middle">jig-jira, jig-logs: sign in as acme-sso</text>
-  <!-- transport.ts -->
-  <rect x="40" y="288" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="311" font-size="13" fill="#FFFFFF" text-anchor="middle">transport.ts</text>
-  <path d="M342 306 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="288" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="311" font-size="13" fill="#FFFFFF" text-anchor="middle">transports.register</text>
-  <path d="M752 306 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="288" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="311" font-size="13" fill="#FFFFFF" text-anchor="middle">jig-api: staging through the gateway</text>
-  <!-- tunnel.ts -->
-  <rect x="40" y="336" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="359" font-size="13" fill="#FFFFFF" text-anchor="middle">tunnel.ts</text>
-  <path d="M342 354 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="336" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="359" font-size="13" fill="#FFFFFF" text-anchor="middle">tunnels.register</text>
-  <path d="M752 354 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="336" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="359" font-size="13" fill="#FFFFFF" text-anchor="middle">jig-mongo: staging and prod via ssh -L</text>
-  <!-- masking.ts -->
-  <rect x="40" y="384" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="407" font-size="13" fill="#FFFFFF" text-anchor="middle">masking.ts</text>
-  <path d="M342 402 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="384" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="407" font-size="13" fill="#FFFFFF" text-anchor="middle">config.addMaskFields</text>
-  <path d="M752 402 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="384" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="407" font-size="13" fill="#FFFFFF" text-anchor="middle">the masker: two more field names</text>
-  <!-- protection.ts -->
-  <rect x="40" y="432" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="455" font-size="13" fill="#FFFFFF" text-anchor="middle">protection.ts</text>
-  <path d="M342 450 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="432" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="455" font-size="13" fill="#FFFFFF" text-anchor="middle">config.addProtectedPaths</text>
-  <path d="M752 450 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="432" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="455" font-size="13" fill="#FFFFFF" text-anchor="middle">Pi's file tools refuse the acme login</text>
-  <!-- status.ts -->
-  <rect x="40" y="480" width="300" height="36" fill="#8C979D"/>
-  <text x="190" y="503" font-size="13" fill="#FFFFFF" text-anchor="middle">status.ts</text>
-  <path d="M342 498 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="480" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="503" font-size="13" fill="#FFFFFF" text-anchor="middle">status.register</text>
-  <path d="M752 498 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="480" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="503" font-size="13" fill="#FFFFFF" text-anchor="middle">/jig lists environments, what is missing</text>
-  <!-- skills/acme-jira -->
-  <rect x="40" y="528" width="300" height="36" fill="#DF6A7C"/>
-  <text x="190" y="551" font-size="13" fill="#FFFFFF" text-anchor="middle">skills/acme-jira</text>
-  <path d="M342 546 H446" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="450" y="528" width="300" height="36" fill="#1D3B4D"/>
-  <text x="600" y="551" font-size="13" fill="#FFFFFF" text-anchor="middle">the package manifest</text>
-  <path d="M752 546 H856" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#acme-seams-head-5d4b7c)"/>
-  <rect x="860" y="528" width="300" height="36" fill="#5D4B7C"/>
-  <text x="1010" y="551" font-size="13" fill="#FFFFFF" text-anchor="middle">the agent reads it beside the jira skill</text>
-  <!-- legend -->
-  <rect x="40" y="608" width="14" height="14" rx="2" fill="#8C979D"/>
-  <text x="64" y="619.5" font-size="13" fill="#1A1F1D">configuration</text>
-  <rect x="168.25" y="608" width="14" height="14" rx="2" fill="#DF6A7C"/>
-  <text x="192.25" y="619.5" font-size="13" fill="#1A1F1D">knowledge</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="744" height="326" viewBox="0 2 744 326" role="img" aria-label="A company plugin in three steps: one of its files makes one call on jig-core's global handle, withJig, and something in Jig reads the result. What a file adds is one seam, such as environments, a sign-in, masking or a status line, and each seam is one file. The plugin holds configuration and knowledge, and changes no tool's behaviour." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .chip { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
+    .sub { fill: #5c626b; font-size: 11px; }
+    .muted { fill: #5c626b; font-size: 12px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .arrowhead { fill: #2563eb; }
+    .spoke { fill: none; stroke: #5c626b; stroke-width: 1.2; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .chip { fill: #18181b; stroke: #2c2c31; }
+      .label { fill: #e7e7ea; }
+      .sub { fill: #9a9aa2; }
+      .muted { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .accent { stroke: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .arrowhead { fill: #7aa2f7; }
+      .spoke { stroke: #9a9aa2; }
+    }
+  </style>
+  <rect class="bg" x="0.5" y="2.5" width="743" height="325" rx="12"/>
+
+  <!-- the file, the handle, the reader -->
+  <rect class="node" x="24" y="120" width="150" height="90" rx="12"/>
+  <path class="accent" d="M91 130 h16 a3 3 0 0 1 3 3 v24 a3 3 0 0 1 -3 3 h-16 a3 3 0 0 1 -3 -3 v-24 a3 3 0 0 1 3 -3 z"/>
+  <path class="accent" d="M95 137 h16 M95 144 h16 M95 151 h10"/>
+  <text class="label" x="99" y="182" text-anchor="middle">your files</text>
+  <text class="sub" x="99" y="200" text-anchor="middle">one per seam</text>
+
+  <rect class="node" x="240" y="120" width="280" height="90" rx="12"/>
+  <path class="accent" d="M369 137 l-6 7 6 7 M391 137 l6 7 -6 7"/>
+  <text class="label" x="380" y="182" text-anchor="middle">withJig</text>
+  <text class="sub" x="380" y="200" text-anchor="middle">jig-core's global handle</text>
+
+  <rect class="node" x="570" y="120" width="150" height="90" rx="12"/>
+  <rect class="accent" x="626" y="132" width="13" height="13" rx="2"/>
+  <rect class="accent" x="643" y="132" width="13" height="13" rx="2"/>
+  <rect class="accent" x="634" y="148" width="13" height="13" rx="2"/>
+  <text class="label" x="645" y="182" text-anchor="middle">Jig</text>
+  <text class="sub" x="645" y="200" text-anchor="middle">reads it</text>
+
+  <path class="path" d="M174 165 H240"/>
+  <path id="acmeseams55-arrow-call" class="arrowhead" d="M232 160 L240 165 L232 170 z"/>
+  <text class="edge" x="207" y="155" text-anchor="middle">calls</text>
+  <path class="path" d="M520 165 H570"/>
+  <path id="acmeseams55-arrow-read" class="arrowhead" d="M562 160 L570 165 L562 170 z"/>
+  <text class="edge" x="545" y="155" text-anchor="middle">reads</text>
+
+  <!-- one seam is one file: the kinds around the handle -->
+  <rect class="chip" x="230" y="26" width="150" height="40" rx="10"/>
+  <circle class="accent" cx="250" cy="46" r="7"/>
+  <path class="accent" d="M243 46 h14 M250 39 a8.5 7 0 0 1 0 14 M250 39 a8.5 7 0 0 0 0 14"/>
+  <text class="label" x="268" y="51">environments</text>
+  <path class="spoke" d="M305 66 V120"/>
+
+  <rect class="chip" x="390" y="26" width="120" height="40" rx="10"/>
+  <circle class="accent" cx="410" cy="46" r="7"/>
+  <circle class="accent" cx="407.5" cy="46" r="2.2"/>
+  <path class="accent" d="M409.7 46 H417 M414 46 v2.4 M417 46 v1.6"/>
+  <text class="label" x="428" y="51">sign-in</text>
+  <path class="spoke" d="M450 66 V120"/>
+
+  <rect class="chip" x="230" y="264" width="130" height="40" rx="10"/>
+  <circle class="accent" cx="250" cy="284" r="7"/>
+  <path class="accent" d="M243 284 q7 -6 14 0 q-7 6 -14 0 z"/>
+  <circle class="accent" cx="250" cy="284" r="2.2"/>
+  <path class="accent" d="M243 292 L257 276"/>
+  <text class="label" x="268" y="289">masking</text>
+  <path class="spoke" d="M295 264 V210"/>
+
+  <rect class="chip" x="390" y="264" width="110" height="40" rx="10"/>
+  <circle class="accent" cx="410" cy="284" r="7"/>
+  <path class="accent" d="M406 282 h8 M406 288 h8"/>
+  <text class="label" x="428" y="289">status</text>
+  <path class="spoke" d="M445 264 V210"/>
 </svg>
