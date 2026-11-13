@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="300" viewBox="0 0 1160 300" role="img" aria-label="Jig's memory in five steps: while a ticket is open the agent writes notes and evidence into the ticket's folder; at close it writes a card, and the plugin adds the card's shared keys to an index of past cards; when a later ticket starts, recall matches that ticket's keys and words against the cards and hands the best ones back as a short message. The rules that cross every step, protect every write, keep it small and measure recall first, are in jig-memory's README." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1058" height="138" viewBox="6 31 1058 138" role="img" aria-label="Jig's memory in five steps: while a ticket is open the agent writes notes and evidence into the ticket's folder; at close it writes a card, and the plugin adds the card's shared keys to an index of past cards; when a later ticket starts, recall matches that ticket's keys and words against the cards and hands the best ones back as a short message. The rules that cross every step, protect every write, keep it small and measure recall first, are in jig-memory's README." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg { fill: #ffffff; }
     .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
@@ -25,7 +25,7 @@
       .arrowhead { fill: #7aa2f7; }
     }
   </style>
-  <rect class="bg" x="0.5" y="0.5" width="1159" height="299" rx="12"/>
+  <rect class="bg" x="6.5" y="31.5" width="1057" height="137" rx="12"/>
 
   <!-- 1. write the notes and the evidence -->
   <rect class="node" x="30" y="55" width="170" height="90" rx="12"/>
