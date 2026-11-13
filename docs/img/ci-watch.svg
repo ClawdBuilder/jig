@@ -13,28 +13,28 @@
   <rect class="bg" x="0.5" y="0.5" width="1079" height="189" rx="12"/>
   <rect class="node" x="25" y="60" width="160" height="80" rx="12"/>
   <path class="accent" d="M95 75 v10 M95 85 l-10 10 M95 85 l10 10 M85 95 v8 M105 95 v8"/>
-  <text class="label" x="105" y="125" text-anchor="middle">push</text>
-  <text class="sub" x="105" y="140" text-anchor="middle">git</text>
+  <text class="label" x="105" y="115" text-anchor="middle">push</text>
+  <text class="sub" x="105" y="132" text-anchor="middle">git</text>
 
   <rect class="node" x="230" y="60" width="160" height="80" rx="12"/>
-  <path class="accent" d="M300 75 q12 9 0 18 q-12 -9 0 -18 M300 79 v10"/>
-  <text class="label" x="310" y="125" text-anchor="middle">watch</text>
-  <text class="sub" x="310" y="140" text-anchor="middle">jig-ops</text>
+  <circle class="accent" cx="310" cy="84" r="8"/><path class="accent" d="M310 79 v5 l4 3"/>
+  <text class="label" x="310" y="115" text-anchor="middle">watch</text>
+  <text class="sub" x="310" y="132" text-anchor="middle">jig-ops</text>
 
   <rect class="node" x="435" y="60" width="160" height="80" rx="12"/>
   <path class="accent" d="M505 75 h18 v7 h-18 z M505 86 h18 v7 h-18 z M509 82 h10 M509 89 h10"/>
-  <text class="label" x="515" y="125" text-anchor="middle">CI</text>
-  <text class="sub" x="515" y="140" text-anchor="middle">service</text>
+  <text class="label" x="515" y="115" text-anchor="middle">CI</text>
+  <text class="sub" x="515" y="132" text-anchor="middle">service</text>
 
   <rect class="node" x="640" y="60" width="160" height="80" rx="12"/>
-  <path class="accent" d="M710 75 v18 M710 75 h14 M710 84 h10"/>
-  <text class="label" x="720" y="125" text-anchor="middle">finish</text>
-  <text class="sub" x="720" y="140" text-anchor="middle">line</text>
+  <path class="accent" d="M710 75 v18 M710 75 h13 l-4 4 4 4 h-13"/>
+  <text class="label" x="720" y="115" text-anchor="middle">finish</text>
+  <text class="sub" x="720" y="132" text-anchor="middle">line</text>
 
   <rect class="node" x="845" y="60" width="160" height="80" rx="12"/>
-  <circle class="accent" cx="925" cy="80" r="7"/><path class="accent" d="M925 89 v15 M915 96 h20 M925 104 l-7 9 M925 104 l7 9"/>
-  <text class="label" x="925" y="125" text-anchor="middle">agent</text>
-  <text class="sub" x="925" y="140" text-anchor="middle">next turn</text>
+  <circle class="accent" cx="925" cy="77" r="6"/><path class="accent" d="M925 85 v13 M917 91 h16 M925 98 l-6 8 M925 98 l6 8"/>
+  <text class="label" x="925" y="115" text-anchor="middle">agent</text>
+  <text class="sub" x="925" y="132" text-anchor="middle">next turn</text>
 
   <path class="path" d="M185 100 H230"/><path id="ciwatch-arrow-1" class="arrowhead" d="M222 95 L230 100 L222 105 z"/>
   <path class="path" d="M390 100 H435"/><path id="ciwatch-arrow-2" class="arrowhead" d="M427 95 L435 100 L427 105 z"/>
