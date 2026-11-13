@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="250" viewBox="0 0 1080 250" role="img" aria-label="A workflow runs in one path: workflow files name the stages; evidence is made where it can be checked; results are saved in workflow.json against the commit or plan; status and advance read it and check eight conditions; a gate in jig-core holds the call until they pass." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="190" viewBox="0 0 1080 190" role="img" aria-label="A workflow runs in one path: workflow files name the stages; evidence is made where it can be checked; results are saved in workflow.json against the commit or plan; status and advance read it and check eight conditions; a gate in jig-core holds the call until they pass." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg{fill:#fff}.node{fill:#f6f7f9;stroke:#d9dde3;stroke-width:1.2}.label{fill:#1a1b1e;font-size:14px;font-weight:700}
     .sub{fill:#5c626b;font-size:11px}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -10,14 +10,14 @@
       .glyph{fill:#7aa2f7}.chip{fill:#14251a;stroke:#6ccb8a}.chip-text{fill:#6ccb8a}
     }
   </style>
-  <rect class="bg" x="0.5" y="0.5" width="1079" height="249" rx="12"/>
+  <rect class="bg" x="0.5" y="0.5" width="1079" height="189" rx="12"/>
   <rect class="node" x="30" y="70" width="150" height="90" rx="12"/>
-  <path class="accent" d="M95 86 h20 v22 h-20 z M101 92 h8 M101 98 h8 M101 104 h5"/>
+  <path class="accent" d="M100 88 v8 M100 96 l-8 9 M100 96 l8 9 M92 105 v7 M108 105 v7"/>
   <text class="label" x="105" y="125" text-anchor="middle">workflow</text>
   <text class="sub" x="105" y="143" text-anchor="middle">stages</text>
 
   <rect class="node" x="220" y="70" width="150" height="90" rx="12"/>
-  <path class="accent" d="M280 86 l10 0 v16 h-20 v-16 z M276 102 v8 M290 102 v8 M276 114 h14"/>
+  <path class="accent" d="M290 86 v8 l-7 14 h14 l-7 -14 v-8 z M286 100 h8"/>
   <text class="label" x="295" y="125" text-anchor="middle">evidence</text>
   <text class="sub" x="295" y="143" text-anchor="middle">tests · plan</text>
 
@@ -27,12 +27,12 @@
   <text class="sub" x="485" y="143" text-anchor="middle">at commit</text>
 
   <rect class="node" x="600" y="70" width="150" height="90" rx="12"/>
-  <path class="accent" d="M665 88 h16 M665 96 h16 M665 104 h10"/>
+  <path class="accent" d="M660 88 l3 3 5 -5 M660 97 l3 3 5 -5 M660 106 l3 3 5 -5 M674 88 h10 M674 99 h10 M674 110 h10"/>
   <text class="label" x="675" y="125" text-anchor="middle">conditions</text>
   <text class="sub" x="675" y="143" text-anchor="middle">status · advance</text>
 
   <rect class="node" x="790" y="70" width="150" height="90" rx="12"/>
-  <path class="accent" d="M850 86 v22 M840 92 v8 M860 92 v8 M840 92 h20"/>
+  <path class="accent" d="M846 86 v22 M864 86 v22 M844 104 l22 -16 M844 96 l22 -16"/>
   <text class="label" x="865" y="125" text-anchor="middle">gate</text>
   <text class="sub" x="865" y="143" text-anchor="middle">jig-core</text>
 
