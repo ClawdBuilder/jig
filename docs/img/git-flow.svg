@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="500" viewBox="0 0 1240 500" role="img" aria-label="How a jig-git call is decided and run. The agent calls git, pr or release; jig-core decides each action by its environment and effect. Reads and local writes run, and writes to GitHub or GitLab ask you. Local actions run through git with no shell and hooks off; GitHub actions run through gh and GitLab actions through glab. The guarded steps are parallel: a push asks and lists its commits, pull request writes ask on a review screen, a protected branch refuses a direct, force or destructive change, and reads run at once. After a push lands and after a pull request is created, the plugin publishes jig-git:pushed on Pi's event bus, and jig-ops starts a CI watch." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1178" height="498" viewBox="6 -10 1178 498" role="img" aria-label="How a jig-git call is decided and run. The agent calls git, pr or release; jig-core decides each action by its environment and effect. Reads and local writes run, and writes to GitHub or GitLab ask you. Local actions run through git with no shell and hooks off; GitHub actions run through gh and GitLab actions through glab. The guarded steps are parallel: a push asks and lists its commits, pull request writes ask on a review screen, a protected branch refuses a direct, force or destructive change, and reads run at once. After a push lands and after a pull request is created, the plugin publishes jig-git:pushed on Pi's event bus, and jig-ops starts a CI watch." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg { fill: #ffffff; }
     .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
@@ -35,13 +35,15 @@
       .chip-no-text { fill: #ff7b72; }
     }
   </style>
-  <rect class="bg" x="0.5" y="0.5" width="1239" height="499" rx="12"/>
+  <rect class="bg" x="6.5" y="-9.5" width="1177" height="497" rx="12"/>
 
   <!-- 1. a call -->
   <rect class="node" x="30" y="30" width="170" height="80" rx="12"/>
   <path class="accent" d="M107 42 h22 a4 4 0 0 1 4 4 v20 a4 4 0 0 1 -4 4 h-22 a4 4 0 0 1 -4 -4 v-20 a4 4 0 0 1 4 -4 z"/>
   <path class="accent" d="M110 50 l5 5 -5 5 M118 60 h6"/>
   <text class="label" x="115" y="90" text-anchor="middle">call</text>
+  <path class="path" d="M200 70 H240"/>
+  <path id="gitflow55-arrow-decide" class="arrowhead" d="M232 65 L240 70 L232 75 z"/>
 
   <!-- 2. what jig-core decides -->
   <rect class="node" x="240" y="30" width="170" height="80" rx="12"/>
@@ -50,14 +52,13 @@
 
   <!-- the two ways a call runs -->
   <rect class="node" x="460" y="14" width="300" height="64" rx="12"/>
-  <path class="accent" d="M566 30 a3.2 3.2 0 1 0 0.1 0 M566 34 V46 M566 38 C576 38 576 46 586 46"/>
-  <text class="label" x="596" y="51">local git</text>
+  <path class="accent" d="M558 30 H568 L572 35 H588 V52 H558 Z"/>
+  <text class="label" x="600" y="51">local git</text>
   <path id="gitflow55-arrow-local" class="arrowhead" d="M452 41 L460 46 L452 51 z"/>
   <rect class="node" x="460" y="94" width="300" height="64" rx="12"/>
-  <circle class="accent" cx="566" cy="114" r="3.4"/>
-  <path class="accent" d="M566 118 V130 M570 118 C582 118 582 130 590 130"/>
-  <circle class="dot" cx="590" cy="130" r="2.6"/>
-  <text class="label" x="596" y="131">gh · glab</text>
+  <circle class="accent" cx="573" cy="126" r="11"/>
+  <path class="accent" d="M562 126 H584 M573 115 a8 11 0 0 1 0 22 a8 11 0 0 1 0 -22"/>
+  <text class="label" x="598" y="131">gh · glab</text>
   <path id="gitflow55-arrow-forge" class="arrowhead" d="M452 121 L460 126 L452 131 z"/>
   <path class="path" d="M410 70 H430 V46 H452"/>
   <path class="path" d="M410 70 H430 V126 H452"/>
@@ -73,9 +74,11 @@
   <text class="chip-warn-text" x="196" y="260" text-anchor="middle">asks</text>
 
   <rect class="node" x="320" y="204" width="260" height="92" rx="12"/>
-  <circle class="accent" cx="440" cy="220" r="3.4"/>
-  <path class="accent" d="M440 224 V236 M444 224 C456 224 456 236 464 236"/>
-  <circle class="dot" cx="464" cy="236" r="2.6"/>
+  <circle class="accent" cx="442" cy="216" r="3.2"/>
+  <path class="accent" d="M442 219.2 V234 M462 219.2 V234"/>
+  <circle class="accent" cx="462" cy="216" r="3.2"/>
+  <path class="accent" d="M446 226.5 H456"/>
+  <path class="dot" d="M454 222.5 L458 226.5 L454 230.5 z"/>
   <text class="label" x="470" y="230">pr</text>
   <rect class="chip-warn" x="440" y="244" width="92" height="24" rx="12"/>
   <text class="chip-warn-text" x="486" y="260" text-anchor="middle">asks</text>
