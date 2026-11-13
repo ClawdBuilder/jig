@@ -34,10 +34,10 @@
   <rect class="core" x="380" y="70" width="240" height="240" rx="14"/>
   <text class="label" x="500" y="106" text-anchor="middle">jira</text>
   <text class="small" x="500" y="128" text-anchor="middle">one codebase</text>
-  <path class="accent" d="M455 160 l10 0 8 8 -12 12 -8 -8 z"/><text class="small" x="500" y="174" text-anchor="middle">preview</text>
-  <path class="accent" d="M470 192 v14 M480 199 h-20"/><text class="small" x="500" y="204" text-anchor="middle">classify</text>
-  <path class="accent" d="M500 226 v14 M488 233 h24"/><text class="small" x="500" y="252" text-anchor="middle">sign in</text>
-  <text class="small" x="500" y="292" text-anchor="middle">reads · writes</text>
+  <path class="accent" d="M468 164 q8 -7 16 0 q-8 7 -16 0 M476 164 a2 2 0 1 0 0.1 0"/><text class="small" x="492" y="168">preview</text>
+  <path class="accent" d="M468 188 l8 0 6 6 -10 10 -6 -6 z M478 192 l3 3"/><text class="small" x="492" y="200">classify</text>
+  <path class="accent" d="M468 224 a4 4 0 1 0 0.1 0 M472 224 h12 M480 224 v4 M484 224 v3"/><text class="small" x="492" y="228">sign in</text>
+  <text class="small" x="500" y="278" text-anchor="middle">reads · writes</text>
 
   <rect class="card" x="720" y="60" width="245" height="120" rx="12"/>
   <text class="label" x="842" y="90" text-anchor="middle">agent A</text>
