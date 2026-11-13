@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="640" viewBox="0 0 1240 640" role="img" aria-label="Three kinds of memory, and the paths between them. Pi writes ticket memory while it works: one folder per ticket, with notes and a card. At the start of a later ticket, recall matches the new ticket's keys, identifiers, error lines and words against past cards, and hands Pi a short message. Still design: at close a memory keeper writes the card and proposes organizational facts, which you approve, and personal rules that go with you from company to company, while the company's facts stay behind." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1228" height="623" viewBox="6 11 1228 623" role="img" aria-label="Three kinds of memory, and the paths between them. Pi writes ticket memory while it works: one folder per ticket, with notes and a card. At the start of a later ticket, recall matches the new ticket's keys, identifiers, error lines and words against past cards, and hands Pi a short message. Still design: at close a memory keeper writes the card and proposes organizational facts, which you approve, and personal rules that go with you from company to company, while the company's facts stay behind." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg { fill: #ffffff; }
     .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
@@ -41,7 +41,7 @@
       .chip-ok-text { fill: #6ccb8a; }
     }
   </style>
-  <rect class="bg" x="0.5" y="0.5" width="1239" height="639" rx="12"/>
+  <rect class="bg" x="6.5" y="11.5" width="1227" height="622" rx="12"/>
 
   <!-- Pi, on a ticket -->
   <rect class="node" x="30" y="80" width="190" height="470" rx="12"/>
@@ -57,9 +57,9 @@
   <rect class="node" x="1010" y="150" width="180" height="60" rx="6"/>
   <rect class="node" x="995" y="168" width="180" height="60" rx="6"/>
   <rect class="node" x="820" y="186" width="340" height="120" rx="6"/>
-  <path class="accent" d="M846 214 h20 v24 h-20 z M872 220 H1000 M872 232 H980 M872 244 H940"/>
+  <path class="accent" d="M846 214 h20 v24 h-20 z M872 220 H974 M872 232 H956 M872 244 H930"/>
   <text class="muted" x="1030" y="222" text-anchor="end">notes</text>
-  <path class="accent" d="M846 268 h20 v24 h-20 z M872 274 H1000 M872 286 H960"/>
+  <path class="accent" d="M846 268 h20 v24 h-20 z M872 274 H974 M872 286 H950"/>
   <text class="muted" x="1030" y="276" text-anchor="end">card</text>
 
   <!-- recall, at the start of a later ticket -->
