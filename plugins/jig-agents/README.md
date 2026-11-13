@@ -17,9 +17,11 @@ For example, the agent starts a `scout` with the task "find where `orders-api` r
 on. The scout can read the code and run `rg`, `git log` and `git blame`; it cannot edit a file or push. When it
 finishes, its report arrives as a message.
 
-![The agent starts a child through jig-agents, which runs a separate Pi in RPC mode with the same plugins, sends it the task, counts its limits, brings its questions to your screen and your answers back, and delivers its report as a message](../../docs/img/agents-rpc.svg)
+![A child agent: the agent calls subagent start, jig-agents starts a separate Pi in RPC mode and holds the pipe, the child loads the same plugins, jig-agents sends the task and counts turns, minutes and cost, questions come to you and answers go back, and the report arrives as a message](../../docs/img/agents-rpc.svg)
 
-*How a child runs. The child is a full Pi with the same plugins, so Jig's rules govern it; its questions come to you through the parent, and its report comes back without polling.*
+*How a child runs. The child is a full Pi with the same plugins, so Jig's rules govern it; `jig-agents` holds the pipe to it,
+sends the task and counts its turns, minutes and cost. Its questions come to you through the parent, and its report comes
+back as a message, without polling ([Roles](docs/roles.md), [Configuration](docs/configuration.md)).*
 
 ## The decision
 
