@@ -98,8 +98,8 @@ Behaviour is the hardest dimension to sense: acceptance scenarios in the plan, t
 
 | | Maintainability | Compatibility | Behaviour | Data safety |
 |---|---|---|---|---|
-| **Guides** | AGENTS.md · skills | Approved plan (planned) · related tickets | Scenarios in plan · workflow gates | Approved fields · the floor |
-| **Sensors** | Diff rules · checker agent (planned) | Compile (planned) · affected tests (planned) | Tests at HEAD · scenario results (planned) · you in acceptance (planned) | Masking · redaction |
+| **Guides** | AGENTS.md · skills | Approved plan · related tickets (planned) | Scenarios in plan · workflow gates | Approved fields · the floor |
+| **Sensors** | Diff rules (planned) · checker agent (planned) | Compile (planned) · affected tests (planned) | Tests at HEAD · scenario results · you in acceptance | Masking · redaction |
 
 ![A ticket over time: guides go into Pi, Pi writes the change, the edit loop runs its checks, a checker reviews in a fresh context, you approve once, and after the pull request CI and reviews come back to Pi as new commits](../../../docs/img/ticket-loops.svg)
 
