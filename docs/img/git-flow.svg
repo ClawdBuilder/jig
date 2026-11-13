@@ -1,67 +1,116 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="500" viewBox="0 0 980 500" role="img" aria-label="How a jig-git call runs. The agent calls git, pr or release. jig-core classifies the action: reads and local writes run, writes to GitHub or GitLab ask you. Local git actions run through exec.git, with no shell and hooks off, and refuse a repository whose own configuration runs a command. GitHub actions run through gh and GitLab actions through glab, and a lost reply is read once and never sent again. Guarded steps: git push asks and lists the commits, pull request writes ask on a review screen, a protected branch refuses a direct push, force push, rebase, cherry-pick, create or delete, and a merge is refused if the head changed since the preview. After a push and after a pull request is created, jig-git publishes jig-git:pushed on Pi&#x27;s event bus, and jig-ops starts a CI watch." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="979" height="499" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="gitflow-head-1d3b4d-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
-    <marker id="gitflow-head-5c9cab-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5C9CAB"/></marker>
-  </defs>
-  <!-- the call, and jig-core -->
-  <rect x="30" y="50" width="170" height="64" rx="6" fill="#5D4B7C"/>
-  <text x="115.0" y="78.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">the agent</text>
-  <text x="115.0" y="95.0" font-size="12" fill="#FFFFFF" text-anchor="middle">git, pr or release</text>
-  <path d="M200 82 H270" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#gitflow-head-1d3b4d-11)"/>
-  <text x="235" y="72" font-size="12" fill="#3A4440" text-anchor="middle">a call</text>
-  <rect x="270" y="34" width="220" height="96" rx="6" fill="#1D3B4D"/>
-  <text x="380.0" y="61.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-core</text>
-  <text x="380.0" y="78.0" font-size="12" fill="#FFFFFF" text-anchor="middle">classifies each action:</text>
-  <text x="380.0" y="95.0" font-size="12" fill="#FFFFFF" text-anchor="middle">reads and local writes run,</text>
-  <text x="380.0" y="112.0" font-size="12" fill="#FFFFFF" text-anchor="middle">writes to GitHub/GitLab ask you</text>
-  <!-- what runs -->
-  <rect x="560" y="34" width="390" height="64" rx="6" fill="#5C9CAB"/>
-  <text x="755.0" y="53.5" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">local git</text>
-  <text x="755.0" y="70.5" font-size="12" fill="#FFFFFF" text-anchor="middle">exec.git: no shell, hooks and prompts off</text>
-  <text x="755.0" y="87.5" font-size="12" fill="#FFFFFF" text-anchor="middle">refuses a repository whose config runs a command</text>
-  <rect x="560" y="112" width="390" height="64" rx="6" fill="#5C9CAB"/>
-  <text x="755.0" y="131.5" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">GitHub through gh, GitLab through glab</text>
-  <text x="755.0" y="148.5" font-size="12" fill="#FFFFFF" text-anchor="middle">pull requests (merge requests), reviews, tags, releases</text>
-  <text x="755.0" y="165.5" font-size="12" fill="#FFFFFF" text-anchor="middle">a lost reply is read once, never sent again</text>
-  <path d="M490 66 H560" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#gitflow-head-1d3b4d-11)"/>
-  <text x="525" y="58" font-size="12" fill="#3A4440" text-anchor="middle">git</text>
-  <path d="M490 100 H525 V144 H560" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#gitflow-head-1d3b4d-11)"/>
-  <text x="525" y="166" font-size="12" fill="#3A4440" text-anchor="middle">pr, release</text>
-  <!-- guarded steps -->
-  <rect x="30" y="204" width="920" height="186" rx="6" fill="#E8ECEE"/>
-  <text x="46" y="226" font-size="13" fill="#1A1F1D" font-weight="700">Guarded steps, decided before anything runs</text>
-  <path d="M380 130 V204" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#gitflow-head-1d3b4d-11)"/>
-  <text x="364" y="168" font-size="12" fill="#3A4440" text-anchor="end">your rules decide</text>
-  <rect x="45" y="244" width="210" height="110" rx="6" fill="#FBF5EA" stroke="#C08326" stroke-width="1.8"/>
-  <text x="150.0" y="278.0" font-size="13" fill="#8A5A12" font-weight="700" text-anchor="middle">git push</text>
-  <text x="150.0" y="295.0" font-size="12" fill="#3A4440" text-anchor="middle">asks you first</text>
-  <text x="150.0" y="312.0" font-size="12" fill="#3A4440" text-anchor="middle">the preview lists the commits</text>
-  <text x="150.0" y="329.0" font-size="12" fill="#3A4440" text-anchor="middle">a force only with lease</text>
-  <rect x="275" y="244" width="210" height="110" rx="6" fill="#FBF5EA" stroke="#C08326" stroke-width="1.8"/>
-  <text x="380.0" y="278.0" font-size="13" fill="#8A5A12" font-weight="700" text-anchor="middle">pr writes</text>
-  <text x="380.0" y="295.0" font-size="12" fill="#3A4440" text-anchor="middle">ask on a review screen</text>
-  <text x="380.0" y="312.0" font-size="12" fill="#3A4440" text-anchor="middle">a merge needs the head to be</text>
-  <text x="380.0" y="329.0" font-size="12" fill="#3A4440" text-anchor="middle">the commit you saw</text>
-  <rect x="505" y="244" width="210" height="110" rx="6" fill="#F7E4DF" stroke="#A93C27" stroke-width="1.8"/>
-  <text x="610.0" y="278.0" font-size="13" fill="#A93C27" font-weight="700" text-anchor="middle">protected branch</text>
-  <text x="610.0" y="295.0" font-size="12" fill="#3A4440" text-anchor="middle">no direct push, force push,</text>
-  <text x="610.0" y="312.0" font-size="12" fill="#3A4440" text-anchor="middle">rebase, cherry-pick, create</text>
-  <text x="610.0" y="329.0" font-size="12" fill="#3A4440" text-anchor="middle">or delete by these tools</text>
-  <rect x="735" y="244" width="210" height="110" rx="6" fill="#E2F1E7" stroke="#2C7A4B" stroke-width="1.8"/>
-  <text x="840.0" y="278.0" font-size="13" fill="#2C7A4B" font-weight="700" text-anchor="middle">reads and local writes</text>
-  <text x="840.0" y="295.0" font-size="12" fill="#3A4440" text-anchor="middle">run at once: status, diff,</text>
-  <text x="840.0" y="312.0" font-size="12" fill="#3A4440" text-anchor="middle">log, commit, branch, stash,</text>
-  <text x="840.0" y="329.0" font-size="12" fill="#3A4440" text-anchor="middle">merge</text>
-  <!-- the push is announced -->
-  <path d="M150 354 V424" fill="none" stroke="#5C9CAB" stroke-width="2.4" marker-end="url(#gitflow-head-5c9cab-11)"/>
-  <text x="166" y="412" font-size="12" fill="#3A4440">after it lands</text>
-  <rect x="45" y="424" width="330" height="56" rx="6" fill="#5C9CAB"/>
-  <text x="210.0" y="448.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-git:pushed</text>
-  <text x="210.0" y="465.0" font-size="12" fill="#FFFFFF" text-anchor="middle">{ repo, branch, sha, pr? } after a push and a new pr</text>
-  <path d="M375 452 H480" fill="none" stroke="#5C9CAB" stroke-width="2.4" marker-end="url(#gitflow-head-5c9cab-11)"/>
-  <text x="427" y="442" font-size="12" fill="#3A4440" text-anchor="middle">Pi's event bus</text>
-  <rect x="480" y="424" width="330" height="56" rx="6" fill="#5C9CAB"/>
-  <text x="645.0" y="448.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-ops</text>
-  <text x="645.0" y="465.0" font-size="12" fill="#FFFFFF" text-anchor="middle">starts a CI watch for a service that has the repo</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="500" viewBox="0 0 1240 500" role="img" aria-label="How a jig-git call is decided and run. The agent calls git, pr or release; jig-core decides each action by its environment and effect. Reads and local writes run, and writes to GitHub or GitLab ask you. Local actions run through git with no shell and hooks off; GitHub actions run through gh and GitLab actions through glab. The guarded steps are parallel: a push asks and lists its commits, pull request writes ask on a review screen, a protected branch refuses a direct, force or destructive change, and reads run at once. After a push lands and after a pull request is created, the plugin publishes jig-git:pushed on Pi's event bus, and jig-ops starts a CI watch." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
+    .muted { fill: #5c626b; font-size: 12px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .dot { fill: #2563eb; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .rail { fill: none; stroke: #d9dde3; stroke-width: 1.4; }
+    .arrowhead { fill: #2563eb; }
+    .chip-ok { fill: #e6ffec; stroke: #1a7f37; stroke-width: 1.2; }
+    .chip-ok-text { fill: #1a7f37; font-size: 11px; font-weight: 700; }
+    .chip-warn { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.2; }
+    .chip-warn-text { fill: #9a6700; font-size: 11px; font-weight: 700; }
+    .chip-no { fill: #ffebe9; stroke: #cf222e; stroke-width: 1.2; }
+    .chip-no-text { fill: #cf222e; font-size: 11px; font-weight: 700; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .label { fill: #e7e7ea; }
+      .muted { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .accent { stroke: #7aa2f7; }
+      .dot { fill: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .rail { stroke: #2c2c31; }
+      .arrowhead { fill: #7aa2f7; }
+      .chip-ok { fill: #14251a; stroke: #6ccb8a; }
+      .chip-ok-text { fill: #6ccb8a; }
+      .chip-warn { fill: #2a2410; stroke: #d4a72c; }
+      .chip-warn-text { fill: #d4a72c; }
+      .chip-no { fill: #2a1618; stroke: #ff7b72; }
+      .chip-no-text { fill: #ff7b72; }
+    }
+  </style>
+  <rect class="bg" x="0.5" y="0.5" width="1239" height="499" rx="12"/>
+
+  <!-- 1. a call -->
+  <rect class="node" x="30" y="30" width="170" height="80" rx="12"/>
+  <path class="accent" d="M107 42 h22 a4 4 0 0 1 4 4 v20 a4 4 0 0 1 -4 4 h-22 a4 4 0 0 1 -4 -4 v-20 a4 4 0 0 1 4 -4 z"/>
+  <path class="accent" d="M110 50 l5 5 -5 5 M118 60 h6"/>
+  <text class="label" x="115" y="90" text-anchor="middle">call</text>
+
+  <!-- 2. what jig-core decides -->
+  <rect class="node" x="240" y="30" width="170" height="80" rx="12"/>
+  <path class="accent" d="M325 42 v13 M313 51 H337 M313 51 l-3 8 h6 M337 51 l-3 8 h6"/>
+  <text class="label" x="325" y="90" text-anchor="middle">decide</text>
+
+  <!-- the two ways a call runs -->
+  <rect class="node" x="460" y="14" width="300" height="64" rx="12"/>
+  <path class="accent" d="M566 30 a3.2 3.2 0 1 0 0.1 0 M566 34 V46 M566 38 C576 38 576 46 586 46"/>
+  <text class="label" x="596" y="51">local git</text>
+  <path id="gitflow55-arrow-local" class="arrowhead" d="M452 41 L460 46 L452 51 z"/>
+  <rect class="node" x="460" y="94" width="300" height="64" rx="12"/>
+  <circle class="accent" cx="566" cy="114" r="3.4"/>
+  <path class="accent" d="M566 118 V130 M570 118 C582 118 582 130 590 130"/>
+  <circle class="dot" cx="590" cy="130" r="2.6"/>
+  <text class="label" x="596" y="131">gh · glab</text>
+  <path id="gitflow55-arrow-forge" class="arrowhead" d="M452 121 L460 126 L452 131 z"/>
+  <path class="path" d="M410 70 H430 V46 H452"/>
+  <path class="path" d="M410 70 H430 V126 H452"/>
+
+  <!-- 3. the parallel guarded steps -->
+  <text class="muted" x="30" y="184">guards</text>
+  <path class="rail" d="M30 192 H1160"/>
+  <rect class="node" x="30" y="204" width="260" height="92" rx="12"/>
+  <path class="accent" d="M150 236 V216 M145 222 l5 -6 5 6"/>
+  <path class="accent" d="M136 236 h28"/>
+  <text class="label" x="170" y="226">push</text>
+  <rect class="chip-warn" x="150" y="244" width="92" height="24" rx="12"/>
+  <text class="chip-warn-text" x="196" y="260" text-anchor="middle">asks</text>
+
+  <rect class="node" x="320" y="204" width="260" height="92" rx="12"/>
+  <circle class="accent" cx="440" cy="220" r="3.4"/>
+  <path class="accent" d="M440 224 V236 M444 224 C456 224 456 236 464 236"/>
+  <circle class="dot" cx="464" cy="236" r="2.6"/>
+  <text class="label" x="470" y="230">pr</text>
+  <rect class="chip-warn" x="440" y="244" width="92" height="24" rx="12"/>
+  <text class="chip-warn-text" x="486" y="260" text-anchor="middle">asks</text>
+
+  <rect class="node" x="610" y="204" width="260" height="92" rx="12"/>
+  <path class="accent" d="M730 214 l12 4 v8 c0 6 -5 9 -12 12 c-7 -3 -12 -6 -12 -12 v-8 z"/>
+  <path class="accent" d="M724 228 l4 4 8 -8"/>
+  <text class="label" x="750" y="226">protected</text>
+  <rect class="chip-no" x="730" y="244" width="92" height="24" rx="12"/>
+  <text class="chip-no-text" x="776" y="260" text-anchor="middle">refused</text>
+
+  <rect class="node" x="900" y="204" width="260" height="92" rx="12"/>
+  <path class="accent" d="M1010 216 q10 0 10 9 q0 9 -10 9 q-10 0 -10 -9 q0 -9 10 -9 z"/>
+  <circle class="dot" cx="1010" cy="225" r="3"/>
+  <text class="label" x="1030" y="226">reads</text>
+  <rect class="chip-ok" x="1020" y="244" width="92" height="24" rx="12"/>
+  <text class="chip-ok-text" x="1066" y="260" text-anchor="middle">run</text>
+
+  <path class="path" d="M305 110 V188"/>
+  <path id="gitflow55-arrow-guards" class="arrowhead" d="M300 182 L305 190 L310 182 z"/>
+  <text class="edge" x="316" y="150">rules</text>
+
+  <!-- 4. after it lands: the event and the watch -->
+  <path class="path" d="M160 296 V400"/>
+  <path id="gitflow55-arrow-event" class="arrowhead" d="M155 392 L160 400 L165 392 z"/>
+  <text class="edge" x="172" y="356">after</text>
+  <rect class="node" x="30" y="400" width="260" height="64" rx="12"/>
+  <path class="accent" d="M100 420 a14 14 0 0 1 0 24 M106 414 a22 22 0 0 1 0 36"/>
+  <circle class="dot" cx="96" cy="432" r="3"/>
+  <text class="label" x="130" y="437">jig-git:pushed</text>
+  <path class="path" d="M290 432 H370"/>
+  <path id="gitflow55-arrow-ops" class="arrowhead" d="M362 427 L370 432 L362 437 z"/>
+  <text class="edge" x="330" y="420" text-anchor="middle">bus</text>
+  <rect class="node" x="370" y="400" width="220" height="64" rx="12"/>
+  <circle class="accent" cx="440" cy="424" r="9"/>
+  <path class="accent" d="M440 419 v5 l4 3"/>
+  <text class="label" x="462" y="437">jig-ops</text>
 </svg>
