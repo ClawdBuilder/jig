@@ -4,10 +4,10 @@
     .jig{fill:#e8f0ff;stroke:#2563eb;stroke-width:2}.pi{fill:#dbe7ff;stroke:#2563eb;stroke-width:2}.model{fill:#2563eb;stroke:#2563eb}
     .label{fill:#1a1b1e;font-size:15px;font-weight:700}.sub{fill:#5c626b;font-size:11px}
     .accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-    .leader{fill:none;stroke:#5c626b;stroke-width:1.2;stroke-dasharray:4 3}.dot{fill:#2563eb}
+    .leader{fill:none;stroke:#5c626b;stroke-width:1.2;stroke-dasharray:4 3}.dot{fill:#fff;stroke:#2563eb;stroke-width:1.5}
     @media (prefers-color-scheme: dark){
       .bg{fill:#111113}.team{fill:#18181b;stroke:#e3b341}.jig{fill:#15203b;stroke:#7aa2f7}.pi{fill:#1b2a4a;stroke:#7aa2f7}.model{fill:#7aa2f7;stroke:#7aa2f7}
-      .label{fill:#e7e7ea}.sub{fill:#9a9aa2}.accent{stroke:#7aa2f7}.leader{stroke:#9a9aa2}.dot{fill:#7aa2f7}
+      .label{fill:#e7e7ea}.sub{fill:#9a9aa2}.accent{stroke:#7aa2f7}.leader{stroke:#9a9aa2}.dot{fill:#111113;stroke:#7aa2f7}
     }
   </style>
   <rect class="bg" x="0.5" y="0.5" width="999" height="429" rx="12"/>
@@ -15,14 +15,14 @@
   <path class="jig" d="M100 100 A270 270 0 0 1 370 370 L100 370 Z"/>
   <path class="pi" d="M100 195 A175 175 0 0 1 275 370 L100 370 Z"/>
   <path class="model" d="M100 275 A95 95 0 0 1 195 370 L100 370 Z"/>
-  <path class="leader" d="M420 60 H500"/><circle class="dot" cx="420" cy="60" r="3"/>
-  <path class="leader" d="M360 155 H500"/><circle class="dot" cx="360" cy="155" r="3"/>
-  <path class="leader" d="M270 245 H500"/><circle class="dot" cx="270" cy="245" r="3"/>
-  <path class="leader" d="M190 325 H500"/><circle class="dot" cx="190" cy="325" r="3"/>
-  <text class="label" x="512" y="56">team</text><text class="sub" x="512" y="72">later</text>
-  <text class="label" x="512" y="151">Jig</text><text class="sub" x="512" y="167">your harness</text>
-  <text class="label" x="512" y="241">Pi</text><text class="sub" x="512" y="257">its builders</text>
-  <text class="label" x="512" y="321">model</text><text class="sub" x="512" y="337">the core</text>
-  <path class="accent" d="M235 380 Q235 392 250 392 H300 Q315 392 315 404 Q315 392 330 392 H380 Q395 392 395 380"/>
-  <text class="sub" x="315" y="420" text-anchor="middle">coding agent</text>
+  <path class="leader" d="M312 158 H500"/><circle class="dot" cx="312" cy="158" r="3"/>
+  <path class="leader" d="M257 213 H500"/><circle class="dot" cx="257" cy="213" r="3"/>
+  <path class="leader" d="M195 275 H500"/><circle class="dot" cx="195" cy="275" r="3"/>
+  <path class="leader" d="M134 336 H500"/><circle class="dot" cx="134" cy="336" r="3"/>
+  <text class="label" x="512" y="162">team</text><text class="sub" x="512" y="178">later</text>
+  <text class="label" x="512" y="217">Jig</text><text class="sub" x="512" y="233">your harness</text>
+  <text class="label" x="512" y="279">Pi</text><text class="sub" x="512" y="295">its builders</text>
+  <text class="label" x="512" y="340">model</text><text class="sub" x="512" y="356">the core</text>
+  <path class="accent" d="M100 380 Q100 392 116 392 H171 Q187 392 187 404 Q187 392 203 392 H259 Q275 392 275 380"/>
+  <text class="sub" x="187" y="420" text-anchor="middle">coding agent</text>
 </svg>
