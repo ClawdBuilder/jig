@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="380" viewBox="0 0 980 380" role="img" aria-label="Layers from the bottom up: Pi and its built-in tools; jig-core, which classifies, masks and records every call; the generic plugins and other package tools it governs; and on top the company's private plugin with its environments, sign-in, tools and knowledge." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="380" viewBox="0 0 980 380" role="img" aria-label="Layers from the bottom up: Pi and its built-in tools, which are Pi's own; jig-core and the generic plugins, which are public Jig; and the company's private plugin on top." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg{fill:#fff}.layer{fill:#f6f7f9;stroke:#d9dde3;stroke-width:1.2}.company{fill:#eef4ff;stroke:#2563eb;stroke-width:1.6}
     .label{fill:#1a1b1e;font-size:15px;font-weight:700}.small{fill:#5c626b;font-size:11px}
@@ -12,9 +12,9 @@
     }
   </style>
   <rect class="bg" x="0.5" y="0.5" width="979" height="379" rx="12"/>
-  <text class="small" x="40" y="36">yours</text>
-  <path class="path" d="M70 330 V86"/><path id="lives-a1-arrow" class="arrowhead" d="M65 96 L70 86 L75 96 z"/>
-  <text class="small" x="84" y="210">with you</text>
+  <path class="path" d="M52 128 H36 V262 H52"/>
+  <text class="small" x="58" y="199">Jig, public</text>
+  <text class="small" x="40" y="314">Pi's own</text>
 
   <rect class="company" x="130" y="52" width="810" height="58" rx="12"/>
   <text class="label" x="160" y="86">company</text>

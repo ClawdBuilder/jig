@@ -6,7 +6,7 @@ parts live in a private company plugin kept at the company.
 
 ![Layers from Pi at the bottom, through jig-core, the generic plugins and other packages' tools, to your private company plugin on top](img/what-lives-where.svg)
 
-*What lives where. Everything below the company plugin goes with you to any job; the company plugin stays private and only configures the generic plugins or adds backends and knowledge to them.*
+*What lives where. Pi is Pi's own; `jig-core` and the generic plugins are public Jig; the company layer stays private and only configures the generic plugins or adds backends and knowledge to them.*
 
 ## Tools that need no plugin
 
