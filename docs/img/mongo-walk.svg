@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" role="img" aria-label="How a mongo call runs: the agent asks jig-core for mongo; jig-core decides by environment, a read runs, a test write asks and a production write is denied; the walk checks every field against the access lists and refuses a denied or unlisted field before anything runs; the route opens the environment's connection, with an SSH forward or a company tunnel; MongoDB answers, and the rows come back with denied fields stripped and production results masked." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1268" height="215" viewBox="6 31 1268 215" role="img" aria-label="How a mongo call runs: the agent asks jig-core for mongo; jig-core decides by environment, a read runs, a test write asks and a production write is denied; the walk checks every field against the access lists and refuses a denied or unlisted field before anything runs; the route opens the environment's connection, with an SSH forward or a company tunnel; MongoDB answers, and the rows come back with denied fields stripped and production results masked." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg { fill: #ffffff; }
     .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
@@ -33,7 +33,7 @@
       .branch-arrow { fill: #ff7b72; }
     }
   </style>
-  <rect class="bg" x="0.5" y="0.5" width="1279" height="299" rx="12"/>
+  <rect class="bg" x="6.5" y="31.5" width="1267" height="214" rx="12"/>
 
   <!-- 1. the call -->
   <rect class="node" x="30" y="55" width="170" height="90" rx="12"/>
