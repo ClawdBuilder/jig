@@ -14,6 +14,8 @@ it, and posts it only after you press `y`.
 
 *The same `jira` tool for two companies. The difference is configuration and knowledge, not code: each company plugin supplies its own site, sign-in, ticket key pattern and an overlay skill, which is its own rules added to this plugin's skill.*
 
+The same tool previews text, classifies every action as read or write, signs in through the company's method, and reads and writes Jira; only the site, sign-in, keys and skill change.
+
 ## Tool: `jira`
 
 `action` picks the operation. Calls run one at a time, in order.

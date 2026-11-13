@@ -31,13 +31,9 @@
   <rect class="tag" x="120" y="278" width="120" height="20" rx="10"/><text class="tag-text" x="180" y="292" text-anchor="middle">API token</text>
   <rect class="tag" x="120" y="306" width="120" height="20" rx="10"/><text class="tag-text" x="180" y="320" text-anchor="middle">APP rules</text>
 
-  <rect class="core" x="380" y="70" width="240" height="240" rx="14"/>
-  <text class="label" x="500" y="106" text-anchor="middle">jira</text>
-  <text class="small" x="500" y="128" text-anchor="middle">one codebase</text>
-  <path class="accent" d="M468 164 q8 -7 16 0 q-8 7 -16 0 M476 164 a2 2 0 1 0 0.1 0"/><text class="small" x="492" y="168">preview</text>
-  <path class="accent" d="M468 188 l8 0 6 6 -10 10 -6 -6 z M478 192 l3 3"/><text class="small" x="492" y="200">classify</text>
-  <path class="accent" d="M468 224 a4 4 0 1 0 0.1 0 M472 224 h12 M480 224 v4 M484 224 v3"/><text class="small" x="492" y="228">sign in</text>
-  <text class="small" x="500" y="278" text-anchor="middle">reads · writes</text>
+  <rect class="core" x="380" y="155" width="240" height="110" rx="14"/>
+  <text class="label" x="500" y="198" text-anchor="middle">jira</text>
+  <text class="small" x="500" y="220" text-anchor="middle">one codebase</text>
 
   <rect class="card" x="720" y="60" width="245" height="120" rx="12"/>
   <text class="label" x="842" y="90" text-anchor="middle">agent A</text>
@@ -48,8 +44,8 @@
   <text class="small" x="842" y="294" text-anchor="middle">one jira tool</text>
   <text class="small" x="842" y="316" text-anchor="middle">APP + own rules</text>
 
-  <path class="path" d="M260 120 H380"/><path id="company-a1-arrow-a" class="arrowhead" d="M372 115 L380 120 L372 125 z"/>
-  <path class="path" d="M260 300 H380"/><path id="company-a1-arrow-b" class="arrowhead" d="M372 295 L380 300 L372 305 z"/>
-  <path class="path" d="M620 120 H720"/><path id="company-a1-arrow-c" class="arrowhead" d="M712 115 L720 120 L712 125 z"/>
-  <path class="path" d="M620 300 H720"/><path id="company-a1-arrow-d" class="arrowhead" d="M712 295 L720 300 L712 305 z"/>
+  <path class="path" d="M260 120 H350 V170 H380"/><path id="company-a1-arrow-a" class="arrowhead" d="M372 165 L380 170 L372 175 z"/>
+  <path class="path" d="M260 300 H350 V250 H380"/><path id="company-a1-arrow-b" class="arrowhead" d="M372 245 L380 250 L372 255 z"/>
+  <path class="path" d="M620 170 H680 V120 H720"/><path id="company-a1-arrow-c" class="arrowhead" d="M712 115 L720 120 L712 125 z"/>
+  <path class="path" d="M620 250 H680 V300 H720"/><path id="company-a1-arrow-d" class="arrowhead" d="M712 295 L720 300 L712 305 z"/>
 </svg>

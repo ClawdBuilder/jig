@@ -120,6 +120,8 @@ that load the real plugins.
 
 *The difference between companies is configuration and knowledge, not code: each company plugin supplies its own site, sign-in, ticket key pattern and an overlay skill, which is its own rules added to the plugin's skill. The `jira` tool stays the same.*
 
+The same `jira` tool previews text, classifies every action as read or write, signs in through the company's method, and reads and writes Jira. Only its site, sign-in, keys and skill differ.
+
 ## What stays in the company plugin
 
 Some tools exist only because of one employer, and never come into this

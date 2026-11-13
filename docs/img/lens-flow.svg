@@ -1,48 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="482" viewBox="0 0 920 482" role="img" aria-label="How jig-lens works. jig-core appends one line per tool call or model turn to a daily records file. jig-lens imports the new lines into its own SQLite index, which it can rebuild. The /lens summary in Pi reads the index read-only, with no server. /lens web serves a page from Pi on 127.0.0.1 that reads the index read-only, behind a secret link; Grafana is an optional extra with its sign-in on. Everything stays on this machine." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="919" height="481" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="lensflow-head-1d3b4d-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
-    <marker id="lensflow-head-5c9cab-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5C9CAB"/></marker>
-    <marker id="lensflow-head-8c979d-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8C979D"/></marker>
-    <marker id="lensflow-head-c08326-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C08326"/></marker>
-  </defs>
-  <!-- jig-core writes the records -->
-  <rect x="40" y="24" width="280" height="58" rx="6" fill="#1D3B4D"/>
-  <text x="180" y="50" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-core</text>
-  <text x="180" y="69" font-size="12.5" fill="#FFFFFF" text-anchor="middle">the tool manager</text>
-  <text x="356" y="48" font-size="14.5" fill="#1A1F1D" font-weight="700">owned by jig-core</text>
-  <text x="356" y="67" font-size="13" fill="#3A4440">it is the only writer of the records</text>
-  <rect x="40" y="118" width="280" height="58" rx="6" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="2"/>
-  <text x="180" y="144" font-size="16" fill="#1A1F1D" font-weight="700" text-anchor="middle">records/&lt;day&gt;.jsonl</text>
-  <text x="180" y="163" font-size="12.5" fill="#1A1F1D" text-anchor="middle">one JSON line per call or turn</text>
-  <text x="356" y="142" font-size="14.5" fill="#1A1F1D" font-weight="700">the source</text>
-  <text x="356" y="161" font-size="13" fill="#3A4440">appending a line cannot break a tool call, and jig-core needs no database</text>
-  <!-- jig-lens keeps an index -->
-  <rect x="40" y="212" width="280" height="58" rx="6" fill="#5C9CAB"/>
-  <text x="180" y="238" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">lens/index.sqlite</text>
-  <text x="180" y="257" font-size="12.5" fill="#FFFFFF" text-anchor="middle">a copy for querying</text>
-  <text x="356" y="236" font-size="14.5" fill="#1A1F1D" font-weight="700">owned by jig-lens</text>
-  <text x="356" y="255" font-size="13" fill="#3A4440">delete it, and /lens rebuild makes it again</text>
-  <text x="356" y="274" font-size="13" fill="#3A4440">the /lens summary in Pi reads it, read-only, with no server</text>
-  <!-- the page reads it -->
-  <rect x="40" y="306" width="280" height="58" rx="6" fill="#8C979D"/>
-  <text x="180" y="332" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">/lens web on 127.0.0.1</text>
-  <text x="180" y="351" font-size="12.5" fill="#FFFFFF" text-anchor="middle">a page served by Pi, read-only</text>
-  <text x="356" y="330" font-size="14.5" fill="#1A1F1D" font-weight="700">the default: no install, it stops when Pi exits</text>
-  <text x="356" y="349" font-size="13" fill="#3A4440">fixed queries only, opened read-only; Grafana is an optional extra</text>
-  <text x="356" y="366" font-size="13" fill="#3A4440">a secret link, because the agent's shell can reach 127.0.0.1</text>
-  <rect x="40" y="400" width="280" height="58" rx="6" fill="#C08326"/>
-  <text x="180" y="426" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">your browser</text>
-  <text x="180" y="445" font-size="12.5" fill="#FFFFFF" text-anchor="middle">charts and tables: cost, failures, waiting</text>
-  <text x="356" y="424" font-size="14.5" fill="#1A1F1D" font-weight="700">nothing leaves the machine</text>
-  <text x="356" y="443" font-size="13" fill="#3A4440">the records never hold tool arguments or output</text>
-  <!-- who does what, between the boxes -->
-  <path d="M180 83 V117" fill="none" stroke="#1D3B4D" stroke-width="2.6" marker-end="url(#lensflow-head-1d3b4d-11)"/>
-  <text x="196" y="104.5" font-size="13" fill="#3A4440">jig-core appends one line per tool call or model turn</text>
-  <path d="M180 177 V211" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#lensflow-head-5c9cab-11)"/>
-  <text x="196" y="198.5" font-size="13" fill="#3A4440">jig-lens imports the new lines, at the end of each run and when you run /lens</text>
-  <path d="M180 271 V305" fill="none" stroke="#8C979D" stroke-width="2.6" marker-end="url(#lensflow-head-8c979d-11)"/>
-  <text x="196" y="292.5" font-size="13" fill="#3A4440">read-only SQL</text>
-  <path d="M180 365 V399" fill="none" stroke="#C08326" stroke-width="2.6" marker-end="url(#lensflow-head-c08326-11)"/>
-  <text x="196" y="386.5" font-size="13" fill="#3A4440">/lens web opens the page</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="190" viewBox="0 0 1000 190" role="img" aria-label="jig-core appends records; jig-lens imports them into its own index; the /lens summary in Pi reads that index read-only and shows it to you. /lens web is another read-only view." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg{fill:#fff}.node{fill:#f6f7f9;stroke:#d9dde3;stroke-width:1.2}.label{fill:#1a1b1e;font-size:14px;font-weight:700}
+    .sub{fill:#5c626b;font-size:11px}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .path{fill:none;stroke:#2563eb;stroke-width:2}.arrowhead{fill:#2563eb}.chip{fill:#e6ffec;stroke:#1a7f37;stroke-width:1.2}.chip-text{fill:#1a7f37;font-size:11px;font-weight:700}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#111113}.node{fill:#18181b;stroke:#2c2c31}.label{fill:#e7e7ea}.sub{fill:#9a9aa2}
+      .accent{stroke:#7aa2f7}.path{stroke:#7aa2f7}.arrowhead{fill:#7aa2f7}.chip{fill:#14251a;stroke:#6ccb8a}.chip-text{fill:#6ccb8a}
+    }
+  </style>
+  <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
+  <rect class="node" x="25" y="60" width="180" height="80" rx="12"/>
+  <path class="accent" d="M100 75 h20 v18 h-20 z M106 81 h8 M106 87 h8 M106 93 h5"/>
+  <text class="label" x="115" y="115" text-anchor="middle">records</text>
+  <text class="sub" x="115" y="132" text-anchor="middle">jsonl</text>
+
+  <rect class="node" x="250" y="60" width="180" height="80" rx="12"/>
+  <ellipse class="accent" cx="340" cy="78" rx="9" ry="4"/><path class="accent" d="M331 78 v12 c0 3 4 5 9 5 s9 -2 9 -5 v-12"/>
+  <text class="label" x="340" y="115" text-anchor="middle">index</text>
+  <text class="sub" x="340" y="132" text-anchor="middle">sqlite</text>
+
+  <rect class="node" x="475" y="60" width="180" height="80" rx="12"/>
+  <path class="accent" d="M545 75 l14 8 -14 8 z M540 75 v16"/>
+  <text class="label" x="565" y="115" text-anchor="middle">/lens</text>
+  <text class="sub" x="565" y="132" text-anchor="middle">in Pi</text>
+
+  <rect class="node" x="700" y="60" width="170" height="80" rx="12"/>
+  <circle class="accent" cx="785" cy="73" r="5"/><path class="accent" d="M785 80 v12 M777 86 h16 M785 92 l-5 8 M785 92 l5 8"/>
+  <text class="label" x="785" y="115" text-anchor="middle">you</text>
+  <text class="sub" x="785" y="132" text-anchor="middle">reads it</text>
+
+  <path class="path" d="M205 100 H250"/><path id="lensb1-arrow-1" class="arrowhead" d="M242 95 L250 100 L242 105 z"/>
+  <path class="path" d="M430 100 H475"/><path id="lensb1-arrow-2" class="arrowhead" d="M467 95 L475 100 L467 105 z"/>
+  <path class="path" d="M655 100 H700"/><path id="lensb1-arrow-3" class="arrowhead" d="M692 95 L700 100 L692 105 z"/>
+  <path class="path" d="M870 100 H885"/><path id="lensb1-arrow-4" class="arrowhead" d="M877 95 L885 100 L877 105 z"/>
+  <rect class="chip" x="885" y="87" width="95" height="26" rx="13"/><text class="chip-text" x="932" y="104" text-anchor="middle">read only</text>
 </svg>
