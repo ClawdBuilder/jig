@@ -9,9 +9,13 @@ production is denied. What the agent may see is set by an allow list or a deny l
 For example, to debug a stuck order the agent runs `count`, then `find` on `orders.orders` in `staging`. It then runs `explain`
 to see whether the query used an index, and `update` to fix the test document, after you approve the preview.
 
-![How a jig-mongo call runs: jig-core decides by environment, the walk checks every field against the access lists, an allow list also reshapes the call, the route reaches MongoDB, and denied fields are stripped from the rows](../../docs/img/mongo-walk.svg)
+![A mongo call: jig-core decides by environment, the field walk checks every field against the access lists and refuses a denied one, the route opens the environment's connection, MongoDB answers, and the rows come back with denied fields stripped and production masked](../../docs/img/mongo-walk.svg)
 
-*How a call is checked and run. `jig-core` decides by environment, then the walk checks every field against the lists and refuses a denied one before anything runs. An allow list also reshapes the call, the route reaches MongoDB, and denied fields are stripped from the rows.*
+*How a call is checked and run. `jig-core` decides by environment: a read runs, a test write asks with a count, a production
+write is denied. The walk then checks every field in every stage against the lists and refuses a denied or unlisted one
+before anything runs; with an allow list it also puts a projection of the allowed fields in front of every stage. The route
+opens the environment's connection, and the rows come back with denied fields stripped at any depth. [Access](docs/access.md)
+has the lists, [Writes](docs/writes.md) the guards on writes, and the routes are in [Configuration](docs/configuration.md).*
 
 ## Tool: `mongo`
 

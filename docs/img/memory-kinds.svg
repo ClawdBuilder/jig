@@ -1,90 +1,136 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="650" viewBox="0 0 1240 650" role="img" aria-label="Three kinds of memory. Pi writes ticket memory while it works: notes, plan and evidence in one folder per ticket. Later, a memory keeper writes a card when a ticket closes and proposes organizational and personal facts, which are kept only after you approve them. At the start of a new ticket, recall matches it against past cards and hands Pi the related history as a short message." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="1239" height="649" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="memkinds-head-5d4b7c-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5D4B7C"/></marker>
-    <marker id="memkinds-head-1d3b4d-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
-    <marker id="memkinds-head-c08326-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C08326"/></marker>
-  </defs>
-  <!-- Pi works on a ticket -->
-  <rect x="30" y="80" width="200" height="520" fill="#5D4B7C"/>
-  <text x="130" y="134" font-size="32" fill="#FFFFFF" font-weight="700" text-anchor="middle">Pi</text>
-  <text x="130" y="160" font-size="15" fill="#FFFFFF" text-anchor="middle">on a ticket</text>
-  <path d="M150.78 332 A24 24 0 1 1 116.23 324.34" fill="none" stroke="#E7B55B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <polygon points="126.88,316.88 120.86,332.7 109.97,317.13" fill="#E7B55B"/>
-  <path d="M230 96 H310 V56 H1000 V78" fill="none" stroke="#5D4B7C" stroke-width="3" marker-end="url(#memkinds-head-5d4b7c-11)"/>
-  <text x="655" y="46" font-size="13.5" fill="#3A4440" text-anchor="middle">writes while it works: notes, plan, evidence</text>
-  <!-- recall at ticket start (later) -->
-  <rect x="360" y="80" width="330" height="250" fill="#1D3B4D"/>
-  <text x="525" y="108" font-size="18" fill="#FFFFFF" font-weight="700" text-anchor="middle">Recall at ticket start</text>
-  <polygon points="392,124 670,124 670,152 392,152 380,138" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="528" y="142.38" font-size="12.5" fill="#3B7C8A" text-anchor="middle">same ticket links</text>
-  <polygon points="392,160 670,160 670,188 392,188 380,174" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="528" y="178.38" font-size="12.5" fill="#3B7C8A" text-anchor="middle">same classes</text>
-  <polygon points="392,196 670,196 670,224 392,224 380,210" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="528" y="214.38" font-size="12.5" fill="#3B7C8A" text-anchor="middle">same identifiers</text>
-  <polygon points="392,232 670,232 670,260 392,260 380,246" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="528" y="250.38" font-size="12.5" fill="#3B7C8A" text-anchor="middle">same error text</text>
-  <polygon points="392,268 670,268 670,296 392,296 380,282" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="528" y="286.38" font-size="12.5" fill="#3B7C8A" text-anchor="middle">keyword search on the cards</text>
-  <text x="525" y="318" font-size="12.5" fill="#FFFFFF" text-anchor="middle">the best cards arrive as a short message</text>
-  <polygon points="360,180 270,180 236,212 270,244 360,244" fill="#1D3B4D"/>
-  <text x="310" y="208" font-size="14" fill="#FFFFFF" font-weight="700" text-anchor="middle">related</text>
-  <text x="310" y="228" font-size="14" fill="#FFFFFF" font-weight="700" text-anchor="middle">history</text>
-  <!-- ticket memory: today a folder, later also a card -->
-  <rect x="780" y="80" width="430" height="270" fill="#E8ECEE"/>
-  <text x="995" y="108" font-size="20" fill="#1A1F1D" font-weight="700" text-anchor="middle">Ticket memory</text>
-  <text x="995" y="128" font-size="12.5" fill="#3A4440" text-anchor="middle">one folder per ticket, kept after it closes</text>
-  <rect x="840" y="146" width="350" height="120" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="1.5"/>
-  <text x="852" y="166" font-size="12.5" fill="#1A1F1D" font-weight="700">PROJ-1021 · export job fails</text>
-  <rect x="822" y="174" width="350" height="120" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="1.5"/>
-  <text x="834" y="194" font-size="12.5" fill="#1A1F1D" font-weight="700">PROJ-1087 · two repositories</text>
-  <rect x="804" y="202" width="350" height="138" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="1.5"/>
-  <text x="816" y="224" font-size="13.5" fill="#1A1F1D" font-weight="700">PROJ-1102 · slow search</text>
-  <text x="816" y="246" font-size="12.5" fill="#3A4440">folder: notes.md, plan.md,</text>
-  <text x="816" y="264" font-size="12.5" fill="#3A4440">evidence/, ticket.json</text>
-  <rect x="816" y="276" width="326" height="54" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="1.6" stroke-dasharray="5 3"/>
-  <text x="826" y="296" font-size="12.5" fill="#3B7C8A">card, later: problem, cause, fix,</text>
-  <text x="826" y="316" font-size="12.5" fill="#3B7C8A">repositories, identifiers, error text</text>
-  <path d="M778 215 H694" fill="none" stroke="#1D3B4D" stroke-width="3" marker-end="url(#memkinds-head-1d3b4d-11)"/>
-  <text x="736" y="207" font-size="12" fill="#3A4440" text-anchor="middle">past cards</text>
-  <!-- organizational memory (later) -->
-  <rect x="780" y="430" width="430" height="200" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="995" y="462" font-size="20" fill="#1A1F1D" font-weight="700" text-anchor="middle">Organizational memory</text>
-  <text x="995" y="482" font-size="12.5" fill="#3A4440" text-anchor="middle">true for every ticket</text>
-  <text x="805" y="512" font-size="13" fill="#1A1F1D">an order reference has at most 20 characters</text>
-  <text x="805" y="536" font-size="13" fill="#1A1F1D">test logs live in the staging index</text>
-  <text x="805" y="560" font-size="13" fill="#1A1F1D">3 tests have failed on main since last week</text>
-  <text x="805" y="584" font-size="13" fill="#1A1F1D">releases are cut from the main branch</text>
-  <path d="M778 470 H735 V300 H694" fill="none" stroke="#1D3B4D" stroke-width="3" marker-end="url(#memkinds-head-1d3b4d-11)"/>
-  <text x="742" y="392" font-size="12" fill="#3A4440">facts</text>
-  <!-- memory keeper: writes the card, proposes facts, you approve -->
-  <path d="M910 350 V370" fill="none" stroke="#1D3B4D" stroke-width="2.5" marker-end="url(#memkinds-head-1d3b4d-11)"/>
-  <rect x="830" y="372" width="160" height="34" rx="4" fill="#FFFFFF" stroke="#DF6A7C" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="910" y="394" font-size="13.5" fill="#B6475A" text-anchor="middle">memory keeper</text>
-  <text x="922" y="365" font-size="12" fill="#3A4440">writes the card, proposes facts</text>
-  <path d="M990 389 H1028" fill="none" stroke="#C08326" stroke-width="2.5" marker-end="url(#memkinds-head-c08326-11)"/>
-  <circle cx="1046" cy="380" r="8" fill="#C08326"/>
-  <path d="M1033 404 Q1033 390 1046 390 Q1059 390 1059 404 Z" fill="#C08326"/>
-  <text x="1076" y="394" font-size="12.5" fill="#1A1F1D">you approve</text>
-  <path d="M1046 410 V428" fill="none" stroke="#C08326" stroke-width="2.5" marker-end="url(#memkinds-head-c08326-11)"/>
-  <path d="M1046 418 H640 V436" fill="none" stroke="#C08326" stroke-width="2.5" marker-end="url(#memkinds-head-c08326-11)"/>
-  <!-- personal memory (later) -->
-  <rect x="360" y="440" width="340" height="160" fill="#FBF5EA" stroke="#C08326" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="530" y="468" font-size="20" fill="#1A1F1D" font-weight="700" text-anchor="middle">Personal memory</text>
-  <text x="530" y="488" font-size="12.5" fill="#3A4440" text-anchor="middle">goes with you to any company</text>
-  <text x="380" y="516" font-size="13" fill="#1A1F1D">open with the answer, then the detail</text>
-  <text x="380" y="540" font-size="13" fill="#1A1F1D">three or more items: a table</text>
-  <text x="380" y="564" font-size="13" fill="#1A1F1D">no co-author lines in commits</text>
-  <text x="380" y="588" font-size="13" fill="#8A5A12">company facts stay behind</text>
-  <path d="M358 520 H236" fill="none" stroke="#C08326" stroke-width="2.5" marker-end="url(#memkinds-head-c08326-11)"/>
-  <text x="297" y="510" font-size="12" fill="#3A4440" text-anchor="middle">as a message</text>
-  <!-- legend -->
-  <rect x="30" y="621" width="14" height="14" rx="2" fill="#DF6A7C"/>
-  <text x="54" y="632.5" font-size="13" fill="#1A1F1D">a model</text>
-  <rect x="125.85" y="621" width="14" height="14" rx="2" fill="#5C9CAB"/>
-  <text x="149.85" y="632.5" font-size="13" fill="#1A1F1D">a program</text>
-  <rect x="235.99" y="621" width="14" height="14" rx="2" fill="#C08326"/>
-  <text x="259.99" y="632.5" font-size="13" fill="#1A1F1D">you</text>
-  <rect x="304.75" y="622" width="17" height="12" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="1.4" stroke-dasharray="3 2"/>
-  <text x="328.75" y="632.5" font-size="13" fill="#1A1F1D">planned for later</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1228" height="623" viewBox="6 11 1228 623" role="img" aria-label="Three kinds of memory, and the paths between them. Pi writes ticket memory while it works: one folder per ticket, with notes and a card. At the start of a later ticket, recall matches the new ticket's keys, identifiers, error lines and words against past cards, and hands Pi a short message. Still design: at close a memory keeper writes the card and proposes organizational facts, which you approve, and personal rules that go with you from company to company, while the company's facts stay behind." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .panel { fill: none; stroke: #5c626b; stroke-width: 1.3; stroke-dasharray: 5 4; }
+    .marker-ring { fill: #ffffff; stroke: #b05a8a; stroke-width: 1.5; }
+    .title { fill: #1a1b1e; font-size: 15px; font-weight: 700; }
+    .label { fill: #1a1b1e; font-size: 13px; font-weight: 700; }
+    .muted { fill: #5c626b; font-size: 12px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .you { fill: #b05a8a; }
+    .dot { fill: #2563eb; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .later-path { fill: none; stroke: #5c626b; stroke-width: 1.6; stroke-dasharray: 4 4; }
+    .arrowhead { fill: #2563eb; }
+    .later-head { fill: #5c626b; }
+    .chip-muted { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .chip-muted-text { fill: #5c626b; font-size: 11px; font-weight: 700; }
+    .chip-ok { fill: #e6ffec; stroke: #1a7f37; stroke-width: 1.2; }
+    .chip-ok-text { fill: #1a7f37; font-size: 11px; font-weight: 700; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .panel { stroke: #9a9aa2; }
+      .marker-ring { fill: #18181b; stroke: #d98ab8; }
+      .title { fill: #e7e7ea; }
+      .label { fill: #e7e7ea; }
+      .muted { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .accent { stroke: #7aa2f7; }
+      .you { fill: #d98ab8; }
+      .dot { fill: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .later-path { stroke: #9a9aa2; }
+      .arrowhead { fill: #7aa2f7; }
+      .later-head { fill: #9a9aa2; }
+      .chip-muted { fill: #202024; stroke: #2c2c31; }
+      .chip-muted-text { fill: #9a9aa2; }
+      .chip-ok { fill: #14251a; stroke: #6ccb8a; }
+      .chip-ok-text { fill: #6ccb8a; }
+    }
+  </style>
+  <rect class="bg" x="6.5" y="11.5" width="1227" height="622" rx="12"/>
+
+  <!-- Pi, on a ticket -->
+  <rect class="node" x="30" y="80" width="190" height="470" rx="12"/>
+  <text class="title" x="125" y="120" text-anchor="middle">Pi</text>
+  <path class="accent" d="M112 140 h26 v30 h-26 z M118 148 H132 M118 155 H132 M118 162 H126"/>
+  <text class="muted" x="125" y="192" text-anchor="middle">on a ticket</text>
+
+  <!-- ticket memory: today -->
+  <rect class="node" x="780" y="80" width="430" height="260" rx="12"/>
+  <text class="title" x="798" y="112">Ticket memory</text>
+  <rect class="chip-ok" x="1120" y="94" width="72" height="24" rx="12"/>
+  <text class="chip-ok-text" x="1156" y="110" text-anchor="middle">today</text>
+  <rect class="node" x="1010" y="150" width="180" height="60" rx="6"/>
+  <rect class="node" x="995" y="168" width="180" height="60" rx="6"/>
+  <rect class="node" x="820" y="186" width="340" height="120" rx="6"/>
+  <path class="accent" d="M846 214 h20 v24 h-20 z M872 220 H974 M872 232 H956 M872 244 H930"/>
+  <text class="muted" x="1030" y="222" text-anchor="end">notes</text>
+  <path class="accent" d="M846 268 h20 v24 h-20 z M872 274 H974 M872 286 H950"/>
+  <text class="muted" x="1030" y="276" text-anchor="end">card</text>
+
+  <!-- recall, at the start of a later ticket -->
+  <rect class="node" x="350" y="80" width="350" height="250" rx="12"/>
+  <text class="title" x="368" y="112">Recall</text>
+  <text class="muted" x="368" y="132">at ticket start</text>
+  <rect class="node" x="375" y="148" width="300" height="26" rx="6"/>
+  <text class="muted" x="525" y="166" text-anchor="middle">keys</text>
+  <rect class="node" x="375" y="182" width="300" height="26" rx="6"/>
+  <text class="muted" x="525" y="200" text-anchor="middle">identifiers</text>
+  <rect class="node" x="375" y="216" width="300" height="26" rx="6"/>
+  <text class="muted" x="525" y="234" text-anchor="middle">error lines</text>
+  <rect class="node" x="375" y="250" width="300" height="26" rx="6"/>
+  <text class="muted" x="525" y="268" text-anchor="middle">keywords</text>
+
+  <!-- the keeper: design -->
+  <rect class="panel" x="850" y="386" width="170" height="40" rx="6"/>
+  <text class="muted" x="935" y="411" text-anchor="middle">memory keeper</text>
+
+  <!-- you approve: design -->
+  <circle class="marker-ring" cx="1062" cy="406" r="12"/>
+  <circle class="you" cx="1062" cy="402" r="3.4"/>
+  <path class="you" d="M1055.6 412.4 Q1055.6 406 1062 406 Q1068.4 406 1068.4 412.4 Z"/>
+  <text class="muted" x="1082" y="410">you approve</text>
+
+  <!-- organizational memory: design -->
+  <rect class="panel" x="780" y="450" width="430" height="160" rx="12"/>
+  <text class="title" x="798" y="482">Organizational memory</text>
+  <rect class="chip-muted" x="1120" y="464" width="72" height="24" rx="12"/>
+  <text class="chip-muted-text" x="1156" y="480" text-anchor="middle">later</text>
+  <text class="muted" x="798" y="516">shared facts</text>
+  <text class="muted" x="798" y="544">true for every ticket</text>
+
+  <!-- personal memory: design -->
+  <rect class="panel" x="350" y="450" width="340" height="160" rx="12"/>
+  <text class="title" x="368" y="482">Personal memory</text>
+  <rect class="chip-muted" x="600" y="464" width="72" height="24" rx="12"/>
+  <text class="chip-muted-text" x="636" y="480" text-anchor="middle">later</text>
+  <text class="muted" x="368" y="516">your rules</text>
+  <text class="muted" x="368" y="544">company facts stay behind</text>
+
+  <!-- Pi writes ticket memory as it works -->
+  <path class="path" d="M125 80 V52 H995 V80"/>
+  <path id="memkinds55-arrow-writes" class="arrowhead" d="M988 72 L995 80 L1002 72 z"/>
+  <text class="edge" x="560" y="44" text-anchor="middle">writes</text>
+
+  <!-- past cards feed recall, and recall hands Pi a short message -->
+  <path class="path" d="M780 215 H700"/>
+  <path id="memkinds55-arrow-cards" class="arrowhead" d="M708 210 L700 215 L708 220 z"/>
+  <text class="edge" x="740" y="203" text-anchor="middle">past cards</text>
+  <path class="path" d="M350 215 H220"/>
+  <path id="memkinds55-arrow-message" class="arrowhead" d="M228 210 L220 215 L228 220 z"/>
+  <text class="edge" x="285" y="203" text-anchor="middle">short message</text>
+
+  <!-- at close the keeper proposes facts, and you approve them -->
+  <path class="later-path" d="M935 340 V386"/>
+  <path id="memkinds55-arrow-keeper" class="later-head" d="M930 378 L935 386 L940 378 z"/>
+  <text class="edge" x="950" y="368">at close</text>
+  <path class="later-path" d="M1020 406 H1038"/>
+  <path id="memkinds55-arrow-you" class="later-head" d="M1032 401 L1038 406 L1032 411 z"/>
+  <path class="later-path" d="M1062 418 V450"/>
+  <path id="memkinds55-arrow-approved" class="later-head" d="M1057 442 L1062 450 L1067 442 z"/>
+  <text class="edge" x="1078" y="440">approved</text>
+
+  <!-- organizational facts are recalled with the cards -->
+  <path class="later-path" d="M780 510 H724 V300 H700"/>
+  <path id="memkinds55-arrow-facts" class="later-head" d="M708 295 L700 300 L708 305 z"/>
+  <text class="edge" x="740" y="292">facts</text>
+
+  <!-- personal rules come with you, as a message -->
+  <path class="later-path" d="M350 520 H220"/>
+  <path id="memkinds55-arrow-personal" class="later-head" d="M228 515 L220 520 L228 525 z"/>
+  <text class="edge" x="285" y="508" text-anchor="middle">as a message</text>
 </svg>
