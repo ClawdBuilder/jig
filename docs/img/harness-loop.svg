@@ -25,7 +25,7 @@
   <text class="sub" x="420" y="174" text-anchor="middle">acts</text>
 
   <rect class="node" x="650" y="45" width="180" height="85" rx="12"/>
-  <path class="accent" d="M725 62 h20 v8 h-20 z M730 70 v10 M740 70 v10"/>
+  <path class="accent" d="M720 72 q20 -12 40 0 q-20 12 -40 0"/><circle class="accent" cx="740" cy="72" r="4"/>
   <text class="label" x="740" y="108" text-anchor="middle">harness</text>
   <text class="sub" x="740" y="122" text-anchor="middle">sensors</text>
 
@@ -34,9 +34,9 @@
   <text class="label" x="740" y="222" text-anchor="middle">you</text>
   <text class="sub" x="740" y="236" text-anchor="middle">steer</text>
 
-  <path class="path" d="M195 83 H330"/><path id="harnessloop-c1-arrow-1" class="arrowhead" d="M322 78 L330 83 L322 88 z"/>
+  <path class="path" d="M195 83 H420 V100"/><path id="harnessloop-c1-arrow-1" class="arrowhead" d="M415 92 L420 100 L425 92 z"/>
   <path class="path" d="M195 197 H300 V140 H330"/><path id="harnessloop-c1-arrow-2" class="arrowhead" d="M322 135 L330 140 L322 145 z"/>
-  <path class="path" d="M740 120 V160"/><path id="harnessloop-c1-arrow-3" class="arrowhead" d="M735 152 L740 160 L745 152 z"/>
+  <path class="path" d="M740 130 V160"/><path id="harnessloop-c1-arrow-3" class="arrowhead" d="M735 152 L740 160 L745 152 z"/>
   <path class="dash" d="M650 198 H510 V140"/><path id="harnessloop-c1-arrow-4" class="arrowhead" d="M505 148 L510 140 L515 148 z"/>
   <text class="sub" x="560" y="190" text-anchor="middle">steer</text>
 </svg>
