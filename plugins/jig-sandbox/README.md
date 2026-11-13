@@ -19,9 +19,12 @@ is a backstop, not a guarantee: output that encodes a value another way is not r
 [The environment a command starts with](docs/rules.md#the-environment-a-command-starts-with)
 says exactly which variables go.
 
-![Pi, Jig's tools, your own commands and the broker run on the host; the agent's bash runs in the sandbox, where paths are hidden, locked, ask-first or writable](../../docs/img/sandbox-boundary.svg)
+![Where the sandbox line runs: on the host are the broker, Pi, Jig's tools, your own ! commands and the network; inside the sandbox is the agent's bash, with hidden, locked, ask-first and writable paths](../../docs/img/sandbox-boundary.svg)
 
-*Where the line runs. Your own `!` commands and Jig's tools stay outside; only what the agent runs in `bash` is inside, and the hidden paths start from the list `jig-core` protects from Pi's file tools.*
+*Where the line runs. Your own `!` commands and Jig's tools stay outside; only what the agent runs in `bash` is inside. Hidden
+paths cannot be read, and start from the list `jig-core` protects from Pi's file tools; locked paths are read but never
+written; ask-first paths are the toolchain folders; everything else is writable as outside
+([The rules](docs/rules.md)).*
 
 ## Commands
 

@@ -1,45 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="440" viewBox="0 0 980 440" role="img" aria-label="How jig-agents runs a child. The agent calls subagent start with a role and a task. jig-agents in the parent starts a separate Pi in RPC mode, sends it the task over a pipe only the parent holds, and counts its turns, minutes and cost, stopping it at a limit. The child loads the same plugins, so jig-core governs its tools and jig-sandbox its bash; its role is scout, reviewer or worker, and its model comes from configuration. When the child's rules say ask, the question comes back over the pipe and is shown to you, labelled with the child's name, and your answer goes back. When the child finishes, its report reaches the parent agent as a message, without polling." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="979" height="439" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="agentsrpc-head-1d3b4d-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
-    <marker id="agentsrpc-head-c08326-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C08326"/></marker>
-  </defs>
-  <!-- the parent -->
-  <text x="40" y="30" font-size="13" fill="#3A4440" font-weight="700">the parent Pi</text>
-  <rect x="40" y="44" width="260" height="76" rx="6" fill="#5D4B7C"/>
-  <text x="170.0" y="71.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">the agent</text>
-  <text x="170.0" y="88.0" font-size="12" fill="#FFFFFF" text-anchor="middle">subagent start: a role and a task,</text>
-  <text x="170.0" y="105.0" font-size="12" fill="#FFFFFF" text-anchor="middle">then carries on</text>
-  <path d="M170 120 V168" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#agentsrpc-head-1d3b4d-11)"/>
-  <text x="180" y="149" font-size="12" fill="#3A4440">start</text>
-  <rect x="40" y="170" width="260" height="110" rx="6" fill="#1D3B4D"/>
-  <text x="170.0" y="197.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-agents</text>
-  <text x="170.0" y="214.0" font-size="12" fill="#FFFFFF" text-anchor="middle">starts the child, holds its pipe,</text>
-  <text x="170.0" y="231.0" font-size="12" fill="#FFFFFF" text-anchor="middle">counts turns, minutes and cost,</text>
-  <text x="170.0" y="248.0" font-size="12" fill="#FFFFFF" text-anchor="middle">stops it at a limit</text>
-  <!-- you -->
-  <path d="M110 280 V338" fill="none" stroke="#C08326" stroke-width="2.4" marker-end="url(#agentsrpc-head-c08326-11)"/>
-  <text x="100" y="314" font-size="12" fill="#3A4440" text-anchor="end">question</text>
-  <path d="M230 338 V282" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#agentsrpc-head-1d3b4d-11)"/>
-  <text x="240" y="314" font-size="12" fill="#3A4440">your answer</text>
-  <rect x="40" y="340" width="260" height="76" rx="6" fill="#FBF1DD" stroke="#C08326" stroke-width="1.8"/>
-  <text x="170.0" y="367.0" font-size="13" fill="#8A5A12" font-weight="700" text-anchor="middle">you</text>
-  <text x="170.0" y="384.0" font-size="12" fill="#3A4440" text-anchor="middle">see each question, labelled with</text>
-  <text x="170.0" y="401.0" font-size="12" fill="#3A4440" text-anchor="middle">the child's name; no screen means no</text>
-  <!-- the pipe -->
-  <path d="M300 205 H498" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#agentsrpc-head-1d3b4d-11)"/>
-  <text x="400" y="196" font-size="12" fill="#3A4440" text-anchor="middle">the task, over the pipe</text>
-  <path d="M500 250 H302" fill="none" stroke="#C08326" stroke-width="2.4" marker-end="url(#agentsrpc-head-c08326-11)"/>
-  <text x="400" y="268" font-size="12" fill="#3A4440" text-anchor="middle">a question its rules ask</text>
-  <!-- the child -->
-  <rect x="500" y="150" width="440" height="200" rx="6" fill="#5C9CAB"/>
-  <text x="720.0" y="180.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">the child: a separate Pi, pi --mode rpc</text>
-  <text x="720.0" y="204.0" font-size="12" fill="#FFFFFF" text-anchor="middle">the same plugins as the parent:</text>
-  <text x="720.0" y="221.0" font-size="12" fill="#FFFFFF" text-anchor="middle">jig-core governs its tools, jig-sandbox its bash</text>
-  <text x="720.0" y="248.0" font-size="12" fill="#FFFFFF" text-anchor="middle">its role: scout, reviewer or worker</text>
-  <text x="720.0" y="265.0" font-size="12" fill="#FFFFFF" text-anchor="middle">its model: from configuration, never the agent file</text>
-  <text x="720.0" y="292.0" font-size="12" fill="#FFFFFF" text-anchor="middle">a worker writes only in a worktree of its own</text>
-  <!-- the report -->
-  <path d="M720 150 V82 H302" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#agentsrpc-head-1d3b4d-11)"/>
-  <text x="510" y="72" font-size="12" fill="#3A4440" text-anchor="middle">its report, as a message: no polling</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1028" height="242" viewBox="6 36 1028 242" role="img" aria-label="How jig-agents runs a child: the agent calls subagent start; jig-agents starts a separate Pi in RPC mode and holds the pipe to it; the child loads the same plugins, so jig-core governs its tools and jig-sandbox its bash; jig-agents sends it the task and counts its turns, minutes and cost; when the child's rules say ask, the question comes to you through the parent and your answer goes back; and its report reaches the agent as a message." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .marker-ring { fill: #ffffff; stroke: #2563eb; stroke-width: 1.5; }
+    .you-ring { fill: #ffffff; stroke: #b05a8a; stroke-width: 1.5; }
+    .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
+    .sub { fill: #5c626b; font-size: 11px; }
+    .muted { fill: #5c626b; font-size: 12px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .you { fill: #b05a8a; }
+    .dot { fill: #2563eb; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .arrowhead { fill: #2563eb; }
+    .back { fill: none; stroke: #b05a8a; stroke-width: 1.6; stroke-dasharray: 4 4; }
+    .back-head { fill: #b05a8a; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .marker-ring { fill: #18181b; stroke: #7aa2f7; }
+      .you-ring { fill: #18181b; stroke: #d98ab8; }
+      .label { fill: #e7e7ea; }
+      .sub { fill: #9a9aa2; }
+      .muted { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .accent { stroke: #7aa2f7; }
+      .you { fill: #d98ab8; }
+      .dot { fill: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .arrowhead { fill: #7aa2f7; }
+      .back { stroke: #d98ab8; }
+      .back-head { fill: #d98ab8; }
+    }
+  </style>
+  <rect class="bg" x="6.5" y="36.5" width="1027" height="241" rx="12"/>
+
+  <!-- 1. subagent start -->
+  <rect class="node" x="30" y="60" width="170" height="90" rx="12"/>
+  <circle class="accent" cx="115" cy="78" r="13"/>
+  <path class="accent" d="M111 71 l10 7 -10 7 z"/>
+  <text class="label" x="115" y="122" text-anchor="middle">subagent start</text>
+  <text class="sub" x="115" y="140" text-anchor="middle">a role and a task</text>
+
+  <!-- 2. jig-agents in the parent -->
+  <rect class="node" x="300" y="60" width="170" height="90" rx="12"/>
+  <circle class="accent" cx="372" cy="76" r="4"/>
+  <circle class="accent" cx="400" cy="76" r="4"/>
+  <circle class="accent" cx="386" cy="92" r="4"/>
+  <path class="accent" d="M372 80 L384 89 M400 80 L388 89"/>
+  <text class="label" x="385" y="122" text-anchor="middle">jig-agents</text>
+  <text class="sub" x="385" y="140" text-anchor="middle">one pipe</text>
+
+  <!-- 3. the child Pi -->
+  <rect class="node" x="570" y="60" width="170" height="90" rx="12"/>
+  <rect class="accent" x="642" y="66" width="28" height="22" rx="3"/>
+  <path class="accent" d="M647 73 l4 4 -4 4 M655 81 h6"/>
+  <text class="label" x="655" y="122" text-anchor="middle">child Pi</text>
+  <text class="sub" x="655" y="140" text-anchor="middle">same plugins</text>
+
+  <!-- 4. the report -->
+  <rect class="node" x="840" y="60" width="170" height="90" rx="12"/>
+  <path class="accent" d="M910 68 H950 V88 H926 l-8 8 v-8 h-8 z"/>
+  <path class="accent" d="M916 76 H944 M916 82 H934"/>
+  <text class="label" x="925" y="122" text-anchor="middle">report</text>
+  <text class="sub" x="925" y="140" text-anchor="middle">as a message</text>
+
+  <!-- the path -->
+  <path class="path" d="M200 105 H300"/>
+  <path id="agentsrpc55-arrow-agents" class="arrowhead" d="M292 100 L300 105 L292 110 z"/>
+  <path class="path" d="M470 105 H570"/>
+  <path id="agentsrpc55-arrow-child" class="arrowhead" d="M562 100 L570 105 L562 110 z"/>
+  <path class="path" d="M740 105 H840"/>
+  <path id="agentsrpc55-arrow-report" class="arrowhead" d="M832 100 L840 105 L832 110 z"/>
+
+  <!-- what moves on the pipe: the task, and the limits jig-agents counts -->
+  <circle class="marker-ring" cx="520" cy="105" r="12"/>
+  <rect class="accent" x="512" y="97" width="16" height="18" rx="2"/>
+  <path class="accent" d="M516 95 h8 M515 103 h10 M515 109 h7"/>
+  <text class="muted" x="520" y="133" text-anchor="middle">task</text>
+  <circle class="marker-ring" cx="790" cy="105" r="12"/>
+  <circle class="accent" cx="790" cy="105" r="8"/>
+  <path class="accent" d="M790 105 V100 M790 105 l3 3"/>
+  <text class="muted" x="790" y="133" text-anchor="middle">limits</text>
+
+  <!-- the child's question comes to you, and your answer goes back -->
+  <path class="path" d="M612 150 V208"/>
+  <path id="agentsrpc55-arrow-question" class="arrowhead" d="M607 200 L612 208 L617 200 z"/>
+  <text class="edge" x="596" y="186" text-anchor="end">question</text>
+  <rect class="node" x="540" y="210" width="144" height="44" rx="12"/>
+  <circle class="you-ring" cx="562" cy="232" r="10"/>
+  <circle class="you" cx="562" cy="229" r="2.8"/>
+  <path class="you" d="M556.5 237.4 Q556.5 232 562 232 Q567.5 232 567.5 237.4 Z"/>
+  <text class="label" x="580" y="237">you</text>
+  <path class="back" d="M660 208 V150"/>
+  <path id="agentsrpc55-arrow-answer" class="back-head" d="M655 158 L660 150 L665 158 z"/>
+  <text class="edge" x="676" y="186">answer</text>
 </svg>

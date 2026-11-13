@@ -1,50 +1,101 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="500" viewBox="0 0 980 500" role="img" aria-label="Where the sandbox line runs. On the host: the broker, which runs the sandbox runtime and wraps each command; Pi and Jig's tools, which work through jig-core's rules with your credentials; your own ! commands, never sandboxed; and the network, which is the machine's own in open mode and goes through the proxy in filtered and ask modes. Inside the sandbox: the agent's bash, foreground and background, and four kinds of path. Hidden paths cannot be read: ~/.ssh, ~/.aws, ~/.kube, a project's .env, Pi's auth.json, the same list jig-core protects. Locked paths are read but never written: ~/.bashrc, PATH folders, git hooks, Pi's settings, Gradle init scripts. Ask-first paths, the toolchain folders, are writable once you say yes. Everything else is writable as outside: the project, your home, /tmp, build caches." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="979" height="499" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="sandboxline-head-1d3b4d-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
-    <marker id="sandboxline-head-a93c27-11" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#A93C27"/></marker>
-  </defs>
-  <!-- the host -->
-  <rect x="20" y="20" width="360" height="460" rx="8" fill="#FFFFFF" stroke="#D2D9D3" stroke-width="1.4"/>
-  <text x="36" y="44" font-size="13" fill="#3A4440" font-weight="700">on the host</text>
-  <rect x="40" y="60" width="320" height="80" rx="6" fill="#5C9CAB"/>
-  <text x="200.0" y="87.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">the broker</text>
-  <text x="200.0" y="104.0" font-size="12" fill="#FFFFFF" text-anchor="middle">runs the sandbox runtime,</text>
-  <text x="200.0" y="121.0" font-size="12" fill="#FFFFFF" text-anchor="middle">one per session, outside Pi</text>
-  <rect x="40" y="160" width="320" height="96" rx="6" fill="#1D3B4D"/>
-  <text x="200.0" y="187.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">Pi and Jig's tools</text>
-  <text x="200.0" y="204.0" font-size="12" fill="#FFFFFF" text-anchor="middle">git, jira, mongo, deploy: through</text>
-  <text x="200.0" y="221.0" font-size="12" fill="#FFFFFF" text-anchor="middle">jig-core's rules, with your</text>
-  <text x="200.0" y="238.0" font-size="12" fill="#FFFFFF" text-anchor="middle">credentials</text>
-  <rect x="40" y="276" width="320" height="64" rx="6" fill="#5D4B7C"/>
-  <text x="200.0" y="303.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">your own ! commands</text>
-  <text x="200.0" y="320.0" font-size="12" fill="#FFFFFF" text-anchor="middle">never sandboxed: they are yours</text>
-  <rect x="40" y="360" width="320" height="100" rx="6" fill="#8C979D"/>
-  <text x="200.0" y="387.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">the network</text>
-  <text x="200.0" y="404.0" font-size="12" fill="#FFFFFF" text-anchor="middle">open: the machine's own</text>
-  <text x="200.0" y="421.0" font-size="12" fill="#FFFFFF" text-anchor="middle">filtered, ask: through the proxy</text>
-  <text x="200.0" y="438.0" font-size="12" fill="#FFFFFF" text-anchor="middle">off: none</text>
-  <!-- the sandbox -->
-  <rect x="420" y="20" width="540" height="460" rx="8" fill="#F1F6F7" stroke="#5C9CAB" stroke-width="1.8" stroke-dasharray="7 5"/>
-  <text x="436" y="44" font-size="13" fill="#3A4440" font-weight="700">inside the sandbox</text>
-  <rect x="440" y="60" width="500" height="80" rx="6" fill="#5D4B7C"/>
-  <text x="690.0" y="87.0" font-size="13" fill="#FFFFFF" font-weight="700" text-anchor="middle">the agent's bash</text>
-  <text x="690.0" y="104.0" font-size="12" fill="#FFFFFF" text-anchor="middle">foreground commands and background tasks,</text>
-  <text x="690.0" y="121.0" font-size="12" fill="#FFFFFF" text-anchor="middle">each wrapped by the broker before Pi starts it</text>
-  <path d="M360 100 H438" fill="none" stroke="#1D3B4D" stroke-width="2.4" marker-end="url(#sandboxline-head-1d3b4d-11)"/>
-  <text x="399" y="92" font-size="12" fill="#3A4440" text-anchor="middle">wraps</text>
-  <rect x="440" y="160" width="500" height="64" rx="6" fill="#F7E4DF" stroke="#A93C27" stroke-width="1.8"/>
-  <text x="690.0" y="187.0" font-size="13" fill="#A93C27" font-weight="700" text-anchor="middle">hidden: cannot be read</text>
-  <text x="690.0" y="204.0" font-size="12" fill="#3A4440" text-anchor="middle">~/.ssh, ~/.aws, ~/.kube, a project's .env, Pi's auth.json</text>
-  <path d="M360 208 H400 V192 H438" fill="none" stroke="#A93C27" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#sandboxline-head-a93c27-11)"/>
-  <text x="392" y="232" font-size="11" fill="#A93C27" text-anchor="middle">one list</text>
-  <rect x="440" y="240" width="500" height="64" rx="6" fill="#FBF1DD" stroke="#C08326" stroke-width="1.8"/>
-  <text x="690.0" y="267.0" font-size="13" fill="#8A5A12" font-weight="700" text-anchor="middle">locked: read, never written</text>
-  <text x="690.0" y="284.0" font-size="12" fill="#3A4440" text-anchor="middle">~/.bashrc, PATH folders, git hooks, Pi's settings, Gradle init scripts</text>
-  <rect x="440" y="320" width="500" height="64" rx="6" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="1.8"/>
-  <text x="690.0" y="347.0" font-size="13" fill="#2F6E7C" font-weight="700" text-anchor="middle">ask first: writable once you say yes</text>
-  <text x="690.0" y="364.0" font-size="12" fill="#3A4440" text-anchor="middle">~/.sdkman, ~/.nvm, ~/.pyenv and the other toolchain folders</text>
-  <rect x="440" y="400" width="500" height="64" rx="6" fill="#E6F0E9" stroke="#4E8A5E" stroke-width="1.8"/>
-  <text x="690.0" y="427.0" font-size="13" fill="#3D6E4B" font-weight="700" text-anchor="middle">writable: as outside</text>
-  <text x="690.0" y="444.0" font-size="12" fill="#3A4440" text-anchor="middle">the project, your home, /tmp, build caches</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1078" height="418" viewBox="16 4 1078 418" role="img" aria-label="Where the sandbox line runs. On the host: the broker, which runs the sandbox runtime and wraps each command; Pi and Jig's tools, which work through jig-core's rules with your credentials; your own ! commands, which are never sandboxed; and the network, the machine's own in open mode and through the proxy in filtered and ask modes. Inside the sandbox: the agent's bash, foreground and background; hidden paths, which cannot be read, such as the credential files jig-core protects; locked paths, read but never written, such as shell start-up files; ask-first paths, the toolchain folders, writable once you say yes; and everything else, writable as outside." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .panel { fill: none; stroke: #5c626b; stroke-width: 1.3; stroke-dasharray: 6 4; }
+    .title { fill: #5c626b; font-size: 12px; font-weight: 700; }
+    .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
+    .sub { fill: #5c626b; font-size: 11px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .glyph { fill: #2563eb; font-size: 12px; font-weight: 700; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .arrowhead { fill: #2563eb; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .panel { stroke: #9a9aa2; }
+      .title { fill: #9a9aa2; }
+      .label { fill: #e7e7ea; }
+      .sub { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .glyph { fill: #7aa2f7; }
+      .accent { stroke: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .arrowhead { fill: #7aa2f7; }
+    }
+  </style>
+  <rect class="bg" x="16.5" y="4.5" width="1077" height="417" rx="12"/>
+
+  <!-- on the host -->
+  <text class="title" x="40" y="38">on the host</text>
+
+  <rect class="node" x="40" y="50" width="320" height="60" rx="10"/>
+  <rect class="accent" x="68" y="76" width="20" height="12" rx="3"/>
+  <path class="accent" d="M74 76 v-6 M82 76 v-6 M78 88 v5"/>
+  <text class="label" x="124" y="76">the broker</text>
+  <text class="sub" x="124" y="93">the sandbox runtime</text>
+
+  <rect class="node" x="40" y="122" width="320" height="60" rx="10"/>
+  <rect class="accent" x="68" y="136" width="20" height="15" rx="2"/>
+  <path class="accent" d="M72 151 v6 M84 151 v6 M64 157 h28"/>
+  <text class="label" x="124" y="148">Pi</text>
+  <text class="sub" x="124" y="165">one session</text>
+
+  <rect class="node" x="40" y="194" width="320" height="60" rx="10"/>
+  <path class="accent" d="M69 210 h14 a2 2 0 0 1 2 2 v4 h-14 a2 2 0 0 1 -2 -2 z"/>
+  <path class="accent" d="M76 216 h2 M76 216 v18"/>
+  <text class="label" x="124" y="220">Jig's tools</text>
+  <text class="sub" x="124" y="237">rules and credentials</text>
+
+  <rect class="node" x="40" y="266" width="320" height="60" rx="10"/>
+  <circle class="accent" cx="78" cy="296" r="11"/>
+  <path class="accent" d="M78 290 v7 M78 302 v1.5"/>
+  <text class="label" x="124" y="292">your ! commands</text>
+  <text class="sub" x="124" y="309">never sandboxed</text>
+
+  <rect class="node" x="40" y="338" width="320" height="60" rx="10"/>
+  <circle class="accent" cx="78" cy="368" r="11"/>
+  <path class="accent" d="M67.5 364 q10.5 -4 21 0 M67.5 372 q10.5 4 21 0 M78 357 a6 11 0 0 1 0 22 a6 11 0 0 1 0 -22"/>
+  <text class="label" x="124" y="364">the network</text>
+  <text class="sub" x="124" y="381">open, filtered or ask</text>
+
+  <!-- inside the sandbox -->
+  <rect class="panel" x="430" y="50" width="640" height="348" rx="12"/>
+  <text class="title" x="446" y="38">inside the sandbox</text>
+
+  <rect class="node" x="450" y="66" width="600" height="60" rx="10"/>
+  <path class="accent" d="M476 82 l6 6 -6 6 M488 94 h10"/>
+  <text class="label" x="546" y="88">agent's bash</text>
+  <text class="sub" x="546" y="105">foreground and background</text>
+
+  <rect class="node" x="450" y="150" width="290" height="100" rx="10"/>
+  <path class="accent" d="M481 191 q15 -13 30 0 q-15 13 -30 0 z"/>
+  <circle class="accent" cx="496" cy="191" r="4.4"/>
+  <path class="accent" d="M479 209 L514 177"/>
+  <text class="label" x="544" y="195">hidden</text>
+  <text class="sub" x="544" y="213">credentials</text>
+
+  <rect class="node" x="760" y="150" width="290" height="100" rx="10"/>
+  <rect class="accent" x="784" y="185" width="18" height="15" rx="2"/>
+  <path class="accent" d="M788 185 v-4 a5 5 0 0 1 10 0 v4"/>
+  <text class="label" x="824" y="191">locked</text>
+  <text class="sub" x="824" y="209">start-up files</text>
+
+  <rect class="node" x="450" y="274" width="290" height="100" rx="10"/>
+  <circle class="accent" cx="496" cy="315" r="11"/>
+  <text class="glyph" x="496" y="320" text-anchor="middle">?</text>
+  <text class="label" x="544" y="319">ask first</text>
+  <text class="sub" x="544" y="337">toolchains</text>
+
+  <rect class="node" x="760" y="274" width="290" height="100" rx="10"/>
+  <path class="accent" d="M786 325 l18 -14 5 5 -18 14 -6 1 z"/>
+  <path class="accent" d="M782 337 h26"/>
+  <text class="label" x="824" y="319">writable</text>
+  <text class="sub" x="824" y="337">the rest</text>
+
+  <!-- the broker wraps each command -->
+  <path class="path" d="M360 80 H430"/>
+  <path id="sandboxb55-arrow-wrap" class="arrowhead" d="M422 75 L430 80 L422 85 z"/>
+  <text class="edge" x="395" y="70" text-anchor="middle">wraps</text>
 </svg>

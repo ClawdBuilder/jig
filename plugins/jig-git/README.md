@@ -19,12 +19,11 @@ starts a watch if it knows the repository (see [Events](#events)). The one
 watch here is on the comments of a pull request: what people write on GitHub
 reaches the agent without being asked for ([Comment watch](docs/comments-watch.md)).
 
-![A jig-git call is decided by jig-core, runs through local git or through gh and glab, gets one of four guard outcomes, and a landed push is announced as jig-git:pushed to jig-ops](../../docs/img/git-flow.svg)
+![One jig-git call: jig-core decides, with push and pr asking you and a protected branch refused; the call runs through local git or through gh and glab; a push announces jig-git:pushed](../../docs/img/git-flow.svg)
 
-*How a call is decided and run. `jig-core` decides first: reads and local writes run, writes to GitHub or GitLab ask you. Local
-actions go through git with no shell and hooks off, and the forge's through `gh` or `glab`, picked by the repository's
-`origin`. The guards are parallel outcomes: a push asks and lists its commits, the `pr` writes ask on a review screen, a
-protected branch refuses a direct or destructive change, and reads run at once. After a push lands or a pull request is
+*One call. `jig-core` decides by environment and effect: a push asks you and lists its commits, the `pr` writes ask on a
+review screen, a protected branch is refused, and reads run. The call then runs through local git (no shell, hooks off), or
+through `gh` on GitHub and `glab` on GitLab, picked by the repository's `origin`; after a push lands or a pull request is
 created, `jig-git:pushed` reaches `jig-ops` on Pi's event bus ([Events](docs/events.md)).*
 
 ## Tool: `git`

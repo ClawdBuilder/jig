@@ -4,10 +4,12 @@ A company plugin is a small private Pi package that loads after Jig and gives th
 company: its environments, where its systems are, how to sign in to them, and its rules. It never changes how a tool behaves.
 [`examples/jig-acme`](../examples/jig-acme/README.md) is a complete, tested one for a made-up company; copy it.
 
-![Each file of jig-acme is handed to one call of jig-core's global handle, and a plugin or Pi's file tools or the masker use it](img/acme-seams.svg)
+![A company plugin's files, each making one call on jig-core's global handle withJig, which Jig then reads; environments, a sign-in, masking and a status line are examples of the seams](img/acme-seams.svg)
 
-*One file per seam. Each file calls one thing on `jig-core`, and something in Jig reads the result. This page walks the seams in the
-order the example uses.*
+*One file per seam. Each file calls one thing on `jig-core`'s global handle, `withJig`, and something in Jig reads the result:
+environments for the plugins, a sign-in for jira and logs, mask fields for the masker, a status line for `/jig`. The seams
+are configuration and knowledge; a tool's behaviour is never changed. [The package](#the-package) and the
+[example plugin](../examples/jig-acme/README.md) walk them in order.*
 
 ## What goes in a company plugin, and what never goes in Jig
 
