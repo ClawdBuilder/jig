@@ -14,23 +14,23 @@
   <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
   <rect class="node" x="25" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M100 75 v8 l-7 14 h14 l-7 -14 v-8 z M96 89 h8"/>
-  <text class="label" x="110" y="125" text-anchor="middle">tests</text>
-  <text class="sub" x="110" y="140" text-anchor="middle">at HEAD</text>
+  <text class="label" x="110" y="115" text-anchor="middle">tests</text>
+  <text class="sub" x="110" y="132" text-anchor="middle">at HEAD</text>
 
   <rect class="node" x="230" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M300 76 l3 3 5 -5 M300 86 l3 3 5 -5 M300 96 l3 3 5 -5 M314 76 h10 M314 87 h10 M314 98 h10"/>
-  <text class="label" x="315" y="125" text-anchor="middle">checks</text>
-  <text class="sub" x="315" y="140" text-anchor="middle">reports · new</text>
+  <text class="label" x="315" y="115" text-anchor="middle">checks</text>
+  <text class="sub" x="315" y="132" text-anchor="middle">reports · new</text>
 
   <rect class="node" x="435" y="60" width="170" height="80" rx="12"/>
   <path class="accent" d="M510 74 v18 M500 78 h20 M500 78 l-4 8 h8 M520 78 l-4 8 h8"/>
-  <text class="label" x="520" y="125" text-anchor="middle">compare</text>
-  <text class="sub" x="520" y="140" text-anchor="middle">with main</text>
+  <text class="label" x="520" y="115" text-anchor="middle">compare</text>
+  <text class="sub" x="520" y="132" text-anchor="middle">with main</text>
 
   <rect class="node" x="640" y="60" width="170" height="80" rx="12"/>
-  <path class="accent" d="M710 74 v20 M724 74 v20 M708 88 l18 -6"/>
-  <text class="label" x="725" y="125" text-anchor="middle">gate</text>
-  <text class="sub" x="725" y="140" text-anchor="middle">jig-core</text>
+  <path class="accent" d="M710 74 v22 M728 74 v22 M708 92 l22 -16 M708 84 l22 -16"/>
+  <text class="label" x="725" y="115" text-anchor="middle">gate</text>
+  <text class="sub" x="725" y="132" text-anchor="middle">jig-core</text>
 
   <path class="path" d="M195 100 H230"/><path id="checkfull-c1-arrow-1" class="arrowhead" d="M222 95 L230 100 L222 105 z"/>
   <path class="path" d="M400 100 H435"/><path id="checkfull-c1-arrow-2" class="arrowhead" d="M427 95 L435 100 L427 105 z"/>
