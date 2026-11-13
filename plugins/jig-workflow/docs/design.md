@@ -94,12 +94,12 @@ The design follows the harness work of Böckeler: guides that steer the agent be
 that check afterwards, with the hardest to sense, behaviour, covered by scenarios in the plan, the tests,
 and you on an acceptance environment.
 
-![What the harness regulates around a ticket: maintainability, compatibility, behaviour and data safety, each with the guides that steer the agent and the sensors that check it](../../../docs/img/what-it-regulates.svg)
+Behaviour is the hardest dimension to sense: acceptance scenarios in the plan, the tests at HEAD, and you in an acceptance environment cover it.
 
-*What the harness regulates around a ticket, in [Böckeler's](https://martinfowler.com/articles/harness-engineering.html) layout:
-four dimensions, each with guides that steer the agent before it acts and sensors that check afterwards. Behaviour stays
-highlighted because it is the hardest to sense: acceptance scenarios in the plan, the tests, and you in an acceptance
-environment together cover it. A dashed item is planned.*
+| | Maintainability | Compatibility | Behaviour | Data safety |
+|---|---|---|---|---|
+| **Guides** | AGENTS.md · skills | Approved plan · related tickets (planned) | Scenarios in plan · workflow gates | Approved fields · the floor |
+| **Sensors** | Diff rules (planned) · checker agent (planned) | Compile (planned) · affected tests (planned) | Tests at HEAD · scenario results · you in acceptance | Masking · redaction |
 
 ![A ticket over time: guides go into Pi, Pi writes the change, the edit loop runs its checks, a checker reviews in a fresh context, you approve once, and after the pull request CI and reviews come back to Pi as new commits](../../../docs/img/ticket-loops.svg)
 
