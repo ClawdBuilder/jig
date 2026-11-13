@@ -13,9 +13,12 @@ notes file, and after a compaction the notes come back to the agent as a
 message. `/ticket close` leaves a card, and a later ticket that hits the same
 error starts with that card in front of the agent.
 
-![Three kinds of memory: ticket memory today, organizational and personal memory later, and the paths between them](../../docs/img/memory-kinds.svg)
+![Three kinds of memory and the paths between them: Pi writes ticket memory, recall reads past cards to hand Pi a short message, and a memory keeper proposes organizational facts you approve and personal rules that go with you, all still design](../../docs/img/memory-kinds.svg)
 
-*Three kinds of memory and the paths between them. Pi writes ticket memory as it works, and a card at close; recall hands Pi related cards, or entries derived from notes, when a new ticket starts. The organizational and personal memory, and the memory keeper that proposes it, are still design.*
+*Three kinds of memory and the paths between them. Pi writes ticket memory as it works, and a card at close; recall hands Pi
+related cards, or entries derived from notes, when a new ticket starts. The organizational and personal memory, and the
+memory keeper that proposes them, are still design. The ticket folder is in [The ticket folder](#the-ticket-folder), the
+cards in [Cards](docs/cards.md) and the matching in [Recall](docs/recall.md).*
 
 ## The ticket folder
 
