@@ -41,7 +41,7 @@
   <path class="path" d="M560 115 H600"/><path id="workflow-a1-arrow-3" class="arrowhead" d="M592 110 L600 115 L592 120 z"/>
   <path class="path" d="M750 115 H790"/><path id="workflow-a1-arrow-4" class="arrowhead" d="M782 110 L790 115 L782 120 z"/>
   <circle class="marker" cx="675" cy="55" r="12"/><text class="glyph" x="675" y="59" text-anchor="middle">8</text>
-  <text class="sub" x="675" y="38" text-anchor="middle">8 checks</text>
+  <text class="sub" x="675" y="38" text-anchor="middle">checks</text>
   <path class="path" d="M940 115 H970"/><path id="workflow-a1-arrow-5" class="arrowhead" d="M962 110 L970 115 L962 120 z"/>
   <rect class="chip" x="970" y="102" width="84" height="26" rx="13"/><text class="chip-text" x="1012" y="119" text-anchor="middle">advance</text>
 </svg>
