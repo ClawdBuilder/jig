@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="190" viewBox="0 0 900 190" role="img" aria-label="jig-core appends records; jig-lens imports them into its own index; the /lens summary in Pi reads that index read-only and shows it to you. /lens web is another read-only view." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="190" viewBox="0 0 1000 190" role="img" aria-label="jig-core appends records; jig-lens imports them into its own index; the /lens summary in Pi reads that index read-only and shows it to you. /lens web is another read-only view." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg{fill:#fff}.node{fill:#f6f7f9;stroke:#d9dde3;stroke-width:1.2}.label{fill:#1a1b1e;font-size:14px;font-weight:700}
     .sub{fill:#5c626b;font-size:11px}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -8,30 +8,30 @@
       .accent{stroke:#7aa2f7}.path{stroke:#7aa2f7}.arrowhead{fill:#7aa2f7}.chip{fill:#14251a;stroke:#6ccb8a}.chip-text{fill:#6ccb8a}
     }
   </style>
-  <rect class="bg" x="0.5" y="0.5" width="899" height="189" rx="12"/>
+  <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
   <rect class="node" x="25" y="60" width="180" height="80" rx="12"/>
   <path class="accent" d="M100 75 h20 v18 h-20 z M106 81 h8 M106 87 h8 M106 93 h5"/>
-  <text class="label" x="115" y="125" text-anchor="middle">records</text>
-  <text class="sub" x="115" y="140" text-anchor="middle">jsonl</text>
+  <text class="label" x="115" y="115" text-anchor="middle">records</text>
+  <text class="sub" x="115" y="132" text-anchor="middle">jsonl</text>
 
   <rect class="node" x="250" y="60" width="180" height="80" rx="12"/>
   <ellipse class="accent" cx="340" cy="78" rx="9" ry="4"/><path class="accent" d="M331 78 v12 c0 3 4 5 9 5 s9 -2 9 -5 v-12"/>
-  <text class="label" x="340" y="125" text-anchor="middle">index</text>
-  <text class="sub" x="340" y="140" text-anchor="middle">sqlite</text>
+  <text class="label" x="340" y="115" text-anchor="middle">index</text>
+  <text class="sub" x="340" y="132" text-anchor="middle">sqlite</text>
 
   <rect class="node" x="475" y="60" width="180" height="80" rx="12"/>
   <path class="accent" d="M545 75 l14 8 -14 8 z M540 75 v16"/>
-  <text class="label" x="565" y="125" text-anchor="middle">/lens</text>
-  <text class="sub" x="565" y="140" text-anchor="middle">in Pi</text>
+  <text class="label" x="565" y="115" text-anchor="middle">/lens</text>
+  <text class="sub" x="565" y="132" text-anchor="middle">in Pi</text>
 
   <rect class="node" x="700" y="60" width="170" height="80" rx="12"/>
-  <circle class="accent" cx="785" cy="82" r="7"/><path class="accent" d="M785 91 v15 M775 98 h20 M785 106 l-7 9 M785 106 l7 9"/>
-  <text class="label" x="785" y="125" text-anchor="middle">you</text>
-  <text class="sub" x="785" y="140" text-anchor="middle">reads it</text>
+  <circle class="accent" cx="785" cy="77" r="6"/><path class="accent" d="M785 85 v13 M777 91 h16 M785 98 l-6 8 M785 98 l6 8"/>
+  <text class="label" x="785" y="115" text-anchor="middle">you</text>
+  <text class="sub" x="785" y="132" text-anchor="middle">reads it</text>
 
   <path class="path" d="M205 100 H250"/><path id="lensb1-arrow-1" class="arrowhead" d="M242 95 L250 100 L242 105 z"/>
   <path class="path" d="M430 100 H475"/><path id="lensb1-arrow-2" class="arrowhead" d="M467 95 L475 100 L467 105 z"/>
   <path class="path" d="M655 100 H700"/><path id="lensb1-arrow-3" class="arrowhead" d="M692 95 L700 100 L692 105 z"/>
-  <rect class="chip" x="700" y="160" width="105" height="24" rx="12"/><text class="chip-text" x="752" y="176" text-anchor="middle">read only</text>
-  <path class="path" d="M752 140 V160" stroke-dasharray="4 4"/><path id="lensb1-arrow-4" class="arrowhead" d="M747 152 L752 160 L757 152 z"/>
+  <path class="path" d="M870 100 H885"/><path id="lensb1-arrow-4" class="arrowhead" d="M877 95 L885 100 L877 105 z"/>
+  <rect class="chip" x="885" y="87" width="95" height="26" rx="13"/><text class="chip-text" x="932" y="104" text-anchor="middle">read only</text>
 </svg>
