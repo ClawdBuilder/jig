@@ -1,34 +1,70 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="276" viewBox="0 0 800 276" role="img" aria-label="The maker hands a ready commit to a fresh-context checker that reads the approved plan, the diff, the check results, the rules and earlier review comments. A pass goes to your code review; a revise goes back to the maker with findings; after two rounds the decision comes to you with both reports." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="799" height="275" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="checker-head-1d64a8-10" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D64A8"/></marker>
-  </defs>
-  <!-- what the checker reads -->
-  <rect x="280" y="12" width="270" height="52" rx="6" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="415" y="33" font-size="12.5" fill="#18201C" text-anchor="middle">approved plan · diff · check results</text>
-  <text x="415" y="51" font-size="12.5" fill="#18201C" text-anchor="middle">rules and earlier review comments</text>
-  <path d="M415 64 V100" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checker-head-1d64a8-10)"/>
-  <!-- maker, checker, your review -->
-  <rect x="30" y="102" width="170" height="60" rx="6" fill="#FFFFFF" stroke="#18201C" stroke-width="1.2"/>
-  <text x="115" y="128" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">maker</text>
-  <text x="115" y="148" font-size="12.5" fill="#56635D" text-anchor="middle">main agent or worker</text>
-  <rect x="320" y="102" width="190" height="60" rx="6" fill="#E3EDF7" stroke="#1D64A8" stroke-width="1.6"/>
-  <text x="415" y="128" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">checker</text>
-  <text x="415" y="148" font-size="12.5" fill="#56635D" text-anchor="middle">fresh context, read-only</text>
-  <rect x="610" y="102" width="160" height="60" rx="6" fill="#FFFFFF" stroke="#18201C" stroke-width="1.2"/>
-  <text x="690" y="128" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">code review</text>
-  <text x="690" y="148" font-size="12.5" fill="#56635D" text-anchor="middle">you, in the browser</text>
-  <path d="M200 132 H318" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checker-head-1d64a8-10)"/>
-  <text x="259" y="124" font-size="12.5" fill="#56635D" text-anchor="middle">commit ready</text>
-  <path d="M510 132 H608" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checker-head-1d64a8-10)"/>
-  <text x="559" y="124" font-size="12.5" fill="#56635D" text-anchor="middle">pass</text>
-  <!-- revise: back to the maker -->
-  <path d="M415 162 V216 H115 V164" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checker-head-1d64a8-10)"/>
-  <text x="265" y="240" font-size="12.5" fill="#1D64A8" font-weight="700" text-anchor="middle">revise: findings with file and line</text>
-  <!-- after round 2: you decide -->
-  <path d="M510 152 H564 V234 H608" fill="none" stroke="#1D64A8" stroke-width="1.8" marker-end="url(#checker-head-1d64a8-10)"/>
-  <text x="574" y="196" font-size="12.5" fill="#56635D">after round 2</text>
-  <rect x="610" y="208" width="160" height="54" rx="6" fill="#FFFFFF" stroke="#18201C" stroke-width="1.2"/>
-  <text x="690" y="232" font-size="15" fill="#18201C" font-weight="700" text-anchor="middle">you decide</text>
-  <text x="690" y="250" font-size="12.5" fill="#56635D" text-anchor="middle">both reports attached</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="988" height="288" viewBox="6 46 988 288" role="img" aria-label="A fresh-context checker reviews a change before your code review: the maker hands over a ready commit; the checker, in a fresh read-only context, reads the approved plan, the diff, the check results, the rules and earlier review comments; a pass goes to your code review in the browser; a revise goes back to the maker with findings; and after two rounds the decision comes to you with both reports." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
+    .sub { fill: #5c626b; font-size: 11px; }
+    .muted { fill: #5c626b; font-size: 12px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .arrowhead { fill: #2563eb; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .label { fill: #e7e7ea; }
+      .sub { fill: #9a9aa2; }
+      .muted { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .accent { stroke: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .arrowhead { fill: #7aa2f7; }
+    }
+  </style>
+  <rect class="bg" x="6.5" y="46.5" width="987" height="287" rx="12"/>
+
+  <!-- 1. the maker -->
+  <rect class="node" x="30" y="70" width="170" height="90" rx="12"/>
+  <rect class="accent" x="100" y="80" width="30" height="24" rx="3"/>
+  <path class="accent" d="M106 88 l5 5 -5 5 M115 98 h7"/>
+  <text class="label" x="115" y="122" text-anchor="middle">maker</text>
+
+  <!-- 2. the checker, in a fresh context -->
+  <rect class="node" x="300" y="70" width="180" height="90" rx="12"/>
+  <circle class="accent" cx="384" cy="90" r="10"/>
+  <path class="accent" d="M392 98 l10 10"/>
+  <text class="label" x="390" y="120" text-anchor="middle">checker</text>
+  <text class="sub" x="390" y="137" text-anchor="middle">fresh context</text>
+
+  <!-- 3. your code review -->
+  <rect class="node" x="590" y="70" width="180" height="90" rx="12"/>
+  <rect class="accent" x="665" y="82" width="30" height="22" rx="3"/>
+  <path class="accent" d="M665 89 h30 M670 96 h16 M670 100 h10"/>
+  <text class="label" x="680" y="120" text-anchor="middle">code review</text>
+  <text class="sub" x="680" y="137" text-anchor="middle">in the browser</text>
+
+  <!-- 4. after two rounds, you decide -->
+  <rect class="node" x="800" y="230" width="170" height="80" rx="12"/>
+  <circle class="accent" cx="885" cy="252" r="4.4"/>
+  <path class="accent" d="M875 270 Q875 260 885 260 Q895 260 895 270"/>
+  <path class="accent" d="M879 270 l4 4 7 -8"/>
+  <text class="label" x="885" y="292" text-anchor="middle">you decide</text>
+
+  <!-- the path -->
+  <path class="path" d="M200 115 H300"/>
+  <path id="checker56-arrow-check" class="arrowhead" d="M292 110 L300 115 L292 120 z"/>
+  <text class="edge" x="250" y="105" text-anchor="middle">commit</text>
+  <path class="path" d="M480 115 H590"/>
+  <path id="checker56-arrow-pass" class="arrowhead" d="M582 110 L590 115 L582 120 z"/>
+  <text class="edge" x="535" y="105" text-anchor="middle">pass</text>
+
+  <!-- a revise goes back to the maker with findings -->
+  <path class="path" d="M350 160 V250 H115 V160"/>
+  <path id="checker56-arrow-revise" class="arrowhead" d="M110 168 L115 160 L120 168 z"/>
+  <text class="edge" x="232" y="238" text-anchor="middle">revise</text>
+
+  <!-- after two rounds you decide, with both reports -->
+  <path class="path" d="M430 160 V270 H800"/>
+  <path id="checker56-arrow-decide" class="arrowhead" d="M792 265 L800 270 L792 275 z"/>
+  <text class="edge" x="620" y="258" text-anchor="middle">after round 2</text>
 </svg>

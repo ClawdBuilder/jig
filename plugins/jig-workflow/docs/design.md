@@ -94,15 +94,18 @@ The design follows the harness work of Böckeler: guides that steer the agent be
 that check afterwards, with the hardest to sense, behaviour, covered by scenarios in the plan, the tests,
 and you on an acceptance environment.
 
-![What the harness regulates around a ticket: maintainability, compatibility, behaviour and data safety, each with guides and sensors](../../../docs/img/what-it-regulates.svg)
+![What the harness regulates around a ticket: maintainability, compatibility, behaviour and data safety, each with the guides that steer the agent and the sensors that check it](../../../docs/img/what-it-regulates.svg)
 
-*What the harness regulates around a ticket, in [Böckeler's](https://martinfowler.com/articles/harness-engineering.html) layout. Behaviour stays highlighted because it is the hardest to sense: acceptance scenarios in the plan, the tests, and you in an acceptance environment together cover it.*
+*What the harness regulates around a ticket, in [Böckeler's](https://martinfowler.com/articles/harness-engineering.html) layout:
+four dimensions, each with guides that steer the agent before it acts and sensors that check afterwards. Behaviour stays
+highlighted because it is the hardest to sense: acceptance scenarios in the plan, the tests, and you in an acceptance
+environment together cover it. A dashed item is planned.*
 
 ![A ticket over time: guides go into Pi, Pi writes the change, the edit loop runs its checks, a checker reviews in a fresh context, you approve once, and after the pull request CI and reviews come back to Pi as new commits](../../../docs/img/ticket-loops.svg)
 
 *A ticket over time. Guides go into Pi before it writes code, and feedback returns at the edit loop, the checker, your one
 approval and after the pull request, where CI, reviews and teammates report through the review ledger. This plugin builds
-the edit loop and the stage gates; the checker, the one approval and the delivery loop are later
+the edit loop and the stage gates. Dashed parts are later: the checker, the one approval and the CI · reviews return
 ([Where this comes from](#where-this-comes-from)).*
 
 **Later,** and not built:

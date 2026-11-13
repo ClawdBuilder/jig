@@ -102,9 +102,12 @@ None. `jig-review` needs nothing from a company: it works on a repository's own 
 
 ## Later: after a checker agent
 
-![A fresh-context checker reviews the change first: a pass goes to your code review, a revise goes back to the maker, and after two rounds you decide](../../docs/img/fresh-checker.svg)
+![A fresh-context checker: the maker hands over a ready commit; the checker reads the approved plan, the diff, the check results, the rules and earlier comments; a pass goes to your code review, a revise goes back to the maker, and after two rounds you decide](../../docs/img/fresh-checker.svg)
 
-*A read-only checker agent in a fresh context reviews the change before this review (see [`jig-workflow`](../jig-workflow/README.md)): a pass goes to your code review, a revise goes back to the maker with findings, and after two rounds the decision comes to you with both reports.*
+*A read-only checker agent in a fresh context reviews the change before this review (see [`jig-workflow`](../jig-workflow/README.md)):
+it reads the approved plan, the diff, the check results, the rules and earlier review comments. A pass goes to your code
+review; a revise goes back to the maker with findings, in the file and at the line; and after two rounds the decision comes
+to you with both reports.*
 
 ## Layout
 

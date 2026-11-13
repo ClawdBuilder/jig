@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1328" height="133" viewBox="6 31 1328 133" role="img" aria-label="How a saved jig-api request runs: the agent runs one by name with variable values; the tool fills only the variables and keeps the host, method and headers as saved; a write is previewed and asks you to approve the exact request; jig-core sends it with the credential, and a lost reply is checked once and never sent again; the API answers; and the result has secrets removed, is masked in production and is cut at 200 lines before the agent reads it." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1118" height="133" viewBox="6 31 1118 133" role="img" aria-label="How a saved jig-api request runs: the agent runs one by name with variable values; the tool fills only the variables and keeps the host, method and headers as saved; a write is previewed and asks you to approve the exact request; jig-core sends it to the API with the credential, and a lost reply is checked once and never sent again; and the result has secrets removed, is masked in production and is cut at 200 lines before the agent reads it." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
   <style>
     .bg { fill: #ffffff; }
     .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
     .marker-ring { fill: #ffffff; stroke: #b05a8a; stroke-width: 1.5; }
-    .key-ring { fill: #ffffff; stroke: #2563eb; stroke-width: 1.5; }
     .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
     .sub { fill: #5c626b; font-size: 11px; }
     .muted { fill: #5c626b; font-size: 12px; }
@@ -16,7 +15,6 @@
       .bg { fill: #111113; }
       .node { fill: #18181b; stroke: #2c2c31; }
       .marker-ring { fill: #18181b; stroke: #d98ab8; }
-      .key-ring { fill: #18181b; stroke: #7aa2f7; }
       .label { fill: #e7e7ea; }
       .sub { fill: #9a9aa2; }
       .muted { fill: #9a9aa2; }
@@ -27,7 +25,7 @@
       .arrowhead { fill: #7aa2f7; }
     }
   </style>
-  <rect class="bg" x="6.5" y="31.5" width="1327" height="132" rx="12"/>
+  <rect class="bg" x="6.5" y="31.5" width="1117" height="132" rx="12"/>
 
   <!-- 1. run by name -->
   <rect class="node" x="30" y="55" width="170" height="90" rx="12"/>
@@ -48,28 +46,22 @@
   <path class="accent" d="M514 78 q16 -13 32 0 q-16 13 -32 0 z"/>
   <circle class="accent" cx="530" cy="78" r="4.4"/>
   <text class="label" x="535" y="118" text-anchor="middle">preview</text>
-  <text class="sub" x="535" y="136" text-anchor="middle">a write asks</text>
 
-  <!-- 4. send -->
+  <!-- 4. send, and the API -->
   <rect class="node" x="690" y="55" width="170" height="90" rx="12"/>
-  <path class="accent" d="M759 64 L791 78 L759 92 L765 78 Z"/>
-  <text class="label" x="775" y="118" text-anchor="middle">send</text>
-  <text class="sub" x="775" y="136" text-anchor="middle">jig-core</text>
+  <rect class="accent" x="761" y="62" width="28" height="12" rx="2"/>
+  <rect class="accent" x="761" y="80" width="28" height="12" rx="2"/>
+  <circle class="accent" cx="767" cy="68" r="1.6"/>
+  <circle class="accent" cx="767" cy="86" r="1.6"/>
+  <text class="label" x="775" y="118" text-anchor="middle">API</text>
+  <text class="sub" x="775" y="136" text-anchor="middle">with the credential</text>
 
-  <!-- 5. the API -->
+  <!-- 5. the result -->
   <rect class="node" x="930" y="55" width="170" height="90" rx="12"/>
-  <rect class="accent" x="1001" y="62" width="28" height="12" rx="2"/>
-  <rect class="accent" x="1001" y="80" width="28" height="12" rx="2"/>
-  <circle class="accent" cx="1007" cy="68" r="1.6"/>
-  <circle class="accent" cx="1007" cy="86" r="1.6"/>
-  <text class="label" x="1015" y="118" text-anchor="middle">API</text>
-
-  <!-- 6. the result -->
-  <rect class="node" x="1140" y="55" width="170" height="90" rx="12"/>
-  <path class="accent" d="M1214 62 h16 a3 3 0 0 1 3 3 v26 a3 3 0 0 1 -3 3 h-16 a3 3 0 0 1 -3 -3 v-26 a3 3 0 0 1 3 -3 z"/>
-  <path class="accent" d="M1218 70 h16 M1218 77 h16 M1218 84 h10"/>
-  <text class="label" x="1225" y="118" text-anchor="middle">result</text>
-  <text class="sub" x="1225" y="136" text-anchor="middle">masked · capped</text>
+  <path class="accent" d="M1004 62 h16 a3 3 0 0 1 3 3 v26 a3 3 0 0 1 -3 3 h-16 a3 3 0 0 1 -3 -3 v-26 a3 3 0 0 1 3 -3 z"/>
+  <path class="accent" d="M1008 70 h16 M1008 77 h16 M1008 84 h10"/>
+  <text class="label" x="1015" y="118" text-anchor="middle">result</text>
+  <text class="sub" x="1015" y="136" text-anchor="middle">masked · capped</text>
 
   <!-- the path -->
   <path class="path" d="M200 100 H240"/>
@@ -77,19 +69,13 @@
   <path class="path" d="M410 100 H450"/>
   <path id="apirun55-arrow-preview" class="arrowhead" d="M442 95 L450 100 L442 105 z"/>
   <path class="path" d="M620 100 H690"/>
-  <path id="apirun55-arrow-send" class="arrowhead" d="M682 95 L690 100 L682 105 z"/>
+  <path id="apirun55-arrow-api" class="arrowhead" d="M682 95 L690 100 L682 105 z"/>
   <path class="path" d="M860 100 H930"/>
-  <path id="apirun55-arrow-api" class="arrowhead" d="M922 95 L930 100 L922 105 z"/>
-  <path class="path" d="M1100 100 H1140"/>
-  <path id="apirun55-arrow-result" class="arrowhead" d="M1132 95 L1140 100 L1132 105 z"/>
+  <path id="apirun55-arrow-result" class="arrowhead" d="M922 95 L930 100 L922 105 z"/>
 
   <!-- your approval, and the credential jig-core adds -->
   <circle class="marker-ring" cx="655" cy="100" r="12"/>
   <circle class="you" cx="655" cy="96" r="3.2"/>
   <path class="you" d="M649 105.4 Q649 99 655 99 Q661 99 661 105.4 Z"/>
   <text class="muted" x="655" y="128" text-anchor="middle">approval</text>
-  <circle class="key-ring" cx="895" cy="100" r="12"/>
-  <circle class="accent" cx="890" cy="100" r="3.2"/>
-  <path class="accent" d="M893.2 100 H904 M900.4 100 v3.6 M904 100 v2.4"/>
-  <text class="muted" x="895" y="128" text-anchor="middle">credential</text>
 </svg>
