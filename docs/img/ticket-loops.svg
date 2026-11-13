@@ -1,114 +1,93 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="756" viewBox="0 0 1140 756" role="img" aria-label="A ticket over time. Feedforward guides on the left go into Pi before it writes code. Feedback comes back on the right at four points: the edit loop with its checks; the checker loop; your one approval; and after the pull request, where CI, reviews, teammates and staging report back as new commits through the review ledger." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="1139" height="755" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="loops-head-5d4b7c-28" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="28" markerHeight="28" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5D4B7C"/></marker>
-  </defs>
-  <text x="60" y="48" font-size="26" fill="#1A1F1D" font-weight="700">A ticket: feedforward and feedback over time</text>
-  <!-- time runs downward -->
-  <polygon points="14,84 44,84 44,692 29,724 14,692" fill="#6B6B6B"/>
-  <text x="37" y="410" font-size="20" fill="#FFFFFF" font-weight="700" text-anchor="middle" transform="rotate(-90 37 410)">Time</text>
-  <!-- column headers -->
-  <polygon points="60,84 466,84 496,104 466,124 60,124" fill="#6B6B6B"/>
-  <text x="263" y="112" font-size="22" fill="#FFFFFF" font-weight="700" text-anchor="middle">Feedforward</text>
-  <polygon points="642,104 672,84 1126,84 1126,124 672,124" fill="#6B6B6B"/>
-  <text x="900" y="112" font-size="22" fill="#FFFFFF" font-weight="700" text-anchor="middle">Feedback</text>
-  <!-- feedforward: the guides -->
-  <polygon points="60,134 470,134 496,222 470,310 60,310" fill="#E8ECEE"/>
-  <polygon points="72,146 186,146 196,165 186,184 72,184" fill="#DF6A7C"/>
-  <text x="131" y="169.38" font-size="12.5" fill="#FFFFFF" text-anchor="middle">AGENTS.md</text>
-  <polygon points="204,146 318,146 328,165 318,184 204,184" fill="#DF6A7C"/>
-  <text x="263" y="169.38" font-size="12.5" fill="#FFFFFF" text-anchor="middle">skills</text>
-  <polygon points="336,146 450,146 460,165 450,184 336,184" fill="#5C9CAB"/>
-  <text x="395" y="161.75" font-size="12.5" fill="#FFFFFF" text-anchor="middle">rules and</text>
-  <text x="395" y="177" font-size="12.5" fill="#FFFFFF" text-anchor="middle">the floor</text>
-  <polygon points="72,192 186,192 196,211 186,230 72,230" fill="#DF6A7C"/>
-  <text x="131" y="215.38" font-size="12.5" fill="#FFFFFF" text-anchor="middle">approved plan</text>
-  <polygon points="204,192 318,192 328,211 318,230 204,230" fill="#DF6A7C"/>
-  <text x="263" y="215.38" font-size="12.5" fill="#FFFFFF" text-anchor="middle">ticket notes</text>
-  <polygon points="336,192 450,192 460,211 450,230 336,230" fill="#5C9CAB"/>
-  <text x="395" y="215.38" font-size="12.5" fill="#FFFFFF" text-anchor="middle">workflow gates</text>
-  <polygon points="72,238 186,238 196,257 186,276 72,276" fill="#FFFFFF" stroke="#DF6A7C" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="131" y="261.38" font-size="12.5" fill="#B6475A" text-anchor="middle">related tickets</text>
-  <polygon points="204,238 318,238 328,257 318,276 204,276" fill="#FFFFFF" stroke="#DF6A7C" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="263" y="253.75" font-size="12.5" fill="#B6475A" text-anchor="middle">organizational</text>
-  <text x="263" y="269" font-size="12.5" fill="#B6475A" text-anchor="middle">facts</text>
-  <polygon points="336,238 450,238 460,257 450,276 336,276" fill="#FFFFFF" stroke="#DF6A7C" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="395" y="261.38" font-size="12.5" fill="#B6475A" text-anchor="middle">personal facts</text>
-  <!-- Pi in the middle -->
-  <rect x="500" y="134" width="130" height="408" fill="#5D4B7C"/>
-  <text x="565" y="178" font-size="30" fill="#FFFFFF" font-weight="700" text-anchor="middle">Pi</text>
-  <text x="565" y="202" font-size="14" fill="#FFFFFF" text-anchor="middle">coding agent</text>
-  <path d="M579.72 255.5 A17 17 0 1 1 555.25 250.07" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <polygon points="563.15,244.55 558.67,256.71 550.19,244.59" fill="#FFFFFF"/>
-  <path d="M579.72 350.5 A17 17 0 1 1 555.25 345.07" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <polygon points="563.15,339.55 558.67,351.71 550.19,339.59" fill="#FFFFFF"/>
-  <path d="M579.72 440.5 A17 17 0 1 1 555.25 435.07" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <polygon points="563.15,429.55 558.67,441.71 550.19,429.59" fill="#FFFFFF"/>
-  <polygon points="490,576 565,548 640,576 565,604" fill="#6B6B6B"/>
-  <text x="565" y="581" font-size="14" fill="#FFFFFF" font-weight="700" text-anchor="middle">open the PR</text>
-  <!-- initial generation -->
-  <polygon points="670,134 1126,134 1126,204 670,204 642,169" fill="#E8ECEE"/>
-  <text x="1112" y="176" font-size="18" fill="#1A1F1D" font-weight="700" text-anchor="end">Initial generation</text>
-  <!-- 1 the edit loop -->
-  <polygon points="670,214 1126,214 1126,314 670,314 642,264" fill="#E8ECEE"/>
-  <text x="1112" y="244" font-size="18" fill="#1A1F1D" font-weight="700" text-anchor="end">1 Edit loop</text>
-  <text x="1112" y="264" font-size="12.5" fill="#3A4440" text-anchor="end">before each commit</text>
-  <polygon points="696,226 816,226 816,260 696,260 686,243" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="754" y="247.55" font-size="13" fill="#3B7C8A" text-anchor="middle">compile</text>
-  <polygon points="836,226 956,226 956,260 836,260 826,243" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="894" y="247.55" font-size="13" fill="#3B7C8A" text-anchor="middle">affected tests</text>
-  <polygon points="696,270 816,270 816,304 696,304 686,287" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="754" y="291.55" font-size="13" fill="#3B7C8A" text-anchor="middle">diff rules</text>
-  <polygon points="836,270 956,270 956,304 836,304 826,287" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="894" y="291.55" font-size="13" fill="#3B7C8A" text-anchor="middle">full run</text>
-  <!-- 2 the checker loop -->
-  <polygon points="670,324 1126,324 1126,394 670,394 642,359" fill="#E8ECEE"/>
-  <text x="1112" y="354" font-size="18" fill="#1A1F1D" font-weight="700" text-anchor="end">2 Checker loop</text>
-  <text x="1112" y="374" font-size="12.5" fill="#3A4440" text-anchor="end">2 rounds at most</text>
-  <polygon points="696,336 816,336 816,370 696,370 686,353" fill="#FFFFFF" stroke="#DF6A7C" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="754" y="357.55" font-size="13" fill="#B6475A" text-anchor="middle">checker agent</text>
-  <polygon points="836,336 956,336 956,370 836,370 826,353" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="894" y="357.55" font-size="13" fill="#3B7C8A" text-anchor="middle">scenarios on test</text>
-  <!-- 3 your review -->
-  <polygon points="670,404 1126,404 1126,494 670,494 642,449" fill="#E8ECEE"/>
-  <text x="1112" y="436" font-size="18" fill="#1A1F1D" font-weight="700" text-anchor="end">3 Your review</text>
-  <text x="1112" y="456" font-size="12.5" fill="#3A4440" text-anchor="end">one approval per change</text>
-  <circle cx="710" cy="435" r="9.6" fill="#C08326"/>
-  <path d="M694.4 463.8 Q694.4 447 710 447 Q725.6 447 725.6 463.8 Z" fill="#C08326"/>
-  <rect x="760" y="424" width="176" height="50" rx="4" fill="#FFFFFF" stroke="#DF6A7C" stroke-width="1.6"/>
-  <text x="848" y="446" font-size="13" fill="#B6475A" text-anchor="middle">all the evidence</text>
-  <text x="848" y="463" font-size="13" fill="#B6475A" text-anchor="middle">on one page</text>
-  <!-- 4 the delivery loop -->
-  <polygon points="670,560 1126,560 1126,710 670,710 642,635" fill="#E8ECEE"/>
-  <text x="1112" y="590" font-size="18" fill="#1A1F1D" font-weight="700" text-anchor="end">4 Delivery loop</text>
-  <text x="1112" y="610" font-size="12.5" fill="#3A4440" text-anchor="end">CI and reviews,</text>
-  <text x="1112" y="627" font-size="12.5" fill="#3A4440" text-anchor="end">comments go to</text>
-  <text x="1112" y="644" font-size="12.5" fill="#3A4440" text-anchor="end">the review ledger</text>
-  <polygon points="696,572 816,572 816,606 696,606 686,589" fill="#5C9CAB"/>
-  <text x="754" y="593.55" font-size="13" fill="#FFFFFF" text-anchor="middle">CI checks</text>
-  <polygon points="836,572 956,572 956,606 836,606 826,589" fill="#DF6A7C"/>
-  <text x="894" y="593.55" font-size="13" fill="#FFFFFF" text-anchor="middle">Copilot review</text>
-  <polygon points="696,616 816,616 816,650 696,650 686,633" fill="#5C9CAB"/>
-  <text x="754" y="637.55" font-size="12.5" fill="#FFFFFF" text-anchor="middle">deploy to staging</text>
-  <polygon points="836,616 956,616 956,650 836,650 826,633" fill="#FFFFFF" stroke="#5C9CAB" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="894" y="637.55" font-size="13" fill="#3B7C8A" text-anchor="middle">scenarios</text>
-  <polygon points="696,660 816,660 816,694 696,694 686,677" fill="#5C9CAB"/>
-  <text x="754" y="681.55" font-size="13" fill="#FFFFFF" text-anchor="middle">logs</text>
-  <polygon points="836,660 956,660 956,694 836,694 826,677" fill="#C08326"/>
-  <text x="894" y="681.55" font-size="13" fill="#FFFFFF" text-anchor="middle">teammates</text>
-  <!-- findings come back as new commits -->
-  <path d="M644 635 H440 V470 H494" fill="none" stroke="#5D4B7C" stroke-width="10" marker-end="url(#loops-head-5d4b7c-28)"/>
-  <text x="60" y="536" font-size="14" fill="#3A4440" font-style="italic">Review and CI findings come</text>
-  <text x="60" y="557" font-size="14" fill="#3A4440" font-style="italic">back through the review ledger</text>
-  <text x="60" y="578" font-size="14" fill="#3A4440" font-style="italic">and become new commits.</text>
-  <!-- legend -->
-  <rect x="60" y="646" width="270" height="76" fill="none" stroke="#8C979D" stroke-width="1.3" stroke-dasharray="5 4"/>
-  <rect x="74" y="661" width="14" height="14" rx="2" fill="#DF6A7C"/>
-  <text x="98" y="672.5" font-size="13" fill="#1A1F1D">a model</text>
-  <rect x="190" y="661" width="14" height="14" rx="2" fill="#5C9CAB"/>
-  <text x="214" y="672.5" font-size="13" fill="#1A1F1D">a program</text>
-  <rect x="74" y="691" width="14" height="14" rx="2" fill="#C08326"/>
-  <text x="98" y="702.5" font-size="13" fill="#1A1F1D">a person</text>
-  <rect x="190" y="692" width="17" height="12" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="1.4" stroke-dasharray="3 2"/>
-  <text x="214" y="702.5" font-size="13" fill="#1A1F1D">planned for later</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1268" height="263" viewBox="6 31 1268 263" role="img" aria-label="A ticket over time, left to right: the guides go into Pi before it writes code; Pi writes the change; the edit loop runs its checks before each commit; a checker agent reviews the change in a fresh context; you give one approval per change with all the evidence; and after the pull request, CI checks, reviews and teammates report back as new commits, so the feedback returns to Pi. The edit loop and the stage gates are built; the checker, the one approval and the delivery loop are later." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .node { fill: #f6f7f9; stroke: #d9dde3; stroke-width: 1.2; }
+    .later { fill: none; stroke: #5c626b; stroke-width: 1.3; stroke-dasharray: 5 4; }
+    .label { fill: #1a1b1e; font-size: 14px; font-weight: 700; }
+    .sub { fill: #5c626b; font-size: 11px; }
+    .muted { fill: #5c626b; font-size: 12px; }
+    .edge { fill: #5c626b; font-size: 10px; }
+    .accent { fill: none; stroke: #2563eb; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .path { fill: none; stroke: #2563eb; stroke-width: 2; }
+    .arrowhead { fill: #2563eb; }
+    .back { fill: none; stroke: #5c626b; stroke-width: 1.6; stroke-dasharray: 5 4; }
+    .back-head { fill: #5c626b; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111113; }
+      .node { fill: #18181b; stroke: #2c2c31; }
+      .later { stroke: #9a9aa2; }
+      .label { fill: #e7e7ea; }
+      .sub { fill: #9a9aa2; }
+      .muted { fill: #9a9aa2; }
+      .edge { fill: #9a9aa2; }
+      .accent { stroke: #7aa2f7; }
+      .path { stroke: #7aa2f7; }
+      .arrowhead { fill: #7aa2f7; }
+      .back { stroke: #9a9aa2; }
+      .back-head { fill: #9a9aa2; }
+    }
+  </style>
+  <rect class="bg" x="6.5" y="31.5" width="1267" height="262" rx="12"/>
+
+  <!-- 1. the guides -->
+  <rect class="node" x="30" y="55" width="170" height="90" rx="12"/>
+  <rect class="accent" x="106" y="64" width="20" height="26" rx="2"/>
+  <path class="accent" d="M111 71 H121 M111 78 H121 M111 85 H117"/>
+  <path class="accent" d="M124 68 h10 v26 h-10"/>
+  <text class="label" x="115" y="122" text-anchor="middle">guides</text>
+  <text class="sub" x="115" y="140" text-anchor="middle">before it acts</text>
+
+  <!-- 2. Pi writes -->
+  <rect class="node" x="240" y="55" width="170" height="90" rx="12"/>
+  <rect class="accent" x="312" y="64" width="28" height="22" rx="3"/>
+  <path class="accent" d="M317 71 l4 4 -4 4 M325 79 h6"/>
+  <text class="label" x="325" y="122" text-anchor="middle">Pi</text>
+  <text class="sub" x="325" y="140" text-anchor="middle">writes the change</text>
+
+  <!-- 3. the edit loop -->
+  <rect class="node" x="450" y="55" width="170" height="90" rx="12"/>
+  <path class="accent" d="M522 82 a13 13 0 1 1 4 -9 M526 64 l1 9 -9 -1"/>
+  <text class="label" x="535" y="122" text-anchor="middle">edit loop</text>
+  <text class="sub" x="535" y="140" text-anchor="middle">before each commit</text>
+
+  <!-- 4. the checker: later -->
+  <rect class="later" x="660" y="55" width="170" height="90" rx="12"/>
+  <circle class="accent" cx="741" cy="75" r="9"/>
+  <path class="accent" d="M748 82 l9 9"/>
+  <text class="label" x="745" y="122" text-anchor="middle">checker</text>
+  <text class="sub" x="745" y="140" text-anchor="middle">a fresh context</text>
+
+  <!-- 5. your one approval: later -->
+  <rect class="later" x="870" y="55" width="170" height="90" rx="12"/>
+  <circle class="accent" cx="950" cy="70" r="4.4"/>
+  <path class="accent" d="M940 88 Q940 78 950 78 Q960 78 960 88"/>
+  <path class="accent" d="M964 82 l4 4 8 -9"/>
+  <text class="label" x="955" y="122" text-anchor="middle">your approval</text>
+  <text class="sub" x="955" y="140" text-anchor="middle">one per change</text>
+
+  <!-- 6. the pull request -->
+  <rect class="node" x="1080" y="55" width="170" height="90" rx="12"/>
+  <circle class="accent" cx="1152" cy="70" r="3.2"/>
+  <path class="accent" d="M1152 73.2 V84 M1172 73.2 V84"/>
+  <circle class="accent" cx="1172" cy="70" r="3.2"/>
+  <path class="accent" d="M1156 80.5 H1166"/>
+  <path class="accent" d="M1164 76.5 L1168 80.5 L1164 84.5 z"/>
+  <text class="label" x="1165" y="122" text-anchor="middle">pull request</text>
+
+  <!-- the path -->
+  <path class="path" d="M200 100 H240"/>
+  <path id="loops55-arrow-pi" class="arrowhead" d="M232 95 L240 100 L232 105 z"/>
+  <path class="path" d="M410 100 H450"/>
+  <path id="loops55-arrow-edit" class="arrowhead" d="M442 95 L450 100 L442 105 z"/>
+  <path class="path" d="M620 100 H660"/>
+  <path id="loops55-arrow-checker" class="arrowhead" d="M652 95 L660 100 L652 105 z"/>
+  <path class="path" d="M830 100 H870"/>
+  <path id="loops55-arrow-approval" class="arrowhead" d="M862 95 L870 100 L862 105 z"/>
+  <path class="path" d="M1040 100 H1080"/>
+  <path id="loops55-arrow-pr" class="arrowhead" d="M1072 95 L1080 100 L1072 105 z"/>
+
+  <!-- the feedback comes back to Pi as new commits -->
+  <path class="back" d="M1165 145 V270 H325 V145"/>
+  <path id="loops55-arrow-feedback" class="back-head" d="M320 153 L325 145 L330 153 z"/>
+  <text class="muted" x="745" y="258" text-anchor="middle">CI · reviews</text>
 </svg>

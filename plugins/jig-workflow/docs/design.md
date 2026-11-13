@@ -98,9 +98,12 @@ and you on an acceptance environment.
 
 *What the harness regulates around a ticket, in [Böckeler's](https://martinfowler.com/articles/harness-engineering.html) layout. Behaviour stays highlighted because it is the hardest to sense: acceptance scenarios in the plan, the tests, and you in an acceptance environment together cover it.*
 
-![A ticket over time: guides feed forward into Pi, and feedback comes back at four points: the edit loop, the checker loop, your one approval, and after the pull request](../../../docs/img/ticket-loops.svg)
+![A ticket over time: guides go into Pi, Pi writes the change, the edit loop runs its checks, a checker reviews in a fresh context, you approve once, and after the pull request CI and reviews come back to Pi as new commits](../../../docs/img/ticket-loops.svg)
 
-*A ticket over time. Guides go into Pi before it writes code, and feedback comes back at four points: the edit loop, the checker, your one approval, and after the pull request, where CI, reviews and teammates report through the review ledger. This plugin builds the edit loop and the stage gates; the rest is later.*
+*A ticket over time. Guides go into Pi before it writes code, and feedback returns at the edit loop, the checker, your one
+approval and after the pull request, where CI, reviews and teammates report through the review ledger. This plugin builds
+the edit loop and the stage gates; the checker, the one approval and the delivery loop are later
+([Where this comes from](#where-this-comes-from)).*
 
 **Later,** and not built:
 - **Check tiers:** compile, affected tests, diff rules and a full run, each failure compared with the main
