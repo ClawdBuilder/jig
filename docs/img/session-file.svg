@@ -1,62 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="468" viewBox="0 0 960 468" role="img" aria-label="How a session's status file gets from Pi to the Herdr panels. On the agent's machine, such as wsl, Pi tells jig-session about each event: session start, each turn, tool calls, a model change. jig-session writes sessions/&lt;id&gt;.json in the state dir, through a temporary file and a rename, and removes it at shutdown. On your computer, such as Windows, the Herdr app shows the Work and Context panels. Every 2 seconds, and only while a panel is on screen, the panel calls Herdr's exec with on set to the machine; Herdr runs one sh script there, which lists the status files, checks each pid and prints them. The panel draws the session whose terminal has the focus." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
-  <rect x="0.5" y="0.5" width="959" height="467" rx="10" fill="#FAFBFA" stroke="#D2D9D3"/>
-  <defs>
-    <marker id="sessfile-head-1d3b4d" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1D3B4D"/></marker>
-    <marker id="sessfile-head-5c9cab" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5C9CAB"/></marker>
-    <marker id="sessfile-head-c08326" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C08326"/></marker>
-    <marker id="sessfile-head-8c979d" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8C979D"/></marker>
-  </defs>
-  <!-- the two machines -->
-  <rect x="20" y="20" width="410" height="404" rx="8" fill="none" stroke="#D2D9D3" stroke-width="1.5" stroke-dasharray="6 4"/>
-  <text x="36" y="44" font-size="14.5" fill="#1A1F1D" font-weight="700">the agent's machine, such as wsl</text>
-  <rect x="530" y="20" width="410" height="404" rx="8" fill="none" stroke="#D2D9D3" stroke-width="1.5" stroke-dasharray="6 4"/>
-  <text x="546" y="44" font-size="14.5" fill="#1A1F1D" font-weight="700">your computer, such as Windows</text>
-  <!-- left: Pi, jig-session, the file -->
-  <rect x="40" y="60" width="370" height="58" rx="6" fill="#1D3B4D"/>
-  <text x="225" y="86" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">Pi</text>
-  <text x="225" y="105" font-size="12.5" fill="#FFFFFF" text-anchor="middle">the agent, with Jig's plugins loaded</text>
-  <path d="M225 119 V171" fill="none" stroke="#1D3B4D" stroke-width="2.6" marker-end="url(#sessfile-head-1d3b4d)"/>
-  <text x="239" y="140" font-size="13" fill="#3A4440">events: start, each turn, each</text>
-  <text x="239" y="157" font-size="13" fill="#3A4440">tool call, model change, end</text>
-  <rect x="40" y="172" width="370" height="58" rx="6" fill="#5C9CAB"/>
-  <text x="225" y="198" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">jig-session</text>
-  <text x="225" y="217" font-size="12.5" fill="#FFFFFF" text-anchor="middle">a Pi extension: writes only when the content changed</text>
-  <path d="M225 231 V283" fill="none" stroke="#5C9CAB" stroke-width="2.6" marker-end="url(#sessfile-head-5c9cab)"/>
-  <text x="239" y="252" font-size="13" fill="#3A4440">temporary file, then a rename:</text>
-  <text x="239" y="269" font-size="13" fill="#3A4440">a reader never sees half a file</text>
-  <rect x="40" y="284" width="370" height="58" rx="6" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="2"/>
-  <text x="225" y="310" font-size="16" fill="#1A1F1D" font-weight="700" text-anchor="middle">&lt;state dir&gt;/sessions/&lt;id&gt;.json</text>
-  <text x="225" y="329" font-size="12.5" fill="#1A1F1D" text-anchor="middle">one per session, mode 0600; removed at shutdown</text>
-  <text x="40" y="374" font-size="13" fill="#3A4440">Any program here can read it too: a script, a status bar.</text>
-  <text x="40" y="393" font-size="13" fill="#3A4440">Nothing listens on a port.</text>
-  <!-- right: the app, the panels, exec -->
-  <rect x="550" y="60" width="370" height="58" rx="6" fill="#C08326"/>
-  <text x="735" y="86" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">Herdr app</text>
-  <text x="735" y="105" font-size="12.5" fill="#FFFFFF" text-anchor="middle">the desktop app; its panels are mods</text>
-  <path d="M735 119 V171" fill="none" stroke="#C08326" stroke-width="2.6" marker-end="url(#sessfile-head-c08326)"/>
-  <text x="749" y="140" font-size="13" fill="#3A4440">a timer, every 2 s, only</text>
-  <text x="749" y="157" font-size="13" fill="#3A4440">while the panel is on screen</text>
-  <rect x="550" y="172" width="370" height="58" rx="6" fill="#8C979D"/>
-  <text x="735" y="198" font-size="16" fill="#FFFFFF" font-weight="700" text-anchor="middle">Work and Context panels</text>
-  <text x="735" y="217" font-size="12.5" fill="#FFFFFF" text-anchor="middle">draw the session whose terminal has the focus</text>
-  <path d="M690 231 V283" fill="none" stroke="#8C979D" stroke-width="2.6" marker-end="url(#sessfile-head-8c979d)"/>
-  <text x="676" y="262" font-size="13" fill="#3A4440" text-anchor="end">ask</text>
-  <path d="M780 283 V231" fill="none" stroke="#8C979D" stroke-width="2.6" marker-end="url(#sessfile-head-8c979d)"/>
-  <text x="794" y="262" font-size="13" fill="#3A4440">the files' text</text>
-  <rect x="550" y="284" width="370" height="58" rx="6" fill="#FFFFFF" stroke="#C08326" stroke-width="2"/>
-  <text x="735" y="310" font-size="15" fill="#1A1F1D" font-weight="700" text-anchor="middle">exec("sh", script, { on: "wsl" })</text>
-  <text x="735" y="329" font-size="12.5" fill="#1A1F1D" text-anchor="middle">Herdr runs it on that machine, over its SSH link</text>
-  <text x="550" y="374" font-size="13" fill="#3A4440">A hidden panel asks nothing.</text>
-  <text x="550" y="393" font-size="13" fill="#3A4440">The panel shows; it never writes this file.</text>
-  <!-- across the machines -->
-  <path d="M549 313 H412" fill="none" stroke="#1D3B4D" stroke-width="2.6" marker-end="url(#sessfile-head-1d3b4d)"/>
-  <text x="480" y="302" font-size="11.5" fill="#3A4440" text-anchor="middle">list, kill -0,</text>
-  <text x="480" y="332" font-size="11.5" fill="#3A4440" text-anchor="middle">print files</text>
-  <!-- legend -->
-  <rect x="20" y="438" width="14" height="14" rx="2" fill="#5C9CAB"/>
-  <text x="42" y="449.5" font-size="13" fill="#1A1F1D">Jig's code in Pi</text>
-  <rect x="170" y="438" width="14" height="14" rx="2" fill="#8C979D"/>
-  <text x="192" y="449.5" font-size="13" fill="#1A1F1D">Jig's code in Herdr (mods)</text>
-  <rect x="380" y="438" width="14" height="14" rx="2" fill="#FFFFFF" stroke="#1D3B4D" stroke-width="2"/>
-  <text x="402" y="449.5" font-size="13" fill="#1A1F1D">a file</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="190" viewBox="0 0 1000 190" role="img" aria-label="Pi tells jig-session about each event; jig-session writes the session's status file by a temporary file and a rename; the Herdr panel reads the files every two seconds while it is shown and draws the focused session." font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif">
+  <style>
+    .bg{fill:#fff}.node{fill:#f6f7f9;stroke:#d9dde3;stroke-width:1.2}.label{fill:#1a1b1e;font-size:14px;font-weight:700}
+    .sub{fill:#5c626b;font-size:11px}.accent{fill:none;stroke:#2563eb;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .path{fill:none;stroke:#2563eb;stroke-width:2}.arrowhead{fill:#2563eb}.marker{fill:#fff;stroke:#2563eb;stroke-width:1.5}
+    .glyph{fill:#2563eb;font-size:11px;font-weight:700}.chip{fill:#e6ffec;stroke:#1a7f37;stroke-width:1.2}.chip-text{fill:#1a7f37;font-size:11px;font-weight:700}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#111113}.node{fill:#18181b;stroke:#2c2c31}.label{fill:#e7e7ea}.sub{fill:#9a9aa2}
+      .accent{stroke:#7aa2f7}.path{stroke:#7aa2f7}.arrowhead{fill:#7aa2f7}.marker{fill:#18181b;stroke:#7aa2f7}
+      .glyph{fill:#7aa2f7}.chip{fill:#14251a;stroke:#6ccb8a}.chip-text{fill:#6ccb8a}
+    }
+  </style>
+  <rect class="bg" x="0.5" y="0.5" width="999" height="189" rx="12"/>
+  <rect class="node" x="25" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M96 76 h5 v16 h-5 M105 80 h13 M105 86 h9 M105 92 h11"/>
+  <text class="label" x="110" y="125" text-anchor="middle">Pi events</text>
+  <text class="sub" x="110" y="140" text-anchor="middle">each turn</text>
+
+  <rect class="node" x="240" y="60" width="170" height="80" rx="12"/>
+  <circle class="accent" cx="325" cy="84" r="6"/><path class="accent" d="M325 74 v3 M325 91 v3 M314 84 h3 M333 84 h3 M317 76 l2 2 M333 76 l-2 2 M317 92 l2 -2 M333 92 l-2 -2"/>
+  <text class="label" x="325" y="125" text-anchor="middle">jig-session</text>
+  <text class="sub" x="325" y="140" text-anchor="middle">writes it</text>
+
+  <rect class="node" x="455" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M520 75 h20 v18 h-20 z M526 81 h8 M526 87 h8 M526 93 h6"/>
+  <text class="label" x="540" y="125" text-anchor="middle">status file</text>
+  <text class="sub" x="540" y="140" text-anchor="middle">sessions/id</text>
+
+  <rect class="node" x="670" y="60" width="170" height="80" rx="12"/>
+  <path class="accent" d="M735 75 h22 v18 h-22 z M739 79 h8 M739 83 h14 M739 87 h10"/>
+  <text class="label" x="755" y="125" text-anchor="middle">Herdr panel</text>
+  <text class="sub" x="755" y="140" text-anchor="middle">reads it</text>
+
+  <path class="path" d="M195 100 H240"/><path id="sessionfile-arrow-1" class="arrowhead" d="M232 95 L240 100 L232 105 z"/>
+  <path class="path" d="M410 100 H455"/><path id="sessionfile-arrow-2" class="arrowhead" d="M447 95 L455 100 L447 105 z"/>
+  <path class="path" d="M625 100 H670"/><path id="sessionfile-arrow-3" class="arrowhead" d="M662 95 L670 100 L662 105 z"/>
+  <circle class="marker" cx="645" cy="55" r="11"/><text class="glyph" x="645" y="59" text-anchor="middle">2s</text>
+  <text class="sub" x="645" y="38" text-anchor="middle">poll</text>
+  <rect class="chip" x="870" y="87" width="105" height="26" rx="13"/><text class="chip-text" x="922" y="104" text-anchor="middle">focused</text>
+  <path class="path" d="M840 100 H870"/><path id="sessionfile-arrow-4" class="arrowhead" d="M862 95 L870 100 L862 105 z"/>
 </svg>
