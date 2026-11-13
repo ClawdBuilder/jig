@@ -40,7 +40,6 @@
   <rect class="accent" x="68" y="136" width="20" height="15" rx="2"/>
   <path class="accent" d="M72 151 v6 M84 151 v6 M64 157 h28"/>
   <text class="label" x="124" y="148">Pi</text>
-  <text class="sub" x="124" y="165">one session</text>
 
   <rect class="node" x="40" y="194" width="320" height="60" rx="10"/>
   <path class="accent" d="M69 210 h14 a2 2 0 0 1 2 2 v4 h-14 a2 2 0 0 1 -2 -2 z"/>
@@ -92,7 +91,6 @@
   <path class="accent" d="M786 325 l18 -14 5 5 -18 14 -6 1 z"/>
   <path class="accent" d="M782 337 h26"/>
   <text class="label" x="824" y="319">writable</text>
-  <text class="sub" x="824" y="337">the rest</text>
 
   <!-- the broker wraps each command -->
   <path class="path" d="M360 80 H430"/>
