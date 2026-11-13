@@ -13,10 +13,10 @@ For example, with this plugin loaded, a user who writes one line gets a working 
 { "acme": { "bastion": { "user": "jdoe" } } }
 ```
 
-![Each file of jig-acme is handed to one call of jig-core's global handle, and a plugin or Pi's file tools or the masker use it](../../docs/img/acme-seams.svg)
+![The files of jig-acme, each making one call on jig-core's global handle withJig, and what Jig reads: environments, a sign-in, masking and a status line](../../docs/img/acme-seams.svg)
 
-*One file per seam. Each file calls one thing on `jig-core`, and something in Jig reads the result. Grey is configuration, pink is
-knowledge, an overlay skill the agent reads.*
+*One file per seam. Each file calls one thing on `jig-core`'s global handle, and something in Jig reads the result. The files
+are in [The parts](#the-parts): configuration and knowledge, with an overlay skill the agent reads beside the generic one.*
 
 ## The parts
 

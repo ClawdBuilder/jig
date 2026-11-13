@@ -16,9 +16,13 @@ For example, after deploying a change to `staging`, the agent runs your saved
 saved **Create order** asks you first, showing the exact request; in
 `production` the floor denies it.
 
-![How a jig-api request runs: collections are read into one list, the agent runs a request by name and fills only its variables, a write is previewed, jig-core sends it with the credential, and the answer comes back masked, with secrets removed, and capped](../../docs/img/api-run.svg)
+![A saved jig-api request: the agent runs it by name, the tool fills only its variables, a write asks for approval, jig-core sends it with the credential, the API answers, and the result comes back masked, with secrets removed, and capped](../../docs/img/api-run.svg)
 
-*How a saved request runs. Collections are read into one list; the agent runs one by name and fills only its variables. A write is previewed and asks you, `jig-core` sends it with the credential, and the answer comes back with secrets removed, masked in production, and capped.*
+*How a saved request runs. Collections become one list of saved requests ([Where collections come from](#where-collections-come-from));
+the agent runs one by name and fills only its variables, so the host, method and headers stay as saved and the environment's
+host is pinned. A write is previewed and asks you; `jig-core` sends it with the credential, reads a lost reply once and never
+sends it again, and the answer comes back with secrets removed, masked in production and cut at 200 lines
+([Rules](#rules), [Results](docs/results.md)).*
 
 ## What it is for
 

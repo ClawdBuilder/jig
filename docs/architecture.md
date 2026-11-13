@@ -185,6 +185,9 @@ Jig is TypeScript on Node, as Pi is, so it runs on Linux and macOS.
 
 *Sensors outside any one change, in Böckeler's layout, with the harness watching itself.*
 
-![Memory in five steps: write, consolidate, index, retrieve and use](img/memory-steps.svg)
+![Memory in five steps: the agent writes notes and evidence, a card at close, the cards' shared keys in an index, recall when a later ticket starts, and a short message](img/memory-steps.svg)
 
-*Memory in five steps: notes, consolidation, index, retrieval and a short message in a later ticket.*
+*Memory in five steps: notes while the ticket is open, a card at close, a key on each card in the index, recall when a later
+ticket starts, and the best cards as a short message. Three rules cross every step: protect every write, keep it small, and
+measure recall on real tickets before adding embeddings or a graph. [jig-memory](../plugins/jig-memory/README.md) has them,
+with [Cards](../plugins/jig-memory/docs/cards.md) and [Recall](../plugins/jig-memory/docs/recall.md).*
