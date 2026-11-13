@@ -12,28 +12,28 @@
   <rect class="bg" x="0.5" y="0.5" width="1079" height="189" rx="12"/>
   <rect class="node" x="25" y="60" width="160" height="80" rx="12"/>
   <path class="accent" d="M90 75 h6 v16 h-6 M100 79 h16 M100 84 h10 M100 89 h13 M100 94 h8"/>
-  <text class="label" x="105" y="125" text-anchor="middle">call</text>
-  <text class="sub" x="105" y="140" text-anchor="middle">phrase · window</text>
+  <text class="label" x="105" y="115" text-anchor="middle">call</text>
+  <text class="sub" x="105" y="132" text-anchor="middle">phrase · window</text>
 
   <rect class="node" x="230" y="60" width="160" height="80" rx="12"/>
-  <path class="accent" d="M290 75 h18 v6 h-18 z M290 84 h18 v6 h-18 z M290 93 h18 v6 h-18 z"/>
-  <text class="label" x="310" y="125" text-anchor="middle">buckets</text>
-  <text class="sub" x="310" y="140" text-anchor="middle">split</text>
+  <path class="accent" d="M290 77 h18 v16 h-18 z M290 82 h18 M295 73 v6 M303 73 v6"/>
+  <text class="label" x="310" y="115" text-anchor="middle">buckets</text>
+  <text class="sub" x="310" y="132" text-anchor="middle">split</text>
 
   <rect class="node" x="435" y="60" width="160" height="80" rx="12"/>
   <path class="accent" d="M495 75 h20 v7 l-10 6 -10 -6 z M495 88 v8 M515 88 v8"/>
-  <text class="label" x="515" y="125" text-anchor="middle">request</text>
-  <text class="sub" x="515" y="140" text-anchor="middle">adapter</text>
+  <text class="label" x="515" y="115" text-anchor="middle">request</text>
+  <text class="sub" x="515" y="132" text-anchor="middle">adapter</text>
 
   <rect class="node" x="640" y="60" width="160" height="80" rx="12"/>
-  <path class="accent" d="M700 75 h18 v8 h-18 z M700 86 h18 v8 h-18 z M704 79 h4 M704 90 h4"/>
-  <text class="label" x="720" y="125" text-anchor="middle">backend</text>
-  <text class="sub" x="720" y="140" text-anchor="middle">page</text>
+  <ellipse class="accent" cx="710" cy="78" rx="8" ry="3.5"/><path class="accent" d="M702 78 v12 c0 2.5 3.5 4.5 8 4.5 s8 -2 8 -4.5 v-12"/>
+  <text class="label" x="720" y="115" text-anchor="middle">backend</text>
+  <text class="sub" x="720" y="132" text-anchor="middle">page</text>
 
   <rect class="node" x="845" y="60" width="160" height="80" rx="12"/>
   <path class="accent" d="M905 75 h18 v18 h-18 z M910 81 h8 M910 87 h8 M910 93 h5"/>
-  <text class="label" x="925" y="125" text-anchor="middle">hits</text>
-  <text class="sub" x="925" y="140" text-anchor="middle">cut</text>
+  <text class="label" x="925" y="115" text-anchor="middle">hits</text>
+  <text class="sub" x="925" y="132" text-anchor="middle">cut</text>
 
   <path class="path" d="M185 100 H230"/><path id="logssearch-arrow-1" class="arrowhead" d="M222 95 L230 100 L222 105 z"/>
   <path class="path" d="M390 100 H435"/><path id="logssearch-arrow-2" class="arrowhead" d="M427 95 L435 100 L427 105 z"/>
