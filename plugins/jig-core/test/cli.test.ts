@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { piHostDir } from "../../../test/support/pi-host-dir.mjs";
+import { ptyArgv } from "../../../test/support/pty.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
@@ -91,8 +92,7 @@ function run(
     options: { input?: string; tty?: boolean; env?: Record<string, string | undefined>; cwd?: string } = {},
 ) {
     const command = options.tty === true ? "script" : process.execPath;
-    const argv =
-        options.tty === true ? ["-qec", `${process.execPath} ${BIN} ${args.join(" ")}`, "/dev/null"] : [BIN, ...args];
+    const argv = options.tty === true ? ptyArgv([process.execPath, BIN, ...args]) : [BIN, ...args];
     return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
         const child = spawnTest(command, argv, { cwd: options.cwd ?? work, env: env(options.env) });
         let stdout = "";
@@ -121,7 +121,7 @@ function run(
 
 /** The setup prompts, answered when each one appears on the (pseudo-)terminal. */
 function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = work) {
-    const child = spawnTest("script", ["-qec", `${process.execPath} ${BIN} setup`, "/dev/null"], {
+    const child = spawnTest("script", ptyArgv([process.execPath, BIN, "setup"]), {
         cwd,
         env: env(),
     });

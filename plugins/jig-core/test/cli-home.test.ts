@@ -5,6 +5,7 @@ import { spawn, spawnSync } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { ptyArgv, ptyAvailable } from "../../../test/support/pty.ts";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 
@@ -592,7 +593,7 @@ describe("jig setup", () => {
     test("a real terminal is offered the old folder and copies what it answers yes to", {
         timeout: 90_000,
     }, async (t) => {
-        if (spawnSync("script", ["--version"], { encoding: "utf8" }).status !== 0) {
+        if (!ptyAvailable()) {
             t.skip("script is not installed");
             return;
         }
@@ -602,7 +603,7 @@ describe("jig setup", () => {
         writeFileSync(path.join(old, "auth.json"), JSON.stringify({ keep: "copied after a separate yes" }));
         const child = spawn(
             "script",
-            ["-qec", `${process.execPath} ${BIN} setup --source ${path.join(root, "jig.tgz")}`, "/dev/null"],
+            ptyArgv([process.execPath, BIN, "setup", "--source", path.join(root, "jig.tgz")]),
             {
                 cwd: work,
                 env: env(),
