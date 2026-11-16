@@ -31,7 +31,7 @@ the one company plugin in this repository, and its tests run with `npm test`.
   disagree. The maps: `jig-core`, `jig-api`, `jig-ops`, `jig-sandbox`, `jig-agents`, `jig-workflow`, `jig-git`,
   `jig-jira`, `jig-logs`, `jig-mongo`, `jig-memory` and `jig-lens`. A source file over 500 lines is reported as a warning: split it by job.
 - **Writing or running tests:** read [Tests that run real programs](CONTRIBUTING.md#tests-that-run-real-programs) (the
-  sandbox, a real Pi, the launcher) and [Integration tests](docs/integration-tests.md) (real services).
+  sandbox, a real Pi, the launcher) and [Integration tests](docs/integration-tests.md) (real services). [Contributing](CONTRIBUTING.md#the-repository) maps the top-level folders and shows how to run one test file.
 - **Releasing or editing the changelog:** read [Releases](docs/releases.md). A change a user would notice adds one line
   under `## [Unreleased]` in `CHANGELOG.md`.
 - **Changing `jig-session`'s file, the review API, `jig:stage-done` or `contracts/`:** read

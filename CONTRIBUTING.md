@@ -20,6 +20,22 @@ short version for a person, in the order you meet the work.
   settings. A change that would make one of them configurable is refused, however convenient it looks.
 - **A plugin README is the specification.** [AGENTS.md](AGENTS.md) says what that requires.
 
+## The repository
+
+Every plugin under `plugins/` is a Pi package, loaded through `package.json`'s `pi.extensions`.
+
+| Path | Holds |
+|---|---|
+| `plugins/` | the fifteen plugins; [Plugins](docs/plugins.md) names every tool |
+| `contracts/` | versioned files for front-ends; [Front-end contracts](docs/contracts.md) |
+| `examples/jig-acme/` | the one example company plugin, a template to copy |
+| `scripts/` | the gates `npm run check` runs, and the release scripts |
+| `test/` | the root tests, the isolated host in `test/support/`, the eval corpus in `test/eval/` |
+| `bin/` | `jig.mjs`, the `pi` launcher and the host hooks; [The launcher](docs/launcher.md) |
+| `docs/` | the pages and diagrams, including the plugin map and the [writing guide](docs/writing.md) |
+| `.github/` | the workflows, the PR and issue templates, CODEOWNERS, the integration services |
+| `AGENTS.md`, `CONTRIBUTING.md`, `README.md` | the rules an agent reads first, this page, the front page |
+
 ## Set up
 
 | What | Why |
@@ -69,6 +85,15 @@ suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
 
 `npm test` and `npm run test:it` pass `--test-timeout=600000`. Node applies that to a whole test file, not to each
 test, so it bounds a hung file at ten minutes.
+
+One file runs the same way, with the same isolated host as `npm test`:
+
+```bash
+node --import ./test/support/host.mjs --test --test-timeout=600000 test/check-docs.test.ts
+```
+
+`test/support/host.mjs` isolates the test in a temporary home and resolves Pi's host packages, so a file run on its own
+behaves the way it does inside `npm test`. Pass a plugin's file, such as `plugins/jig-git/test/git.test.ts`, the same way.
 
 ### Commit emails
 
