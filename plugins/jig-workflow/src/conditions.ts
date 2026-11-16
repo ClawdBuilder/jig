@@ -325,7 +325,6 @@ function scenariosPass(ev: Evidence): ConditionResult {
         (number) =>
             `scenario ${number}: this stage names it, but the plan does not have it: edit the workflow or the plan`,
     );
-    let passed = 0;
     let waived = 0;
     const waivedLines: string[] = [];
     for (const scenario of scenarios) {
@@ -343,7 +342,7 @@ function scenariosPass(ev: Evidence): ConditionResult {
             lines.push(`scenario ${scenario.number}: failed: fix the cause and record a pass with evidence`);
         } else if (recorded.result !== "pass" || recorded.evidence === undefined) {
             lines.push(`scenario ${scenario.number}: passed without evidence: record it again with evidence`);
-        } else passed++;
+        }
     }
     if (lines.length === 0) {
         const scope = wanted === undefined ? `all ${scenarios.length}` : `the ${scenarios.length}`;

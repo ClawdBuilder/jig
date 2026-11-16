@@ -47,7 +47,7 @@ export async function submitPlan(rt: Runtime, params: Params, call: Call): Promi
         );
     }
     if (approved.fingerprint !== plan.fingerprint) {
-        throw new Error(previewChanged("plan.md", "the user approved it") + " Call submit_plan again.");
+        throw new Error(`${previewChanged("plan.md", "the user approved it")} Call submit_plan again.`);
     }
     updateState(work.paths.dir, (state) => {
         state.plan = {
