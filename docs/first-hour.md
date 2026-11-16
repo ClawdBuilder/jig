@@ -57,14 +57,14 @@ Three more commands help you look around:
 From a terminal, `jig doctor` reads the same setup without starting Pi:
 
 ```text
-Jig doctor · 12 ok · 0 warnings · 0 failures · 7 skipped
+Jig doctor · 12 ok · 1 warning · 0 failures · 7 skipped
 
 This machine
   ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
   ok Pi — 1.5.2
-  ok Jig — 0.5.5
+  ok Jig — 0.5.6
 …
-All checks passed; 7 could not be checked here.
+Nothing is blocked. 1 warning is worth a look.
 ```
 
 ## 3. Set up one plugin: `jig-git`
