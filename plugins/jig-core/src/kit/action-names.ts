@@ -1,5 +1,5 @@
 // Action names Jig renamed in 0.4.0, from the hyphenated form to snake_case, as function-calling tools and MCP write them.
-// The old names stopped applying in 0.5.5. This map only lets /jig and the doctor name an old name and its replacement;
+// The old names still matched in 0.5.5; they stop in 0.5.6. This map only lets /jig and the doctor name an old name and its replacement;
 // it no longer matches a call. Tool names are unchanged.
 export const RENAMED_ACTIONS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     api: { "run-folder": "run_folder", "postman-environments": "postman_environments" },
