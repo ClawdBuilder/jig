@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-11-17
+
+Setup does more for you (defaults found on the machine, a company's proposals and repositories), a tool can require an ask that nothing lowers, and macOS is supported by CI.
+
 ### Added
 
 - Setup can propose a default found on this machine (`detect` on a `text` or `pick` onboarding item); Enter accepts it and the section still validates it.
@@ -16,6 +20,22 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - `exec.run(file, args, { keep })` keeps the end of a program's output (`keep: "tail"`), or both ends (`keep: "both"`), when `maxOutputBytes` cuts it; the marker says how many bytes were left out.
 - A company's map entry can be left out: an entry set to `null` in your `jig.json` removes the company's value of that name, a plugin never sees a `null`, `/jig setup` does not ask for it again, and `/jig` and `jig doctor` say you left it out.
 - A session can compact itself while you are away: `session.compactWhenIdle` in `jig.json` compacts a little before the provider's prompt cache expires, once the context is big enough, and one line says the tokens before and after. Off by default.
+
+### Changed
+
+- A tool action's errors read one way: a bad parameter or unknown field names itself and the closest valid key, and a preview keeps the detail of what would change.
+- With no model provider signed in, setup, `/jig` and `jig doctor` say so and name `/login` or `jig auth login`; `jig auth --help` keeps Pi's own help after one Jig line naming the home's `auth.json`.
+- `/jig setup` inside Pi runs the questions there, and a result that is not ok restores `jig.json` from the backup it names.
+- `jig setup --source <tarball>` installs the tarball where the home finds it, so setup can run from a packed copy; the `jig update` docs say which installed packages it moves.
+- `jig doctor` names a required field a loaded section lacks.
+- A workflow hold covers the worktree `workflow bind` added however a call spells its path (a link or a relative path).
+- The sandbox runtime's transitive zod is overridden to 4.6.7, so the advisory is fixed without changing an upstream's range.
+
+### Fixed
+
+- The file tools write inside the working folder however its path is spelled (through a link, or macOS's `/var` and `/private/var`), and the sandbox's socket folder stays inside macOS's path limit.
+- On a bash older than 4.4 (macOS's `/bin/bash`), the launcher says it needs bash 4.4 or later and how to get it, instead of a bash error; the reattach hint reads the date on macOS.
+- In `jig setup`, Enter on an empty answer no longer ends setup (it exited as if cancelled); at an optional field it leaves the field unset.
 
 ## [0.5.6] - 2026-11-16
 
