@@ -47,4 +47,5 @@ the one company plugin in this repository, and its tests run with `npm test`.
 - **Changing `bin/` or the launcher:** read [The launcher](docs/launcher.md); it is not a plugin.
 - **No secret-shaped literals, even fake ones.** Build a test value from parts, such as `["PMAK", "1a2b"].join("-")`; push
   protection rejects one, and history must then be rewritten (`no-secret-literals.test.ts`).
+- **Issues:** every `gh issue create` passes `--label bug` when Jig breaks a promise it makes, or `--label enhancement`.
 - **Git:** clear commit messages, no `Co-Authored-By` lines. Push only when asked.
