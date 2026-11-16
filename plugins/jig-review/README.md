@@ -111,6 +111,8 @@ to you with both reports.*
 
 ## Layout
 
+Each file of `src/` is in the [code map](docs/code-map.md), with the approval followed through it.
+
 - `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
 - `src/`: the implementation, its checks and the parts it runs on.
 - `skills/`: none: the tool text is the entry.

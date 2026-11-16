@@ -124,6 +124,19 @@ describe("the Pi canary", () => {
         assert.match(schedule[0]?.cron ?? "", /^\d+ \d+ \* \* [0-6]$/, "once a week");
     });
 
+    test("a red run opens one issue, or comments on the open one, with the version and the run", () => {
+        const report = canary.jobs.report;
+        assert.ok(report, "the canary has no report job");
+        assert.deepEqual(report.needs, "canary");
+        assert.match(String(report.if), /failure\(\)/);
+        assert.deepEqual((report as { permissions?: unknown }).permissions, { contents: "read", issues: "write" });
+        const text = read(".github/workflows/pi-canary.yml");
+        assert.match(text, /PI_VERSION: \$\{\{ needs\.canary\.outputs\.pi \}\}/);
+        assert.match(text, /run: node scripts\/pi-canary-issue\.mjs/);
+        // The workflow's own token keeps read-only contents; only the report job may write issues.
+        assert.deepEqual(canary.permissions, { contents: "read" });
+    });
+
     test("installs the newest Pi, and runs the checks, the tests and the install check", () => {
         const text = read(".github/workflows/pi-canary.yml");
         assert.match(text, /npm install -g @earendil-works\/pi-coding-agent@latest/);

@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-16: the 500-line check is a ratchet](#2026-11-16-the-500-line-check-is-a-ratchet)
 - [2026-11-16: the 0.4.x action aliases are gone](#2026-11-16-the-04x-action-aliases-are-gone)
 - [2026-11-12: `jig update` moves the home's packages, never the Pi binary](#2026-11-12-jig-update-moves-the-homes-packages-never-the-pi-binary)
 - [2026-11-12: Jig lives in its own Pi folder, and `jig` is Pi for it](#2026-11-12-jig-lives-in-its-own-pi-folder-and-jig-is-pi-for-it)
@@ -73,6 +74,16 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-16: the 500-line check is a ratchet
+
+**Decision.** The files over 500 lines are listed with their size in `scripts/file-sizes-baseline.json`, and
+`plugins/jig-core/test/file-sizes.test.ts` fails when a file new to the list crosses 500 or a listed file grows. A file
+that shrinks passes and says to lower its number, so the list only gets smaller; the 22 files in it today are the starting
+point. The 2026-10-31 decision kept size as a warning because "a hard limit invites splitting to meet the number, and a
+bad split is worse than a long file". That still holds for complexity, where the count is a guess; file length is exact,
+and a split can be judged by its code map and its tests. An empty warning did not stop a file growing, and a ratchet does
+not ask anyone to split a file for the number alone: it only asks that the number not go up.
 
 ## 2026-11-12: Jig lives in its own Pi folder, and `jig` is Pi for it
 
