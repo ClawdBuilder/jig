@@ -24,6 +24,8 @@ export interface ReviewOptions {
     openInBrowser: () => Promise<string>;
     /** Opens it as soon as the screen appears, once, as if `o` had been pressed (the setting `approvals.openInBrowser`). */
     openAtStart?: boolean;
+    /** The tool declared `always: "ask"`: there is no `s` answer. */
+    always?: boolean;
 }
 
 /** Only what the screen uses of Pi's terminal interface and theme, so tests can pass small fakes. */
@@ -132,7 +134,7 @@ export function createReviewScreen(
                 rule(position),
                 ...shown.map((line) => ` ${line}`),
                 rule(),
-                ` ${key("y")} allow  ${key("s")} allow for this session  ${key("n")}/Esc decline  ${key("o")} open in browser  ` +
+                ` ${key("y")} allow  ${options.always === true ? "" : `${key("s")} allow for this session  `}${key("n")}/Esc decline  ${key("o")} open in browser  ` +
                     theme.fg("muted", "up/down PgUp/PgDn scroll"),
                 ` ${theme.fg("muted", status)}`,
             ];
@@ -141,7 +143,7 @@ export function createReviewScreen(
 
         handleInput(data) {
             if (matchesKey(data, "y")) return answer("allow");
-            if (matchesKey(data, "s")) return answer("allow-session");
+            if (options.always !== true && matchesKey(data, "s")) return answer("allow-session");
             if (matchesKey(data, "n") || matchesKey(data, "escape") || matchesKey(data, "ctrl+c"))
                 return answer("decline");
             if (matchesKey(data, "o")) return openPreview();

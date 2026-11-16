@@ -60,6 +60,13 @@ describe("a dialog question", () => {
         assert.equal(log.inputs.length, 0, "no reason is asked for an allow");
     });
 
+    test("an always ask offers Allow and Decline, never the session answer", async () => {
+        const { ctx, log } = context({ select: () => "Allow" });
+        const result = await createApprovals().ask(ctx, request({ always: true }));
+        assert.equal(result.answer, "allow");
+        assert.deepEqual(log.selects[0]?.options, ["Allow", "Decline"]);
+    });
+
     test("Allow for this session", async () => {
         const { ctx } = context({ select: () => "Allow for this session" });
         const result = await createApprovals().ask(ctx, request());
@@ -199,6 +206,12 @@ describe("the review screen", () => {
         assert.equal(result.answer, "decline");
         assert.equal(result.dismissed, true);
         assert.equal(calls, 1, "no inline retry after the cancel");
+    });
+
+    test("an always ask ignores s and still asks", async () => {
+        const { ctx } = context({ custom: pressing("s", "n") }, "tui");
+        const result = await createApprovals().ask(ctx, request({ ...review, always: true }));
+        assert.equal(result.answer, "decline");
     });
 
     test("s allows for the session", async () => {

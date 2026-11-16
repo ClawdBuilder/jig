@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Added
+
+- A tool can declare `always: "ask"`: every call asks, and no rule or session allow lowers it. A rule can still deny it.
+
 ## [0.5.6] - 2026-11-16
 
 Clearer refusals and a typo hint, the 0.4.x action aliases removed, and a README that starts with the install.

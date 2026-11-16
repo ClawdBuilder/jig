@@ -7,8 +7,8 @@
 //   3. the first rule in configuration that matches, which can make it stricter or looser;
 //   4. a session allow, which turns an ask into an allow;
 //   5. the floor, last, which configuration can never lower: production writes, an unknown tool allowed by a wildcard,
-//      `bash` run outside its sandbox without a rule that names the command, a call that needs a screen when there is
-//      none, and a file tool aimed at a protected path.
+//      `bash` run outside its sandbox without a rule that names the command, a call that declared `always: "ask"`, a
+//      call that needs a screen when there is none, and a file tool aimed at a protected path.
 import { matchesName } from "./classify.ts";
 import { canonicalAction } from "./kit/action-names.ts";
 import type {
@@ -32,6 +32,7 @@ export interface DecidedCall {
     environmentKind: EnvironmentKind;
     effect: Effect;
     atLeast?: "ask" | "deny";
+    always?: "ask";
     approval?: ApprovalKind;
     /** The `command` the call carries, for the rules that match on one. */
     command?: string;
@@ -60,7 +61,7 @@ export interface Verdict {
     /** The screen a rule or the tool chose for asking. */
     approval?: ApprovalKind;
     /** What the floor changed, when it did. */
-    floor?: "production-write" | "unknown-tool" | "outside-needs-rule" | "no-screen" | "protected-path";
+    floor?: "production-write" | "unknown-tool" | "outside-needs-rule" | "always-ask" | "no-screen" | "protected-path";
     /** A plain sentence for the model, set when the decision is deny. */
     reason?: string;
 }
@@ -185,6 +186,12 @@ export function decide(input: DecideInput): Verdict {
                 floor = "outside-needs-rule";
             }
         }
+    }
+    // A tool can say its call asks every time. A rule may still deny it; nothing else lowers it.
+    if (call.always === "ask" && decision !== "deny" && decision !== "ask") {
+        decision = "ask";
+        source = "floor";
+        floor = "always-ask";
     }
     if (decision === "ask" && !input.hasUI) {
         decision = "deny";

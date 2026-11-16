@@ -40,7 +40,13 @@ closed instead of running ungoverned.
   never a body, a description or a query. A tool that defines its own renderer
   keeps it. Nothing the model receives changes.
 - **`declareTool(declaration)`** says how the tool's calls are classified.
-  - `classify` is pure and fast, because it runs before every call. A
+  - `classify` is pure and fast, because it runs before every call. It returns
+    a `CallClass`: `environment`, `effect`, and optional `action`, `approval`,
+    `atLeast` and `always`. `always: "ask"` is a floor rule: every call asks,
+    no rule or session allow lowers it, and a rule may still deny it. It is new
+    in 0.5.7, and an older Jig ignores it; also declare `atLeast: "ask"` so an
+    older Jig still asks, though there a rule or a session allow can lower it.
+    The field is an optional addition, so `JigApi.version` stays `1`. A
     `TypeError` from it means invalid input.
   - An optional `preview` feeds the review screen.
   - It also says whether the tool masks its own results.
