@@ -5,14 +5,11 @@
 [![CI](https://github.com/ClawdBuilder/jig/actions/workflows/ci.yml/badge.svg)](https://github.com/ClawdBuilder/jig/actions/workflows/ci.yml)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
-**Jig makes a coding agent's work visible, bounded and yours to approve.**
+**Rules, approvals and a record for the [Pi](https://pi.dev) coding agent.**
 
-Jig is a set of plugins for the [Pi](https://pi.dev) coding agent. It decides what the agent may do, asks you when it
-matters, keeps credentials out of its reach, and records what happened. The agent keeps its tools; Jig puts one policy,
-one approval path and one record around all of them.
-
-Jig never signs in; the tool that owns a login does ([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
-A production result is masked before the model sees it. The same rules govern `bash`, pull requests, Jira, databases, APIs, CI and child agents.
+Jig decides what the agent may do. It asks you before a write, keeps credentials and personal data away from the model,
+and records every call it allows. It never signs in: the tool that owns a login does
+([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
 
 ## Install
 
