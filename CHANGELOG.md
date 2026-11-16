@@ -7,6 +7,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 ### Added
 
 - A tool can declare `always: "ask"`: every call asks, and no rule or session allow lowers it. A rule can still deny it.
+- `jig doctor` warns when the running Jig is outside an installed company package's `jig.range`.
 
 ## [0.5.6] - 2026-11-16
 
