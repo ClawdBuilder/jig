@@ -9,7 +9,7 @@ newer than the version they had, once, after an update, so every entry is writte
 2. **Move the entries.** `node scripts/release.mjs 0.3.0` raises `version` in `package.json` and moves everything under
    `## [Unreleased]` into `## [0.3.0] - <today>`, gathering repeated `### Added`, `### Changed` and `### Fixed` headings.
 3. **Re-capture the doctor samples after the version bump.** Pack the tree, install it into a temporary home with
-   `npx <tarball> setup --yes`, run `jig doctor`, and paste its real output into [README](../README.md) and
+   `jig setup --source <tarball> --yes`, run `jig doctor`, and paste its real output into [README](../README.md) and
    [Your first hour](first-hour.md); `npm run check` fails if a captured `Jig — x.y.z` line is stale.
 4. **Read the diff.** The script writes files and nothing else; the entries are what a user will read.
 5. **Commit** it as `Release 0.3.0`.

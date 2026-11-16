@@ -540,7 +540,7 @@ describe("jig setup", () => {
     test("on an empty home: makes the home, installs Jig in it, and writes the jig command", async () => {
         const result = await run(["setup", "--yes", "--source", path.join(root, "jig.tgz")]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
-        assert.deepEqual(piArgs(), [`install ${path.join(root, "jig.tgz")}`]);
+        assert.deepEqual(piArgs(), [`install npm:${path.join(root, "jig.tgz")}`]);
         assert.equal(calls()[0]?.home, jig, "Pi installs with PI_CODING_AGENT_DIR set to the home");
         assert.ok(existsSync(path.join(jig, "settings.json")), "the home holds Pi's settings");
         const shim = path.join(home, ".local", "bin", "jig");

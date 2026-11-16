@@ -27,6 +27,15 @@ test("an auth.json provider is ready and the line names the provider, never the 
     assert.doesNotMatch(JSON.stringify(line), /secret-key/);
 });
 
+test("Jig's own tarball is not mistaken for an extension", () => {
+    const dir = home();
+    writeFileSync(
+        path.join(dir, "settings.json"),
+        JSON.stringify({ packages: ["npm:/tmp/pack/clawdbuilder-jig-0.5.6.tgz"] }),
+    );
+    assert.deepEqual(modelAuthState(dir, {}), { kind: "missing" });
+});
+
 test("an extension package is skipped, because its provider cannot be checked here", () => {
     const dir = home();
     writeFileSync(
