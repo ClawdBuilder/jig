@@ -92,6 +92,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor.ts` | `/jig doctor`: the check list, the levels, the counts, the metadata and the text report, quiet or full | `commands.ts`, `doctor-json.ts` |
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
+| `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
@@ -168,6 +169,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `relay.ts` | The built-in relay transport: health, the request body, and the three answers | `state.ts`, `doctor-checks.ts` |
 | `tunnels.ts` | How a company plugin gives a tool a network route of its own, such as a database behind a jump host | `state.ts` |
 | `exec.ts` | Runs programs for tools: an argument list, never a shell, with a timeout and a minimal environment | `api.ts`, `preview-html.ts`, `secrets.ts` |
+| `exec-output.ts` | What a program's output keeps past the cap: head, tail, or both | `exec.ts` |
+| `contract-run.ts` | The `exec.run` options and result, re-exported from `contract.ts` | `contract.ts`, `exec.ts` |
 | `git-config-guard.ts` | Refuses a repository whose own configuration would run a command when git runs | `exec.ts` |
 
 ### The request kit (kit/)

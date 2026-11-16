@@ -172,6 +172,8 @@ function valuesArgs(config: HelmDeploy, target: Target, revision: number): strin
 export interface HelmLimits {
     timeoutMs: number;
     maxBytes: number;
+    /** What the cut keeps: both ends, for a change that prints progress and then the outcome. */
+    keep?: "both";
 }
 
 export const HELM_READ: HelmLimits = { timeoutMs: 30_000, maxBytes: 4 * 1024 * 1024 };
@@ -179,7 +181,7 @@ export const HELM_READ: HelmLimits = { timeoutMs: 30_000, maxBytes: 4 * 1024 * 1
  * Long enough for helm's own five minutes for hooks, so that
  * it is helm that gives up and not this plugin that kills it.
  */
-export const HELM_CHANGE: HelmLimits = { timeoutMs: 6 * 60_000, maxBytes: 1024 * 1024 };
+export const HELM_CHANGE: HelmLimits = { timeoutMs: 6 * 60_000, maxBytes: 1024 * 1024, keep: "both" };
 
 /** The helm commands that can be started: the two that change a release, and the two that read its history. */
 function allowed(args: readonly string[]): boolean {
@@ -204,6 +206,7 @@ export async function startHelm(kube: Kube, args: readonly string[], limits: Hel
         timeoutMs: limits.timeoutMs,
         signal: kube.signal,
         maxOutputBytes: limits.maxBytes,
+        ...(limits.keep === undefined ? {} : { keep: limits.keep }),
         env: programEnvironment(),
     });
 }

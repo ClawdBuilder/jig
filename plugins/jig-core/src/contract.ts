@@ -204,28 +204,6 @@ export interface ProgramCredential {
     host: string;
 }
 
-export interface RunOptions {
-    cwd?: string;
-    /** Default 60 000. */
-    timeoutMs?: number;
-    /** Written to the process's standard input. */
-    input?: string;
-    /** Added to a minimal environment; the parent's environment is not passed whole. */
-    env?: Readonly<Record<string, string>>;
-    /** A credential jig-core resolves and attaches to this one call, and registers for redaction. */
-    credential?: ProgramCredential;
-    signal?: AbortSignal;
-    /** Output beyond this is cut. Default 10 MiB. */
-    maxOutputBytes?: number;
-}
-
-export interface RunResult {
-    code: number;
-    stdout: string;
-    stderr: string;
-    timedOut: boolean;
-}
-
 /**
  * One request a sign-in service authenticates: everything a service that signs the request itself (an HMAC scheme, AWS
  * Signature Version 4) needs to sign it as it will be sent, so a POST is not signed as a GET.
@@ -1014,3 +992,7 @@ export interface WatchDoneEvent {
     title: string;
     result: WatchResult;
 }
+
+import type { RunOptions, RunResult } from "./contract-run.ts";
+
+export type { OutputKeep, RunOptions, RunResult } from "./contract-run.ts";
