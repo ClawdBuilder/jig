@@ -66,7 +66,12 @@ export function modelAuthState(home: string, env: NodeJS.ProcessEnv = process.en
                 : typeof entry === "object" && entry !== null
                   ? (entry as { source?: unknown }).source
                   : undefined;
-        if (typeof source !== "string" || source.includes("@clawdbuilder/jig")) continue;
+        if (
+            typeof source !== "string" ||
+            source.includes("@clawdbuilder/jig") ||
+            /(^|\/)clawdbuilder-jig[^/]*\.tgz$/i.test(source)
+        )
+            continue;
         return {
             kind: "unknown",
             reason: `an extension package (${source}) is installed; doctor cannot check its model provider.`,

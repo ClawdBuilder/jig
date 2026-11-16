@@ -43,6 +43,17 @@ ${detail}
 
 A red run means "look at the new Pi", not that a change is bad (docs/compatibility.md). CI stays pinned to the tested
 version until this is understood.`;
-    gh(["api", `repos/${repo}/issues`, "--method", "POST", "-f", `title=${TITLE}`, "-f", `body=${body}`]);
+    gh([
+        "api",
+        `repos/${repo}/issues`,
+        "--method",
+        "POST",
+        "-f",
+        `title=${TITLE}`,
+        "-f",
+        "labels[]=bug",
+        "-f",
+        `body=${body}`,
+    ]);
     console.log(`opened "${TITLE}"`);
 }

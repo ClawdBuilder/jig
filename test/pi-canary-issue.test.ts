@@ -43,6 +43,7 @@ test("with no open issue, it opens one with the Pi version and the run link", (t
     const { status, stdout, calls } = run(t, fake, {});
     assert.equal(status, 0, stdout);
     assert.match(calls, /--method\nPOST\n-f\ntitle=Pi canary red/);
+    assert.match(calls, /-f\nlabels\[\]=bug/);
     assert.match(calls, /Pi: 1\.6\.0/);
     assert.match(calls, /actions\/runs\/42/);
     assert.match(stdout, /opened/);

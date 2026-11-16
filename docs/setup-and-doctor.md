@@ -61,7 +61,8 @@ that does, so the installed copy behaves like a checkout. If `jig` cannot find P
 ## Packages
 
 A Pi package goes into Jig's home with `jig install npm:…`, into your own Pi with `pi install npm:…`, or into both.
-`jig install -l` writes the project's `.pi/settings.json`, which both read. The launcher is optional; [The
+A package installed by name is unpinned, so `jig update` moves it to the newest release with Jig; `npm:<pkg>@<version>`
+keeps it where it is. `jig install -l` writes the project's `.pi/settings.json`, which both read. The launcher is optional; [The
 launcher](launcher.md) covers it, and Jig works without it.
 
 ## Setting up

@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+const ROOT = path.resolve(process.env.JIG_VERSION_PINS_ROOT ?? path.join(import.meta.dirname, ".."));
 const parse = (text) => text.split(".").map(Number);
 const older = (a, b) => {
     const left = parse(a);
@@ -38,6 +38,12 @@ for (const file of [path.join(ROOT, "README.md"), ...walk(path.join(ROOT, "docs"
         for (const match of line.matchAll(/@clawdbuilder\/jig@(\d+\.\d+\.\d+)/g)) {
             if (older(match[1], manifest.version))
                 failures.push(`${rel}:${index + 1} install example pins ${match[1]}, older than ${manifest.version}`);
+        }
+        for (const match of line.matchAll(/Jig — (\d+\.\d+\.\d+)/g)) {
+            if (match[1] !== manifest.version)
+                failures.push(
+                    `${rel}:${index + 1} captured Jig — ${match[1]} but package.json is ${manifest.version}; re-capture the doctor block`,
+                );
         }
         if (/\b(npm install|pi install)\b/.test(line)) {
             for (const match of line.matchAll(/(?<![\w./-])@(\d+\.\d+\.\d+)/g)) {
