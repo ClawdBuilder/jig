@@ -8,6 +8,7 @@ import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./
 import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
+import { companyRangeChecks } from "./doctor-company-range.ts";
 import {
     compareVersions,
     currentPiRequirement,
@@ -36,12 +37,12 @@ export const DOCTOR_CHECKS: ReadonlyArray<
     ["config", configChecks],
     ["secrets", checkSecrets],
     ["config", relayChecks],
+    ["config", companyRangeChecks],
     ["logins", loginChecks],
     ["network", networkChecks],
     ["sandbox", sandboxChecks],
     ["records", recordsChecks],
 ];
-
 /** The checked part of a running jig-core. */
 export function doctorContext(state: JigState): DoctorContext {
     const sections = new Map<string, unknown>(effectiveDefaults(state));
@@ -66,7 +67,6 @@ export function doctorContext(state: JigState): DoctorContext {
         onboarding: activeOnboarding(state),
     };
 }
-
 /** The relays declared in jig.json: health, the protocol it speaks, and whether the token resolves. */
 export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]> {
     const relays = context.sections.get(TRANSPORTS_SECTION);

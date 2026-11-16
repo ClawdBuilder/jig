@@ -129,7 +129,8 @@ updates the Pi binary, because your `pi` and any other Jig home share it; `pi up
 Setup pins Jig's own entry to the version it installed, so `pi update` leaves it alone and `jig update` moves it.
 Other pinned packages stay where they are, as in Pi. A company package can cap which Jig versions are allowed with
 `"jig": { "range": ">=0.4.1 <0.5.0" }`; update stops at the newest version inside every installed company's range and
-names the range.
+names the range. `jig doctor` warns when the running Jig is outside one of those ranges, and says nothing when it is
+inside.
 
 `--models` refreshes Pi's built-in catalogs only. Pi builds that runtime without loading extensions, so an extension
 provider's list is not touched: jig-bedrock refreshes with `/bedrock refresh`, or when `/model` opens on a list more
