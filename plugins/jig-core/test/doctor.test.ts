@@ -719,6 +719,26 @@ test("an absolute program is checked as a path, not looked up on PATH", () => {
     assert.equal(findOnPath(path.join(home, "missing-program"), { PATH: "" }), undefined);
 });
 
+test("a long title stays on its label's line, instead of leaving the label alone", () => {
+    const path = "/var/folders/h5/t85nd63d71x27_8gl5gw3l_w0000gn/T/jig-cli-x/broken-package";
+    const lines = formatDoctor(
+        {
+            lines: [{ id: "x", group: "config", level: "fail", title: path, detail: "could not be loaded: boom" }],
+            counts: { ok: 0, warn: 0, fail: 1, skip: 0 },
+            meta: { jig: "0.5.6", pi: "1.5.2", node: "24", platform: "darwin", network: false },
+        },
+        { width: 80 },
+    );
+    const text = lines.join("\n");
+    assert.match(
+        text,
+        new RegExp(`^ {2}fail ${path.replaceAll(".", "\\.")}$`, "m"),
+        "the title is on the label's line",
+    );
+    assert.match(text, /^ +— could not be loaded: boom$/m);
+    assert.doesNotMatch(text, /^ {2}fail$/m, "the label is never alone");
+});
+
 test("coloured doctor output wraps the plain text and colours only the label", () => {
     const lines = formatDoctor(
         {
