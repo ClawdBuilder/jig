@@ -19,6 +19,7 @@ const MAPPED = [
     "jig-memory",
     "jig-mongo",
     "jig-ops",
+    "jig-review",
     "jig-sandbox",
     "jig-workflow",
 ];
