@@ -88,6 +88,31 @@ test("a fenced block left open is a failure, not a silent skip of the rest", () 
     );
 });
 
+test("an indented line after a paragraph is an orphan, as the README had", () => {
+    // The shape left by a deleted bullet: an intro line, a blank, then the old bullet's second line, indented.
+    const root = tree({
+        "README.md":
+            "# Title\n\n## What is next\n\nWork with a page behind it, not a promise:\n\n  from `jig-jira`, and embeddings after real-ticket recall.\n",
+    });
+    const failures = checkDocs(root).failures;
+    assert.ok(
+        failures.some((one: string) => one.includes("indented line after a paragraph")),
+        failures.join("\n"),
+    );
+});
+
+test("a list item's indented second paragraph is not an orphan", () => {
+    const root = tree({
+        "README.md": "# Title\n\n- an item\n  - a sub-item\n\n  a second paragraph of the item\n\n- the next item\n",
+    });
+    assert.deepEqual(checkDocs(root).failures, []);
+});
+
+test("a wrapped list item line is not an orphan", () => {
+    const root = tree({ "README.md": "# Title\n\n- an item whose line wraps\n  and continues here\n" });
+    assert.deepEqual(checkDocs(root).failures, []);
+});
+
 test("the warning baseline counts each kind and fails only when a count goes up", () => {
     const warnings = [
         "docs/a.md:1 paragraph is long",

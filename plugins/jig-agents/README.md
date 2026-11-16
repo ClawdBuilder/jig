@@ -17,6 +17,13 @@ For example, the agent starts a `scout` with the task "find where `orders-api` r
 on. The scout can read the code and run `rg`, `git log` and `git blame`; it cannot edit a file or push. When it
 finishes, its report arrives as a message.
 
+A `subagent status` call with no child running, copied from a run:
+
+```text
+subagent status
+No children in this session.
+```
+
 ![A child agent: the agent calls subagent start, jig-agents starts a separate Pi in RPC mode and holds the pipe, the child loads the same plugins, jig-agents sends the task and counts turns, minutes and cost, questions come to you and answers go back, and the report arrives as a message](../../docs/img/agents-rpc.svg)
 
 *How a child runs. The child is a full Pi with the same plugins, so Jig's rules govern it; `jig-agents` holds the pipe to it,
