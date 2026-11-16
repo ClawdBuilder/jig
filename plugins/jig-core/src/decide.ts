@@ -220,8 +220,13 @@ function denyReason(
 ): string {
     const named = call.action === undefined ? `${call.tool} call` : `${call.tool} ${call.action}`;
     if (floor === "protected-path" && protectedRefusal !== undefined) return protectedRefusal;
-    if (floor === "production-write")
-        return `${named} is refused by Jig's floor: it writes to ${call.environment}, which is production. Tell the person; do not retry or work around it`;
+    if (floor === "production-write") {
+        const where =
+            call.environment === "production"
+                ? "it writes to production"
+                : `it writes to ${call.environment}, which Jig treats as production`;
+        return `${named} is refused by Jig's floor: ${where}. Tell the person; do not retry or work around it`;
+    }
     if (floor === "no-screen") return "this call needs approval and there is no screen to ask on";
     if (source === "tool") return "the tool's own declaration denies this action";
     return `${named} in ${call.environment} is refused by a rule in jig.json; /jig rules ${call.tool} shows it`;

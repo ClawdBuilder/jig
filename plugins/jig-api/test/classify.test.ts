@@ -130,7 +130,7 @@ describe("the class of a run", () => {
         assert.equal(verdict.floor, "production-write");
         assert.equal(
             verdict.reason,
-            "api Search orders is refused by Jig's floor: it writes to production, which is production. Tell the person; do not retry or work around it",
+            "api Search orders is refused by Jig's floor: it writes to production. Tell the person; do not retry or work around it",
         );
     });
 

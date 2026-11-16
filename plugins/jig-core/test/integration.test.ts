@@ -52,7 +52,7 @@ describe("writes", () => {
         assert.equal(result.isError, true);
         assert.equal(
             result.text,
-            "Blocked by jig-core: fake_tool wipe is refused by Jig's floor: it writes to prod, which is production. Tell the person; do not retry or work around it.",
+            "Blocked by jig-core: fake_tool wipe is refused by Jig's floor: it writes to prod, which Jig treats as production. Tell the person; do not retry or work around it.",
         );
         assert.deepEqual(w.log.executed, [], "the tool never ran");
         assert.equal(w.ui?.selects.length, 0, "and nobody was asked");

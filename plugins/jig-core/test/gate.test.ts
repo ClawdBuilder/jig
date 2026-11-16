@@ -96,7 +96,7 @@ describe("what is denied", () => {
         assert.equal(outcome.blocked, true);
         assert.equal(
             outcome.reason,
-            "Blocked by jig-core: fake call is refused by Jig's floor: it writes to prod, which is production. Tell the person; do not retry or work around it.",
+            "Blocked by jig-core: fake call is refused by Jig's floor: it writes to prod, which Jig treats as production. Tell the person; do not retry or work around it.",
         );
         assert.equal(ran, false);
         assert.equal(harness.ui.selects.length, 0, "nobody is asked about something that cannot be allowed");
