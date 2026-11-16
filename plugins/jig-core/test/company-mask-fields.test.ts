@@ -143,7 +143,10 @@ describe("a name the masker refuses", () => {
             assert.match(notice ?? "", /addMaskFields ignored a number: an extra field name has no letters or digits/);
 
             await harness.host.commands.get("jig")?.handler("", harness.ctx as never);
-            const status = harness.notifications().at(-1) ?? "";
+            const status = [
+                harness.notifications().at(-1) ?? "",
+                ...harness.ui.selects.flatMap((item) => item.options),
+            ].join("\n");
             assert.match(status, /Configuration problems \(2\):/);
             assert.match(status, /addMaskFields ignored "": /);
         } finally {

@@ -900,7 +900,7 @@ describe("CLI conventions", () => {
             result.stdout,
             /^In Jig, `jig auth` signs in for this home; credentials are stored in .*auth\.json\./,
         );
-        assert.match(result.stdout, /pi auth login <provider>/);
+        assert.match(result.stdout, /Usage:\n  pi auth/);
     });
 
     test("a near miss of a command is a hint and exit 2, not a model session", { timeout: 20_000 }, async () => {
