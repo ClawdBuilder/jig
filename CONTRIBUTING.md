@@ -117,8 +117,8 @@ chmod +x .git/hooks/pre-push
 - **A test that fails without it.** Most of this repository is behaviour a reader cannot see, such as a decision, a mask or
   a recorded line, so the test is the only proof.
 - **The specification, in the same commit.** The plugin's README, its page under `docs/`, or the code map when a file moves.
-- **A changelog line, if a user would notice.** Add it under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md): one line,
-  written for the person reading it after an update.
+- **A changelog line, if a user would notice.** Add a file in [changelog.d/](changelog.d/): its `### Added`, `### Changed`,
+  `### Fixed` or `### Removed` heading and one line, written for the person reading it after an update.
 - **A decision, if a public name goes.** Removing or renaming anything in [Compatibility](docs/compatibility.md) needs a dated
   entry in [Decisions](docs/decisions.md) first, and the pin test changes in the same commit. Adding a name is free; add it to
   the test that pins it.
