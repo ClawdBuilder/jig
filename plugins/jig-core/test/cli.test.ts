@@ -354,7 +354,8 @@ describe("jig doctor", () => {
         assert.equal(doctor.code, 1, doctor.stdout);
         assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
         // The doctor names the settings file as it really is; on macOS /var is a link, so the test asks for that form.
-        assert.match(doctor.stdout, new RegExp(`In ${realpathSync(projectFile()).replaceAll(".", "\\.")}`));
+        // The doctor wraps at a width: on macOS the longer /private/var path moves after "In", with the line break.
+        assert.match(doctor.stdout, new RegExp(`In\\s+${realpathSync(projectFile()).replaceAll(".", "\\.")}`));
     });
 
     test("stock Pi and the doctor agree on a project delta", { timeout: 60_000 }, async () => {
@@ -400,7 +401,8 @@ describe("jig doctor", () => {
         assert.equal(doctor.code, 1, doctor.stdout);
         assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
         // The doctor names the settings file as it really is; on macOS /var is a link, so the test asks for that form.
-        assert.match(doctor.stdout, new RegExp(`In ${realpathSync(projectFile()).replaceAll(".", "\\.")}`));
+        // The doctor wraps at a width: on macOS the longer /private/var path moves after "In", with the line break.
+        assert.match(doctor.stdout, new RegExp(`In\\s+${realpathSync(projectFile()).replaceAll(".", "\\.")}`));
     });
 
     test("an invalid jig.json is a FAIL line in a report, not a crash", { timeout: 60_000 }, async () => {
@@ -569,6 +571,7 @@ describe("a package installed from git", () => {
 
     test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         gitInstall("user", "github.com/example/jig", "jig", "0.3.0", "export default function () {}\n");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
@@ -597,6 +600,7 @@ describe("a package installed from git", () => {
 
     test("an optional field is offered as skippable, and Enter leaves it unset", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         settingsWith(NEEDS_FIXTURE);
         const result = await runSetup([

@@ -5,6 +5,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
+import { writableFolders } from "../../jig-core/src/writable-folders.ts";
 import { findPrograms, onPath } from "../src/programs.ts";
 
 let root = "";
@@ -35,7 +36,8 @@ test("a link from a trusted folder into a writable one is passed over too", () =
     const trusted = path.join(root, "usr", "bin");
     mkdirSync(trusted, { recursive: true });
     symlinkSync(planted, path.join(trusted, "python3"));
-    const writable = (place: string) => place.startsWith(path.join(root, "project"));
+    // The sandbox's own rule, in the real forms: a name is not writable just because its spelling is not (macOS /var).
+    const writable = writableFolders([path.join(root, "project")]);
     assert.equal(onPath("python3", trusted, writable), undefined);
 });
 

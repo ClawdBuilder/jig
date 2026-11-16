@@ -65,10 +65,11 @@ export function launcherBashPath(): string | undefined {
     for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
         const candidate = path.join(dir, "bash");
         if (dir === "" || !existsSync(candidate)) continue;
+        // Major and minor as one number: 3.2 is 302 and 5.2 is 502, so the version asked for is 4.4, not 44.
         const check = spawnSync(candidate, ["-c", "echo $((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))"], {
             encoding: "utf8",
         });
-        if (check.status === 0 && Number(check.stdout.trim()) >= 44) return realpathSync(candidate);
+        if (check.status === 0 && Number(check.stdout.trim()) >= 404) return realpathSync(candidate);
     }
     return undefined;
 }

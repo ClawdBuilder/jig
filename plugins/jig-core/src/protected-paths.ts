@@ -16,6 +16,7 @@ import { existsSync, lstatSync, readdirSync, readlinkSync, statSync } from "node
 import path from "node:path";
 import { PI_PROJECT_PATHS, projectFoldersBelowHome } from "./kit/pi-project-paths.ts";
 import { runsLaterPaths } from "./kit/runs-later.ts";
+import { writableFolders } from "./writable-folders.ts";
 import { fileURLToPath } from "node:url";
 
 export type ProtectedKind = "secret" | "guarded";
@@ -72,7 +73,7 @@ export interface CheckContext extends PathContext {
     /** Pi's working folder: where a relative path starts. */
     cwd: string;
     home: string;
-    /** Whether bash may write this absolute path (the sandbox's own answer). Default: the working folder only. */
+    /** Whether bash may write this absolute path (the sandbox's own answer). Default: the working folder's real form. */
     canWrite?: (absolute: string) => boolean;
 }
 
@@ -638,8 +639,7 @@ export function checkFileTool(
         const hit = find(targetForms, entries, ANY, "inside", sep);
         if (hit === undefined) {
             const api = flavour(context.platform);
-            const writable =
-                context.canWrite ?? ((absolute: string) => isInside(absolute, api.resolve(context.cwd), sep));
+            const writable = context.canWrite ?? writableFolders([context.cwd], context.platform);
             if (targetForms.some((form) => !writable(form))) {
                 return {
                     ask: true,

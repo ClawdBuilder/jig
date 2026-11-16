@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from "../src/config.ts";
 import type { SandboxSettings } from "../src/config.ts";
 import { sandbox } from "../src/index.ts";
 import type { SandboxOptions } from "../src/index.ts";
+import { runtimeSocketPath, socketPathLimit } from "../src/runtime-tmp.ts";
 import { fakeBrokers } from "./support/fake-broker.ts";
 import type { FakeBrokerOptions } from "./support/fake-broker.ts";
 import { fakeContext, fakePi } from "./support/fake-pi.ts";
@@ -253,7 +254,13 @@ describe("the broker's life", () => {
             (name) => !(process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING"),
         );
         assert.deepEqual(names.sort(), ["CLAUDE_CODE_TMPDIR", "HOME", "LANG", "PATH", "TMPDIR"]);
-        assert.equal(launch.env.CLAUDE_CODE_TMPDIR, path.join(path.dirname(launch.cwd), "tmp"));
+        // The runtime names its sockets in TMPDIR, and a socket path must fit in sun_path: macOS session folders under
+        // /private/var/folders are often too long, and then the socket folder is /tmp instead of the session's own.
+        const sessionTmp = path.join(path.dirname(launch.cwd), "tmp");
+        const fits = runtimeSocketPath(sessionTmp, process.pid).length <= socketPathLimit();
+        const runtimeTmp = fits ? sessionTmp : "/tmp";
+        assert.equal(launch.env.CLAUDE_CODE_TMPDIR, runtimeTmp);
+        assert.equal(launch.env.TMPDIR, runtimeTmp);
         assert.ok(!JSON.stringify(launch.env).includes("token-value"));
         assert.equal(s.brokers.log.stops, 0);
 
