@@ -230,7 +230,7 @@ async function guardTypo() {
     if (first === undefined || first.startsWith("-") || first.includes(" ")) return false;
     const { nearestCommand } = await loadHelp();
     const near = nearestCommand(first);
-    if (near === undefined) return false;
+    if (near === undefined || near === first.toLowerCase()) return false;
     process.stderr.write(`Unknown command ${first}. Did you mean jig ${near}? To ask Pi, run: jig "${first} …"\n`);
     process.exit(2);
 }
