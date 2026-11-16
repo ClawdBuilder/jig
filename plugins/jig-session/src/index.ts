@@ -1,15 +1,18 @@
 // Pi entry point of jig-session. It publishes the live session's state as one status file per session, for any program to
 // read: which terminal the session runs in, its model, context, ticket, workflow stage, the files it changed and its recent
-// tool calls (the README specifies the file). It writes files only: nothing listens on a port, nothing is sent anywhere, and
-// no argument value or secret is written.
+// tool calls (the README specifies the file). It writes files only: nothing listens on a port, it sends nothing itself, and
+// no argument value or secret is written. With `session.compactWhenIdle` set, it also asks Pi to compact a session that has
+// been idle for a while, a little before the provider's prompt cache expires.
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
-import { jig } from "../../jig-core/src/client.ts";
+import { jig, withJig } from "../../jig-core/src/client.ts";
 import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
 import type { ContextHost } from "./context.ts";
 import { ContextView } from "./context.ts";
 import { buildReport, showContext } from "./context-command.ts";
 import { stateDir } from "./files.ts";
+import { idleCompact, idleCompactionLine, validateSessionSection } from "./idle-compact.ts";
+import type { Timers } from "./idle-compact.ts";
 import { SWITCHES_ENTRY } from "./requests.ts";
 import { StatusFile, terminalOf } from "./status.ts";
 import type { Sources } from "./status.ts";
@@ -25,6 +28,8 @@ export interface SessionOptions extends Partial<Sources> {
     onStatus?: (status: StatusFile) => void;
     /** Replaces the parts of Pi the Context part uses, for a test. */
     contextHost?: Partial<ContextHost>;
+    /** The timers the idle compaction uses, for a test with a clock it moves itself. */
+    timers?: Timers;
 }
 
 /** A section of jig.json as jig-core loaded it; undefined without jig-core or without the section. */
@@ -44,7 +49,18 @@ const isChild = (env: NodeJS.ProcessEnv): boolean =>
 export function session(options: SessionOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const env = options.env ?? process.env;
+        const slot = options.section ?? section;
+        // Registered in every process, child sessions included: a `session` section in jig.json must not be an unknown
+        // field there.
+        withJig((api) => api.config.registerSection("session", validateSessionSection));
         if (isChild(env)) return;
+        // `/jig` says what the setting is, when the person set one.
+        withJig((api) =>
+            api.status?.register("jig-session", () => {
+                const line = idleCompactionLine(slot);
+                return line === undefined ? [] : [line];
+            }),
+        );
         const context = new ContextView({
             allTools: () => pi.getAllTools(),
             activeTools: () => pi.getActiveTools(),
@@ -59,7 +75,7 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
             env,
             stateDir: options.stateDir ?? (() => stateDir(env)),
             agentDir: options.agentDir ?? (() => getAgentDir()),
-            section: options.section ?? section,
+            section: slot,
             tools: options.tools ?? (() => ({ active: pi.getActiveTools().length, total: pi.getAllTools().length })),
             thinking:
                 options.thinking ??
@@ -178,6 +194,9 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
             status.activity.ended(event.toolCallId, event.toolName, event.isError);
             status.write();
         });
+
+        // With `session.compactWhenIdle` set, compact a little before the prompt cache expires, once the person is away.
+        idleCompact(pi, { section: slot, ...(options.timers === undefined ? {} : { timers: options.timers }) });
     };
 }
 
