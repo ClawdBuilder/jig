@@ -71,6 +71,20 @@ function setup(
     return { state, api, file, load, problems };
 }
 
+test("a null entry removes the company's entry of that name", () => {
+    const out = layered(
+        { mongo: { connections: { staging: { host: "s" }, prod: { host: "p" } } } },
+        { mongo: { connections: { prod: null } } },
+    );
+    assert.deepEqual(out, { mongo: { connections: { staging: { host: "s" } } } });
+});
+
+test("a null for a key the company does not have is harmless, and nothing in the result is null", () => {
+    const out = layered({ acme: { host: "h" } }, { acme: { host: "mine", unknown: null }, other: null });
+    assert.deepEqual(out, { acme: { host: "mine" } });
+    assert.equal(JSON.stringify(out).includes("null"), false);
+});
+
 describe("your section is checked laid over the company's defaults", () => {
     test("you write only what you change: the company gives the sign-in, you give the site", () => {
         const { api, load, problems } = setup({ jira: { site: "https://jira.example.com" } });

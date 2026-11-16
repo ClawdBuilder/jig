@@ -75,6 +75,8 @@ function lay(
     firsts: readonly (readonly string[])[],
 ): unknown {
     if (mine === undefined) return theirs;
+    // A null is a removal, never a value (RFC 7396): the key is handled where its object meets the company's.
+    if (mine === null) return theirs;
     if (Array.isArray(theirs) && Array.isArray(mine) && replaces(unions, path)) return united(theirs, mine);
     if (!isPlainObject(theirs) || !isPlainObject(mine)) return mine;
     // Yours takes the place of theirs whole: nothing of the company's stays beside it.
@@ -83,6 +85,11 @@ function lay(
     const dropped = displaced(groups, path, mine);
     for (const [key, value] of Object.entries(theirs)) if (!dropped.has(key)) put(out, key, value);
     for (const [key, value] of Object.entries(mine)) {
+        // The person leaves the company's entry out: the key goes, and nothing null reaches a plugin.
+        if (value === null) {
+            Reflect.deleteProperty(out, key);
+            continue;
+        }
         put(
             out,
             key,
