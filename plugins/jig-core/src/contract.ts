@@ -4,6 +4,7 @@
 // client.ts. They never import jig-core's modules: Pi gives each installed package its own module root, so a
 // company plugin cannot share jig-core's module instances (Pi's docs/packages.md, "Declare dependencies").
 
+import type { DetectName } from "./detect.ts";
 import type { ProposalItem } from "./setup-proposal.ts";
 // A company can propose an entry for one of the person's own sections; setup asks before writing it.
 
@@ -877,32 +878,31 @@ export type OnboardingMethodField =
 /** The secret stores a company can prefer. The names are `jig.json`'s. */
 export type OnboardingStore = "pass" | "env" | "keychain" | "op" | "cmd" | "file";
 
-/** One step of a company's onboarding list. */
+/** An onboarding answer's section and dotted path, and the words that ask for it. */
+interface OnboardingAnswer {
+    /** The section of `jig.json` the answer goes to, such as `"acme"`. */
+    section: string;
+    /** A dotted path inside it, such as `"bastion.user"`. */
+    path: string;
+    label: string;
+    why?: string;
+}
+
+/** One step of a company's onboarding list; a `text` or `pick` step may name a `detect` probe. */
 export type OnboardingItem =
-    | {
+    | ({
           kind: "text";
-          /** The section of `jig.json` the answer goes to, such as `"acme"`. */
-          section: string;
-          /** A dotted path inside it, such as `"bastion.user"`. */
-          path: string;
-          label: string;
-          why?: string;
           placeholder?: string;
           optional?: boolean;
-      }
-    | {
+          detect?: DetectName;
+      } & OnboardingAnswer)
+    | ({
           kind: "pick";
-          section: string;
-          path: string;
-          label: string;
           choices: readonly string[];
-          why?: string;
-      }
-    | {
+          detect?: DetectName;
+      } & OnboardingAnswer)
+    | ({
           kind: "reference";
-          section: string;
-          path: string;
-          label: string;
           /** The stores to offer; left out, all the stores this machine has. */
           stores?: readonly OnboardingStore[];
           /** The store marked as the company's choice; overrides the entry's `preferredStore`. */
@@ -911,8 +911,7 @@ export type OnboardingItem =
           suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
           /** What to tell the person to add it, per store: `{ "pass": "pass insert acme/sso-token" }`. */
           addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
-          why?: string;
-      }
+      } & OnboardingAnswer)
     | {
           kind: "login";
           /** The program that owns the login, such as `"gh"`. */

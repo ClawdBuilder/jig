@@ -6,6 +6,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- Setup can propose a default found on this machine (`detect` on a `text` or `pick` onboarding item); Enter accepts it and the section still validates it.
 - A company plugin can declare the remote patterns its repositories match; setup offers them as a scope and writes `when.remotes`.
 - Workflow scenarios can be accepted in stages with a stage's `scenarios`, and a person can waive one with a reason; `scenarios-pass` names every scenario still missing.
 - `mongo` can name a `service`; each connection maps it to that environment's database, and the preview and record show the resolved name.

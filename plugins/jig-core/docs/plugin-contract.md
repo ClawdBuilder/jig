@@ -161,7 +161,10 @@ closed instead of running ungoverned.
   the list rather than ignoring the kind.
   `preferredStore`, and `items` of kind `text`, `pick`, `reference`, `login` or `info`, each naming the section and dotted
   path an answer goes to. Setup asks the items in the company's order, with its labels and hints, and doctor turns the ones
-  still missing into "you need" lines. It is optional: without it, setup uses the section validators. A test can stand in
+  still missing into "you need" lines. A `text` or `pick` item may name a `detect` probe (`user`, `git-email`, `gh-account`,
+  `aws-profile`) for a proposed default; an unknown probe, or one on an `optional` item, is refused at registration, and an
+  older Jig refuses the list rather than ignoring it.
+  It is optional: without it, setup uses the section validators. A test can stand in
   without it, so it is optional in the type. See [Company plugins](../../../docs/company-plugin.md#9-onboarding-what-your-people-must-supply).
 - **`profiles.register(name, options)`** is how a company plugin says it is one, and returns a view of the API for it. What it gives
   through the view (`config.addEnvironments`, `addRules`, `addClassifyRules`, `addSecretCommands`, `enableSecretBackends`,
