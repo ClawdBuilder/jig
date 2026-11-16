@@ -19,6 +19,7 @@ import { installCommand, findPrograms } from "./programs.ts";
 import type { FoundPrograms } from "./programs.ts";
 import { inside } from "./pathing.ts";
 import { canWritePath, computeRules, runtimeFilesystem } from "./rules.ts";
+import { runtimeTmpDir } from "./runtime-tmp.ts";
 import { wireNetwork } from "./network/wiring.ts";
 import { firstLine, messageOf, refusal, userNamespaceHint } from "./sandbox-messages.ts";
 import { ensureSessionFolders, makeSessionFolders, runtimeConfig } from "./sandbox-setup.ts";
@@ -194,6 +195,8 @@ export class Sandbox {
         this.sessionDir = session;
         const settings = deps.settings();
         const tmp = path.join(session, "tmp");
+        // The runtime names its sockets in TMPDIR, and on macOS this session's folder is often too deep for sun_path.
+        const runtimeTmp = runtimeTmpDir(tmp, { platform: deps.platform });
         const broker = await deps.startBroker({
             script: deps.brokerScript,
             cwd: path.join(session, "broker"),
@@ -202,8 +205,8 @@ export class Sandbox {
                 PATH: deps.env.PATH ?? "",
                 HOME: deps.home(),
                 LANG: deps.env.LANG ?? "C.UTF-8",
-                CLAUDE_CODE_TMPDIR: tmp,
-                TMPDIR: tmp,
+                CLAUDE_CODE_TMPDIR: runtimeTmp,
+                TMPDIR: runtimeTmp,
             },
         });
         this.broker = broker;

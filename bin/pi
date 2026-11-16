@@ -42,6 +42,10 @@ for arg in "$@"; do
         *) args+=("$arg") ;;
     esac
 done
+# `${args[@]}` and `${#args[@]}` on an empty array are "unbound variable" under `set -u` in bash before 4.4, which macOS
+# ships: count and expand through the `+` form, which yields nothing when the array is empty.
+argc=0
+for _argument in ${args[@]+"${args[@]}"}; do argc=$((argc + 1)); done
 [ "${JIG_NO_TMUX:-}" = 1 ] && tmux=0
 [ "${JIG_NEW:-}" = 1 ] && fresh=1
 # herdr keeps its terminals alive and lists the agents running in them by the program in front, which inside tmux is tmux, not
@@ -53,7 +57,7 @@ interactive=1
 { [ -t 0 ] && [ -t 1 ]; } || interactive=0
 [ "${JIG_FORCE_INTERACTIVE:-}" = 1 ] && interactive=1
 case "${args[0]:-}" in install|remove|uninstall|update|list|config|auth|mcp) interactive=0 ;; esac
-for arg in "${args[@]}"; do case "$arg" in -p|--print|--mode|-h|--help|-v|--version|--list-models|--export) interactive=0 ;; esac; done
+for arg in ${args[@]+"${args[@]}"}; do case "$arg" in -p|--print|--mode|-h|--help|-v|--version|--list-models|--export) interactive=0 ;; esac; done
 
 # WSL: a long-lived terminal (a tmux server, for one) can hold the interop socket of a session that is gone. Windows programs
 # (a browser for a sign-in, the clipboard) then hang and fail with "UtilAcceptVsock: accept4 failed 110". A live socket answers
@@ -100,9 +104,10 @@ detached_here() {
 
 # Reattaches (and does not return) when the user wants a Pi that is still running here.
 reattach() {
-    local found=() i choice tty="${JIG_TTY:-/dev/tty}"
+    local found=() i found_count=0 choice tty="${JIG_TTY:-/dev/tty}"
     mapfile -t found < <(detached_here)
-    case ${#found[@]} in
+    for _session in ${found[@]+"${found[@]}"}; do found_count=$((found_count + 1)); done
+    case $found_count in
         0) return ;;
         1)
             say "reattaching to the Pi still running here (${found[0]#* }, last active $(when "${found[0]%% *}")); \`$command_name --new\` starts another"
@@ -110,18 +115,20 @@ reattach() {
             ;;
     esac
     say "Pis still running in this folder (\`$command_name --new\` skips this):"
-    for i in "${!found[@]}"; do
-        printf '  %d) %s  last active %s\n' "$((i + 1))" "${found[$i]#* }" "$(when "${found[$i]%% *}")" >&2
+    i=1
+    for _session in ${found[@]+"${found[@]}"}; do
+        printf '  %d) %s  last active %s\n' "$i" "${_session#* }" "$(when "${_session%% *}")" >&2
+        i=$((i + 1))
     done
     # Opened once, so a menu read from a file advances line by line as a terminal does.
     { exec 9<"$tty"; } 2>/dev/null || return
     while :; do
-        printf 'Reattach to which? [1-%d, n or Enter = new session] ' "${#found[@]}" >&2
+        printf 'Reattach to which? [1-%d, n or Enter = new session] ' "$found_count" >&2
         IFS= read -r choice <&9 || [ -n "$choice" ] || choice=n
         case "$choice" in
             ""|n|N) exec 9<&-; return ;;
             *[!0-9]*) ;;
-            *) if [ "$choice" -ge 1 ] && [ "$choice" -le "${#found[@]}" ]; then exec 9<&-; attach_to "${found[$((choice - 1))]#* }"; fi ;;
+            *) if [ "$choice" -ge 1 ] && [ "$choice" -le "$found_count" ]; then exec 9<&-; attach_to "${found[$((choice - 1))]#* }"; fi ;;
         esac
         say "not a choice"
     done
@@ -167,14 +174,14 @@ collect_session_names() {
 # Start inside Jig's own tmux server (-L jig, bin/tmux.conf); inside tmux this script runs again.
 if [ "$interactive" = 1 ] && [ "$tmux" = 1 ] && [ -z "${TMUX:-}" ] && command -v tmux >/dev/null; then
     if [ "$fresh" = 0 ]; then
-        case "${#args[@]}:${args[0]:-}" in 0:|1:-c|1:--continue) reattach ;; esac
+        case "${argc}:${args[0]:-}" in 0:|1:-c|1:--continue) reattach ;; esac
     fi
     folder="${PWD##*/}"; [ -n "$folder" ] || folder=root
     name="pi-$(printf %s "$folder" | tr -c 'A-Za-z0-9_-' '-' | cut -c1-24)-$$"
     collect_session_names
     # tmux reads an argument that ends in `;` as the end of a command; a backslash before the `;` keeps it as text.
     session_args=()
-    for arg in "${args[@]}"; do
+    for arg in ${args[@]+"${args[@]}"}; do
         case "$arg" in *\;) arg="${arg%;}\\;" ;; esac
         session_args+=("$arg")
     done
@@ -182,7 +189,7 @@ if [ "$interactive" = 1 ] && [ "$tmux" = 1 ] && [ -z "${TMUX:-}" ] && command -v
     # session does not apply this one.
     tmux -L jig -f "$JIG_PACKAGE_DIR/bin/tmux.conf" \
         set-option -g update-environment "${session_names[*]}" \; \
-        new-session -s "$name" -c "$PWD" -e "JIG_TMUX_SESSION=$name" -- "$self" "${session_args[@]}" \; \
+        new-session -s "$name" -c "$PWD" -e "JIG_TMUX_SESSION=$name" -- "$self" ${session_args[@]+"${session_args[@]}"} \; \
         set-option -gu update-environment
     status=$?
     after_tmux "$name"; exit $status
@@ -194,4 +201,4 @@ if [ "$interactive" = 1 ] && [ "$tmux" = 1 ] && [ -n "${JIG_TMUX_SESSION:-}" ] \
     tmux set-option @jig_cwd "$PWD" 2>/dev/null || true
 fi
 
-exec "$pi_bin" "${args[@]}"
+exec "$pi_bin" ${args[@]+"${args[@]}"}
