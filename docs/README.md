@@ -16,6 +16,7 @@ Every page, grouped by what you are doing. New to Jig? The first row of the firs
 |---|---|
 | [Architecture](architecture.md) | The tool manager, the sandbox boundary and where each plugin fits |
 | [Permissions](permissions.md) | Environments, rules per tool, and the floor configuration cannot lower |
+| [How the agent learns Jig](agent-skills.md) | The ten skills, the tools' one-line snippets, and company overlays |
 | [Approvals](approvals.md) | How and where you are asked, inside the waiting call |
 | [Secrets](secrets.md) | Where credentials come from, and the stores Jig reads |
 | [Compatibility](compatibility.md) | What Jig is tested with, which names are public, what counts as breaking |
