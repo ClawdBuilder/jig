@@ -90,7 +90,7 @@ At session start, a line says which stage the active ticket is in and what is mi
 - **Evidence is recorded against what it is about.** A new commit ends a test result, and an edited plan
   needs approving again ([State](docs/state.md)).
 - **Setup failures and stage events.** A command that could not run tests says “tests did not run” and points at
-  `workflow.tests`; a stage move publishes `jig:stage-done`. The old `submit-plan` name is accepted through 0.4.x.
+  `workflow.tests`; a stage move publishes `jig:stage-done`.
 - **Tests run in the sandbox.** Without `jig-sandbox`, or for a command set to run `outside`, a test run asks
   first, naming the command. A Gradle wrapper gets the JDK that fits ([Tests](docs/tests.md#the-jdk-of-a-gradle-build)).
 - **The agent cannot mark anything passed.** It asks for a run, an approval or a check, and the plugin

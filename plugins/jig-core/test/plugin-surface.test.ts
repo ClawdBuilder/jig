@@ -49,7 +49,6 @@ const EXPECTED: Record<string, Given> = {
                 "scenario",
                 "start",
                 "status",
-                "submit-plan",
                 "submit_plan",
                 "test",
             ],

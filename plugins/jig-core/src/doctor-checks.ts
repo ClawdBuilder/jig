@@ -442,8 +442,7 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             level: "warn",
             title: `Rule action ${renamed.from} is now ${renamed.to}`,
             detail:
-                "A rule in your settings names the action's old, hyphenated name. It still applies through 0.4.x, and it will " +
-                "stop applying in 0.5.0.",
+                "A rule in your settings names the action's old, hyphenated name. It no longer applies; change it to the new name.",
             fix: `Change ${renamed.from} to ${renamed.to} where it appears in your Jig settings.`,
         });
     }

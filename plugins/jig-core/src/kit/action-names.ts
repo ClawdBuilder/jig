@@ -1,6 +1,6 @@
 // Action names Jig renamed in 0.4.0, from the hyphenated form to snake_case, as function-calling tools and MCP write them.
-// A rule, a role's actions or a workflow hold that still names the old one keeps matching through 0.4.x; /jig and the doctor
-// say which one to update. 0.5.0 removes the aliases. Tool names are unchanged.
+// The old names stopped applying in 0.5.5. This map only lets /jig and the doctor name an old name and its replacement;
+// it no longer matches a call. Tool names are unchanged.
 export const RENAMED_ACTIONS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     api: { "run-folder": "run_folder", "postman-environments": "postman_environments" },
     mongo: { "index-stats": "index_stats", "create-index": "create_index", "drop-index": "drop_index" },
@@ -13,9 +13,9 @@ export const RENAMED_ACTIONS: Readonly<Record<string, Readonly<Record<string, st
     workflow: { "submit-plan": "submit_plan" },
 };
 
-/** The name an action has today: the old one is mapped, anything else is returned as it came. */
-export function canonicalAction(tool: string, action: string): string {
-    return RENAMED_ACTIONS[tool]?.[action] ?? action;
+/** The name an action has today. Old names are only named by the diagnostics below; they no longer match. */
+export function canonicalAction(_tool: string, action: string): string {
+    return action;
 }
 
 /** The rename behind an old action name, for a message, or undefined when the name is current. */

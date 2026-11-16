@@ -449,8 +449,8 @@ describe("jig doctor", () => {
         );
         const result = await run(["doctor"]);
         assert.match(result.stdout, /Rule action run-folder is now run_folder/);
-        assert.match(result.stdout, /still applies through 0\.4\.x/);
-        assert.match(result.stdout, /stop applying in 0\.5\.0/);
+        assert.match(result.stdout, /no longer applies/);
+        assert.match(result.stdout, /Change run-folder to run_folder/);
     });
 
     test("--json prints the report and keeps the exit code", { timeout: 60_000 }, async () => {

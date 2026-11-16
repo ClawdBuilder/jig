@@ -15,7 +15,7 @@ const role = (lines: string[] = [], name = "scout"): Role =>
     );
 
 describe("an action renamed in 0.4.0", () => {
-    test("a role file or a setting that names the old action still narrows the child the same way", () => {
+    test("a role file or a setting that names the old action is not rewritten", () => {
         const text = (lines: string): Role =>
             parseRole(
                 `---\ndescription: d\ntools: read, workflow\nwrites: false\n${lines}\n---\nYou do the work.\n`,
@@ -25,9 +25,9 @@ describe("an action renamed in 0.4.0", () => {
         const e = effectiveRole(text("actions: workflow submit-plan|back"), {
             actions: { workflow: ["submit_plan", "back"] },
         });
-        assert.deepEqual(e.actions, { workflow: ["submit_plan", "back"] });
+        assert.deepEqual(e.actions, { workflow: ["back"] });
         const asked = effectiveRole(text("ask: workflow submit-plan"), undefined);
-        assert.deepEqual(policyOf(asked).ask, { workflow: ["submit_plan"] });
+        assert.deepEqual(policyOf(asked).ask, { workflow: ["submit-plan"] });
     });
 });
 

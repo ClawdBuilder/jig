@@ -41,15 +41,10 @@ describe("input that is not valid is refused before anyone is asked", () => {
         assert.equal(w.asked.length, 0);
     });
 
-    test("the old submit-plan name is canonicalised at the tool boundary", async (t) => {
+    test("the old submit-plan name is an unknown action", async (t) => {
         const w = await started(t);
         const result = await w.call({ action: "submit-plan" });
-        assert.doesNotMatch(result.text, /unknown action/);
-        const record = w.core
-            .records()
-            .filter((entry) => entry.tool === "workflow")
-            .at(-1);
-        assert.equal(record?.action, "submit_plan", "the record uses the canonical action");
+        assert.match(result.text, /unknown action "submit-plan"/);
     });
 
     test("a pass without evidence, and evidence of two kinds", async (t) => {
