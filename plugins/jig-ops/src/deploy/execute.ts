@@ -68,7 +68,12 @@ export async function lookOnce(kube: Kube, version: string | undefined, now: num
 export function checkUnchanged(toolCallId: string, plan: Plan): void {
     const approved = jig().approvedPreview(toolCallId);
     if (approved?.fingerprint === undefined || approved.fingerprint === plan.fingerprint) return;
-    throw new Error(previewChanged(`deploy ${plan.action} of ${plan.env.service} in ${plan.env.name}`));
+    throw new Error(
+        previewChanged(
+            `deploy ${plan.action} of ${plan.env.service} in ${plan.env.name}`,
+            `it is running ${plan.from} now`,
+        ),
+    );
 }
 
 /** The first lines of what a program printed, cleaned, for the model to read. */

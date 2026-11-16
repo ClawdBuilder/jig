@@ -446,7 +446,7 @@ test("rerun refuses to send when the run changed after the user saw the preview"
     const result = await call({ action: "rerun", run_id: 101 });
     assert.match(
         result.error?.message ?? "",
-        /^ci rerun of orders-api: changed since the preview; run it again to see the new preview\. Nothing was sent\.$/,
+        /^ci rerun of orders-api: changed since the preview\. Nothing was changed; run it again to see the new preview\.$/,
     );
     assert.equal(h.gh.callsOf("run rerun").length, 0, "nothing was sent for the call that changed");
 });

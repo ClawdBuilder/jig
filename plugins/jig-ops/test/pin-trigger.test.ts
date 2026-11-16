@@ -73,7 +73,7 @@ describe("the trigger preview of an environment with a pin", () => {
         });
         assert.match(
             result.error?.message ?? "",
-            /^ci trigger of checkout: changed since the preview; run it again to see the new preview\. Nothing was sent\.$/,
+            /^ci trigger of checkout: changed since the preview\. Nothing was changed; run it again to see the new preview\.$/,
         );
         assert.equal(g.concourse.started, 0);
     });

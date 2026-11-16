@@ -130,10 +130,7 @@ test("push: a commit that lands after the preview is refused as changed since th
         { action: "push", repo: r.name },
         { between: () => void commitFile(r.dir, "late.ts", "late\n", "Late commit") },
     );
-    assert.match(
-        result.error?.message ?? "",
-        /git push: changed since the preview; run it again to see the new preview/,
-    );
+    assert.match(result.error?.message ?? "", /git push: changed since the preview\. Nothing was changed/);
     assert.throws(() => git(r.origin, "rev-parse", "--verify", "refs/heads/feature/p7"), "nothing was pushed");
     ok(await h.call("git", { action: "push", repo: r.name }));
     assert.equal(remoteSha(r, "feature/p7"), git(r.dir, "rev-parse", "HEAD"));

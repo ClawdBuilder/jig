@@ -198,7 +198,7 @@ describe("the fingerprint", () => {
 
 describe("changed since the preview", () => {
     const refusal = (call: string) =>
-        `${call}: changed since the preview; run it again to see the new preview. Nothing was sent.`;
+        `${call}: changed since the preview. Nothing was changed; run it again to see the new preview.`;
 
     test("a body, a path, a header or a method that a later hook changed is not sent", async () => {
         // What a later hook changes, and the call as the refusal names it: the call as it would now be sent.

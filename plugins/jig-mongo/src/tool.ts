@@ -234,8 +234,8 @@ export function createTool(options: MongoOptions = {}): MongoTool {
         const approved = jig().approvedPreview(toolCallId);
         if (approved?.fingerprint === undefined || approved.fingerprint === prepared.fingerprint) return;
         const before = counted.get(approved.fingerprint);
-        const change = before === undefined ? "" : ` (it was ${before}; now ${prepared.counted})`;
-        throw new ChangedError(previewChanged(label));
+        const detail = before === undefined ? undefined : `it was ${before}; now ${prepared.counted}`;
+        throw new ChangedError(previewChanged(label, detail));
     }
 
     async function runWrite(toolCallId: string, c: Checked, run: WriteRun, signal: AbortSignal) {

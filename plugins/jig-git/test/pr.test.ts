@@ -407,10 +407,7 @@ test("create: a commit pushed after the preview is refused as changed since the 
             },
         },
     );
-    assert.match(
-        result.error?.message ?? "",
-        /pr create: changed since the preview; run it again to see the new preview/,
-    );
+    assert.match(result.error?.message ?? "", /pr create: changed since the preview\. Nothing was changed/);
     assert.equal(writes("create").length, 0);
 });
 
@@ -887,10 +884,7 @@ test("merge: a head that moves after the preview is refused, and nothing is merg
                 h.gh.on("pr view", { json: prJson({ headRefOid: "2222222222222222222222222222222222222222" }) }),
         },
     );
-    assert.match(
-        result.error?.message ?? "",
-        /pr merge: changed since the preview; run it again to see the new preview/,
-    );
+    assert.match(result.error?.message ?? "", /pr merge: changed since the preview\. Nothing was changed/);
     assert.equal(writes("merge").length, 0);
 });
 

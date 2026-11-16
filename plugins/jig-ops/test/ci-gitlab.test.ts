@@ -336,7 +336,7 @@ describe("rerun", () => {
         );
         assert.match(
             result.error?.message ?? "",
-            /^ci rerun of orders-api: changed since the preview; run it again to see the new preview\. Nothing was sent\.$/,
+            /^ci rerun of orders-api: changed since the preview\. Nothing was changed; run it again to see the new preview\.$/,
         );
         assert.deepEqual(g.world.retried, []);
     });
@@ -437,7 +437,7 @@ describe("trigger", () => {
         );
         assert.match(
             result.error?.message ?? "",
-            /^ci trigger of orders-api: changed since the preview; run it again to see the new preview\. Nothing was sent\.$/,
+            /^ci trigger of orders-api: changed since the preview\. Nothing was changed; run it again to see the new preview\.$/,
         );
         assert.deepEqual(g.world.created, []);
     });

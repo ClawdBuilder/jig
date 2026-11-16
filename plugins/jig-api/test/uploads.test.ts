@@ -187,7 +187,7 @@ describe("what the person approves", () => {
         );
         assert.equal(
             changed.error?.message,
-            'api run "Body": changed since the preview; run it again to see the new preview. Nothing was sent.',
+            'api run "Body": changed since the preview. Nothing was changed; run it again to see the new preview.',
         );
         assert.equal(h.api.requests.length, 1, "only the first one was sent");
         // The file is the new one on the next run, and its preview shows the new digest.

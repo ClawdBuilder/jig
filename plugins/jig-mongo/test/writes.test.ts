@@ -96,7 +96,7 @@ describe("changed since the preview", () => {
         const result = await h.call(update, { between: () => void (h.backend.answers.count = 13) });
         assert.match(
             result.error?.message ?? "",
-            /^mongo update staging orders\.orders: changed since the preview; run it again to see the new preview\. Nothing was sent\.$/,
+            /^mongo update staging orders\.orders: changed since the preview \(it was 12 documents match; now 13 documents match\)\. Nothing was changed; run it again to see the new preview\.$/,
         );
         assert.equal(h.backend.of("update").length, 0);
         assert.equal(

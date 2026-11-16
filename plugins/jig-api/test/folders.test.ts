@@ -157,7 +157,7 @@ describe("a folder with a write", () => {
         );
         assert.equal(
             refused.error?.message,
-            "api run_folder Lifecycle: changed since the preview; run it again to see the new preview. Nothing was sent.",
+            "api run_folder Lifecycle: changed since the preview. Nothing was changed; run it again to see the new preview.",
         );
         assert.equal(h.api.requests.length, 3, "only the approved run sent anything");
     });

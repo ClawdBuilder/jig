@@ -242,7 +242,7 @@ describe("changed since the preview", () => {
         const result = await run("1.4.3", ORDERS, { between: () => h.cluster.answer(orders("1.4.3")) });
         assert.equal(
             result.error?.message,
-            "deploy run of orders-api in staging: changed since the preview; run it again to see the new preview. Nothing was sent.",
+            "deploy run of orders-api in staging: changed since the preview (it is running 1.4.3 now). Nothing was changed; run it again to see the new preview.",
         );
         assert.deepEqual(h.cluster.helmCalls(), []);
         assert.deepEqual(

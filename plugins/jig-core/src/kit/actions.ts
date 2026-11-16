@@ -62,9 +62,9 @@ export function describeActions(table: ActionTable): string {
         .join("\n");
 }
 
-/** The one sentence for a preview whose world changed before the write was sent. */
-export function previewChanged(label: string): string {
-    return `${label}: changed since the preview; run it again to see the new preview. Nothing was sent.`;
+/** The one sentence for a preview whose world changed before the write was sent. `detail` says what moved. */
+export function previewChanged(label: string, detail?: string): string {
+    return `${label}: changed since the preview${detail === undefined ? "" : ` (${detail})`}. Nothing was changed; run it again to see the new preview.`;
 }
 
 /** An action list for a schema description, without a summary per action. */
