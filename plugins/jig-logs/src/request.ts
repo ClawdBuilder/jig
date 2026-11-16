@@ -123,7 +123,7 @@ function describe(error: unknown): unknown {
         }
         const suffix = error.transportCode === undefined ? "" : ` (${error.transportCode})`;
         return new TransportFailure(
-            `the log backend was not changed: ${error.message}${suffix}`,
+            `the log backend refused the read: ${error.message}${suffix}`,
             error.notSent,
             error.transportCode,
             error.requestId,

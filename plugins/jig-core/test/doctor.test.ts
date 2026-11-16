@@ -750,6 +750,35 @@ describe("the human marks", () => {
         // install into the person's own Pi folder instead.
         assert.doesNotMatch(jigLine?.detail ?? "", /If your Pi runs/);
         assert.match(jigLine?.fix ?? "", /Install it: jig install npm:@clawdbuilder\/jig/);
+        // The `jig` command sets PI_CODING_AGENT_DIR itself, so the default home must not read as the variable's doing.
+        const launcher = path.join(home, ".jig");
+        const asLauncher = await runDoctor(
+            context({
+                overrides: {
+                    standalone: true,
+                    jigInPi: false,
+                    agentDir: launcher,
+                    env: { PATH: "", PI_CODING_AGENT_DIR: launcher },
+                },
+            }),
+            options(),
+        );
+        const launcherLine = asLauncher.lines.find((entry) => entry.id === "machine.agent");
+        assert.match(launcherLine?.detail ?? "", /the default home/);
+        assert.doesNotMatch(launcherLine?.detail ?? "", /from PI_CODING_AGENT_DIR/);
+        const named = path.join(home, "named");
+        const fromJigHome = await runDoctor(
+            context({
+                overrides: {
+                    standalone: true,
+                    jigInPi: false,
+                    agentDir: named,
+                    env: { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: named },
+                },
+            }),
+            options(),
+        );
+        assert.match(fromJigHome.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /from JIG_HOME/);
         const byDefault = await runDoctor(context({ overrides: { standalone: true, jigInPi: false } }), options());
         assert.match(byDefault.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /the default/);
         // The `jig` command checks the home, so its row says so; inside Pi the same row names Pi's folder.

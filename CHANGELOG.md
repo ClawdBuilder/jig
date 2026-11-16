@@ -4,6 +4,24 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-11-16
+
+Clearer refusals and a typo hint, the 0.4.x action aliases removed, and a README that starts with the install.
+
+### Added
+
+- `jig <word>` one or two letters from a command says `Did you mean jig <command>?` and exits, instead of starting a session with the typo as the prompt.
+- Docs: the README starts with the install, `docs/README.md` is a grouped index, a new page explains how the agent learns Jig, and every diagram is redrawn to read at a glance, with a dark mode.
+
+### Changed
+
+- A refusal names the call and the next step (`… is refused by Jig's floor: … Tell the person; do not retry or work
+  around it`; a rule in `jig.json` says `/jig rules <tool>` shows it), a refused read says the read was refused rather
+  than that nothing changed, a relay timeout names the call's setting before the relay's own deadline, and `jig doctor`
+  names the default home instead of the variable it sets. A company plugin's test that matched "writes to production are
+  never allowed" or "a rule in the configuration denies this call" needs the new wording.
+- Releases wait for the maintainer's approval and publish to npm with Trusted Publishing; no stored npm token. Provenance is unchanged.
+
 ### Removed
 
 - The 0.4.x action aliases are gone: a rule, role or workflow that still uses an old hyphenated action name must use its snake_case name. `jig doctor` names the old rule action and its replacement.
