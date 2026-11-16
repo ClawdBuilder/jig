@@ -158,6 +158,35 @@ describe("where a call acts", () => {
         );
     });
 
+    test("a worktree is in scope when the workflow bound it, including through a link; an unbound one is elsewhere", (t) => {
+        const { workspace, orders, bound } = world(t);
+        const worktree = path.join(workspace, "orders-api-PROJ-1-work");
+        git(orders, "worktree", "add", "-q", "-b", "feature/PROJ-1", worktree);
+        const withWorktree = [...bound, worktree];
+        assert.deepEqual(scopeOf(call("write", {}, workspace, [path.join(worktree, "A.java")]), withWorktree), {
+            kind: "repository",
+            root: worktree,
+        });
+        symlinkSync(worktree, path.join(workspace, "worktree-shortcut"));
+        assert.deepEqual(
+            scopeOf(call("write", {}, workspace, [path.join(workspace, "worktree-shortcut", "A.java")]), withWorktree),
+            { kind: "repository", root: worktree },
+        );
+        assert.deepEqual(scopeOf(call("write", {}, workspace, [path.join(worktree, "A.java")]), bound), {
+            kind: "elsewhere",
+        });
+    });
+
+    test("a bound root reached through a link matches the same worktree", (t) => {
+        const { workspace, orders, bound } = world(t);
+        const alias = path.join(workspace, "orders-shortcut");
+        symlinkSync(orders, alias);
+        assert.deepEqual(scopeOf(call("write", {}, workspace, [path.join(orders, "A.java")]), [alias]), {
+            kind: "repository",
+            root: alias,
+        });
+    });
+
     test("git and pr act in the repository they name: a folder in the workspace, or an absolute path", (t) => {
         const { workspace, orders, other, bound } = world(t);
         mkdirSync(path.join(orders, "src"));
