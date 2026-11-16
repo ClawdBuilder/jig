@@ -7,8 +7,11 @@ import { spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { LAUNCHER, REPO, makeWorld, sawPi } from "./support/launcher-world.ts";
+import { LAUNCHER, REPO, launcherSkipReason, makeWorld, sawPi } from "./support/launcher-world.ts";
 import type { World } from "./support/launcher-world.ts";
+
+// macOS ships bash 3.2 and the launcher needs 4.4, so a runner without one skips with the reason.
+const launcherSkip = launcherSkipReason();
 
 let world: World;
 beforeEach(() => {
@@ -58,7 +61,7 @@ const attached = (w: World) => w.calls("tmux").filter((call) => call.includes("a
 const clientEnv = (w: World) =>
     Object.fromEntries(w.calls("tmux-client-env").map(([, name = "", value = ""]) => [name, value]));
 
-describe("the files", () => {
+describe("the files", { skip: launcherSkip }, () => {
     test("bin/pi and bin/clipboard-copy are executable, and every script parses", () => {
         for (const name of ["pi", "clipboard-copy"]) {
             accessSync(path.join(REPO, "bin", name), constants.X_OK);
@@ -111,7 +114,7 @@ describe("the files", () => {
     });
 });
 
-describe("a run that is not interactive", () => {
+describe("a run that is not interactive", { skip: launcherSkip }, () => {
     test("goes straight to Pi: the launcher's flags are removed, Pi's own defaults apply, and nothing else runs", async () => {
         const result = await world.run(["-p", "hello world", "--no-tmux", "--new", "--model", "x"]);
         assert.equal(result.status, 0);
@@ -191,7 +194,7 @@ describe("a run that is not interactive", () => {
     }
 });
 
-describe("turning tmux off", () => {
+describe("turning tmux off", { skip: launcherSkip }, () => {
     for (const [how, args, env] of [
         ["flag", ["--no-tmux"], {}],
         ["variable", [], { JIG_NO_TMUX: "1" }],
@@ -227,7 +230,7 @@ describe("turning tmux off", () => {
     });
 });
 
-describe("finding Pi", () => {
+describe("finding Pi", { skip: launcherSkip }, () => {
     test("skips a shim called pi (which would run the launcher again) and takes the Pi that is installed", async () => {
         const shim = world.file("shim/pi", `#!/bin/sh\necho SHIM\nexec ${LAUNCHER} "$@"\n`, 0o755);
         const result = await world.run(["-p", "go"], { PATH: `${path.dirname(shim)}:${world.bin}` });
@@ -255,7 +258,7 @@ describe("finding Pi", () => {
     });
 });
 
-describe("the WSL interop socket", () => {
+describe("the WSL interop socket", { skip: launcherSkip }, () => {
     const probe = (exit: number) =>
         world.file("windows/cmd.exe", `#!/bin/sh\nprintf 'probe\\t%s\\n' "$*" >> "$FAKE_LOG"\nexit ${exit}\n`, 0o755);
     const socket = () => world.file("run/WSL/1_interop", "");
@@ -345,7 +348,7 @@ describe("the WSL interop socket", () => {
     });
 });
 
-describe("copy on select (bin/clipboard-copy)", () => {
+describe("copy on select (bin/clipboard-copy)", { skip: launcherSkip }, () => {
     const helper = path.join(REPO, "bin", "clipboard-copy");
     const bash = spawnSync("sh", ["-c", "command -v bash"], { encoding: "utf8" }).stdout.trim();
     /** A PATH with only the programs the helper needs, so a clipboard program installed here never answers instead. */
@@ -403,7 +406,7 @@ describe("copy on select (bin/clipboard-copy)", () => {
     });
 });
 
-describe("tmux", () => {
+describe("tmux", { skip: launcherSkip }, () => {
     test("a new session: its name from the folder, the launcher's own server, and the launcher again inside", async () => {
         world.dispose();
         world = makeWorld("My Project.v2 with a very long name");
@@ -604,7 +607,7 @@ describe("tmux", () => {
     });
 });
 
-describe("reattaching", () => {
+describe("reattaching", { skip: launcherSkip }, () => {
     const LIST = "#{session_attached} #{session_activity} #{session_name} #{@jig_cwd}";
     const sessions = (...lines: string[]) => world.file("sessions", `${lines.join("\n")}\n`);
 
@@ -694,7 +697,7 @@ describe("reattaching", () => {
     });
 });
 
-describe("the launcher page", () => {
+describe("the launcher page", { skip: launcherSkip }, () => {
     test("names every flag and variable the launcher reads", () => {
         const section = readFileSync(path.join(REPO, "docs", "launcher.md"), "utf8");
         const source = readFileSync(LAUNCHER, "utf8");

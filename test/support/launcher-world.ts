@@ -10,7 +10,7 @@
 //            attaches; it never starts a server. When it is asked to start a session it also logs a `tmux-client-env` line for
 //            every variable of its own environment: that is what the real tmux client sends to the server
 //   timeout  logs, then runs the program with a Node timer as the limit, so no GNU timeout is needed
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
     chmodSync,
     existsSync,
@@ -60,6 +60,26 @@ case "\${1:-}" in
 esac
 `;
 
+/** The bash the launcher needs: 4.4 or later, because it uses `declare -A` and `mapfile` (macOS ships 3.2). */
+export function launcherBashPath(): string | undefined {
+    for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+        const candidate = path.join(dir, "bash");
+        if (dir === "" || !existsSync(candidate)) continue;
+        const check = spawnSync(candidate, ["-c", "echo $((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))"], {
+            encoding: "utf8",
+        });
+        if (check.status === 0 && Number(check.stdout.trim()) >= 44) return realpathSync(candidate);
+    }
+    return undefined;
+}
+
+/** Why the launcher tests cannot run here, or undefined when they can. */
+export function launcherSkipReason(): string | undefined {
+    return launcherBashPath() === undefined
+        ? "the launcher needs bash 4.4 or later (declare -A, mapfile); this machine has none"
+        : undefined;
+}
+
 function onPath(program: string): string {
     for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
         const file = path.join(dir, program);
@@ -102,7 +122,8 @@ export function makeWorld(folder = "work"): World {
     const program = (name: string, content: string) => {
         writeFileSync(path.join(bin, name), content, { mode: 0o755 });
     };
-    for (const name of COREUTILS) symlinkSync(onPath(name), path.join(bin, name));
+    const bash = launcherBashPath() ?? onPath("bash");
+    for (const name of COREUTILS) symlinkSync(name === "bash" ? bash : onPath(name), path.join(bin, name));
     const cli = path.join(root, "npm", "lib", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "cli.js");
     mkdirSync(path.dirname(cli), { recursive: true });
     writeFileSync(cli, PI, { mode: 0o755 });

@@ -14,7 +14,6 @@ import {
     otherAgentFolders,
     relocatedStores,
 } from "../src/protected-paths.ts";
-import { flavour, formsOf, isInside } from "../src/protected-paths.ts";
 import type { CheckContext, Env, ProtectedPath } from "../src/protected-paths.ts";
 import { writableFolders } from "../src/writable-folders.ts";
 import { start } from "./support/harness.ts";
@@ -857,55 +856,12 @@ describe("the folders the file tools may write", () => {
         mkdirSync(path.join(real, "deep"), { recursive: true });
         symlinkSync(real, path.join(dir, "Link"));
         try {
-            // macOS folds case, so a target in another case is the same file; the folder's own path must fold first,
-            // or one of its forms (`..`, a trailing separator, a link) does not line up with the target's.
+            // The real form decides: macOS folds case, and every spelling of the folder (`..`, a trailing separator, a
+            // link) resolves to the same real folder. The as-written forms are not compared.
             for (const folder of [`${real}/../Real`, `${real}/`, path.join(dir, "Link")]) {
                 const writable = writableFolders([folder], "darwin");
                 assert.equal(writable(path.join(dir, "real", "deep", "x.ts")), true, folder);
                 assert.equal(writable(path.join(real, "deep", "x.ts")), true, folder);
-            }
-        } finally {
-            rmSync(dir, { recursive: true, force: true });
-        }
-    });
-
-    // The measurement for #171: on a real Mac the fold still puts a working-folder write outside, and Linux cannot show
-    // what macOS's filesystem does with these paths. This prints, and never fails, so the job's log carries the lines.
-    test("darwin: what the path forms look like on this machine", {
-        skip: process.platform === "darwin" ? false : "prints the macOS path forms",
-    }, (t) => {
-        const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-diag-"));
-        const work = path.join(dir, "work");
-        mkdirSync(path.join(work, "src"), { recursive: true });
-        const file = path.join(work, "src", "main.ts");
-        writeFileSync(file, "");
-        const link = path.join(dir, "link");
-        symlinkSync(work, link);
-        const api = flavour("darwin");
-        const show = (label: string, value: unknown): void => t.diagnostic(`${label}: ${JSON.stringify(value)}`);
-        try {
-            show("process.platform", process.platform);
-            show("tmpdir()", tmpdir());
-            show("realpathSync(tmpdir())", realpathSync(tmpdir()));
-            show("realpathSync.native(tmpdir())", realpathSync.native(tmpdir()));
-            for (const at of [dir, work, link, file]) {
-                show(`realpathSync(${at})`, realpathSync(at));
-                show(`realpathSync.native(${at})`, realpathSync.native(at));
-            }
-            for (const folder of [work, link]) {
-                show(`flavour(darwin).resolve(${folder})`, api.resolve(folder));
-                const folderForms = formsOf(api.resolve(folder), "darwin");
-                show(`formsOf(folder ${folder})`, folderForms);
-                for (const target of [file, path.join(link, "src", "main.ts")]) {
-                    const targetForms = formsOf(api.resolve(target), "darwin");
-                    show(`formsOf(target ${target})`, targetForms);
-                    show(`writableFolders([${folder}])(${target})`, writableFolders([folder], "darwin")(target));
-                    for (const form of targetForms)
-                        show(
-                            `  ${form} is inside`,
-                            folderForms.filter((one) => isInside(form, one, api.sep)),
-                        );
-                }
             }
         } finally {
             rmSync(dir, { recursive: true, force: true });
@@ -923,6 +879,11 @@ describe("the folders the file tools may write", () => {
             const writable = writableFolders([work]);
             assert.equal(writable(path.join(work, "a.txt")), true, "inside both ways");
             assert.equal(writable(path.join(work, "link", "a.txt")), false, "as written inside, followed outside");
+            // A link inside the folder, pointing inside it: its real form is inside, so it writes.
+            const inner = path.join(work, "inner");
+            mkdirSync(inner, { recursive: true });
+            symlinkSync(inner, path.join(work, "into"));
+            assert.equal(writable(path.join(work, "into", "a.txt")), true, "a link inside the folder, pointing inside");
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }
