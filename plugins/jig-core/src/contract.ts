@@ -24,7 +24,6 @@ export interface EnvironmentInfo {
 export type Effect = "read" | "write";
 
 export type Decision = "allow" | "ask" | "deny";
-
 /** Which screen asks the user: a one-line dialog, a scrollable review screen, or a form. */
 export type ApprovalKind = "dialog" | "review" | "form";
 
@@ -36,11 +35,12 @@ export interface CallClass {
     effect: Effect;
     /** A stricter default than the rules table, such as `ask` for `git restore`. Never looser. */
     atLeast?: "ask" | "deny";
+    /** Always asks; no rule or session allow lowers it, and a rule may deny it. */
+    always?: "ask";
     /** The screen this call uses when it asks. Default: the review screen when the preview has a body,
      *  otherwise a dialog. */
     approval?: ApprovalKind;
 }
-
 /** What the user sees when a call asks. */
 export interface Preview {
     /** One line: what will happen. */

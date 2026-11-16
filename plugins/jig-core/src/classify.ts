@@ -19,6 +19,7 @@ export interface Classification {
     environment: EnvironmentName;
     effect: Effect;
     atLeast?: "ask" | "deny";
+    always?: "ask";
     approval?: ApprovalKind;
     source: ClassSource;
     /** The plugin that declared the tool, when one did. */
@@ -122,7 +123,8 @@ function isValidClass(answer: CallClass): boolean {
             answer.approval === "dialog" ||
             answer.approval === "review" ||
             answer.approval === "form") &&
-        (answer.atLeast === undefined || answer.atLeast === "ask" || answer.atLeast === "deny")
+        (answer.atLeast === undefined || answer.atLeast === "ask" || answer.atLeast === "deny") &&
+        (answer.always === undefined || answer.always === "ask")
     );
 }
 
