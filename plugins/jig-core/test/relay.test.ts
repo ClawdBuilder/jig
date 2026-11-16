@@ -320,6 +320,23 @@ test("the relay deadline is always below Jig's, even at four seconds", async () 
     assert.equal(seen[0]?.body.timeoutMs, 2000);
 });
 
+test("a relay timeout names the call's setting, and the relay's own deadline", async () => {
+    seen = [];
+    next = { protocol: 1, outcome: "unknown", code: "TIMEOUT", message: "the site did not answer in time" };
+    await assert.rejects(
+        relayRequest("orders", { ...CONFIG, url }, { ...requestFor(fixtures.cases[0]!), timeoutMs: 5000 }, deps()),
+        (error: unknown) => {
+            assert.ok(isTransportRefusal(error));
+            assert.equal(error.code, "TIMEOUT");
+            assert.equal(error.notSent, false);
+            assert.match(error.message, /the site did not answer in time/);
+            assert.match(error.message, /the call's timeout is 5 s/);
+            assert.match(error.message, /the relay's deadline 3 s/);
+            return true;
+        },
+    );
+});
+
 test("a relay that is not running is a not-sent refusal", async () => {
     // Port 1 is never served: fetch refuses it before connecting, as a browser does.
     const config = { ...CONFIG, url: "http://127.0.0.1:1" };
@@ -434,7 +451,7 @@ test("jig-jira reads through a relay transport", async () => {
                 body?: string;
             };
             relayedHeaders = body.headers;
-            if (refusedWrite) {
+            if (refusedWrite && body.method !== "GET") {
                 response.setHeader("content-type", "application/json");
                 response.end(
                     JSON.stringify({
@@ -543,7 +560,7 @@ test("jig-logs searches through a relay, and reports a refusal in its own words"
         const refused = await w.call({ phrase: "message", environment: "staging", window: "30m" });
         assert.match(
             refused.error?.message ?? "",
-            /the log backend was not changed: logs are off in the relay \(SERVICE_OFF\)/,
+            /the log backend refused the read: logs are off in the relay \(SERVICE_OFF\)/,
         );
     } finally {
         await new Promise<void>((resolve) => relay.close(() => resolve()));

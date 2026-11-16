@@ -95,9 +95,9 @@ anything that is not a command is a message.
 
 ## 2026-11-16: the 0.4.x action aliases are gone
 
-Jig 0.4.0 renamed actions to snake case and said the old names would stop applying in 0.5.0. Jig is 0.5.5, so the
-aliases are removed now. A rule, a role's `actions` or `ask` list, or a workflow hold that still names `run-folder`,
-`submit-plan` or another old name no longer matches. `/jig` and `jig doctor` still name each old rule action and its
+Jig 0.4.0 renamed actions to snake case and said the old names would stop applying in 0.5.0. 0.5.5 still matched
+them; they stop in 0.5.6, which is where the aliases are removed. A rule, a role's `actions` or `ask` list, or a
+workflow hold that still names `run-folder`, `submit-plan` or another old name no longer matches. `/jig` and `jig doctor` still name each old rule action and its
 replacement, so the loss is reported where the configuration check can see it. The alternative was to keep the promise
 in the text, but that keeps a second name for every action alive indefinitely and leaves the product claiming a removal
 that already happened. Tool names are unchanged.

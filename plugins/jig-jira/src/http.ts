@@ -190,7 +190,7 @@ export function createHttp(settings: JiraSettings, options: HttpOptions = {}): H
                 if (reply.truncated) throw new LostReplyError(TOO_LARGE);
                 answer = { status: reply.status, headers: reply.headers, text: reply.body };
             } catch (error) {
-                throw failed(error, timeoutMs);
+                throw failed(error, timeoutMs, request.method === "GET");
             }
 
             const data = parse(answer.text);
@@ -206,7 +206,7 @@ export function createHttp(settings: JiraSettings, options: HttpOptions = {}): H
 }
 
 /** What a failure of jig-core's request means for a caller: nothing was sent, or no usable answer came back. */
-function failed(error: unknown, timeoutMs: number): unknown {
+function failed(error: unknown, timeoutMs: number, read = false): unknown {
     if (error instanceof NotSentError || error instanceof LostReplyError) return error;
     if (!isHttpError(error)) return new LostReplyError(`no answer from Jira (${whyLost(error, timeoutMs)})`);
     // jig-core could not read the credential (a secret that is missing or locked, a sign-in service that failed).
@@ -216,7 +216,11 @@ function failed(error: unknown, timeoutMs: number): unknown {
     if (error.code === "transport_refused") {
         const suffix = error.transportCode === undefined ? "" : ` (${error.transportCode})`;
         return error.notSent
-            ? new NotSentError(`Jira was not changed: ${error.message}${suffix}`, error.transportCode, error.requestId)
+            ? new NotSentError(
+                  `${read ? "Jira refused the read" : "Jira was not changed"}: ${error.message}${suffix}`,
+                  error.transportCode,
+                  error.requestId,
+              )
             : new LostReplyError(
                   `no answer from Jira (${error.message})${suffix}`,
                   true,

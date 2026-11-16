@@ -437,7 +437,7 @@ test("transport: a transport that fails is an error that names it, not a gap", a
     assert.equal(w.requests.length, 1);
 });
 
-test("transport: a refusal says the backend was not changed", async (t) => {
+test("transport: a refusal says the backend refused the read", async (t) => {
     const w = await world(t, { backend: "transport" });
     w.jig.transports.set("corp", {
         request: async () => {
@@ -445,7 +445,7 @@ test("transport: a refusal says the backend was not changed", async (t) => {
         },
     });
     const refused = await w.call(call);
-    assert.equal(refused.error?.message, "the log backend was not changed: sign in first (SIGN_IN_REQUIRED)");
+    assert.equal(refused.error?.message, "the log backend refused the read: sign in first (SIGN_IN_REQUIRED)");
     assert.deepEqual([...w.jig.facts.values()].flat(), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
 });
 
@@ -476,7 +476,7 @@ test("a relay refusal is one clear failure, not a halving", async (t) => {
         },
     });
     const result = await w.call({ ...call, window: "3d" });
-    assert.match(result.error?.message ?? "", /the log backend was not changed: .*OUTSIDE_LIMITS/);
+    assert.match(result.error?.message ?? "", /the log backend refused the read: .*OUTSIDE_LIMITS/);
     assert.equal(w.jig.sent.length, 1, "one refusal, no halving");
 });
 
