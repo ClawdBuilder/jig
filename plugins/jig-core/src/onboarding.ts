@@ -1,6 +1,7 @@
 // A company's onboarding list: what its people must supply, in the company's order and words. It is data, checked once when
 // the plugin registers, never code: setup and doctor read it and ask or report. A plugin without a list is fine — setup falls
 // back to the section validators, which is less pretty but never blocked.
+import { checkDetect } from "./detect.ts";
 import { checkProposal } from "./setup-proposal.ts";
 import type {
     OnboardingEntry,
@@ -44,13 +45,9 @@ export function requiredPaths(method: OnboardingMethod): string {
         .join("|");
 }
 
-/** A path segment a method may name: not a prototype key. */
-function safeSegment(segment: string): boolean {
-    return !["__proto__", "constructor", "prototype"].includes(segment);
-}
-
+/** Whether every segment of a method path is safe: not a prototype key. */
 function safeMethodPath(path: string): boolean {
-    return path.split(".").every(safeSegment);
+    return path.split(".").every((segment) => !["__proto__", "constructor", "prototype"].includes(segment));
 }
 
 /**
@@ -407,7 +404,7 @@ export function checkOnboarding(
             continue;
         }
         const shared = ["section", "path", "label", "why"];
-        if (check("text", [...shared, "placeholder", "optional"])) {
+        if (check("text", [...shared, "placeholder", "optional", "detect"])) {
             if (!SECTION.test(String(item.section))) errors.push(`${at}.section: the section's name`);
             if (!PATH.test(String(item.path)))
                 errors.push(`${at}.path: a dotted path inside the section, such as bastion.user`);
@@ -416,10 +413,11 @@ export function checkOnboarding(
             optionalLine(item.placeholder, `${at}.placeholder`, LABEL_MAX, errors);
             if (item.optional !== undefined && typeof item.optional !== "boolean")
                 errors.push(`${at}.optional: true or false`);
+            checkDetect(item, at, errors);
             items.push(item as unknown as OnboardingItem);
             continue;
         }
-        if (check("pick", [...shared, "choices"])) {
+        if (check("pick", [...shared, "choices", "detect"])) {
             if (!SECTION.test(String(item.section))) errors.push(`${at}.section: the section's name`);
             if (!PATH.test(String(item.path)))
                 errors.push(`${at}.path: a dotted path inside the section, such as bastion.user`);
@@ -432,6 +430,7 @@ export function checkOnboarding(
                     if (!oneLine(value, LABEL_MAX)) errors.push(`${at}.choices[${choice}]: one line`);
                 }
             }
+            checkDetect(item, at, errors);
             items.push(item as unknown as OnboardingItem);
             continue;
         }

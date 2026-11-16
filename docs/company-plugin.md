@@ -279,6 +279,12 @@ api.onboarding?.register({
     "label": "A check that the VPN is up", "why": "Your tools need it." }
   ```
   An older Jig refuses an onboarding list that uses this kind; it does not ignore it. Require the Jig that knows it.
+- **`detect` proposes an answer found on the machine.** A `text` or `pick` item may name `user`, `git-email`,
+  `gh-account` or `aws-profile`. Setup runs that fixed jig-core probe once, briefly, and shows
+  `Found on this machine: <value>`; Enter accepts it, and the section's validator still checks it. No plugin code runs
+  and no secret is read. A `pick` offers the found value first, only when it is one of `choices`. A failed probe is no
+  default, `detect` cannot pair with `optional`, `--yes` runs no probe, and an older Jig refuses the list as an unknown
+  field.
 - **`info` comes before the questions and `pick` offers your plain choices.** Items are asked in your order, and the sections you
   name come first; the rest of the settings keep their own order.
 - **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never

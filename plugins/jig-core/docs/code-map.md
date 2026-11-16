@@ -111,6 +111,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-company.ts` | The company step: which company and where, then the confirmed profile write | `cli/main.ts`, `commands.ts` |
 | `setup-command.ts` | `/jig setup` inside Pi | `commands.ts` |
 | `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |
+| `detect.ts` | The fixed probes a `detect` item may name, and the line setup shows for what one found | `onboarding.ts` (the name check), `setup.ts` |
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |

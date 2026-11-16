@@ -8,6 +8,10 @@ import { effectiveBackends } from "./config.ts";
 import type { SecretBackend } from "./config.ts";
 import { findOnPath } from "./doctor-secrets.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
+import { detectedLine, detectValue } from "./detect.ts";
+import type { DetectName } from "./detect.ts";
+import { onboardingItemAt } from "./onboarding.ts";
+import type { OnboardingEntry } from "./contract.ts";
 import { probeSecret, shorten } from "./secret-status.ts";
 import type { SecretProbe } from "./secret-status.ts";
 import { applyAnswer, buildSetupPlan } from "./setup-plan.ts";
@@ -34,8 +38,10 @@ export async function runSetup(
     apply: "terminal" | "reload" = "terminal",
 ): Promise<number> {
     let proposed = false;
+    let onboarding: OnboardingEntry | undefined;
     try {
-        proposed = proposalSections(activeOnboarding(state)).has(requestedSection ?? "");
+        onboarding = activeOnboarding(state);
+        proposed = proposalSections(onboarding).has(requestedSection ?? "");
     } catch {
         // A test's stand-in may not carry the profile state; there can be no proposal then.
     }
@@ -79,6 +85,17 @@ export async function runSetup(
     ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
     const draft = structuredClone(plan.raw);
     const changes: SetupChange[] = [];
+    // What the company's list asked setup to look for, looked for once per probe and only when its question comes up.
+    const probes = new Map<DetectName, string | undefined>();
+    const found = (field: SetupField): string | undefined => {
+        const item = onboardingItemAt(onboarding, field.section, field.path);
+        if (item === undefined || (item.kind !== "text" && item.kind !== "pick") || item.detect === undefined)
+            return undefined;
+        if (!probes.has(item.detect)) probes.set(item.detect, detectValue(item.detect, state.env));
+        const value = probes.get(item.detect);
+        if (value === undefined) return undefined;
+        return item.kind === "pick" && !item.choices.includes(value) ? undefined : value;
+    };
 
     for (const section of plan.sections) {
         if (section.fields.length === 0) continue;
@@ -91,7 +108,7 @@ export async function runSetup(
         if (choice === undefined || choice === "Cancel setup") return cancel(ui);
         if (choice === "Skip this section") continue;
         for (const field of section.fields) {
-            if ((await ask(state, plan, field, draft, changes, ui)) === "cancel") return cancel(ui);
+            if ((await ask(state, plan, field, draft, changes, ui, found)) === "cancel") return cancel(ui);
         }
     }
 
@@ -142,12 +159,17 @@ async function ask(
     draft: Record<string, unknown>,
     changes: SetupChange[],
     ui: SetupUi,
+    found: (field: SetupField) => string | undefined,
 ): Promise<"ok" | "cancel"> {
     if (field.kind === "proposal") return askProposal(plan, field, draft, changes, ui);
     if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ui);
+    const detected = found(field);
     if (field.kind === "pick") {
         const choices = field.choices ?? [];
-        const picked = await ui.select(`${field.label}: ${field.reason}`, [...choices]);
+        if (detected !== undefined) ui.notify(detectedLine(detected), "info");
+        const ordered: string[] =
+            detected === undefined ? [...choices] : [detected, ...choices.filter((choice) => choice !== detected)];
+        const picked = await ui.select(`${field.label}: ${field.reason}`, ordered);
         if (picked === undefined || !choices.includes(picked)) return "cancel";
         const result = applyAnswer(plan, draft, field, picked);
         if ("change" in result) {
@@ -159,14 +181,16 @@ async function ask(
     }
     for (;;) {
         ui.notify(`${field.label}: ${field.reason}`, "info");
-        const text = await ui.input(field.question, field.placeholder);
+        if (detected !== undefined) ui.notify(detectedLine(detected), "info");
+        const text = await ui.input(field.question, detected ?? field.placeholder);
         if (text === undefined) return "cancel";
+        const answer = text.trim() === "" && detected !== undefined ? detected : text;
         // An optional field: an empty answer leaves it unset, and nothing is written for it.
-        if (field.optional === true && text.trim() === "") {
+        if (field.optional === true && answer.trim() === "") {
             ui.notify(`${field.label} left unset (optional).`, "info");
             return "ok";
         }
-        const result = applyAnswer(plan, draft, field, text);
+        const result = applyAnswer(plan, draft, field, answer);
         if ("change" in result) {
             changes.push(result.change);
             return "ok";

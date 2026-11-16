@@ -32,6 +32,7 @@ const ptySkip = ptyAvailable() ? false : "no usable pty on this machine";
 const launcherBash = launcherBashPath();
 const launcherSkip =
     launcherBash === undefined ? "the launcher needs bash 4.4 or later, and this machine has none" : false;
+const DETECT_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-detect");
 
 let home: string;
 let agent: string;
@@ -144,10 +145,14 @@ function run(
 }
 
 /** The setup prompts, answered when each one appears on the (pseudo-)terminal. */
-function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = work) {
+function runSetup(
+    expectations: Array<{ when: string; answer: string }>,
+    cwd = work,
+    extraEnv: Record<string, string | undefined> = {},
+) {
     const child = spawnTest("script", ptyArgv([process.execPath, BIN, "setup"]), {
         cwd,
-        env: env(),
+        env: env(extraEnv),
     });
     let stdout = "";
     let stderr = "";
@@ -703,6 +708,65 @@ describe("jig setup", () => {
         assert.equal(written.profile, "auto");
         assert.deepEqual(written.profiles["fixture-co"].when.remotes, ["github.com:Acme/*"]);
         assert.equal(written.profiles["fixture-co"].when.folders, undefined);
+    });
+
+    test("--yes skips the questions and writes no detected value", { timeout: 60_000 }, async () => {
+        settingsWith(DETECT_FIXTURE);
+        const result = await run(["setup", "--yes"], { env: { USER: "jdoe", USERNAME: undefined } });
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /Skipped the setup questions/);
+        assert.doesNotMatch(result.stdout, /Found on this machine/);
+        assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
+    });
+
+    test("a found default is shown and Enter accepts it", { timeout: 60_000, skip: ptySkip }, async () => {
+        settingsWith(DETECT_FIXTURE);
+        const result = await runSetup(
+            [
+                { when: "Which company setup do you use?", answer: "1" },
+                { when: "Use Detect Co's setup in:", answer: "1" },
+                { when: "Save this company choice?", answer: "y" },
+                { when: "needs 2 things", answer: "1" },
+                { when: "Your Fixture login", answer: "" },
+                { when: "Your Fixture team", answer: "1" },
+                { when: "Review these changes", answer: "1" },
+                { when: "Save these changes?", answer: "y" },
+            ],
+            work,
+            { USER: "jdoe", USERNAME: undefined },
+        );
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /Found on this machine: jdoe/);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.fixture.login, "jdoe");
+        assert.equal(written.fixture.team, "jdoe", "the found choice was offered first and taken");
+    });
+
+    test("a found default still has to pass the section's validator", {
+        timeout: 60_000,
+        skip: ptySkip,
+    }, async () => {
+        settingsWith(DETECT_FIXTURE);
+        const result = await runSetup(
+            [
+                { when: "Which company setup do you use?", answer: "1" },
+                { when: "Use Detect Co's setup in:", answer: "1" },
+                { when: "Save this company choice?", answer: "y" },
+                { when: "needs 2 things", answer: "1" },
+                { when: "Your Fixture login", answer: "" },
+                { when: "must start with a lowercase letter", answer: "jdoe" },
+                { when: "Your Fixture team", answer: "1" },
+                { when: "Review these changes", answer: "1" },
+                { when: "Save these changes?", answer: "y" },
+            ],
+            work,
+            { USER: "Admin", USERNAME: undefined },
+        );
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /Found on this machine: Admin/);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.fixture.login, "jdoe", "the typed answer replaced the one the validator refused");
+        assert.equal(written.fixture.team, "orders", "Admin is not one of the choices, so no default was proposed");
     });
 
     test("starts with the company, writes the profile, then asks the onboarding field", {
