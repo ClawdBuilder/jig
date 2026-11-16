@@ -10,7 +10,7 @@ The launcher is optional: [`bin/pi`](../bin/pi) starts Pi inside its own tmux, s
 next `pi` in that folder offers to reattach. Jig works without it; `pi install` is all Jig needs.
 
 Tested on Linux and WSL2. It needs bash 4.4 or later (macOS ships 3.2: install
-a newer one).
+one with `brew install bash`).
 
 **It never signs in and never touches the network,** and it sets none of your settings: Pi's own defaults apply
 ([Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md)). To set your own,

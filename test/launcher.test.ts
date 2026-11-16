@@ -13,6 +13,20 @@ import type { World } from "./support/launcher-world.ts";
 // macOS ships bash 3.2 and the launcher needs 4.4, so a runner without one skips with the reason.
 const launcherSkip = launcherSkipReason();
 
+/** A bash older than 4.4 on this machine, if it has one: macOS's /bin/bash is 3.2. */
+function oldBashPath(): string | undefined {
+    for (const candidate of ["/bin/bash", "/usr/bin/bash"]) {
+        if (!existsSync(candidate)) continue;
+        const check = spawnSync(candidate, ["-c", "echo $((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))"], {
+            encoding: "utf8",
+        });
+        if (check.status === 0 && Number(check.stdout.trim()) < 404) return candidate;
+    }
+    return undefined;
+}
+
+const OLD_BASH = oldBashPath();
+
 let world: World;
 beforeEach(() => {
     world = makeWorld();
@@ -111,6 +125,32 @@ describe("the files", { skip: launcherSkip }, () => {
             "GNUPGHOME",
         ])
             assert.equal(source.includes(word), false, word);
+    });
+});
+
+describe("the bash it needs", () => {
+    test("the check comes before any bash 4 construct, and says what to install", () => {
+        const source = readFileSync(LAUNCHER, "utf8").replace(/^\s*#.*$/gm, "");
+        const check = source.indexOf("Jig's launcher needs bash 4.4 or later");
+        assert.ok(check > 0, "the message is in the launcher");
+        for (const construct of ["declare -A", "mapfile"]) {
+            const first = source.indexOf(construct);
+            assert.ok(first === -1 || check < first, `${construct} is reached after the check`);
+        }
+        assert.match(source.slice(check, check + 400), /\(this is %s\.%s\)\. On macOS: brew install bash/);
+        assert.match(source.slice(check, check + 400), /exit 1/);
+    });
+
+    test("an older bash gets one line and a non-zero exit", {
+        skip: OLD_BASH === undefined ? "this machine has no bash older than 4.4" : false,
+    }, () => {
+        const result = spawnSync(OLD_BASH as string, [LAUNCHER], { encoding: "utf8" });
+        assert.equal(result.status, 1);
+        assert.equal(result.stdout, "");
+        assert.match(
+            result.stderr,
+            /^Jig's launcher needs bash 4\.4 or later \(this is \d+\.\d+\)\. On macOS: brew install bash\n$/,
+        );
     });
 });
 
