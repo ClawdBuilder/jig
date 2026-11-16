@@ -12,8 +12,10 @@ import type { ProposalItem } from "./setup-proposal.ts";
  *  environments (such as `staging`) through `config.addEnvironments`, and a tool may name a target in its own
  *  terms (such as `prod`) as long as configuration knows that name. An unknown name counts as production. */
 export type EnvironmentName = string;
+
 /** The kind of an environment decides its default rules. */
 export type EnvironmentKind = "local" | "external" | "test" | "production";
+
 /** One environment as `environments.list()` gives it. */
 export interface EnvironmentInfo {
     name: EnvironmentName;
@@ -22,10 +24,13 @@ export interface EnvironmentInfo {
      *  that did. */
     source: "built-in" | "personal" | "company";
 }
+
 export type Effect = "read" | "write";
+
 export type Decision = "allow" | "ask" | "deny";
 /** Which screen asks the user: a one-line dialog, a scrollable review screen, or a form. */
 export type ApprovalKind = "dialog" | "review" | "form";
+
 /** What one call does, as its tool declares it. */
 export interface CallClass {
     /** The action, for tools with several (`git` `push`). Omitted for single-action tools. */
@@ -58,6 +63,7 @@ export interface Preview {
      *  would mislead: "This exact command, this session" says what the session answer covers. */
     answers?: { allow?: string; session?: string; decline?: string };
 }
+
 /** A Jig tool's description of itself, given to jig-core once per load with `declareTool`. */
 export interface ToolDeclaration {
     /** The tool's name as registered with Pi. */
@@ -119,75 +125,6 @@ export interface EnvironmentConfig {
     kind: "test" | "production";
     /** Mask results from this test environment too. Production is always masked. */
     mask?: boolean;
-}
-
-/** The end of a watch. */
-export interface WatchResult {
-    outcome: "passed" | "failed" | "timed-out" | "stopped" | "error";
-    /** One line for the agent and the user. */
-    summary: string;
-    /** A few more lines, such as the start of a failed log. jig-core masks and redacts them. */
-    details?: string;
-    links?: readonly string[];
-    facts?: Facts;
-}
-
-/** News for the agent while a watch goes on, such as new comments on a pull request. */
-export interface WatchUpdate {
-    /** One line for the agent and the user. */
-    summary: string;
-    /** More lines, up to 40, such as the text of the news. jig-core masks and redacts them. */
-    details?: string;
-    links?: readonly string[];
-}
-
-/** One poll of a watch. */
-export interface PollOutcome<State> {
-    /** Saved with the watch, so polling resumes where it stopped after Pi restarts. */
-    state: State;
-    /** Set when the finish line is reached. */
-    done?: WatchResult;
-    /**
-     * Tells the agent now, in a message of its own, and the watch goes on. Send it with the state that remembers what it
-     * says, so the next poll does not say it again. A poll that is also `done` sends its update first, in the same message.
-     */
-    update?: WatchUpdate;
-    /** The next poll sooner or later than the kind's interval, such as GitHub's `X-Poll-Interval`. */
-    nextPollMs?: number;
-}
-
-/** A kind of watch a plugin can start, such as GitHub checks. Registered once per load. */
-export interface WatchKind<Spec, State> {
-    /** Unique across plugins, such as `ops-ci`. */
-    kind: string;
-    plugin: string;
-    intervalMs: number;
-    /** One line naming what is watched, for `watch list`. */
-    describe(spec: Spec): string;
-    /** Polls once. A throw is a failed poll; three in a row pause the watch with one notice. */
-    poll(spec: Spec, state: State | undefined, signal: AbortSignal): Promise<PollOutcome<State>>;
-}
-
-export interface StartWatch<Spec> {
-    kind: string;
-    /** Plain JSON: it is saved to disk with the watch. */
-    spec: Spec;
-    /** One line, such as "checks of pull request 42". */
-    title: string;
-    /** Default 60. */
-    timeoutMinutes?: number;
-    /** A "still waiting" notice to the user after this long. Default 30. */
-    stallMinutes?: number;
-}
-
-export interface WatchInfo {
-    id: string;
-    kind: string;
-    plugin: string;
-    title: string;
-    status: "open" | "paused" | "done";
-    startedAt: string;
-    result?: WatchResult;
 }
 
 /**
@@ -993,5 +930,7 @@ export interface WatchDoneEvent {
 }
 
 import type { RunOptions, RunResult } from "./contract-run.ts";
+import type { StartWatch, WatchInfo, WatchKind, WatchResult } from "./contract-watch.ts";
 
 export type { OutputKeep, RunOptions, RunResult } from "./contract-run.ts";
+export type { PollOutcome, StartWatch, WatchInfo, WatchKind, WatchResult, WatchUpdate } from "./contract-watch.ts";

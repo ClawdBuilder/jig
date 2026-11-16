@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { OnboardingEntry, OnboardingMethod } from "../src/contract.ts";
-import { checkOnboarding, checkOnboardingMethods, inferredMethod } from "../src/onboarding.ts";
+import { checkOnboarding, checkOnboardingMethods } from "../src/onboarding.ts";
+import { inferredMethod } from "../src/onboarding-methods.ts";
 import { withJig } from "../src/client.ts";
 import { buildApi } from "../src/api.ts";
 import { createState } from "../src/state.ts";

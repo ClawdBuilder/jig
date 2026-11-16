@@ -9,9 +9,19 @@ import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
 import type { OnboardingEntry, OnboardingItem, OnboardingMethod } from "./contract.ts";
 import type { ProposalItem } from "./setup-proposal.ts";
 import { decisionsFile, proposalFields, readDeclined } from "./setup-proposal.ts";
-import { inferredMethod, requiredPaths } from "./onboarding.ts";
-import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
-import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
+import { inferredMethod, requiredPaths } from "./onboarding-methods.ts";
+import { onboardingOrder } from "./onboarding.ts";
+import {
+    fieldKind,
+    fieldLabel,
+    isSecret,
+    labelOf,
+    optionalQuestion,
+    placeholderFor,
+    reasonFor,
+    referenceQuestion,
+} from "./setup-fields.ts";
+import { applyOnboarding } from "./setup-onboarding.ts";
 import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { setValuePath } from "./setup-write.ts";
@@ -19,6 +29,7 @@ import { shorten } from "./secret-status.ts";
 import { sectionState } from "./section-state.ts";
 import { parseSecretReference } from "./secrets.ts";
 import { referenceChoice } from "./setup-reference.ts";
+
 /** The part of jig-core the plan reads. `JigState` fits it once the defaults are gathered; a test can build one. */
 export interface SetupState {
     personal: LoadedConfig;
@@ -49,7 +60,9 @@ export interface SetupState {
     /** The sign-in methods plugins registered for their sections. */
     onboardingMethods?: ReadonlyMap<string, readonly OnboardingMethod[]>;
 }
+
 export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal";
+
 /** One question. `current` is for the placeholder, never a secret and never a raw reference. */
 export interface SetupField {
     section: string;
@@ -71,6 +84,7 @@ export interface SetupField {
     /** The company marks it optional: an empty answer leaves it unset, and the doctor does not ask for it. */
     optional?: true;
 }
+
 export interface SetupReferenceChoice {
     /** The stores to offer, the company's choice first. */
     stores: SecretBackend[];
@@ -86,6 +100,7 @@ export interface SetupReferenceChoice {
     /** What the company says to do to add it, per store. */
     addHints?: Readonly<Partial<Record<SecretBackend, string>>>;
 }
+
 export interface SetupMethod {
     id: string;
     label: string;
@@ -98,6 +113,7 @@ export interface SetupMethod {
     /** Why a wildcard produced no fields, when the plan cannot ask for a name yet. */
     notes?: string[];
 }
+
 export interface SetupSection {
     name: string;
     label: string;
@@ -107,6 +123,7 @@ export interface SetupSection {
     /** Things setup cannot ask for here, such as a credential or a value that is a list. */
     notes: string[];
 }
+
 export interface SetupPlan {
     /** The path in the settings, which may be a link. */
     file: string;
@@ -134,16 +151,9 @@ export interface SetupPlan {
     oneOf: ReadonlyMap<string, readonly (readonly string[])[]>;
     union: ReadonlyMap<string, readonly string[]>;
 }
+
 export type SetupPlanResult = { plan: SetupPlan } | { problem: string };
-/** The question for an optional field: an empty answer leaves it unset. */
-function optionalQuestion(label: string): string {
-    return `${label} (optional: press Enter to leave it unset)`;
-}
-/** The question for a credential, built from the company's label without doubling its article. */
-function referenceQuestion(label: string): string {
-    const named = label.replace(/^the\s+/i, "").trim();
-    return `Where does the ${named} live?`;
-}
+
 /** Adds a field for each onboarding item whose value is not set yet and which the validators did not name.
  *  Proposals are asked here too: a yes writes an entry, a no is kept in the onboarding decisions file.
  *  The person's own list stays authoritative; setup never edits it without that answer. */
@@ -185,7 +195,9 @@ function addOnboardingFields(
         candidate.section.fields.push(onboardingField(entry, state, item));
     }
 }
+
 const PATH_SHAPE = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
+
 /** The plain question for one onboarding item whose value is not set. */
 function onboardingField(
     entry: OnboardingEntry,
@@ -234,53 +246,7 @@ function onboardingField(
         reason,
     };
 }
-/** Lays the company's labels, words and hints over the fields the validators named, and orders them by the list. */
-function applyOnboarding(entry: OnboardingEntry, candidates: Array<{ section: SetupSection; order: number }>): void {
-    const position = new Map<string, number>();
-    for (const [index, item] of entry.items.entries()) {
-        if (item.kind === "info" || item.kind === "login" || item.kind === "proposal") continue;
-        position.set(`${item.section}.${item.path}`, index);
-    }
-    for (const { section } of candidates) {
-        section.fields.sort(
-            (left, right) =>
-                (position.get(`${left.section}.${left.path}`) ?? Number.MAX_SAFE_INTEGER) -
-                (position.get(`${right.section}.${right.path}`) ?? Number.MAX_SAFE_INTEGER),
-        );
-        for (const field of section.fields) {
-            const item = onboardingItemAt(entry, field.section, field.path);
-            if (item === undefined || item.kind === "info" || item.kind === "login" || item.kind === "proposal")
-                continue;
-            field.label = item.label;
-            field.question = item.kind === "reference" ? referenceQuestion(item.label) : item.label;
-            if (item.why !== undefined) field.reason = item.why;
-            if (item.kind === "text") {
-                if (item.placeholder !== undefined) field.placeholder = item.placeholder;
-                if (item.optional === true) {
-                    field.optional = true;
-                    field.question = optionalQuestion(item.label);
-                }
-                continue;
-            }
-            if (item.kind === "pick") {
-                field.kind = "pick";
-                field.choices = [...item.choices];
-                field.placeholder = undefined;
-                continue;
-            }
-            // A reference: only a field the validator already treats as a credential can carry the company's hints.
-            const reference = field.reference;
-            if (field.kind !== "reference" || reference === undefined) continue;
-            const preferred = item.preferredStore ?? entry.preferredStore;
-            if (preferred !== undefined && reference.stores.includes(preferred)) {
-                reference.preferred = preferred;
-                reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
-            }
-            if (item.suggested !== undefined) reference.suggested = item.suggested;
-            if (item.addHints !== undefined) reference.addHints = item.addHints;
-        }
-    }
-}
+
 /** A change the person accepted: one field, its plain label, and what was there before. */
 export interface SetupChange {
     section: string;
@@ -297,10 +263,12 @@ export interface SetupChange {
     /** Append this value to the list at `path`, rather than replacing it. */
     append?: boolean;
 }
+
 /** A dynamic name that is safe to put in a dotted path. */
 export function safeSegment(name: string): boolean {
     return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && !["__proto__", "constructor", "prototype"].includes(name);
 }
+
 /** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
 function setupMethods(state: SetupState, section: string, merged: unknown): SetupMethod[] {
     const registered = state.onboardingMethods?.get(section) ?? [];
@@ -412,6 +380,7 @@ function setupMethods(state: SetupState, section: string, merged: unknown): Setu
         };
     });
 }
+
 /** The plan: read the file, then ask only about the fields a validator names. */
 export function buildSetupPlan(state: SetupState): SetupPlanResult {
     if (state.configPath === "") {
@@ -472,6 +441,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
     const linkNote = link
         ? `Your settings file is a link to ${shorten(target, homedir())}; that file will be changed.`
         : undefined;
+
     let raw: unknown = {};
     if (exists) {
         try {
@@ -487,6 +457,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
     if (!isObject(raw)) {
         return { problem: "Your Jig settings are not one object. /jig doctor names the problem." };
     }
+
     const candidates: Array<{ section: SetupSection; priority: number; order: number }> = [];
     let order = 0;
     for (const name of state.sectionChecks.keys()) {
@@ -499,6 +470,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
                 ? [...(state.personal.incomplete.get(name) ?? [])]
                 : state.personal.problems.filter((problem) => problem.key === name).map((problem) => problem.message);
         if (messages.length === 0 && state.requestedSection !== name) continue;
+
         const notes: string[] = [];
         const rawValue = raw[name];
         if (rawValue !== undefined && !isObject(rawValue)) {
@@ -528,6 +500,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
             }
             for (const path of found) if (!paths.has(path)) paths.set(path, message);
         }
+
         const fields: SetupField[] = [];
         for (const [path, message] of paths) {
             if (removedAt(removedPaths(defaults, rawSection), path) !== undefined) continue;
@@ -579,6 +552,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
                 reason: reasonFor(message),
             });
         }
+
         const methods = setupMethods(state, name, merged);
         if (fields.length > 0 || notes.length > 0 || methods.length > 0) {
             candidates.push({
