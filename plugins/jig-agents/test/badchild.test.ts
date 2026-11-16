@@ -260,8 +260,10 @@ describe("a child that misbehaves once it runs", () => {
         assert.match(message.content, /after the flood/);
     });
 
+    // The product bounds this wait at 60 s (`STARTUP_MS` in src/child.ts). The test moves a fake clock past it, but a slow
+    // Mac still needs wall-clock time to start the child and stop it, so its own limit is twice the product's bound.
     test("one that never answers a command does not hang the start: the wait is bounded", {
-        timeout: 30_000,
+        timeout: 120_000,
     }, async () => {
         const world = await begin({ script: { slowCommands: 600_000 } });
         const pending = world.tool({ action: "start", role: "scout", task: "x" });

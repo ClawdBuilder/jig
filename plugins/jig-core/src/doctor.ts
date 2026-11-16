@@ -342,11 +342,18 @@ function wrapPlain(text: string, width: number, indent: number): string[] {
     const words = text.slice(leading.length).trim().split(/\s+/).filter(Boolean);
     const lines: string[] = [];
     let line = leading;
+    let placed = 0;
     for (const word of words) {
-        if (line.trim() !== "" && line.length + 1 + word.length > width) {
+        // Never wrap straight after the label: `fail` alone on a line names nothing, so the title stays with it however
+        // long the title is (a package path, for one).
+        if (line.trim() !== "" && line.length + 1 + word.length > width && placed > 1) {
             lines.push(line);
             line = `${" ".repeat(Math.max(indent, leading.length))}${word}`;
-        } else line += `${line.trim() === "" ? "" : " "}${word}`;
+            placed = 1;
+        } else {
+            line += `${line.trim() === "" ? "" : " "}${word}`;
+            placed += 1;
+        }
     }
     if (line.trim() !== "" || lines.length === 0) lines.push(line);
     return lines;

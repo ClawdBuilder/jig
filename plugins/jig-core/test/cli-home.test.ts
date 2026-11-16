@@ -5,12 +5,19 @@ import { spawn, spawnSync } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { launcherBashPath } from "../../../test/support/launcher-world.ts";
+import { ptyArgv, ptyAvailable } from "../../../test/support/pty.ts";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
 const NAME = "@clawdbuilder/jig";
+// `jig` starts Pi through the launcher (`bin/pi`), which needs bash 4.4 or later; macOS ships 3.2. A newer bash goes first
+// on PATH, as a person with Homebrew's would have; without one, the tests that start Pi skip with the launcher's reason.
+const launcherBash = launcherBashPath();
+const launcherSkip =
+    launcherBash === undefined ? "the launcher needs bash 4.4 or later, and this machine has none" : false;
 
 let root: string;
 let home: string;
@@ -39,6 +46,8 @@ beforeEach(() => {
     writeFileSync(path.join(piPackage, "dist", "bundle", "cli.js"), fakePi(), { mode: 0o755 });
     symlinkSync(path.join(piPackage, "dist", "bundle", "cli.js"), path.join(bin, "pi"));
     writeFileSync(path.join(bin, "npm"), fakeNpm(), { mode: 0o755 });
+    // The launcher's `#!/usr/bin/env bash` finds this one, not macOS's 3.2.
+    if (launcherBash !== undefined) symlinkSync(launcherBash, path.join(bin, "bash"));
 });
 
 afterEach(() => {
@@ -158,7 +167,7 @@ function calls(): Array<{ args: string[]; home: string | null; outer: string | n
 
 const piArgs = (): string[] => calls().map((call) => call.args.join(" "));
 
-describe("routing: the first word decides", () => {
+describe("routing: the first word decides", { skip: launcherSkip }, () => {
     beforeEach(() => installedHome());
 
     test("a bare `jig` starts Pi, and so do a flag and a message in one word", async () => {
@@ -248,7 +257,7 @@ describe("routing: the first word decides", () => {
     });
 });
 
-describe("one Jig copy", () => {
+describe("one Jig copy", { skip: launcherSkip }, () => {
     test("a copy outside the home hands over to the home's copy, with the same words", async () => {
         installedHome();
         // A second copy of the package, as a global install or a checkout would be, with a version of its own.
@@ -297,7 +306,7 @@ describe("one Jig copy", () => {
     });
 });
 
-describe("a home whose Jig Pi lists from a folder", () => {
+describe("a home whose Jig Pi lists from a folder", { skip: launcherSkip }, () => {
     /** The shape `pi install ./packed` leaves: the folder in the settings, nothing under the home's npm folder. */
     function listedFolder(): string {
         const folder = path.join(root, "packed-jig");
@@ -328,7 +337,7 @@ describe("a home whose Jig Pi lists from a folder", () => {
     });
 });
 
-describe("the home", () => {
+describe("the home", { skip: launcherSkip }, () => {
     test("JIG_HOME wins over an outer PI_CODING_AGENT_DIR, and Pi gets the home", async () => {
         installedHome();
         const outer = path.join(root, "outer-agent");
@@ -592,7 +601,7 @@ describe("jig setup", () => {
     test("a real terminal is offered the old folder and copies what it answers yes to", {
         timeout: 90_000,
     }, async (t) => {
-        if (spawnSync("script", ["--version"], { encoding: "utf8" }).status !== 0) {
+        if (!ptyAvailable()) {
             t.skip("script is not installed");
             return;
         }
@@ -602,7 +611,7 @@ describe("jig setup", () => {
         writeFileSync(path.join(old, "auth.json"), JSON.stringify({ keep: "copied after a separate yes" }));
         const child = spawn(
             "script",
-            ["-qec", `${process.execPath} ${BIN} setup --source ${path.join(root, "jig.tgz")}`, "/dev/null"],
+            ptyArgv([process.execPath, BIN, "setup", "--source", path.join(root, "jig.tgz")]),
             {
                 cwd: work,
                 env: env(),

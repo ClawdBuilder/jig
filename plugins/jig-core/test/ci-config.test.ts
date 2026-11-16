@@ -12,6 +12,8 @@ const read = (file: string): string => readFileSync(path.join(ROOT, file), "utf8
 interface Job {
     name?: string;
     if?: string;
+    "runs-on"?: string;
+    "timeout-minutes"?: number;
     needs?: string | string[];
     uses?: string;
     strategy?: { matrix?: { node?: number[] } };
@@ -36,9 +38,22 @@ describe("ci.yml", () => {
         assert.deepEqual(
             [job.needs].flat().sort(),
             Object.keys(ci.jobs)
-                .filter((name) => name !== "ci-ok")
+                .filter((name) => name !== "ci-ok" && !name.endsWith("-advisory"))
                 .sort(),
         );
+    });
+
+    test("the advisory macOS job runs the checks and the suite, outside ci-ok", () => {
+        const job = ci.jobs["macos-advisory"];
+        assert.ok(job, "ci.yml has no macos-advisory job");
+        assert.equal(job.name, "macOS (advisory)", "the name says advisory");
+        assert.equal(job["runs-on"], "macos-latest");
+        assert.equal(job["timeout-minutes"], 30);
+        assert.equal([ci.jobs["ci-ok"]?.needs].flat().includes("macos-advisory"), false, "it does not gate ci-ok");
+        const text = read(".github/workflows/ci.yml");
+        const block = text.slice(text.indexOf("\n  macos-advisory:"), text.indexOf("\n  ci-ok:"));
+        for (const step of ["npm ci --ignore-scripts", "npm run check", "npm test"])
+            assert.ok(block.includes(step), `the advisory job runs ${step}`);
     });
 
     test("the checks job ends by asking that the working tree is clean", () => {
@@ -153,8 +168,8 @@ describe("the Pi version Jig is tested with", () => {
     const pinned = pins[0] ?? "";
     const nodes = (workflow("ci.yml").jobs.checks?.strategy?.matrix?.node ?? []).map(String).sort();
 
-    test("both CI jobs install the same exact Pi", () => {
-        assert.equal(pins.length, 2, "ci.yml installs Pi in the checks job and in the integration job");
+    test("every CI job that installs Pi installs the same exact version", () => {
+        assert.equal(pins.length, 3, "checks, integration and the advisory macOS job");
         assert.equal(new Set(pins).size, 1, `ci.yml pins ${pins.join(" and ")}`);
         assert.match(pinned, /^\d+\.\d+\.\d+$/);
     });

@@ -2,24 +2,44 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import type { ChildProcess, ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    realpathSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
+import { launcherBashPath } from "../../../test/support/launcher-world.ts";
 import { piHostDir } from "../../../test/support/pi-host-dir.mjs";
+import { ptyArgv, ptyAvailable } from "../../../test/support/pty.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
 const FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company");
 const NEEDS_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-needs");
 const PROPOSAL_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-proposal");
+// A terminal test needs a pty: `script` on macOS keeps the terminal it is given, so a runner without one skips.
+const ptySkip = ptyAvailable() ? false : "no usable pty on this machine";
+// `jig auth --help` and a word that is not a command start Pi through the launcher (`bin/pi`), which needs bash 4.4 or
+// later; macOS ships 3.2. Link a newer bash first on PATH, as a person with Homebrew's would; without one, those tests
+// skip with the launcher's reason instead of failing on the version check.
+const launcherBash = launcherBashPath();
+const launcherSkip =
+    launcherBash === undefined ? "the launcher needs bash 4.4 or later, and this machine has none" : false;
 
 let home: string;
 let agent: string;
 let work: string;
+let launcherBin: string;
 
 beforeEach(() => {
-    home = mkdtempSync(path.join(tmpdir(), "jig-cli-"));
+    home = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-cli-")));
     // The Jig home is `~/.jig`: it is Pi's agent folder for `jig`, and where the home's own Jig copy lives.
     agent = path.join(home, ".jig");
     work = path.join(home, "work");
@@ -29,6 +49,10 @@ beforeEach(() => {
     // and the command sees that it already is the home's copy instead of handing over to itself.
     mkdirSync(path.join(agent, "npm", "node_modules", "@clawdbuilder"), { recursive: true });
     symlinkSync(ROOT, path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig"), "dir");
+    launcherBin = path.join(home, "launcher-bin");
+    mkdirSync(launcherBin, { recursive: true });
+    // The launcher's `#!/usr/bin/env bash` finds this one, not macOS's 3.2.
+    if (launcherBash !== undefined) symlinkSync(launcherBash, path.join(launcherBin, "bash"));
 });
 const children = new Set<ChildProcess>();
 
@@ -75,6 +99,7 @@ function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv 
         HOME: home,
         JIG_HOME: agent,
         PI_CODING_AGENT_DIR: agent,
+        PATH: `${launcherBin}${path.delimiter}${process.env.PATH ?? ""}`,
         LANG: "C",
         LC_ALL: "C",
         NO_COLOR: "1",
@@ -91,8 +116,7 @@ function run(
     options: { input?: string; tty?: boolean; env?: Record<string, string | undefined>; cwd?: string } = {},
 ) {
     const command = options.tty === true ? "script" : process.execPath;
-    const argv =
-        options.tty === true ? ["-qec", `${process.execPath} ${BIN} ${args.join(" ")}`, "/dev/null"] : [BIN, ...args];
+    const argv = options.tty === true ? ptyArgv([process.execPath, BIN, ...args]) : [BIN, ...args];
     return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
         const child = spawnTest(command, argv, { cwd: options.cwd ?? work, env: env(options.env) });
         let stdout = "";
@@ -121,7 +145,7 @@ function run(
 
 /** The setup prompts, answered when each one appears on the (pseudo-)terminal. */
 function runSetup(expectations: Array<{ when: string; answer: string }>, cwd = work) {
-    const child = spawnTest("script", ["-qec", `${process.execPath} ${BIN} setup`, "/dev/null"], {
+    const child = spawnTest("script", ptyArgv([process.execPath, BIN, "setup"]), {
         cwd,
         env: env(),
     });
@@ -274,7 +298,10 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Jig's sandbox is filtered out/);
     });
 
-    test("the sandbox is checked for real, not skipped", { timeout: 60_000 }, async () => {
+    test("the sandbox is checked for real, not skipped", {
+        timeout: 60_000,
+        skip: process.platform === "linux" ? false : "the Linux sandbox's programs",
+    }, async () => {
         settingsWith();
         const empty = path.join(work, "no-programs");
         mkdirSync(empty);
@@ -339,7 +366,9 @@ describe("jig doctor", () => {
         const doctor = await run(["doctor"]);
         assert.equal(doctor.code, 1, doctor.stdout);
         assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
-        assert.match(doctor.stdout, new RegExp(`In ${projectFile().replaceAll(".", "\\.")}`));
+        // The doctor names the settings file as it really is; on macOS /var is a link, so the test asks for that form.
+        // The doctor wraps at a width: on macOS the longer /private/var path moves after "In", with the line break.
+        assert.match(doctor.stdout, new RegExp(`In\\s+${realpathSync(projectFile()).replaceAll(".", "\\.")}`));
     });
 
     test("stock Pi and the doctor agree on a project delta", { timeout: 60_000 }, async () => {
@@ -384,7 +413,9 @@ describe("jig doctor", () => {
         const doctor = await run(["doctor"]);
         assert.equal(doctor.code, 1, doctor.stdout);
         assert.match(doctor.stdout, /Jig's sandbox is filtered out/);
-        assert.match(doctor.stdout, new RegExp(`In ${projectFile().replaceAll(".", "\\.")}`));
+        // The doctor names the settings file as it really is; on macOS /var is a link, so the test asks for that form.
+        // The doctor wraps at a width: on macOS the longer /private/var path moves after "In", with the line break.
+        assert.match(doctor.stdout, new RegExp(`In\\s+${realpathSync(projectFile()).replaceAll(".", "\\.")}`));
     });
 
     test("an invalid jig.json is a FAIL line in a report, not a crash", { timeout: 60_000 }, async () => {
@@ -553,6 +584,7 @@ describe("a package installed from git", () => {
 
     test("project scope: a company under <cwd>/.pi/git is loaded and offered by setup", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         gitInstall("user", "github.com/example/jig", "jig", "0.3.0", "export default function () {}\n");
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: ["git:github.com/example/jig"] }));
@@ -581,6 +613,7 @@ describe("a package installed from git", () => {
 
     test("an optional field is offered as skippable, and Enter leaves it unset", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         settingsWith(NEEDS_FIXTURE);
         const result = await runSetup([
@@ -611,7 +644,7 @@ describe("jig setup", () => {
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
-    test("stops before the questions when Pi does not load Jig", { timeout: 60_000 }, async () => {
+    test("stops before the questions when Pi does not load Jig", { timeout: 60_000, skip: ptySkip }, async () => {
         writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: [] }));
         const result = await runSetup([]);
         assert.equal(result.code, 1);
@@ -620,7 +653,10 @@ describe("jig setup", () => {
         assert.doesNotMatch(result.stdout, /Which company setup do you use/);
     });
 
-    test("Show the exact change prints plain JSON and never asks which line to pick", { timeout: 60_000 }, async () => {
+    test("Show the exact change prints plain JSON and never asks which line to pick", {
+        timeout: 60_000,
+        skip: ptySkip,
+    }, async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
             { when: "Which company setup do you use?", answer: "1" },
@@ -651,7 +687,7 @@ describe("jig setup", () => {
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
-    test("offers the company's repositories and writes when.remotes", { timeout: 60_000 }, async () => {
+    test("offers the company's repositories and writes when.remotes", { timeout: 60_000, skip: ptySkip }, async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
             { when: "Which company setup do you use?", answer: "1" },
@@ -671,6 +707,7 @@ describe("jig setup", () => {
 
     test("starts with the company, writes the profile, then asks the onboarding field", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
@@ -810,6 +847,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
 
     test("Jig listed only in an untrusted project is a skip, not a failure, and setup stops with the reason", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         const cwd = path.join(work, "jig-project");
         mkdirSync(cwd, { recursive: true });
@@ -830,6 +868,7 @@ describe("project packages follow Pi's trust, and import nothing before it", () 
 
     test("a company only at project scope in an untrusted folder is named, not treated as no company", {
         timeout: 60_000,
+        skip: ptySkip,
     }, async () => {
         const cwd = path.join(work, "company-project");
         mkdirSync(cwd, { recursive: true });
@@ -960,7 +999,10 @@ describe("CLI conventions", () => {
         });
     });
 
-    test("jig auth --help puts a Jig header before Pi's unchanged help", { timeout: 20_000 }, async () => {
+    test("jig auth --help puts a Jig header before Pi's unchanged help", {
+        timeout: 20_000,
+        skip: launcherSkip,
+    }, async () => {
         const result = await run(["auth", "--help"]);
         assert.equal(result.code, 0, result.stderr);
         assert.match(
@@ -994,7 +1036,10 @@ describe("CLI conventions", () => {
         assert.doesNotMatch(option.stderr, /Usage: jig doctor/);
     });
 
-    test("a word far from every command, and a message with spaces, still go to Pi", { timeout: 20_000 }, async () => {
+    test("a word far from every command, and a message with spaces, still go to Pi", {
+        timeout: 20_000,
+        skip: launcherSkip,
+    }, async () => {
         const options = { env: { PI_BIN: "/bin/echo", JIG_NO_TMUX: "1" } };
         const word = await run(["build"], options);
         assert.equal(word.code, 0, word.stderr);

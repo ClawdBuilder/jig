@@ -17,6 +17,11 @@ export function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+/** A file as a message names it: the path as written, JSON-quoted and never cut. A path is what a person acts on. */
+export function namedPath(value: string): string {
+    return JSON.stringify(value);
+}
+
 /** A value as it can appear in a message: JSON on one line, cut. Control characters come out escaped. */
 export function shown(value: unknown, max = 40): string {
     let text: string;

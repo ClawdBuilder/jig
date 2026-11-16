@@ -823,7 +823,10 @@ describe("case", () => {
         assert.ok(check("read", path.join(home, ".SSH", "id_ed25519"), mac));
         assert.ok(check("write", path.join(agent, "JIG.JSON"), mac));
         assert.equal(check("read", path.join(home, ".SSH", "id_ed25519"), context({ platform: "linux" })), undefined);
-        assert.equal(check("read", path.join(home, ".SSH", "id_ed25519")), undefined, "this process, which is Linux");
+        // This process's own platform: macOS ignores case, so the same path is protected there.
+        const here = check("read", path.join(home, ".SSH", "id_ed25519"));
+        if (process.platform === "darwin") assert.ok(here, "case is ignored on macOS");
+        else assert.equal(here, undefined, "this process is Linux, where case counts");
     });
 });
 
@@ -847,6 +850,33 @@ describe("the folders the file tools may write", () => {
         }
     });
 
+    test("a folder written with a link, a trailing separator or another case folds to the same folder (darwin)", () => {
+        const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-fold-"));
+        const real = path.join(dir, "Real");
+        mkdirSync(path.join(real, "deep"), { recursive: true });
+        symlinkSync(real, path.join(dir, "Link"));
+        try {
+            // The real form decides: macOS folds case, and every spelling of the folder (`..`, a trailing separator, a
+            // link) resolves to the same real folder. The as-written forms are not compared.
+            for (const folder of [`${real}/../Real`, `${real}/`, path.join(dir, "Link")]) {
+                const writable = writableFolders([folder], "darwin");
+                assert.equal(writable(path.join(dir, "real", "deep", "x.ts")), true, folder);
+                assert.equal(writable(path.join(real, "deep", "x.ts")), true, folder);
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test("with no canWrite, the write rule is the gate's: the working folder in its real form", () => {
+        const link = path.join(root, "project-link");
+        symlinkSync(project, link);
+        const through = context({ cwd: link });
+        assert.equal(check("write", path.join(link, "src", "main.ts"), through), undefined, "inside, as written");
+        assert.equal(check("write", path.join(project, "src", "main.ts"), through), undefined, "inside, real form");
+        assert.equal(check("write", path.join(root, "elsewhere", "new.txt"), through)?.ask, true, "outside");
+    });
+
     test("a path inside as written, outside once its links are followed, asks", () => {
         const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-link-"));
         const work = path.join(dir, "work");
@@ -858,6 +888,11 @@ describe("the folders the file tools may write", () => {
             const writable = writableFolders([work]);
             assert.equal(writable(path.join(work, "a.txt")), true, "inside both ways");
             assert.equal(writable(path.join(work, "link", "a.txt")), false, "as written inside, followed outside");
+            // A link inside the folder, pointing inside it: its real form is inside, so it writes.
+            const inner = path.join(work, "inner");
+            mkdirSync(inner, { recursive: true });
+            symlinkSync(inner, path.join(work, "into"));
+            assert.equal(writable(path.join(work, "into", "a.txt")), true, "a link inside the folder, pointing inside");
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }

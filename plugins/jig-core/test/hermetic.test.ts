@@ -3,7 +3,7 @@
 // others start a process of their own with a dirty environment and look at what the file made of it.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -23,7 +23,10 @@ describe("this process", () => {
     test("has a temporary, empty home and agent folder, and no state yet", () => {
         const home = process.env.HOME ?? "";
         const root = path.dirname(home);
-        assert.ok(root.startsWith(path.join(tmpdir(), "jig-test-")), `${home} is not under a jig-test folder`);
+        assert.ok(
+            root.startsWith(path.join(realpathSync(tmpdir()), "jig-test-")),
+            `${home} is not under a jig-test folder`,
+        );
         assert.deepEqual(readdirSync(home), []);
         assert.equal(process.env.PI_CODING_AGENT_DIR, path.join(root, "agent"));
         assert.deepEqual(readdirSync(process.env.PI_CODING_AGENT_DIR ?? ""), []);

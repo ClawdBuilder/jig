@@ -4,11 +4,38 @@
 // standing in for /dev/tty).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+    accessSync,
+    chmodSync,
+    constants,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { LAUNCHER, REPO, makeWorld, sawPi } from "./support/launcher-world.ts";
+import { LAUNCHER, REPO, launcherSkipReason, makeWorld, sawPi } from "./support/launcher-world.ts";
 import type { World } from "./support/launcher-world.ts";
+
+// macOS ships bash 3.2 and the launcher needs 4.4, so a runner without one skips with the reason.
+const launcherSkip = launcherSkipReason();
+
+/** A bash older than 4.4 on this machine, if it has one: macOS's /bin/bash is 3.2. */
+function oldBashPath(): string | undefined {
+    for (const candidate of ["/bin/bash", "/usr/bin/bash"]) {
+        if (!existsSync(candidate)) continue;
+        const check = spawnSync(candidate, ["-c", "echo $((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))"], {
+            encoding: "utf8",
+        });
+        if (check.status === 0 && Number(check.stdout.trim()) < 404) return candidate;
+    }
+    return undefined;
+}
+
+const OLD_BASH = oldBashPath();
 
 let world: World;
 beforeEach(() => {
@@ -58,7 +85,7 @@ const attached = (w: World) => w.calls("tmux").filter((call) => call.includes("a
 const clientEnv = (w: World) =>
     Object.fromEntries(w.calls("tmux-client-env").map(([, name = "", value = ""]) => [name, value]));
 
-describe("the files", () => {
+describe("the files", { skip: launcherSkip }, () => {
     test("bin/pi and bin/clipboard-copy are executable, and every script parses", () => {
         for (const name of ["pi", "clipboard-copy"]) {
             accessSync(path.join(REPO, "bin", name), constants.X_OK);
@@ -111,7 +138,33 @@ describe("the files", () => {
     });
 });
 
-describe("a run that is not interactive", () => {
+describe("the bash it needs", () => {
+    test("the check comes before any bash 4 construct, and says what to install", () => {
+        const source = readFileSync(LAUNCHER, "utf8").replace(/^\s*#.*$/gm, "");
+        const check = source.indexOf("Jig's launcher needs bash 4.4 or later");
+        assert.ok(check > 0, "the message is in the launcher");
+        for (const construct of ["declare -A", "mapfile"]) {
+            const first = source.indexOf(construct);
+            assert.ok(first === -1 || check < first, `${construct} is reached after the check`);
+        }
+        assert.match(source.slice(check, check + 400), /\(this is %s\.%s\)\. On macOS: brew install bash/);
+        assert.match(source.slice(check, check + 400), /exit 1/);
+    });
+
+    test("an older bash gets one line and a non-zero exit", {
+        skip: OLD_BASH === undefined ? "this machine has no bash older than 4.4" : false,
+    }, () => {
+        const result = spawnSync(OLD_BASH as string, [LAUNCHER], { encoding: "utf8" });
+        assert.equal(result.status, 1);
+        assert.equal(result.stdout, "");
+        assert.match(
+            result.stderr,
+            /^Jig's launcher needs bash 4\.4 or later \(this is \d+\.\d+\)\. On macOS: brew install bash\n$/,
+        );
+    });
+});
+
+describe("a run that is not interactive", { skip: launcherSkip }, () => {
     test("goes straight to Pi: the launcher's flags are removed, Pi's own defaults apply, and nothing else runs", async () => {
         const result = await world.run(["-p", "hello world", "--no-tmux", "--new", "--model", "x"]);
         assert.equal(result.status, 0);
@@ -191,7 +244,7 @@ describe("a run that is not interactive", () => {
     }
 });
 
-describe("turning tmux off", () => {
+describe("turning tmux off", { skip: launcherSkip }, () => {
     for (const [how, args, env] of [
         ["flag", ["--no-tmux"], {}],
         ["variable", [], { JIG_NO_TMUX: "1" }],
@@ -227,7 +280,7 @@ describe("turning tmux off", () => {
     });
 });
 
-describe("finding Pi", () => {
+describe("finding Pi", { skip: launcherSkip }, () => {
     test("skips a shim called pi (which would run the launcher again) and takes the Pi that is installed", async () => {
         const shim = world.file("shim/pi", `#!/bin/sh\necho SHIM\nexec ${LAUNCHER} "$@"\n`, 0o755);
         const result = await world.run(["-p", "go"], { PATH: `${path.dirname(shim)}:${world.bin}` });
@@ -255,7 +308,7 @@ describe("finding Pi", () => {
     });
 });
 
-describe("the WSL interop socket", () => {
+describe("the WSL interop socket", { skip: launcherSkip }, () => {
     const probe = (exit: number) =>
         world.file("windows/cmd.exe", `#!/bin/sh\nprintf 'probe\\t%s\\n' "$*" >> "$FAKE_LOG"\nexit ${exit}\n`, 0o755);
     const socket = () => world.file("run/WSL/1_interop", "");
@@ -345,7 +398,7 @@ describe("the WSL interop socket", () => {
     });
 });
 
-describe("copy on select (bin/clipboard-copy)", () => {
+describe("copy on select (bin/clipboard-copy)", { skip: launcherSkip }, () => {
     const helper = path.join(REPO, "bin", "clipboard-copy");
     const bash = spawnSync("sh", ["-c", "command -v bash"], { encoding: "utf8" }).stdout.trim();
     /** A PATH with only the programs the helper needs, so a clipboard program installed here never answers instead. */
@@ -403,7 +456,7 @@ describe("copy on select (bin/clipboard-copy)", () => {
     });
 });
 
-describe("tmux", () => {
+describe("tmux", { skip: launcherSkip }, () => {
     test("a new session: its name from the folder, the launcher's own server, and the launcher again inside", async () => {
         world.dispose();
         world = makeWorld("My Project.v2 with a very long name");
@@ -604,7 +657,7 @@ describe("tmux", () => {
     });
 });
 
-describe("reattaching", () => {
+describe("reattaching", { skip: launcherSkip }, () => {
     const LIST = "#{session_attached} #{session_activity} #{session_name} #{@jig_cwd}";
     const sessions = (...lines: string[]) => world.file("sessions", `${lines.join("\n")}\n`);
 
@@ -624,6 +677,26 @@ describe("reattaching", () => {
             result.stderr,
             /^jig: reattaching to the Pi still running here \(pi-work-111, last active \w{3} \d{2} \d{2}:\d{2}\); `pi --new` starts another\n$/,
         );
+    });
+
+    test("a date without -d still shows the moment: -r for macOS, else the value as it came", async () => {
+        const file = sessions(`0 1700000000 pi-work-111 ${world.work}`);
+        const date = path.join(world.bin, "date");
+        rmSync(date);
+        const fake = (body: string): void => {
+            writeFileSync(date, `#!/bin/bash\n${body}`);
+            chmodSync(date, 0o755);
+        };
+        // A `date` like macOS's: no -d, and -r <epoch> prints the moment.
+        fake(
+            'if [ "$1" = "-d" ]; then exit 1; fi\nif [ "$1" = "-r" ]; then printf "Jan 01 00:00\\n"; exit 0; fi\nexit 1\n',
+        );
+        const bsd = await world.run([], { ...TERMINAL, FAKE_TMUX_SESSIONS: file, FAKE_TMUX_ATTACH_STATUS: "4" });
+        assert.match(bsd.stderr, /last active Jan 01 00:00\); `pi --new` starts another/);
+        fake("exit 1\n");
+        world.forget();
+        const neither = await world.run([], { ...TERMINAL, FAKE_TMUX_SESSIONS: file, FAKE_TMUX_ATTACH_STATUS: "4" });
+        assert.match(neither.stderr, /last active 1700000000\); `pi --new` starts another/);
     });
 
     test("after the attach returns the launcher says so when that Pi is still running", async () => {
@@ -694,7 +767,7 @@ describe("reattaching", () => {
     });
 });
 
-describe("the launcher page", () => {
+describe("the launcher page", { skip: launcherSkip }, () => {
     test("names every flag and variable the launcher reads", () => {
         const section = readFileSync(path.join(REPO, "docs", "launcher.md"), "utf8");
         const source = readFileSync(LAUNCHER, "utf8");

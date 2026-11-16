@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from "../src/config.ts";
 import type { SandboxSettings } from "../src/config.ts";
 import { sandbox } from "../src/index.ts";
 import type { SandboxOptions } from "../src/index.ts";
+import { runtimeSocketPath, socketPathLimit } from "../src/runtime-tmp.ts";
 import { fakeBrokers } from "./support/fake-broker.ts";
 import type { FakeBrokerOptions } from "./support/fake-broker.ts";
 import { fakeContext, fakePi } from "./support/fake-pi.ts";
@@ -248,8 +249,18 @@ describe("the broker's life", () => {
         assert.notEqual(launch.cwd, s.project, "never the project");
         assert.ok(launch.cwd.startsWith(path.join(root, "tmp", "jig-sandbox-1000")));
         assert.ok(launch.cwd.endsWith(`${path.sep}broker`));
-        assert.deepEqual(Object.keys(launch.env).sort(), ["CLAUDE_CODE_TMPDIR", "HOME", "LANG", "PATH", "TMPDIR"]);
-        assert.equal(launch.env.CLAUDE_CODE_TMPDIR, path.join(path.dirname(launch.cwd), "tmp"));
+        // macOS adds this to every process's environment; it is not one of the variables the sandbox sets.
+        const names = Object.keys(launch.env).filter(
+            (name) => !(process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING"),
+        );
+        assert.deepEqual(names.sort(), ["CLAUDE_CODE_TMPDIR", "HOME", "LANG", "PATH", "TMPDIR"]);
+        // The runtime names its sockets in TMPDIR, and a socket path must fit in sun_path: macOS session folders under
+        // /private/var/folders are often too long, and then the socket folder is /tmp instead of the session's own.
+        const sessionTmp = path.join(path.dirname(launch.cwd), "tmp");
+        const fits = runtimeSocketPath(sessionTmp, process.pid).length <= socketPathLimit();
+        const runtimeTmp = fits ? sessionTmp : "/tmp";
+        assert.equal(launch.env.CLAUDE_CODE_TMPDIR, runtimeTmp);
+        assert.equal(launch.env.TMPDIR, runtimeTmp);
         assert.ok(!JSON.stringify(launch.env).includes("token-value"));
         assert.equal(s.brokers.log.stops, 0);
 

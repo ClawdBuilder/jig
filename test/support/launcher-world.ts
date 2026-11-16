@@ -9,8 +9,8 @@
 //            $FAKE_TMUX_ALIVE exists, and exits with $FAKE_TMUX_NEW_STATUS or $FAKE_TMUX_ATTACH_STATUS for the sessions it starts or
 //            attaches; it never starts a server. When it is asked to start a session it also logs a `tmux-client-env` line for
 //            every variable of its own environment: that is what the real tmux client sends to the server
-//   timeout  logs, then runs the real timeout, so the fake interop probe really runs
-import { spawn } from "node:child_process";
+//   timeout  logs, then runs the program with a Node timer as the limit, so no GNU timeout is needed
+import { spawn, spawnSync } from "node:child_process";
 import {
     chmodSync,
     existsSync,
@@ -60,6 +60,27 @@ case "\${1:-}" in
 esac
 `;
 
+/** The bash the launcher needs: 4.4 or later, because it uses `declare -A` and `mapfile` (macOS ships 3.2). */
+export function launcherBashPath(): string | undefined {
+    for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+        const candidate = path.join(dir, "bash");
+        if (dir === "" || !existsSync(candidate)) continue;
+        // Major and minor as one number: 3.2 is 302 and 5.2 is 502, so the version asked for is 4.4, not 44.
+        const check = spawnSync(candidate, ["-c", "echo $((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))"], {
+            encoding: "utf8",
+        });
+        if (check.status === 0 && Number(check.stdout.trim()) >= 404) return realpathSync(candidate);
+    }
+    return undefined;
+}
+
+/** Why the launcher tests cannot run here, or undefined when they can. */
+export function launcherSkipReason(): string | undefined {
+    return launcherBashPath() === undefined
+        ? "the launcher needs bash 4.4 or later (declare -A, mapfile); this machine has none"
+        : undefined;
+}
+
 function onPath(program: string): string {
     for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
         const file = path.join(dir, program);
@@ -102,13 +123,25 @@ export function makeWorld(folder = "work"): World {
     const program = (name: string, content: string) => {
         writeFileSync(path.join(bin, name), content, { mode: 0o755 });
     };
-    for (const name of COREUTILS) symlinkSync(onPath(name), path.join(bin, name));
+    const bash = launcherBashPath() ?? onPath("bash");
+    for (const name of COREUTILS) symlinkSync(name === "bash" ? bash : onPath(name), path.join(bin, name));
     const cli = path.join(root, "npm", "lib", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "cli.js");
     mkdirSync(path.dirname(cli), { recursive: true });
     writeFileSync(cli, PI, { mode: 0o755 });
     symlinkSync(cli, path.join(bin, "pi"));
     program("tmux", TMUX);
-    program("timeout", `#!/bin/bash\n${LOG}\nexec ${onPath("timeout")} "$@"\n`);
+    // GNU `timeout` is not on macOS, so the fake is a Node timer: it logs the call, runs the program, and kills it after
+    // the seconds the launcher gave. Only the WSL probe uses it, and there it gives a live socket half a second to answer.
+    const timeoutScript = [
+        'const fs = require("node:fs");',
+        'const { spawnSync } = require("node:child_process");',
+        "const args = process.argv.slice(1);",
+        'if (process.env.FAKE_LOG) fs.appendFileSync(process.env.FAKE_LOG, ["timeout", ...args].join("\\t") + "\\n");',
+        "const seconds = Number(args.shift());",
+        'const result = spawnSync(args[0], args.slice(1), { stdio: "inherit", timeout: seconds * 1000 });',
+        "process.exit(result.error ? 124 : (result.status ?? 0));",
+    ].join("\n");
+    program("timeout", `#!/bin/bash\nexec ${JSON.stringify(process.execPath)} -e '${timeoutScript}' "$@"\n`);
 
     const file = (name: string, content: string, mode?: number) => {
         const target = path.join(root, name);

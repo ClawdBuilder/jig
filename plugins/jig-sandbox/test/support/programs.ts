@@ -75,12 +75,14 @@ export function realSandboxReason(): string | undefined {
 }
 
 /**
- * The reason to skip a real-sandbox test, or undefined to run it. In CI a reason throws instead, so a runner without
- * the programs fails the build and does not pass by skipping every escape test.
+ * The reason to skip a real-sandbox test, or undefined to run it. In CI on Linux a reason throws instead, so a runner
+ * without the programs fails the build and does not pass by skipping every escape test. Another platform skips: the
+ * suite runs the Linux sandbox, and a Mac or Windows runner has nothing to prove about it.
  */
 export function skipUnlessRealSandbox(): string | boolean {
     const reason = realSandboxReason();
     if (reason === undefined) return false;
-    if (process.env.CI) throw new Error(`the real-sandbox tests are required in CI: ${reason}`);
+    if (process.env.CI && process.platform === "linux")
+        throw new Error(`the real-sandbox tests are required in CI: ${reason}`);
     return reason;
 }

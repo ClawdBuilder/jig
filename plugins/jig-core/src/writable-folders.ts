@@ -4,18 +4,23 @@ import { flavour, formsOf, isInside } from "./protected-paths.ts";
 
 /**
  * The folders the file tools may write without asking: the working folder, plus the folders a person allowed when a
- * sandbox is running. A target is writable only when *every* form of it — the path as written and with its links
- * followed — is inside a writable folder's forms. That keeps a write inside the working folder writable whichever form
- * Pi hands over (on macOS `/var` is a link to `/private/var`), and a link out of the project still asks.
+ * sandbox is running. A write lands where its links lead, so the target's *real* form — links followed, the nearest
+ * existing folder for a file not made yet, case folded — must be inside a writable folder's real form. One folder has
+ * several spellings (`/var` and `/private/var` on macOS, a link to it) and the as-written form of a target spelled
+ * differently is inside none of them; its real form is inside the real one. A link out of the project still asks,
+ * because its real form is outside.
  */
 export function writableFolders(
     folders: readonly string[],
     platform: NodeJS.Platform | undefined = process.platform,
 ): (absolute: string) => boolean {
-    const sep = flavour(platform).sep;
-    const wanted = folders.flatMap((folder) => formsOf(folder, platform));
+    const pathApi = flavour(platform);
+    const sep = pathApi.sep;
+    // `formsOf` gives the folded form first and the folded, links-followed form last; only the real one is compared.
+    const real = (value: string): string => formsOf(pathApi.resolve(value), platform).at(-1) ?? value;
+    const wanted = folders.map((folder) => real(folder));
     return (absolute) => {
-        const have = formsOf(absolute, platform);
-        return have.every((form) => wanted.some((folder) => isInside(form, folder, sep)));
+        const target = real(absolute);
+        return wanted.some((folder) => isInside(target, folder, sep));
     };
 }

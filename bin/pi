@@ -15,6 +15,12 @@
 # For tests only: JIG_FORCE_INTERACTIVE=1 treats stdin and stdout as terminals, and JIG_TTY names the file the reattach menu is
 # read from instead of /dev/tty. JIG_INTEROP_PROBE and JIG_INTEROP_FALLBACK stand in for the Windows probe and the distro's socket.
 set -u
+# macOS ships bash 3.2, where the first `declare -A` below fails with its own syntax error: say what this needs before that.
+if (( BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] < 404 )); then
+    printf "Jig's launcher needs bash 4.4 or later (this is %s.%s). On macOS: brew install bash\n" \
+        "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" >&2
+    exit 1
+fi
 say() { printf 'jig: %s\n' "$*" >&2; }
 
 self="$(readlink -f "${BASH_SOURCE[0]}")"
@@ -90,7 +96,8 @@ attach_to() {
     after_tmux "$1"; exit "$status"
 }
 
-when() { date -d "@$1" '+%b %d %H:%M' 2>/dev/null || printf '%s' "$1"; }
+# The moment a session was last active: GNU date reads an epoch with -d @, macOS's with -r, and neither leaves it as it came.
+when() { date -d "@$1" '+%b %d %H:%M' 2>/dev/null || date -r "$1" '+%b %d %H:%M' 2>/dev/null || printf '%s' "$1"; }
 
 # Detached sessions of Jig's server that were started in $PWD, newest activity first, as "<activity> <name>". Sessions open
 # in a window (attached) are never candidates. @jig_cwd is set from inside the session (below).

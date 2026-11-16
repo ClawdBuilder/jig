@@ -24,8 +24,8 @@ describe("the Pi requirement", () => {
         const ci = read(".github/workflows/ci.yml");
         assert.equal(
             [...ci.matchAll(/npm install -g @earendil-works\/pi-coding-agent@(\d+\.\d+\.\d+)/g)].length,
-            2,
-            "both Install Pi steps",
+            3,
+            "the Install Pi steps: checks, integration and the advisory macOS job",
         );
         for (const match of ci.matchAll(/npm install -g @earendil-works\/pi-coding-agent@(\d+\.\d+\.\d+)/g)) {
             assert.equal(match[1], tested);

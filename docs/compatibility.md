@@ -23,7 +23,7 @@ the npm its Node line provides.
 
 The Pi that Jig is tested with is named in six places that move together, in one commit:
 
-- both `Install Pi` steps of `.github/workflows/ci.yml`;
+- every `Install Pi` step of `.github/workflows/ci.yml` (the checks job, the integration job and the advisory macOS job);
 - the "Tested with" table above, with the date;
 - the tested-version sentence in `README.md`;
 - the Pi row and the install command in [Contributing](../CONTRIBUTING.md#set-up);

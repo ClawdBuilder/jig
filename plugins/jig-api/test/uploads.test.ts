@@ -103,7 +103,7 @@ describe("a file outside it", () => {
             "../elsewhere/secret.txt",
             path.join(outside, "secret.txt"),
             "files/../../elsewhere/secret.txt",
-            "/etc/hostname",
+            "/etc/hosts",
         ]) {
             postman(src);
             for (const request of ["Form", "Body"]) {
@@ -116,6 +116,13 @@ describe("a file outside it", () => {
             (await upload("up.http#1", "staging")).blocked,
             refusal("up.http#1", "../elsewhere/secret.txt", OUTSIDE),
         );
+        // A long absolute path is named whole: it is what the person has to change, so the message does not cut it.
+        const deep = path.join(outside, "a".repeat(50), "secret.txt");
+        fs.mkdirSync(path.dirname(deep), { recursive: true });
+        fs.writeFileSync(deep, "OUTSIDE-CANARY");
+        postman(deep);
+        for (const request of ["Form", "Body"])
+            assert.equal((await upload(request)).blocked, refusal(request, deep, OUTSIDE), `${request} ${deep}`);
         assert.equal(h.api.requests.length, 0);
     });
 
