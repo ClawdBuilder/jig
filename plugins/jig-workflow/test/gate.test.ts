@@ -258,7 +258,7 @@ describe("when there is nothing to hold", () => {
         w.core.api.config.addRules([{ tool: "write", decision: "deny" }]);
         const denied = await w.other_("write", { path: inOrders(w), content: "x" });
         assert.equal(denied.blocked, true);
-        assert.match(denied.reason ?? "", /a rule in the configuration denies this call/);
+        assert.match(denied.reason ?? "", /write call in local is refused by a rule in jig.json; \/jig rules write shows it/);
         // And a call the rules ask about still asks, with the hold satisfied.
         w.core.api.config.addRules([{ tool: "deploy", decision: "ask" }]);
         w.answers.push("decline");

@@ -208,14 +208,21 @@ export function decide(input: DecideInput): Verdict {
         source,
         ...(approval === undefined ? {} : { approval }),
         ...(floor === undefined ? {} : { floor }),
-        ...(decision === "deny" ? { reason: denyReason(source, floor, input.protectedRefusal) } : {}),
+        ...(decision === "deny" ? { reason: denyReason(source, floor, input.protectedRefusal, call) } : {}),
     };
 }
 
-function denyReason(source: DecisionSource, floor: Verdict["floor"], protectedRefusal: string | undefined): string {
+function denyReason(
+    source: DecisionSource,
+    floor: Verdict["floor"],
+    protectedRefusal: string | undefined,
+    call: DecidedCall,
+): string {
+    const named = call.action === undefined ? `${call.tool} call` : `${call.tool} ${call.action}`;
     if (floor === "protected-path" && protectedRefusal !== undefined) return protectedRefusal;
-    if (floor === "production-write") return "writes to production are never allowed";
+    if (floor === "production-write")
+        return `${named} is refused by Jig's floor: it writes to ${call.environment}, which is production. Tell the person; do not retry or work around it`;
     if (floor === "no-screen") return "this call needs approval and there is no screen to ask on";
     if (source === "tool") return "the tool's own declaration denies this action";
-    return "a rule in the configuration denies this call";
+    return `${named} in ${call.environment} is refused by a rule in jig.json; /jig rules ${call.tool} shows it`;
 }

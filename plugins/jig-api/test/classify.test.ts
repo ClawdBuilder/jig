@@ -128,7 +128,10 @@ describe("the class of a run", () => {
         });
         assert.equal(verdict.decision, "deny");
         assert.equal(verdict.floor, "production-write");
-        assert.equal(verdict.reason, "writes to production are never allowed");
+        assert.equal(
+            verdict.reason,
+            "api Search orders is refused by Jig's floor: it writes to production, which is production. Tell the person; do not retry or work around it",
+        );
     });
 
     test("only the request and the environment decide: not the values the agent gives", () => {

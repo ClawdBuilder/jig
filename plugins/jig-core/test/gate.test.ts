@@ -94,7 +94,10 @@ describe("what is denied", () => {
             },
         });
         assert.equal(outcome.blocked, true);
-        assert.equal(outcome.reason, "Blocked by jig-core: writes to production are never allowed.");
+        assert.equal(
+            outcome.reason,
+            "Blocked by jig-core: fake call is refused by Jig's floor: it writes to prod, which is production. Tell the person; do not retry or work around it.",
+        );
         assert.equal(ran, false);
         assert.equal(harness.ui.selects.length, 0, "nobody is asked about something that cannot be allowed");
     });
@@ -127,7 +130,7 @@ describe("what is denied", () => {
         const harness = await begin({ ui: ALLOW, plugins: (api) => declare(api) });
         const outcome = await harness.call({ tool: "fake", input: { env: "somewhere-new", effect: "write" } });
         assert.equal(outcome.blocked, true);
-        assert.match(outcome.reason ?? "", /writes to production are never allowed/);
+        assert.match(outcome.reason ?? "", /fake call is refused by Jig's floor: it writes to somewhere-new/);
         assert.equal(harness.decisions()[0]?.environmentKind, "production");
     });
 
@@ -138,7 +141,10 @@ describe("what is denied", () => {
             plugins: (api) => declare(api),
         });
         const outcome = await harness.call({ tool: "fake", input: { action: "wipe" } });
-        assert.equal(outcome.reason, "Blocked by jig-core: a rule in the configuration denies this call.");
+        assert.equal(
+            outcome.reason,
+            "Blocked by jig-core: fake wipe in local is refused by a rule in jig.json; /jig rules fake shows it.",
+        );
         assert.equal((await harness.call({ tool: "fake", input: { action: "list" } })).blocked, false);
     });
 

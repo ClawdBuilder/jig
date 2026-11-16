@@ -50,7 +50,10 @@ describe("writes", () => {
 
         const result = await w.call("fake_tool", { env: "prod", effect: "write", action: "wipe" });
         assert.equal(result.isError, true);
-        assert.equal(result.text, "Blocked by jig-core: writes to production are never allowed.");
+        assert.equal(
+            result.text,
+            "Blocked by jig-core: fake_tool wipe is refused by Jig's floor: it writes to prod, which is production. Tell the person; do not retry or work around it.",
+        );
         assert.deepEqual(w.log.executed, [], "the tool never ran");
         assert.equal(w.ui?.selects.length, 0, "and nobody was asked");
 
@@ -389,7 +392,7 @@ describe("nested calls", () => {
     test("a nested production write is blocked, and the outer tool sees the error", async () => {
         const w = await begin({ config: CONFIG, ui: ALLOW });
         const result = await w.call("outer_tool", { env: "prod", effect: "write" }, "outer-2");
-        assert.match(result.text, /^outer saw: ERROR Blocked by jig-core: writes to production are never allowed\./);
+        assert.match(result.text, /^outer saw: ERROR Blocked by jig-core: fake_tool inner is refused by Jig's floor/);
         assert.deepEqual(
             w.log.executed.map((e) => e.tool),
             ["outer_tool"],

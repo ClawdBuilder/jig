@@ -45,7 +45,7 @@ describe("the rules table", () => {
     }
 
     test("a deny carries a reason for the model", () => {
-        assert.match(run(call("production", "write")).reason ?? "", /writes to production are never allowed/);
+        assert.match(run(call("production", "write")).reason ?? "", /tool call is refused by Jig's floor/);
         assert.equal(run(call("local", "read")).reason, undefined);
     });
 });
