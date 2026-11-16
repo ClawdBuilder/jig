@@ -38,6 +38,7 @@ function context(): DoctorContext {
             sections: new Map([["jira", {}]]),
             incomplete: new Map(),
             invalid: new Set(),
+            removed: new Map(),
         },
         sectionChecks: new Map(),
         company: emptyAdditions(),

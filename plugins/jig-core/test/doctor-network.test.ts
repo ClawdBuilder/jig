@@ -45,6 +45,7 @@ function context(overrides: Partial<DoctorContext> = {}): DoctorContext {
             sections: new Map(),
             incomplete: new Map(),
             invalid: new Set(),
+            removed: new Map(),
         },
         sectionChecks: new Map(),
         company: emptyAdditions(),

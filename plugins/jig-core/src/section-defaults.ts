@@ -15,6 +15,10 @@
 //
 // A map read in order (`first`) keeps your keys before the company's: an ordered map such as `git.accounts` must try the
 // person's specific pattern before a company's broader one.
+//
+// A `null` is a removal, never a value (RFC 7396's merge patch): the company's map entry of that name is left out, at any
+// depth the merge handles. `removedPaths` says which entries your file leaves out, so `/jig` and the doctor can tell you,
+// and `withoutRemoved` is what a section comes to with the removals applied: no plugin ever sees a `null`.
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -40,12 +44,13 @@ interface Rivals {
     keys: readonly string[];
 }
 
-/** The company's keys to leave out at `path`: the rivals of any key your section sets there. */
+/** The company's keys to leave out at `path`: the rivals of any key your section sets there. A `null` is a removal, not
+ *  a choice among the rivals, so it never displaces the company's other keys. */
 function displaced(groups: readonly Rivals[], path: readonly string[], mine: Record<string, unknown>): Set<string> {
     const out = new Set<string>();
     for (const group of groups) {
         if (!matches(group.parent, path)) continue;
-        const chosen = group.keys.filter((key) => Object.hasOwn(mine, key));
+        const chosen = group.keys.filter((key) => Object.hasOwn(mine, key) && mine[key] !== null);
         if (chosen.length === 0) continue;
         for (const key of group.keys) if (!chosen.includes(key)) out.add(key);
     }
@@ -79,8 +84,8 @@ function lay(
     if (mine === null) return theirs;
     if (Array.isArray(theirs) && Array.isArray(mine) && replaces(unions, path)) return united(theirs, mine);
     if (!isPlainObject(theirs) || !isPlainObject(mine)) return mine;
-    // Yours takes the place of theirs whole: nothing of the company's stays beside it.
-    if (replaces(patterns, path)) return mine;
+    // Yours takes the place of theirs whole: nothing of the company's stays beside it, and no `null` of yours either.
+    if (replaces(patterns, path)) return withoutRemoved(mine);
     const out: Record<string, unknown> = {};
     const dropped = displaced(groups, path, mine);
     for (const [key, value] of Object.entries(theirs)) if (!dropped.has(key)) put(out, key, value);
@@ -148,4 +153,67 @@ export function oneOfProblem(paths: unknown): string | undefined {
     }
     const parents = new Set(paths.map((path: string) => path.split(".").slice(0, -1).join(".")));
     return parents.size === 1 ? undefined : `the paths of a oneOf entry must be in one object: ${paths.join(", ")}`;
+}
+
+/** A copy of your section with every `null` entry left out: a removal, never a value. Lists keep their entries as
+ *  written (RFC 7396 removes object members only), and so does a value that is not an object. */
+export function withoutRemoved(value: unknown): unknown {
+    if (!isPlainObject(value)) return value;
+    const out: Record<string, unknown> = {};
+    for (const [key, inner] of Object.entries(value)) if (inner !== null) put(out, key, withoutRemoved(inner));
+    return out;
+}
+
+/** The company's map entries that a `null` in your section leaves out, as dotted paths such as `connections.prod`. A
+ *  `null` for a name the company does not have is not a removal, and is not listed. */
+export function removedPaths(theirs: unknown, mine: unknown): string[] {
+    if (!isPlainObject(mine)) return [];
+    const out: string[] = [];
+    for (const [key, value] of Object.entries(mine)) {
+        if (!isPlainObject(theirs) || !Object.hasOwn(theirs, key)) continue;
+        if (value === null) out.push(key);
+        else for (const inner of removedPaths(theirs[key], value)) out.push(`${key}.${inner}`);
+    }
+    return out;
+}
+
+/** The removal that leaves `path` out: the path itself or a map entry above it, or undefined. Used to keep a question
+ *  from undoing a removal. */
+export function removedAt(removed: readonly string[], path: string): string | undefined {
+    return removed.find((entry) => path === entry || path.startsWith(`${entry}.`));
+}
+
+/** For each section with company defaults, what a `null` in your file leaves out: `/jig` and the doctor say it there. */
+export function removedBySection(
+    defaults: ReadonlyMap<string, unknown>,
+    file: Readonly<Record<string, unknown>>,
+): Map<string, readonly string[]> {
+    const out = new Map<string, readonly string[]>();
+    for (const [name, value] of Object.entries(file)) {
+        const theirs = defaults.get(name);
+        if (theirs === undefined) continue;
+        const removed = removedPaths(theirs, value);
+        if (removed.length > 0) out.set(name, removed);
+    }
+    return out;
+}
+
+/** A frozen copy of a section and of every value in it: a plugin that changes what it was given changes nothing. A
+ *  value that cannot be cloned (no section should hold one) is frozen where it is, so the promise still holds. */
+export function frozenSection(value: unknown): unknown {
+    let copy = value;
+    try {
+        copy = structuredClone(value);
+    } catch {
+        copy = value;
+    }
+    return deepFreeze(copy);
+}
+
+function deepFreeze<T>(value: T): T {
+    if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
+        Object.freeze(value);
+        for (const inner of Object.values(value)) deepFreeze(inner);
+    }
+    return value;
 }

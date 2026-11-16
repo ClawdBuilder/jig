@@ -10,3 +10,13 @@ export function sectionState(personal: LoadedConfig, name: string): SectionState
     const unreadable = personal.problems.some((problem) => problem.key === "(file)");
     return personal.invalid.has(name) || unreadable ? "not set or invalid" : "not set";
 }
+
+/** The state, and what your `null` left out: `loaded; you left out connections.prod`. */
+export function sectionDetail(personal: LoadedConfig, name: string): string {
+    const state = sectionState(personal, name);
+    const removed = personal.removed.get(name) ?? [];
+    if (removed.length === 0) return state;
+    const listed = removed.slice(0, 3).join(", ");
+    const more = removed.length > 3 ? ` and ${removed.length - 3} more` : "";
+    return `${state}; you left out ${listed}${more}`;
+}

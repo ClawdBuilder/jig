@@ -311,7 +311,10 @@ The user's own `~/.jig/jig.json` is laid over the company's defaults before the 
   `mongo.connections.prod`, writing `"mongo": { "connections": { "prod": null } }` in your `jig.json` leaves only
   `staging`. It only takes away a company value: a protected path or a rule of the floor is not a section value, so
   this cannot loosen one, and a `null` for a name the company does not have changes nothing. The plugin never sees a
-  `null`; the key is gone.
+  `null`; the key is gone. `/jig setup` does not ask for that entry again, and `/jig` and `jig doctor` say you left it
+  out. A section that names its entries elsewhere is checked after the removal, so leave out the entries that refer to
+  it too (`mongo`'s `access.prod` when you leave out `connections.prod`). A whole section set to `null` is not a
+  removal: the merge returns the company's section.
 - **Each plugin names its own keys.** A key is a path from the section's root, with `*` for any one name.
 
 | Section | `replace` | `oneOf` | `union` |
@@ -332,6 +335,7 @@ The other sections merge as plain data. With jig-acme loaded, these are the resu
 | `{ "logs": { "backend": { "auth": { "apiKey": "env:MY_KEY" } } } }` | Your key in place of the sign-in service; the URL stays |
 | `{ "logs": { "backend": { "transport": "acme-gateway" } } }` | The transport, and the company's `auth` is dropped |
 | `{ "mongo": { "connections": { "dev": { "user": "jdoe" } } } }` | Your user; the address and password stay |
+| `{ "mongo": { "connections": { "prod": null }, "access": { "prod": null } } }` | No production connection; `dev` and `staging` stay |
 | `{ "git": { "protected": ["main"] } }` | Your list, not the company's two entries |
 
 A section that does not fit is reported with its key, and the plugin does not run half set up. If the user's section is complete
