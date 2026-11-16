@@ -1,7 +1,7 @@
 // Protected paths: what Pi's own file tools may not read or write, whatever the configuration says.
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import { buildPolicy, emptyAdditions, parseConfig } from "../src/config.ts";
@@ -150,7 +150,57 @@ describe("the defaults", () => {
         assert.equal(refusal?.entry?.kind, "secret");
     });
 
-    test("ordinary files are not protected", () => {
+    test("ordinary files are not protected", (t) => {
+        if (process.platform === "darwin") {
+            // Round 4, item 1: measure what the write gate is handed on macOS before changing it. Three worlds: this
+            // file's real root, a temp folder as `mkdtempSync` writes it (the `/var` that links to `/private/var`), and
+            // the fake `/home` of loaded-code.test.ts. `gate` is what the gate passes as `canWrite`.
+            const real = (value: string): string => {
+                try {
+                    return realpathSync(value);
+                } catch {
+                    return "(does not exist)";
+                }
+            };
+            const probe = (name: string, cwd: string, target: string, platform?: NodeJS.Platform): void => {
+                const gate = writableFolders([cwd], process.platform);
+                const seen: string[] = [];
+                const canWrite = (absolute: string): boolean => {
+                    const verdict = gate(absolute);
+                    seen.push(`canWrite(${absolute}) -> ${verdict}${absolute === target ? " (as written)" : ""}`);
+                    return verdict;
+                };
+                const given: CheckContext = {
+                    entries: defaultProtectedPaths({
+                        agentDir: agent,
+                        home,
+                        ...(platform === undefined ? {} : { platform }),
+                    }),
+                    cwd,
+                    home,
+                    ...(platform === undefined ? {} : { platform }),
+                };
+                const through = checkFileTool("write", { path: target }, { ...given, canWrite });
+                const fallback = checkFileTool("write", { path: target }, given);
+                const said = (verdict: { reason?: string } | undefined): string =>
+                    verdict === undefined ? "writable" : (verdict.reason ?? "ask");
+                t.diagnostic(`[${name}] cwd=${cwd} platform=${platform ?? process.platform}`);
+                t.diagnostic(`[${name}] target=${target}`);
+                t.diagnostic(`[${name}] process.cwd()=${process.cwd()} homedir()=${homedir()}`);
+                t.diagnostic(
+                    `[${name}] realpath(cwd)=${real(cwd)} realpath(dirname(target))=${real(path.dirname(target))}`,
+                );
+                for (const line of seen) t.diagnostic(`[${name}] ${line}`);
+                t.diagnostic(`[${name}] writableFolders([cwd])(target)=${gate(target)}`);
+                t.diagnostic(`[${name}] with canWrite=${said(through)}`);
+                t.diagnostic(`[${name}] without canWrite (the tests' fallback)=${said(fallback)}`);
+            };
+            probe("this file's real root", project, path.join(project, "src", "main.ts"));
+            const written = mkdtempSync(path.join(tmpdir(), "jig-gate-round4-"));
+            mkdirSync(path.join(written, "repo"), { recursive: true });
+            probe("temp folder as written", path.join(written, "repo"), path.join(written, "repo", "notes.txt"));
+            probe("fake /home, linux", "/home/me/work/orders", "/home/me/work/orders/src/main.ts", "linux");
+        }
         for (const tool of ["read", "write", "edit", "grep", "find", "ls"]) {
             assert.equal(check(tool, path.join(project, "src", "main.ts")), undefined, tool);
             const outside = check(tool, path.join(home, ".sshd-notes"));
