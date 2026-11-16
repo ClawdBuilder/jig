@@ -823,7 +823,10 @@ describe("case", () => {
         assert.ok(check("read", path.join(home, ".SSH", "id_ed25519"), mac));
         assert.ok(check("write", path.join(agent, "JIG.JSON"), mac));
         assert.equal(check("read", path.join(home, ".SSH", "id_ed25519"), context({ platform: "linux" })), undefined);
-        assert.equal(check("read", path.join(home, ".SSH", "id_ed25519")), undefined, "this process, which is Linux");
+        // This process's own platform: macOS ignores case, so the same path is protected there.
+        const here = check("read", path.join(home, ".SSH", "id_ed25519"));
+        if (process.platform === "darwin") assert.ok(here, "case is ignored on macOS");
+        else assert.equal(here, undefined, "this process is Linux, where case counts");
     });
 });
 

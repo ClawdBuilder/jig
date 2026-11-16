@@ -389,8 +389,14 @@ describe("reading output", () => {
     });
 });
 
+// The background tasks find their children and their start times in /proc; macOS has none, so the three tests that read
+// processes skip there, and everything the tasks do without reading them still runs.
+const procReason = process.platform === "linux" ? false : "the background tasks read /proc, which macOS does not have";
+
 describe("stopping", () => {
-    test("bg_kill stops a task and its children (the whole process group), and no wake-up follows", async () => {
+    test("bg_kill stops a task and its children (the whole process group), and no wake-up follows", {
+        skip: procReason,
+    }, async () => {
         const s = await begin();
         await s.tool("bash", { command: "sleep 301 & sleep 302 & echo 'children started'; wait", background: true });
         await until(() => readTask(s, "bg-1").includes("children started"), 5000);
@@ -439,7 +445,7 @@ describe("stopping", () => {
         assert.match((await s.tool("bg_list", {})).text, /killed \(max runtime\)/);
     });
 
-    test("ending the session stops every task, removes the logs and says nothing", async () => {
+    test("ending the session stops every task, removes the logs and says nothing", { skip: procReason }, async () => {
         const s = await begin();
         await s.tool("bash", { command: "sleep 303 & echo started; wait", background: true });
         await until(() => readTask(s, "bg-1").includes("started"), 5000);
@@ -477,7 +483,9 @@ function pidsOf(pattern: string): number[] {
 }
 
 describe("a crashed session", () => {
-    test("is found at the next session start: its tasks are stopped and its folder removed", async () => {
+    test("is found at the next session start: its tasks are stopped and its folder removed", {
+        skip: procReason,
+    }, async () => {
         const s = await begin();
         // A task as a Pi that died would have left it: a live process in a group of its own, a manifest naming it, a dead owner.
         const orphan = spawn("/bin/bash", ["-c", "sleep 304"], { detached: true, stdio: "ignore" });
