@@ -6,6 +6,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- Company onboarding can propose a `startChecks`, `git.accounts` or `secrets.pass` entry; setup asks, and a no is remembered.
 - A tool can declare `always: "ask"`: every call asks, and no rule or session allow lowers it. A rule can still deny it.
 
 ## [0.5.6] - 2026-11-16

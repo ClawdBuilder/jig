@@ -4,14 +4,15 @@
 // client.ts. They never import jig-core's modules: Pi gives each installed package its own module root, so a
 // company plugin cannot share jig-core's module instances (Pi's docs/packages.md, "Declare dependencies").
 
+import type { ProposalItem } from "./setup-proposal.ts";
+// A company can propose an entry for one of the person's own sections; setup asks before writing it.
+
 /** Where a call acts. `local`, `external` and `production` are built in. A company plugin adds its test
  *  environments (such as `staging`) through `config.addEnvironments`, and a tool may name a target in its own
  *  terms (such as `prod`) as long as configuration knows that name. An unknown name counts as production. */
 export type EnvironmentName = string;
-
 /** The kind of an environment decides its default rules. */
 export type EnvironmentKind = "local" | "external" | "test" | "production";
-
 /** One environment as `environments.list()` gives it. */
 export interface EnvironmentInfo {
     name: EnvironmentName;
@@ -22,11 +23,9 @@ export interface EnvironmentInfo {
 }
 
 export type Effect = "read" | "write";
-
 export type Decision = "allow" | "ask" | "deny";
 /** Which screen asks the user: a one-line dialog, a scrollable review screen, or a form. */
 export type ApprovalKind = "dialog" | "review" | "form";
-
 /** What one call does, as its tool declares it. */
 export interface CallClass {
     /** The action, for tools with several (`git` `push`). Omitted for single-action tools. */
@@ -952,7 +951,8 @@ export type OnboardingItem =
           label: string;
           detail?: string;
           url?: string;
-      };
+      }
+    | ProposalItem;
 
 /** Which company is active and why (`profiles.active`, `/profile`). */
 export interface ProfileSelection {

@@ -57,7 +57,8 @@ the environment variables. Back to the [jig-core overview](../README.md#configur
 ## At session start
 
 Two settings of yours run when a session starts, so they work however Pi was started. Both are yours alone: a
-company plugin can neither set `startChecks` nor add a host to it.
+company plugin can neither set `startChecks` nor add a host to it. It may propose one through onboarding; setup asks you,
+and only your yes writes it.
 
 ```json
 {

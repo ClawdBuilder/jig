@@ -11,6 +11,7 @@ import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { probeSecret, shorten } from "./secret-status.ts";
 import type { SecretProbe } from "./secret-status.ts";
 import { applyAnswer, buildSetupPlan } from "./setup-plan.ts";
+import { askProposal, proposalSections } from "./setup-proposal.ts";
 import { buildReference, describeReference, storeChoiceLabel, storeLabel } from "./setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
 import type { ReferenceParts } from "./setup-reference.ts";
@@ -32,7 +33,13 @@ export async function runSetup(
     requestedSection?: string,
     apply: "terminal" | "reload" = "terminal",
 ): Promise<number> {
-    if (requestedSection !== undefined && !state.sectionChecks.has(requestedSection)) {
+    let proposed = false;
+    try {
+        proposed = proposalSections(activeOnboarding(state)).has(requestedSection ?? "");
+    } catch {
+        // A test's stand-in may not carry the profile state; there can be no proposal then.
+    }
+    if (requestedSection !== undefined && !state.sectionChecks.has(requestedSection) && !proposed) {
         const known = [...state.sectionChecks.keys()].sort();
         ui.notify(
             `Unknown section ${JSON.stringify(requestedSection)}. Known sections: ${known.join(", ") || "none"}.`,
@@ -136,6 +143,7 @@ async function ask(
     changes: SetupChange[],
     ui: SetupUi,
 ): Promise<"ok" | "cancel"> {
+    if (field.kind === "proposal") return askProposal(plan, field, draft, changes, ui);
     if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ui);
     if (field.kind === "pick") {
         const choices = field.choices ?? [];

@@ -5,13 +5,14 @@
 import type { DoctorContext, DoctorLine } from "./doctor.ts";
 import { sectionState } from "./section-state.ts";
 import { getPath } from "./setup-plan.ts";
+import { decisionsFile, proposalId, proposalPresent, readDeclined } from "./setup-proposal.ts";
 
 export function onboardingLines(context: DoctorContext, settingsShown: string): DoctorLine[] {
     const entry = context.onboarding;
     if (entry === undefined) return [];
     const lines: DoctorLine[] = [];
     for (const [index, item] of entry.items.entries()) {
-        if (item.kind === "info" || item.kind === "login") continue;
+        if (item.kind === "info" || item.kind === "login" || item.kind === "proposal") continue;
         if (item.kind === "text" && item.optional === true) continue;
         const store = item.kind === "reference" ? (item.preferredStore ?? entry.preferredStore) : undefined;
         const hint = item.kind === "reference" ? item.addHints?.[store ?? "env"] : undefined;
@@ -38,6 +39,31 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
                 `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
             fix: hint ?? "Run jig setup and it asks for this.",
         });
+    }
+    if (context.configPath !== "") {
+        const declined = readDeclined(decisionsFile(context.configPath));
+        const raw = (section: string) => {
+            const value = context.personal.sections.get(section) ?? context.sections.get(section);
+            return typeof value === "object" && value !== null && !Array.isArray(value)
+                ? (value as Record<string, unknown>)
+                : {};
+        };
+        const pending = entry.items.filter(
+            (item) =>
+                item.kind === "proposal" &&
+                !declined.has(proposalId(item)) &&
+                !proposalPresent(raw(item.section), item),
+        ).length;
+        if (pending > 0) {
+            lines.push({
+                id: "config.proposals",
+                group: "config",
+                level: "warn",
+                title: "Company proposals",
+                detail: `${pending} proposed ${pending === 1 ? "entry is" : "entries are"} waiting for your answer.`,
+                fix: "Run jig setup and answer them.",
+            });
+        }
     }
     return lines;
 }

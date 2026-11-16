@@ -12,6 +12,7 @@ const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
 const FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company");
 const NEEDS_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-needs");
+const PROPOSAL_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-proposal");
 
 let home: string;
 let agent: string;
@@ -639,6 +640,15 @@ describe("jig setup", () => {
         // It went straight to the one save question, and the answer was written.
         const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
         assert.equal(written.fixture.login, "jdev");
+    });
+
+    test("--yes reports proposed entries and writes none", { timeout: 60_000 }, async () => {
+        settingsWith(PROPOSAL_FIXTURE);
+        const result = await run(["setup", "--yes"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /1 proposed entry was not added/);
+        assert.match(result.stdout, /Run jig setup in a terminal/);
+        assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
     test("starts with the company, writes the profile, then asks the onboarding field", {

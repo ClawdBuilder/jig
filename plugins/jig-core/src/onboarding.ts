@@ -1,6 +1,7 @@
 // A company's onboarding list: what its people must supply, in the company's order and words. It is data, checked once when
 // the plugin registers, never code: setup and doctor read it and ask or report. A plugin without a list is fine — setup falls
 // back to the section validators, which is less pretty but never blocked.
+import { checkProposal } from "./setup-proposal.ts";
 import type {
     OnboardingEntry,
     OnboardingItem,
@@ -10,10 +11,8 @@ import type {
     OnboardingStore,
 } from "./contract.ts";
 import { unknownField } from "./kit/fields.ts";
-
 /** The stores a list may name, in `jig.json`'s spelling. */
 export const ONBOARDING_STORES: readonly OnboardingStore[] = ["pass", "env", "keychain", "op", "cmd", "file"];
-
 const SECTION = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const PATH = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
 const METHOD_ID = /^[a-z][a-z0-9-]{0,63}$/;
@@ -21,25 +20,21 @@ const METHOD_PATH = /^(?:[A-Za-z0-9_*][A-Za-z0-9_*-]*)(?:\.[A-Za-z0-9_*][A-Za-z0
 const LABEL_MAX = 120;
 const WHY_MAX = 400;
 const DETAIL_MAX = 600;
-
 function oneLine(value: unknown, max: number): value is string {
     return (
         typeof value === "string" && value.trim() !== "" && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value)
     );
 }
-
 function optionalLine(value: unknown, at: string, max: number, errors: string[]): void {
     if (value !== undefined && !oneLine(value, max))
         errors.push(`${at}: must be one line of at most ${max} characters`);
 }
-
 /** The fields every method value must have: a reference, or text that is not optional. */
 export function requiredFields(method: OnboardingMethod): OnboardingMethodField[] {
     return method.fields.filter(
         (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
     );
 }
-
 /** The required paths of a method, sorted. Kinds and optional fields do not decide the method; the set of paths does.
  *  A subset is allowed and the most specific method wins, as long as two sets are not identical. */
 export function requiredPaths(method: OnboardingMethod): string {
@@ -497,7 +492,12 @@ export function checkOnboarding(
             items.push(item as unknown as OnboardingItem);
             continue;
         }
-        errors.push(`${at}.kind: must be text, pick, reference, login or info`);
+        if (check("proposal", ["section", "path", "key", "value", "label", "why"])) {
+            checkProposal(item, at, errors);
+            items.push(item as unknown as OnboardingItem);
+            continue;
+        }
+        errors.push(`${at}.kind: must be text, pick, reference, proposal, login or info`);
     }
     const methods: Record<string, OnboardingMethodChoice> = {};
     if (entry.methods !== undefined) {
