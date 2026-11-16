@@ -18,6 +18,8 @@ export interface CompanyEntry {
     displayName: string;
     overlays: string | undefined;
     skills: string[];
+    /** Remote patterns the company declared for its repositories. */
+    remotes: string[];
     onChange: ((active: boolean) => void) | undefined;
     additions: CompanyAdditions;
     defaults: Map<string, unknown>;
@@ -82,6 +84,7 @@ export function newCompanyEntry(name: string, displayName: string): CompanyEntry
         displayName,
         overlays: undefined,
         skills: [],
+        remotes: [],
         onChange: undefined,
         additions: emptyAdditions(),
         defaults: new Map(),

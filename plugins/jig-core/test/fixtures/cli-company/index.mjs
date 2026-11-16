@@ -3,7 +3,10 @@ import { withJig } from "../../../src/client.ts";
 
 export default function fixtureCompany() {
     withJig((api) => {
-        const scoped = api.profiles.register("fixture-co", { displayName: "Fixture Co" });
+        const scoped = api.profiles.register("fixture-co", {
+            displayName: "Fixture Co",
+            remotes: ["github.com:Acme/*"],
+        });
         scoped.config.registerSection("fixture", (raw) =>
             typeof raw?.login === "string" && raw.login !== "" ? [] : ["fixture.login is required"],
         );

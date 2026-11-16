@@ -230,6 +230,7 @@ Skills come in two kinds:
   by a rule you wrote ([configuration](../plugins/jig-core/docs/configuration.md)).
 - **`config.registerSection`** for the company's own settings, as [`config.ts`](../examples/jig-acme/src/config.ts) does with
   `acme`: the few things that differ from one person to the next.
+- **`profiles.register(..., { remotes })`** names the remote patterns your repositories usually match, so setup offers "Repositories of <company> (…)" and writes `when.remotes`.
 - **`status.register`** for lines in `/jig`, as [`status.ts`](../examples/jig-acme/src/status.ts) does: what is set up, and what this
   user is still missing.
 - **`onboarding.register`** for what each person must supply, so `/jig setup` asks in your words and order, and `/jig doctor` says

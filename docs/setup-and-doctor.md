@@ -85,7 +85,8 @@ home and the `jig` command.
 The questions need a terminal: their company, profile and credential choices have no safe headless default. With
 `--yes` setup takes the safe answers and skips them, so a script can finish. Without a terminal and without `--yes` it
 does the install, says the home is ready and that the questions need a terminal, names those two ways, and exits 2. It starts with the company question: which installed
-company setup you use, or "None, just me", and for which folders (`everywhere` by default). That writes the `profiles`
+company setup you use, or "None, just me", and where it applies: every folder, only this folder, or, when the company names
+remote patterns, repositories matching them. The last writes `when.remotes`. That writes the `profiles`
 and `profile` entries a newcomer cannot be expected to know. Then setup asks one question at a time about the parts a
 company plugin or a validator says are incomplete or wrong.
 

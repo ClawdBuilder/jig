@@ -17,16 +17,14 @@ import type { ExecGuard } from "./exec.ts";
 import { checkOnboarding, checkOnboardingMethods } from "./onboarding.ts";
 import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
-import { PROFILE_SECTION, PROFILES_SECTION } from "./profiles.ts";
+import { PROFILE_SECTION, PROFILES_SECTION, validateCompanyRemotes } from "./profiles.ts";
 import { ensureConfigLoaded, loadPersonalConfig } from "./state.ts";
 import { TRANSPORTS_SECTION } from "./transports-section.ts";
-
 import type { JigState } from "./state.ts";
 import { oneOfProblem } from "./section-defaults.ts";
 import { callRecord, writeRecord } from "./records.ts";
 import { isAbsolute } from "node:path";
 import { randomUUID } from "node:crypto";
-
 /** Refuses a section option that must be a list of non-empty paths, such as `first` or `union`. */
 function checkPathList(value: unknown, section: string, option: string, example: string): void {
     if (value === undefined) return;
@@ -93,12 +91,14 @@ export function buildApi(state: JigState): JigApi {
             ) {
                 throw new TypeError(`profiles.register(${name}): skills must be a list of skill names`);
             }
+            validateCompanyRemotes(options.remotes, name);
             if (options.onChange !== undefined && typeof options.onChange !== "function") {
                 throw new TypeError(`profiles.register(${name}): onChange must be a function`);
             }
             const entry = newCompanyEntry(name, options.displayName.trim());
             entry.overlays = options.overlays;
             entry.skills = [...(options.skills ?? [])];
+            entry.remotes = [...(options.remotes ?? [])];
             entry.onChange = options.onChange;
             state.companies.set(name, entry);
             // The choice may be a different one now that this company can be chosen.

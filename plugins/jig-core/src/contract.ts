@@ -21,7 +21,6 @@ export interface EnvironmentInfo {
      *  that did. */
     source: "built-in" | "personal" | "company";
 }
-
 export type Effect = "read" | "write";
 export type Decision = "allow" | "ask" | "deny";
 /** Which screen asks the user: a one-line dialog, a scrollable review screen, or a form. */
@@ -58,7 +57,6 @@ export interface Preview {
      *  would mislead: "This exact command, this session" says what the session answer covers. */
     answers?: { allow?: string; session?: string; decline?: string };
 }
-
 /** A Jig tool's description of itself, given to jig-core once per load with `declareTool`. */
 export interface ToolDeclaration {
     /** The tool's name as registered with Pi. */
@@ -801,6 +799,8 @@ export interface ProfileRegistration {
     /** Names of the skills the company ships that have no generic counterpart. They are listed for the model only while the
      *  company is active. */
     skills?: readonly string[];
+    /** Remote patterns this company's repositories usually match, such as `github.com:Acme/*`; setup offers them as a scope. */
+    remotes?: readonly string[];
     /** Called when the company becomes active or dormant, and once at session start with the state it begins in: where a
      *  plugin hides or shows the tools only it has (`exposure: "hidden"` when dormant). It must not throw; if it does, the
      *  error is reported by `/jig`. */

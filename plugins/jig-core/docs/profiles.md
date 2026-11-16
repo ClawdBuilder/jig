@@ -70,8 +70,9 @@ The first rule that fits decides. `/profile` shows which one, and the pattern th
 
 ## What dormant means
 
-A company plugin registers with `profiles.register(name, options)` and gives its parts through the view that call returns. Only
-the active company's parts apply:
+A company plugin registers with `profiles.register(name, options)` and gives its parts through the view that call returns. Its
+`remotes` option names the remote patterns its repositories usually match; setup offers them as a third scope, and choosing it
+writes `when.remotes`. An older Jig ignores the option and offers only its two scopes. Only the active company's parts apply:
 
 | Part | While dormant |
 |---|---|

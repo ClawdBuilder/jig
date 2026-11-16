@@ -167,7 +167,8 @@ closed instead of running ungoverned.
   through the view (`config.addEnvironments`, `addRules`, `addClassifyRules`, `addSecretCommands`, `enableSecretBackends`,
   `addSectionDefaults`, `status.register` and `onboarding.register`) applies only while its company is active; `addProtectedPaths` and `addMaskFields`
   always apply. `options` are `displayName` (the heading of the merged skill sections), `overlays` (an absolute folder of
-  `<skill-name>.md` files), `skills` (the names of its skills that have no generic counterpart) and `onChange(active)`.
+  `<skill-name>.md` files), `skills` (the names of its skills that have no generic counterpart), `remotes` (up to 50 remote
+  patterns its repositories usually match; an older Jig ignores it) and `onChange(active)`.
   **`profiles.active()`** says which company is active and why. A plugin that never registers applies always. See
   [Profiles](profiles.md).
 - **`exec`** has `run` and `git`, which start programs without a shell (see

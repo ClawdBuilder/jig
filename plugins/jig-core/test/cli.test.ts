@@ -651,6 +651,24 @@ describe("jig setup", () => {
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
+    test("offers the company's repositories and writes when.remotes", { timeout: 60_000 }, async () => {
+        settingsWith(FIXTURE);
+        const result = await runSetup([
+            { when: "Which company setup do you use?", answer: "1" },
+            { when: "Use Fixture Co's setup in:", answer: "3" },
+            { when: "Save this company choice?", answer: "y" },
+            { when: "needs 1 thing", answer: "1" },
+            { when: "Your Fixture login", answer: "jdoe" },
+            { when: "Review these changes", answer: "1" },
+            { when: "Save these changes?", answer: "y" },
+        ]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.profile, "auto");
+        assert.deepEqual(written.profiles["fixture-co"].when.remotes, ["github.com:Acme/*"]);
+        assert.equal(written.profiles["fixture-co"].when.folders, undefined);
+    });
+
     test("starts with the company, writes the profile, then asks the onboarding field", {
         timeout: 60_000,
     }, async () => {
