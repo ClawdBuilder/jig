@@ -96,6 +96,21 @@ describe("the packages Pi lists", () => {
         );
     });
 
+    test("a local tarball source maps to the package npm installed from it", () => {
+        const tar = path.join(root, "clawdbuilder-jig-0.5.6.tgz");
+        mkPackage(path.join(agent, "npm/node_modules/@acme/jig"), "@acme/jig");
+        writeFileSync(
+            path.join(agent, "npm/package.json"),
+            JSON.stringify({ dependencies: { "@acme/jig": `file:${path.relative(path.join(agent, "npm"), tar)}` } }),
+        );
+        settings(path.join(agent, "settings.json"), [`npm:${tar}`]);
+        assert.equal(parseNpmSource(`npm:${tar}`), undefined);
+        const { listed } = readPackages(agent, work);
+        assert.deepEqual(listed, [
+            { source: `npm:${tar}`, scope: "user", folder: path.join(agent, "npm/node_modules/@acme/jig") },
+        ]);
+    });
+
     test("project scope: settings and packages under <cwd>/.pi", () => {
         mkPackage(path.join(work, ".pi/git/github.com/team/company"), "company");
         settings(path.join(work, ".pi/settings.json"), ["git:github.com/team/company"]);

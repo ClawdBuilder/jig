@@ -115,9 +115,37 @@ export function parseNpmSource(source: string): { name: string } | undefined {
     if (!source.trim().startsWith("npm:")) return undefined;
     const spec = source.trim().slice(4).trim();
     if (spec === "") return undefined;
+    // `npm:/path/pkg.tgz` and `npm:./pkg.tgz` are npm file specs: their name comes from the installed package, not this path.
+    if (spec.startsWith(".") || spec.startsWith("/") || spec.startsWith("file:") || /\.(tgz|tar\.gz)$/i.test(spec))
+        return undefined;
     const match = NPM_SPEC.exec(spec);
     const name = match?.[1] ?? spec;
     return name === "" ? undefined : { name };
+}
+
+/** The package name npm installed from a local tarball, from the home npm folder's own dependency list. */
+function npmFilePackage(base: string, spec: string): string | undefined {
+    const file = spec.startsWith("file:") ? spec.slice(5) : spec;
+    if (!(path.isAbsolute(file) || file.startsWith(".") || /\.(tgz|tar\.gz)$/i.test(file))) return undefined;
+    const wanted = path.resolve(base, "npm", file);
+    for (const manifest of ["package.json", "package-lock.json"]) {
+        let data: unknown;
+        try {
+            data = JSON.parse(readFileSync(path.join(base, "npm", manifest), "utf8"));
+        } catch {
+            continue;
+        }
+        const dependencies =
+            manifest === "package.json"
+                ? (data as { dependencies?: Record<string, unknown> }).dependencies
+                : (data as { packages?: Record<string, { dependencies?: Record<string, unknown> }> }).packages?.[""]
+                      ?.dependencies;
+        for (const [name, value] of Object.entries(dependencies ?? {})) {
+            if (typeof value !== "string" || !value.startsWith("file:")) continue;
+            if (path.resolve(base, "npm", value.slice(5)) === wanted) return name;
+        }
+    }
+    return undefined;
 }
 
 /** `<root>/git/<host>/<path>`, the folder Pi clones a git source into. */
@@ -130,6 +158,8 @@ export function packageFolder(source: string, base: string): { folder?: string; 
     const trimmed = source.trim();
     if (trimmed === "") return { problem: "the entry is empty" };
     if (trimmed.startsWith("npm:")) {
+        const file = npmFilePackage(base, trimmed.slice(4).trim());
+        if (file !== undefined) return { folder: path.join(base, "npm", "node_modules", file) };
         const npm = parseNpmSource(trimmed);
         if (npm === undefined) return { problem: "the npm name cannot be read" };
         return { folder: path.join(base, "npm", "node_modules", npm.name) };

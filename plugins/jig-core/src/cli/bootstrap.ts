@@ -105,6 +105,11 @@ function installedProblem(home: string): string | undefined {
         : undefined;
 }
 
+/** Pi's install form for a local tarball: npm rewrites it under the home's npm folder, where `homeCommand` looks. */
+function installSource(source: string): string {
+    return !source.startsWith("npm:") && source.toLowerCase().endsWith(".tgz") ? `npm:${path.resolve(source)}` : source;
+}
+
 /** Runs `pi install <source>` in the home and resolves with its exit code. */
 function piInstall(pi: PiProgram, source: string, home: string, env: NodeJS.ProcessEnv): Promise<number> {
     return new Promise((resolve) => {
@@ -195,7 +200,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<BootstrapRes
         }
         mkdirSync(home, { recursive: true });
         const pkg = jigPackage();
-        const source = options.source ?? npmInstall(pkg.name, pkg.version);
+        const source = installSource(options.source ?? npmInstall(pkg.name, pkg.version));
         options.ui.notify(`Installing Jig (${source}) into ${home}…`, "info");
         const code = await piInstall(pi, source, home, env);
         if (code !== 0) {

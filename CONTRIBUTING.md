@@ -160,6 +160,7 @@ consumer pins one.
 ## Reporting a problem
 
 Open an [issue](https://github.com/ClawdBuilder/jig/issues/new/choose) with the exact call, what Jig decided, and what
-happened instead. Do not paste a token, a password or customer data.
+happened instead. Every `gh issue create` passes `--label bug` when Jig breaks a promise it makes, or `--label
+enhancement`; the web forms add these only in the browser. Do not paste a token, a password or customer data.
 
 A vulnerability is different: report it privately as [SECURITY.md](SECURITY.md) says, not in an issue.
