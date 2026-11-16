@@ -91,3 +91,14 @@ export function placeholderFor(kind: SetupFieldKind, current: unknown, last: str
 function isPrimitive(value: unknown): value is string | number | boolean {
     return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
 }
+
+/** The question for an optional field: an empty answer leaves it unset. */
+export function optionalQuestion(label: string): string {
+    return `${label} (optional: press Enter to leave it unset)`;
+}
+
+/** The question for a credential, built from the company's label without doubling its article. */
+export function referenceQuestion(label: string): string {
+    const named = label.replace(/^the\s+/i, "").trim();
+    return `Where does the ${named} live?`;
+}
