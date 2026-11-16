@@ -153,6 +153,11 @@ async function ask(
         ui.notify(`${field.label}: ${field.reason}`, "info");
         const text = await ui.input(field.question, field.placeholder);
         if (text === undefined) return "cancel";
+        // An optional field: an empty answer leaves it unset, and nothing is written for it.
+        if (field.optional === true && text.trim() === "") {
+            ui.notify(`${field.label} left unset (optional).`, "info");
+            return "ok";
+        }
         const result = applyAnswer(plan, draft, field, text);
         if ("change" in result) {
             changes.push(result.change);
