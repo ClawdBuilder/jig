@@ -1,7 +1,9 @@
 // The parameters of the `jira` tool. One flat object, because several model providers reject a top-level union. ACTIONS
 // says which parameters each action takes. The schema's action list, the usage lines in errors and the checks in
 // parseCall all come from it, so they cannot drift apart.
+import { actionList } from "../../jig-core/src/kit/actions.ts";
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { Type } from "typebox";
 import { PROJECT_KEY } from "./config.ts";
 import { convertField, MAX_TEXT } from "./fields.ts";
@@ -67,13 +69,8 @@ export function usage(action: ActionName): string {
     return `Usage: jira ${action} {${[...required, ...optional.map((name) => `${name}?`)].join(", ")}}`;
 }
 
-/** The action names, for the schema. The usage line on an error carries the parameters. */
-function describeActions(): string {
-    return ACTION_NAMES.join(", ");
-}
-
 export const parameters = Type.Object({
-    action: stringEnum(ACTION_NAMES, { description: `What to do: ${describeActions()}` }),
+    action: stringEnum(ACTION_NAMES, { description: `What to do: ${actionList(ACTION_NAMES)}` }),
     key: Type.Optional(Type.String({ description: "Key, e.g. PROJ-123" })),
     jql: Type.Optional(
         Type.String({
@@ -241,9 +238,7 @@ export function parseCall(input: Readonly<Record<string, unknown>>, options: Par
     const action = input.action;
     if (!isAction(action)) {
         // The schema lists every action and Pi checks against it first, so this reaches the model rarely and stays short.
-        throw new InputError(
-            `jira: action must be one of ${shortList(ACTION_NAMES, ", ", 100)} (got ${shown(action)})`,
-        );
+        throw new InputError(unknownAction("jira", action, ACTION_NAMES));
     }
     const { required: listed, optional }: ActionSpec = ACTIONS[action];
     const projects = options.projects ?? [];

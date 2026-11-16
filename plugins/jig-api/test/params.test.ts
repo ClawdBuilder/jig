@@ -58,9 +58,9 @@ describe("the actions", () => {
     test("an unknown action is refused with the actions there are", () => {
         refuses(
             () => parseCall({ action: "fly" }),
-            /^api: unknown action "fly"; use one of list, show, run, run_folder, call, postman_environments$/,
+            /^api: unknown action "fly"\. Usage: api <action> \(list, show, run, run_folder, call, postman_environments\)$/,
         );
-        refuses(() => parseCall({}), /^api: unknown action undefined;/);
+        refuses(() => parseCall({}), /^api: unknown action "undefined"\. Usage:/);
         refuses(() => parseCall({ action: "constructor" }), /unknown action/);
     });
 

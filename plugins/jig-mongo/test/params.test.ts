@@ -80,8 +80,8 @@ describe("checking a call", () => {
     });
 
     test("an unknown action, a missing parameter and a parameter the action does not use each get the usage line", () => {
-        refused({ action: "launch", ...base }, /unknown action "launch"; use one of access, databases/);
-        refused({ ...base }, /unknown action undefined/);
+        refused({ action: "launch", ...base }, /unknown action "launch"\. Usage: mongo <action>/);
+        refused({ ...base }, /unknown action "undefined"/);
         refused(
             { action: "find", environment: "staging", collection: "orders" },
             /mongo find needs database\. Usage: mongo find \{environment, database/,
