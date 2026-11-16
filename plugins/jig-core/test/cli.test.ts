@@ -424,6 +424,21 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Install it: jig install npm:@clawdbuilder\/jig/);
     });
 
+    test("a required field missing inside a loaded section is named, with its question", {
+        timeout: 60_000,
+    }, async () => {
+        settingsWith(NEEDS_FIXTURE);
+        // The section's own check passes (it only requires `login`), so the section loads; its onboarding list also needs
+        // `badge`, which nothing checks until a tool asks for it.
+        writeFileSync(path.join(agent, "jig.json"), JSON.stringify({ fixture: { login: "jdoe" } }));
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 0, "a missing field is a warning, as a missing section is");
+        assert.match(result.stdout, /You need: Your Fixture badge/);
+        assert.match(result.stdout, /Add fixture\.badge to/);
+        assert.doesNotMatch(result.stdout, /You need: Your Fixture login/, "a value that is set is not named");
+        assert.doesNotMatch(result.stdout, /You need: Your Fixture note/, "an optional item is never named");
+    });
+
     test("two copies of Jig with different versions are a warning", { timeout: 60_000 }, async () => {
         const folder = path.join(agent, "git", "github.com", "example", "jig");
         mkdirSync(folder, { recursive: true });
