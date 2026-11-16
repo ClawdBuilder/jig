@@ -66,6 +66,19 @@ repository. It looks at the file system only; it never runs git.
 it to the model: jig-core still decides each call, so a denied call stays denied. Refusals and edge cases are in
 [Context and requests](context.md#requests).
 
+## Compacting while idle
+
+1. **A run settles** (`agent_settled`). `idleCompact()` reads `session.compactWhenIdle`; an unset or off setting, an
+   aborted run and a `print` or `json` session start no timer.
+2. **The wait starts.** One `setTimeout` is kept for the current idle stretch. `agent_start`, `turn_start`, `tool_call`,
+   `input`, `ui_prompt_start`, any compaction and `session_shutdown` clear it.
+3. **The timer fires.** The setting is read again, and the session must still be idle, have no queued message, have an
+   empty editor and hold at least `minTokens`; then `ctx.compact()` starts Pi's usual summary.
+4. **Pi reports back.** `onComplete` or `onError` becomes one notification with the tokens before and, when estimated,
+   after. A throw from the timer is caught and reported instead of ending the session.
+
+The setting and the trade-off are in [Compacting while idle](idle-compaction.md).
+
 ## Reading the source
 
 Read in this order. Each file is short; the tests in `test/` show each one used.
@@ -73,9 +86,10 @@ Read in this order. Each file is short; the tests in `test/` show each one used.
 | File | What it does | Who calls it |
 |---|---|---|
 | `index.ts` | The entry Pi loads; hands on to `src/index.ts` | Pi |
-| `src/index.ts` | The factory: subscribes to events, registers `/session-file` and `/session-reload` | Pi, once per load |
+| `src/index.ts` | The factory: subscribes to events, registers the commands and starts the idle timer | Pi, once per load |
 | `src/status.ts` | `StatusFile`: start, stop, the 2 s tick, the snapshot and the write | the event handlers |
 | `src/files.ts` | The state dir, file names, the atomic write, the sweep of dead sessions | `status.ts` |
+| `src/idle-compact.ts` | The `session` section's check, the `/jig` line, and the idle timer that calls `ctx.compact()` | `index.ts` |
 | `src/activity.ts` | `outputs` (with `repo`) and `recent`, from tool events and decisions | `index.ts`, `status.ts` |
 | `src/ticket.ts` | The active ticket, its title, and the workflow's stages, read from files | `status.ts` |
 | `src/usage.ts` | Tokens and cost for the session; how full the context is | `status.ts`, `context.ts` |
@@ -91,16 +105,18 @@ builds the snapshot) → `writeAtomic()` (`files.ts` writes the temporary file a
 
 Nothing outside Pi, jig-core and Node.js: `jig-session` has no npm dependency of its own.
 
-- **Pi's events:** `session_start`, `session_shutdown`, `agent_start`, `agent_settled`, `turn_end`, `model_select`,
-  `thinking_level_select`, `session_compact`, `session_tree`, `tool_call`, `tool_execution_start`, `tool_execution_end`,
-  and `before_agent_start` for the skills.
+- **Pi's events:** `session_start`, `session_shutdown`, `agent_start`, `agent_settled`, `turn_start`, `turn_end`, `input`,
+  `ui_prompt_start`, `model_select`, `thinking_level_select`, `session_before_compact`, `session_compact`, `session_tree`,
+  `tool_call`, `tool_execution_start`, `tool_execution_end`, and `before_agent_start` for the skills.
 - **Pi's extension API:** `pi.setActiveTools`, `getActiveTools`, `getAllTools`, `getCommands`, `getSettings`,
   `getThinkingLevel`, `appendEntry`, `sendUserMessage`, `registerCommand`; `getAgentDir()` from the package.
 - **Pi's context (`ctx`):** `sessionManager.getSessionId` and `getBranch`, `getContextUsage`, `getSystemPrompt`, `isIdle`,
-  `isProjectTrusted`, `model`, `cwd`; in a command, `waitForIdle` and `reload`.
-- **jig-core:** the `jig:decision` event on `pi.events`, and `jig().config.section()` for the `memory`, `workflow` and `jira`
-  sections, through its `client.ts` and `contract.ts` only.
+  `hasPendingMessages`, `isProjectTrusted`, `compact`, `model`, `mode`, `cwd`, `ui.getEditorText`; in a command,
+  `waitForIdle` and `reload`.
+- **jig-core:** the `jig:decision` event on `pi.events`, and `jig().config.section()` for the `memory`, `workflow`, `jira`
+  and `session` sections, through its `client.ts` and `contract.ts` only.
 - **Node.js built-ins:** `node:fs` (write, rename, remove, list, stat), `node:crypto` (random temporary names), `node:os`
-  and `node:path`; `process.kill(pid, 0)` to tell a live Pi; a `setInterval` timer that does not keep Pi running (`unref`).
+  and `node:path`; `process.kill(pid, 0)` to tell a live Pi; a `setInterval` timer that does not keep Pi running (`unref`)
+  and a one-shot `setTimeout` that is cleared when the session changes.
 
 [Back to the overview](../README.md)

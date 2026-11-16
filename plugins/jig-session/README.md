@@ -7,6 +7,8 @@
 `jig-session` is a Pi extension that publishes what a Pi session is doing as one small JSON file per session: its terminal,
 model, context and what fills it, cost, ticket and workflow stage, the files it created or changed, and its recent tool calls
 with jig-core's decision on each. Any program can read it, such as a side panel or a script; Pi opens no port for it.
+It can also compact the session while the person is away, a little before the provider's prompt cache expires, when they
+have turned that on with `session.compactWhenIdle`.
 
 A reader may also send one kind of request, through a file: turn a tool or a skill on or off for this session, or reload
 Pi when it is idle. The session answers in its status file. A request never approves a call.
@@ -90,8 +92,9 @@ them. **Schema 1:**
 
 ## Rules
 
-- **Files only.** It writes its own status files and takes its request files: no port, no network, no other folder. The
-  switches are kept as an entry in the session, through Pi.
+- **Files, and one compaction when configured.** It writes its own status files and takes its request files: no port, no
+  network of its own, no other folder. With `session.compactWhenIdle` it also asks Pi to compact a session that has been
+  idle. The switches are kept as an entry in the session, through Pi.
 - **No values.** A tool call is written as its tool and action names, a file as its path. No argument value, no command
   line, no secret.
 - **One step.** A file is written to a temporary file and renamed over the old one, so a reader never sees half of one.
@@ -107,8 +110,14 @@ them. **Schema 1:**
 
 ## Configure
 
-Nothing. The folder follows `$JIG_STATE_DIR`, as jig-core's does. The ticket folder and the workflow folders are read from
-the `memory` and `workflow` sections, and the Jira address from the `jira` section's `site`, as those plugins read them.
+The folder follows `$JIG_STATE_DIR`, as jig-core's does. The ticket folder and the workflow folders are read from the
+`memory` and `workflow` sections, and the Jira address from the `jira` section's `site`, as those plugins read them.
+
+`session.compactWhenIdle` compacts the session a little before the provider's prompt cache expires, so a person coming
+back does not pay to write the whole context again. It is off unless set. `afterSeconds` (60 to 290, default 270) is how
+long the session must be idle, and `minTokens` (default 150,000) how big the context must be; `/jig` shows the setting
+when it is there. The summary is a normal model call (Pi turns cache retention off for it), so it costs when nobody comes
+back; [Compacting while idle](docs/idle-compaction.md) has the trade-off, the numbers and the limits.
 
 ## Company part (in the company plugin)
 
@@ -125,6 +134,7 @@ None. Nothing here is specific to a company.
 
 **Use it**
 - [How it works](docs/how-it-works.md): Read before you change the file.
+- [Compacting while idle](docs/idle-compaction.md): Read before you turn it on, or change the timer.
 - [The status file](docs/status-file.md): Read before you read the file.
 - [Front-end contracts](../../docs/contracts.md): Read before you change a contract.
 - [Context and requests](docs/context.md): Read before you change context.

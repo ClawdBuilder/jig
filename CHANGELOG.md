@@ -15,6 +15,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 - `jig doctor` warns when the running Jig is outside an installed company package's `jig.range`.
 - `exec.run(file, args, { keep })` keeps the end of a program's output (`keep: "tail"`), or both ends (`keep: "both"`), when `maxOutputBytes` cuts it; the marker says how many bytes were left out.
 - A company's map entry can be left out: an entry set to `null` in your `jig.json` removes the company's value of that name, a plugin never sees a `null`, `/jig setup` does not ask for it again, and `/jig` and `jig doctor` say you left it out.
+- A session can compact itself while you are away: `session.compactWhenIdle` in `jig.json` compacts a little before the provider's prompt cache expires, once the context is big enough, and one line says the tokens before and after. Off by default.
 
 ## [0.5.6] - 2026-11-16
 
