@@ -473,8 +473,8 @@ describe("scenarios-pass", () => {
         approved(w);
         const none = await check(w, "scenarios-pass");
         assert.deepEqual(none.lines, [
-            "scenario 1: no result yet: run it, then record it with workflow scenario",
-            "scenario 2: no result yet: run it, then record it with workflow scenario",
+            "scenario 1: no result yet: run it, then record it with workflow scenario or workflow waive",
+            "scenario 2: no result yet: run it, then record it with workflow scenario or workflow waive",
         ]);
         w.state.scenarios["1"] = pass(1);
         w.state.scenarios["2"] = { ...pass(2), result: "fail" };

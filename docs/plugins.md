@@ -56,7 +56,7 @@ Each plugin's README has the full table of its tool's actions.
   `reply`, `resolve`, `review`, `merge`.
 - **`release`:** `tags`, `releases`, `tag_create`, `tag_push`, `release_create`.
 - **`workflow`** (`jig-workflow`): `list`, `status`, `start`, `bind`, `submit_plan`,
-  `test`, `scenario`, `advance`, `back`.
+  `test`, `scenario`, `waive`, `advance`, `back`.
 - **`mongo`:** `databases`, `collections`, `schema`, `stats`, `indexes`,
   `index_stats`, `explain`, `count`, `find`, `distinct`, `sample`, `aggregate`,
   `insert`, `update`, `replace`, `delete`, `bulk`, `create_index`, `drop_index`.

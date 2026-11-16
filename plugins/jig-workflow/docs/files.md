@@ -20,7 +20,8 @@ itself, so a file never runs code and a stranger's file can only name stages and
 A stage has an `id` (lower-case letters, digits and `-`, unique in the file), a `goal` the agent reads, and
 `exit`: the conditions that must all hold before the work leaves it. The last stage usually has no
 `exit`, because the work stays there. It may also name `tools` to switch on while the work is in it
-([Stage tools](#stage-tools)).
+([Stage tools](#stage-tools)), and `scenarios` to give an early `scenarios-pass` a subset of the plan's
+numbers.
 
 A hold has `until`, a condition, and `calls`: a list of tool names, or a tool name and an action, such as
 `"git push"`. The condition is checked the same way an exit condition is ([Holds](holds.md)).
@@ -34,7 +35,8 @@ others still load. The checks:
 - every condition in `exit` and `until` is one of the eight, none twice in one `exit`;
 - `match.ticket` and `branch` are usable: a regular expression that compiles, a template with `{ticket}`;
 - every entry of `calls` is a tool name, alone or followed by one action;
-- a stage's `tools` is a list of at most 30 tool names, none twice.
+- a stage's `tools` is a list of at most 30 tool names, none twice;
+- a stage's `scenarios` is a list of 1 to 50 distinct numbers from 1 to 50.
 
 ## Stage tools
 

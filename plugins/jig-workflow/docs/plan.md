@@ -67,6 +67,12 @@ asks for another approval. Approving a plan does not approve the code.
 - **A result belongs to the scenario's text.** It is saved with a hash of that scenario, so editing the
   scenario, which also needs a new approval, makes its old pass stop counting.
 - **A fail is recorded too,** without evidence, and holds `scenarios-pass` back until a pass replaces it.
+- **A person can waive one, with a reason.** `workflow waive` shows the scenario and the reason and always asks
+  you; only your yes records it, as `waived by person`, for the scenario's current text. A waiver stands in
+  for a pass, and a later pass replaces it. A stage that names `scenarios` (numbers in `plan.md`) checks
+  only those, so a plan can be accepted in groups; a stage with no `scenarios` checks all of them. The subset
+  is a stage field, not a new condition, because the stage already owns its `exit`.
+- **The failure names every scenario still missing,** not only the first: run it or waive it.
 - **The pass is the agent's claim,** made with evidence you can open. The plugin cannot judge that a
   screenshot shows the right thing; the evidence is there for you, and `you-approve` on the stage is where
   you look.

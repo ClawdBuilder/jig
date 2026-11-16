@@ -219,6 +219,7 @@ export class Runtime {
         state: WorkflowState,
         options: { live: boolean; approvedNow?: boolean; signal?: AbortSignal },
     ): Evidence {
+        const stage = this.definition(state)?.workflow.stages.find((candidate) => candidate.id === state.stage);
         return new Evidence({
             host: this.host,
             ticket: work.ticket,
@@ -226,6 +227,7 @@ export class Runtime {
             cwd: this.cwd,
             state,
             bound: this.bound(work.ticket).roots,
+            ...(stage?.scenarios === undefined ? {} : { scenarios: stage.scenarios }),
             live: options.live,
             ...(options.approvedNow === undefined ? {} : { approvedNow: options.approvedNow }),
             ...(options.signal === undefined ? {} : { signal: options.signal }),

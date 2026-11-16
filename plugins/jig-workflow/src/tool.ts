@@ -35,6 +35,11 @@ const ACTIONS = {
         required: ["number", "result"],
         optional: ["ticket", "evidence"],
     },
+    waive: {
+        summary: "waive a numbered scenario with a reason; the person is asked",
+        required: ["number", "reason"],
+        optional: ["ticket"],
+    },
     advance: { summary: "move to the next stage when every exit condition holds", optional: ["ticket"] },
     back: { summary: "move to an earlier stage", optional: ["ticket", "to"] },
 } as const satisfies Record<string, { summary: string; required?: readonly string[]; optional: readonly string[] }>;
@@ -82,6 +87,7 @@ const parameters = Type.Object(
             Type.Integer({ minimum: 1, maximum: 50, description: "scenario: the number in plan.md." }),
         ),
         result: Type.Optional(stringEnum(["pass", "fail"] as const, { description: "scenario: what happened." })),
+        reason: Type.Optional(Type.String({ maxLength: 500, description: "waive: why this scenario cannot be run." })),
         evidence: Type.Optional(
             Type.Object(
                 {
@@ -155,6 +161,8 @@ function classify(input: Readonly<Record<string, unknown>>): CallClass {
             return { action, environment: "local", effect: "read" };
         case "submit_plan":
             return { action, environment: "local", effect: "write", atLeast: "ask", approval: "review" };
+        case "waive":
+            return { action, environment: "local", effect: "write", atLeast: "ask", approval: "dialog" };
         case "start":
             return input.replace === true
                 ? { action, environment: "local", effect: "write", atLeast: "ask", approval: "dialog" }
@@ -200,6 +208,8 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
                     answers: { allow: "Replace it", decline: "Keep it" },
                 };
             }
+            case "waive":
+                return await actions.waivePreview(rt, params);
             case "test": {
                 const { ticket, plans, views } = await actions.plannedTests(rt, params);
                 const question = actions.testQuestion(ticket, plans);
@@ -222,7 +232,7 @@ export function createTool(rt: Runtime): { definition: ToolDefinition; declarati
         name: TOOL_NAME,
         label: "Workflow",
         description: DESCRIPTION,
-        promptSnippet: "Take work through its workflow: status, test, submit_plan, scenario, advance",
+        promptSnippet: "Take work through its workflow: status, test, submit_plan, scenario, waive, advance",
         parameters,
         // Each action reads the state and writes it back, and a move depends on the evidence it just read.
         executionMode: "sequential",
@@ -309,6 +319,8 @@ async function run(rt: Runtime, params: Params, call: actions.Call): Promise<Act
             return actions.runTestsAction(rt, params, call);
         case "scenario":
             return actions.scenario(rt, params);
+        case "waive":
+            return actions.waive(rt, params, call);
         case "advance":
             return actions.advance(rt, params, call);
         case "back":

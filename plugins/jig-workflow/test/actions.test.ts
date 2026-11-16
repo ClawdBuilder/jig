@@ -605,3 +605,98 @@ describe("nothing escapes the ticket", () => {
         assert.equal(existsSync(path.join(w.workspace, "workflow.json")), false);
     });
 });
+
+describe("scenarios in stages, with a person's waiver", () => {
+    const accept = {
+        name: "accept",
+        branch: "{ticket}",
+        stages: [{ id: "first", exit: ["scenarios-pass"] }, { id: "done" }],
+    };
+    async function accepting(t: Parameters<typeof world>[0], ui = true): Promise<World> {
+        const w = await world(t, { workflows: { accept }, ...(ui ? {} : { ui: false }) });
+        w.activate("PROJ-1");
+        w.bind(w.orders);
+        assert.equal((await w.call({ action: "start", name: "accept" })).isError, false);
+        approvePlan(w);
+        return w;
+    }
+    const staged = {
+        name: "staged",
+        branch: "{ticket}",
+        stages: [
+            { id: "first", exit: ["scenarios-pass"], scenarios: [1] },
+            { id: "rest", exit: ["scenarios-pass"] },
+            { id: "done" },
+        ],
+    };
+
+    test("an early stage accepts its subset, then the later stage the rest", async (t) => {
+        const w = await world(t, { workflows: { staged } });
+        w.activate("PROJ-1");
+        w.bind(w.orders);
+        assert.equal((await w.call({ action: "start", name: "staged" })).isError, false);
+        approvePlan(w);
+        const first = await w.call({
+            action: "scenario",
+            number: 1,
+            result: "pass",
+            evidence: { text: "The first read returned the cached price." },
+        });
+        assert.equal(first.isError, false, first.text);
+        const move = await w.call({ action: "advance" });
+        assert.equal(move.isError, false, move.text);
+        const status = await w.call({ action: "status" });
+        assert.match(status.text, /scenario 2: no result yet/);
+        assert.doesNotMatch(status.text, /scenario 1: no result yet/);
+        const second = await w.call({
+            action: "scenario",
+            number: 2,
+            result: "pass",
+            evidence: { text: "A changed price showed without a restart." },
+        });
+        assert.equal(second.isError, false, second.text);
+        assert.equal((await w.call({ action: "advance" })).isError, false);
+    });
+
+    test("a waiver with a reason passes and is shown, after the person is asked", async (t) => {
+        const w = await accepting(t);
+        const waived = await w.call({
+            action: "waive",
+            number: 1,
+            reason: "The acceptance environment is unavailable this week.",
+        });
+        assert.equal(waived.isError, false, waived.text);
+        assert.match(w.asked.at(-1)?.title ?? "", /Waive scenario 1 of PROJ-1/);
+        assert.match(waived.text, /The acceptance environment is unavailable this week\./);
+        assert.equal(w.state()?.scenarios["1"]?.waiver?.by, "person");
+        const pending = await w.call({ action: "status" });
+        assert.match(pending.text, /scenario 1: .*waived|scenario 1: .*waiver/);
+        await w.call({
+            action: "scenario",
+            number: 2,
+            result: "pass",
+            evidence: { text: "A changed price showed without a restart." },
+        });
+        const met = await w.call({ action: "status" });
+        assert.match(met.text, /scenarios-pass: met/);
+        assert.match(met.text, /1 waived/);
+    });
+
+    test("the model cannot waive without the person's question", async (t) => {
+        const w = await accepting(t, false);
+        const blocked = await w.call({
+            action: "waive",
+            number: 1,
+            reason: "The acceptance environment is unavailable this week.",
+        });
+        assert.equal(blocked.blocked, true);
+        assert.equal(w.state()?.scenarios["1"], undefined);
+    });
+
+    test("the failure names every scenario still missing", async (t) => {
+        const w = await accepting(t);
+        const status = await w.call({ action: "status" });
+        assert.match(status.text, /scenario 1: no result yet/);
+        assert.match(status.text, /scenario 2: no result yet/);
+    });
+});

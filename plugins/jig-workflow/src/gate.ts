@@ -48,6 +48,8 @@ function mustAsk(rt: Runtime, call: GateCall): string | undefined {
                 ? undefined
                 : `workflow start replace over the workflow of ${ticket} loses its evidence, and it is asked every time`;
         }
+        case "waive":
+            return "workflow waive always asks: the person decides whether a scenario may be skipped, and records why";
         case "test": {
             if (ticket === undefined || rt.work(ticket).read.kind !== "state") return undefined;
             return rt.host.sandbox.canRun()

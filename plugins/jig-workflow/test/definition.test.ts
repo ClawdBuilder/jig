@@ -74,6 +74,14 @@ describe("a file that is rejected says where", () => {
         assert.deepEqual(parseWorkflow("null", "x").errors, ["the file must hold one JSON object"]);
     });
 
+    test("a stage's scenarios is a non-empty list of distinct numbers from 1 to 50", () => {
+        const errors = (scenarios: unknown) => errorsOf({ stages: [{ id: "a", scenarios }] });
+        assert.match(errors([])[0] ?? "", /scenarios: must be a list of 1 to 50/);
+        assert.match(errors([0])[0] ?? "", /scenarios\[0\]: must be a scenario number/);
+        assert.match(errors([1, 1])[0] ?? "", /scenarios\[1\]: 1 is listed twice/);
+        assert.equal(errors([1, 2]).length, 0);
+    });
+
     test("a field nobody defined, in the file, a stage, a hold and match", () => {
         const errors = errorsOf({
             colour: "red",

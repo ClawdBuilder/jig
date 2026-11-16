@@ -6,6 +6,7 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ### Added
 
+- Workflow scenarios can be accepted in stages with a stage's `scenarios`, and a person can waive one with a reason; `scenarios-pass` names every scenario still missing.
 - Company onboarding can propose a `startChecks`, `git.accounts` or `secrets.pass` entry; setup asks, and a no is remembered.
 - A tool can declare `always: "ask"`: every call asks, and no rule or session allow lowers it. A rule can still deny it.
 - `jig doctor` warns when the running Jig is outside an installed company package's `jig.range`.

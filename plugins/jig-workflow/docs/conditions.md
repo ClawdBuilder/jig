@@ -60,8 +60,9 @@ repository, only that repository counts.
   On GitLab the roll-up is the jobs of the merge request's latest pipeline, counted the same way: a job that may fail
   does not fail the pipeline, an unfinished or manual job is pending, and a pipeline made for an older commit counts
   for nothing. A CI watch of the project is matched by its whole path, subgroups included.
-- **`scenarios-pass`.** Holds when the plan is approved and each numbered scenario of it has a result of
-  `pass` with evidence, recorded for the scenario's current text. See [Plan](plan.md#scenarios).
+- **`scenarios-pass`.** Holds when the plan is approved and each numbered scenario in scope has a `pass`
+  with evidence or a recorded waiver, for the scenario's current text. A stage can name a subset with
+  `scenarios`, so an early phase accepts a first group and a later stage the rest. See [Plan](plan.md#scenarios).
 - **`you-approve`.** `advance` out of a stage that lists it asks you, in a dialog or on a review screen,
   with the evidence of the stage in front of you. The question is asked every time: a rule or an "allow
   for this session" cannot answer it ([Holds](holds.md#calls-that-always-ask)). It holds for that one move.
