@@ -3,15 +3,24 @@
 A release is a tag, a section of the changelog and a GitHub release, in that order. Pi shows a user the changelog entries
 newer than the version they had, once, after an update, so every entry is written for that reader.
 
+## Add a change
+
+A user-visible change is one file in [changelog.d/](../changelog.d/), named for the change and folded in name order: a
+`### Added`, `### Changed`, `### Fixed` or `### Removed` heading and its line(s). `npm run check` refuses a file with an
+unknown heading or no `- ` line. A release folds the files into the next section and deletes them; `## [Unreleased]` is
+never edited.
+
 ## Cut one
 
 1. **Land it green.** The commit you tag is one whose `npm run check`, `npm test` and `npm run check:install` passed in CI.
-2. **Move the entries.** `node scripts/release.mjs 0.3.0` raises `version` in `package.json` and moves everything under
-   `## [Unreleased]` into `## [0.3.0] - <today>`, gathering repeated `### Added`, `### Changed` and `### Fixed` headings.
+2. **Fold the fragments.** `node scripts/release.mjs 0.3.0` raises `version` in `package.json`, folds every file in
+   `changelog.d/` into `## [0.3.0] - <today>` under the headings Added, Changed, Fixed and Removed in that order, and
+   deletes the fragments. The sentence under `## [Unreleased]` that points at the folder stays.
 3. **Re-capture the doctor samples after the version bump.** Pack the tree, install it into a temporary home with
    `jig setup --source <tarball> --yes`, run `jig doctor`, and paste its real output into [README](../README.md) and
    [Your first hour](first-hour.md); `npm run check` fails if a captured `Jig — x.y.z` line is stale.
-4. **Read the diff.** The script writes files and nothing else; the entries are what a user will read.
+4. **Read the diff.** The script writes the two files and deletes the folded fragments; the entries are what a user will
+   read.
 5. **Commit** it as `Release 0.3.0`.
 6. **Tag and push both, after `ci-ok` on main's merge commit.** The [Release workflow](../.github/workflows/release.yml)
    checks the `ci-ok` check-run on the tagged commit and refuses a tag pushed before it exists; wait for the merge
@@ -36,7 +45,8 @@ git push origin main v0.3.0
 A tag that was pushed before that workflow existed has a tag but no page. Run the workflow by hand (**Actions**, **Release**,
 **Run workflow**) and name the tag: it writes the page from that tag's own changelog, and does not mark it the latest release.
 
-`node scripts/release.mjs --dry-run` shows the change without writing it, and `npm test` covers both scripts.
+`node scripts/release.mjs --dry-run` shows the change without writing it or deleting the fragments, and `npm test` covers
+both scripts.
 
 ## What a version means
 

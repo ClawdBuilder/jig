@@ -63,7 +63,7 @@ if (newest !== undefined) {
     }
 }
 for (const failure of failures) {
-    console.log(`fail released changelog: ${failure}. Put new entries under [Unreleased].`);
+    console.log(`fail released changelog: ${failure}. Put new entries in changelog.d/.`);
 }
 console.log(`released changelog: ${failures.length} failures`);
 process.exit(failures.length === 0 ? 0 : 1);

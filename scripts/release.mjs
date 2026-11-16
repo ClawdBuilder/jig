@@ -1,11 +1,12 @@
-// `node scripts/release.mjs <version>`: what cutting a release changes in the two files that name its version. It moves the entries
-// under CHANGELOG.md's `## [Unreleased]` into a dated `## [<version>]` section, with the entries of repeated `### Added`,
-// `### Changed` and `### Fixed` headings gathered under one of each, and raises `version` in package.json. It commits nothing and tags
-// nothing: docs/releases.md says what comes next.
+// `node scripts/release.mjs <version>`: what cutting a release changes. It folds every fragment in `changelog.d/` into a dated
+// `## [<version>]` section, with the entries of repeated `### Added`, `### Changed`, `### Fixed` and `### Removed` headings
+// gathered under one of each, deletes the fragments, leaves the sentence under `## [Unreleased]` that points at the folder,
+// and raises `version` in package.json. It commits nothing and tags nothing: docs/releases.md says what comes next.
 //   node scripts/release.mjs 0.3.0 [--date 2026-11-04] [--root <folder>] [--dry-run]
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { HEADINGS, readFragments } from "./changelog-fragments.mjs";
 
 /** A version this repository releases: three numbers, as package.json holds it. */
 const EXACT = /^\d+\.\d+\.\d+$/;
@@ -13,8 +14,8 @@ const EXACT = /^\d+\.\d+\.\d+$/;
 /** The date in a changelog heading. */
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** The order the changelog writes its headings in; any other heading keeps its place after these. */
-const ORDER = ["Added", "Changed", "Fixed"];
+/** The order the changelog writes its headings in. */
+const ORDER = HEADINGS;
 
 /** The `version` of a package.json's text. */
 export function versionOf(manifest) {
@@ -41,8 +42,8 @@ export function unreleased(changelog) {
     return lines.slice(start + 1, end === -1 ? lines.length : end).join("\n");
 }
 
-/** The body's `### ` sections, gathered into one of each: Added, Changed and Fixed first, then any other in its own place. A
- *  heading that appears twice keeps its entries in the order they were written, one blank line between the two blocks. */
+/** The body's `### ` sections, gathered into one of each: Added, Changed, Fixed and Removed first, then any other in its own
+ *  place. A heading that appears twice keeps its entries in the order they were written, one blank line between the two blocks. */
 export function gather(body) {
     const sections = new Map();
     let current;
@@ -93,36 +94,66 @@ function tidy(lines) {
     return kept;
 }
 
-/** The changelog with the Unreleased entries moved under `## [<version>] - <date>`, or the problem that stops it. */
-export function cut(changelog, version, date) {
-    const body = unreleased(changelog);
-    if (body === undefined) return { problem: "CHANGELOG.md has no `## [Unreleased]` heading" };
+/** The lines before the first heading or list line of the Unreleased body: the sentence that points at changelog.d/. */
+function introOf(body) {
+    const kept = [];
+    for (const line of body.split("\n")) {
+        if (/^### /.test(line) || line.startsWith("- ")) break;
+        kept.push(line);
+    }
+    return tidy(kept);
+}
+
+/** The changelog with `body` (the fragments) under `## [<version>] - <date>`, or the problem that stops it. */
+export function cut(changelog, version, date, body) {
     const sections = gather(body);
-    if (sections.length === 0) return { problem: "`## [Unreleased]` has no entries: nothing to release" };
+    if (sections.length === 0) return { problem: "changelog.d/ has no fragments: nothing to release" };
     const released = sections.map((section) => `### ${section.name}\n\n${section.lines.join("\n")}`).join("\n\n");
     const lines = changelog.split("\n");
     const start = lines.findIndex((line) => line.trim() === "## [Unreleased]");
+    if (start === -1) return { problem: "CHANGELOG.md has no `## [Unreleased]` heading" };
     const end = lines.findIndex((line, index) => index > start && line.startsWith("## "));
+    const intro = introOf(lines.slice(start + 1, end === -1 ? lines.length : end).join("\n"));
     const head = lines.slice(0, start + 1);
     const tail = lines.slice(end === -1 ? lines.length : end);
-    return { text: [...head, "", `## [${version}] - ${date}`, "", released, "", ...tail].join("\n") };
+    return {
+        text: [
+            ...head,
+            "",
+            ...(intro.length === 0 ? [] : [...intro, ""]),
+            `## [${version}] - ${date}`,
+            "",
+            released,
+            "",
+            ...tail,
+        ].join("\n"),
+    };
 }
 
 /** Both files after a release, or the problems that stop it. Nothing is written by this function. */
-export function release({ changelog, manifest, version, date }) {
-    const problems = [];
+export function release({ changelog, manifest, version, date, fragments = [], problems: fragmentProblems = [] }) {
+    const problems = [...fragmentProblems];
     if (!EXACT.test(version)) problems.push(`"${version}" is not a version of the form 1.2.3`);
     if (!DATE.test(date)) problems.push(`"${date}" is not a date of the form 2026-11-04`);
     const current = versionOf(manifest);
     if (EXACT.test(version) && compare(version, current) <= 0) {
         problems.push(`${version} is not newer than package.json's ${current}`);
     }
-    const cutResult = cut(changelog, version, date);
-    if (cutResult.problem !== undefined) problems.push(cutResult.problem);
+    const previous = unreleased(changelog);
+    if (previous?.split("\n").some((line) => /^### /.test(line) || line.startsWith("- "))) {
+        problems.push("`## [Unreleased]` has entries: put each change in changelog.d/");
+    }
+    const body = fragments.map((fragment) => fragment.text.trimEnd()).join("\n\n");
+    let text;
+    if (fragmentProblems.length === 0) {
+        const cutResult = cut(changelog, version, date, body);
+        if (cutResult.problem !== undefined) problems.push(cutResult.problem);
+        else text = cutResult.text;
+    }
     if (problems.length > 0) return { problems };
     return {
         problems: [],
-        changelog: cutResult.text,
+        changelog: text,
         manifest: manifest.replace(/("version":\s*")[^"]*(")/, `$1${version}$2`),
     };
 }
@@ -153,11 +184,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         changelog: path.join(root, "CHANGELOG.md"),
     };
     const changelog = readFileSync(files.changelog, "utf8");
+    const fragments = readFragments(path.join(root, "changelog.d"));
     const result = release({
         changelog,
         manifest: readFileSync(files.manifest, "utf8"),
         version,
         date,
+        fragments: fragments.files,
+        problems: fragments.problems,
     });
     if (result.problems.length > 0) {
         console.error(`Nothing was written; a release needs:\n  ${result.problems.join("\n  ")}`);
@@ -166,15 +200,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!dryRun) {
         writeFileSync(files.changelog, result.changelog);
         writeFileSync(files.manifest, result.manifest);
+        for (const fragment of fragments.files) rmSync(path.join(root, "changelog.d", fragment.name));
     }
-    const entries = gather(unreleased(changelog) ?? "").reduce(
+    const entries = gather(fragments.files.map((fragment) => fragment.text).join("\n\n")).reduce(
         (count, section) => count + section.lines.filter((line) => line.startsWith("- ")).length,
         0,
     );
     console.log(
         [
             `${version}: ${dryRun ? "would change" : "changed"} CHANGELOG.md and package.json`,
-            `  CHANGELOG.md: ## [Unreleased] is empty, and ## [${version}] - ${date} holds ${entries} entries`,
+            `  CHANGELOG.md: ## [Unreleased] keeps its sentence, and ## [${version}] - ${date} holds ${entries} entries`,
+            `  changelog.d: ${dryRun ? "would fold and delete" : "folded and deleted"} ${fragments.files.length} fragment${
+                fragments.files.length === 1 ? "" : "s"
+            }`,
             `  package.json: version is ${version}`,
             `Next: review the diff, commit "Release ${version}", tag v${version}, and push the branch and the tag.`,
             "docs/releases.md has the whole process.",
