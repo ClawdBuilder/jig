@@ -231,8 +231,6 @@ async function guardTypo() {
     const { nearestCommand } = await loadHelp();
     const near = nearestCommand(first);
     if (near === undefined) return false;
-    process.stderr.write(
-        `Unknown command ${first}. Did you mean jig ${near}? To ask Pi, run: jig "${first} …"\n`,
-    );
+    process.stderr.write(`Unknown command ${first}. Did you mean jig ${near}? To ask Pi, run: jig "${first} …"\n`);
     process.exit(2);
 }

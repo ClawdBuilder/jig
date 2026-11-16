@@ -894,12 +894,13 @@ describe("CLI conventions", () => {
     });
 
     test("a near miss of a command is a hint and exit 2, not a model session", { timeout: 20_000 }, async () => {
-        for (const [typed, expected] of [
+        const typos: Array<[string, string]> = [
             ["setpu", "setup"],
             ["doctr", "doctor"],
             ["instal", "install"],
             ["updat", "update"],
-        ]) {
+        ];
+        for (const [typed, expected] of typos) {
             const command = await run([typed]);
             assert.equal(command.code, 2, typed);
             assert.match(command.stderr, new RegExp(`Unknown command ${typed}\\. Did you mean jig ${expected}\\?`));
