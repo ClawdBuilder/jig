@@ -42,36 +42,11 @@ goes from here to your first approval.
 
 ## How it works
 
-- **Every call is classified.** `jig-core` works out the environment and whether a call reads or writes, then applies
-  your rules before anything runs.
-- **Reads run; writes ask.** A write to a test environment shows a preview and waits for you. Production writes are
-  denied, not asked about.
-- **Results are cleaned.** Secrets are redacted and production personal data is masked before the model receives the
-  result.
-- **The record stays.** Each call, approval and cost is in a local record that `jig-lens` can show; nothing leaves the
-  machine on its own.
-- **The same rules reach `bash` and children.** A sandboxed command and a child agent are governed by the same policy,
-  not by a second prompt.
-- **Browser pages have one palette.** A graphite dark theme and a light one, following the system or a saved choice;
-  [Browser theme](docs/browser-theme.md) has the tokens and the contrast numbers.
+![Tool call, classify, decide, run, result](docs/img/one-call.svg)
 
-![A dark browser code review with two Java diff files, a file list, a review summary and Approve in the header; example data](docs/img/review-dark.png)
-
-*A code review in Jig's browser page, in its graphite theme. The file list and diffs are on the left, the summary stays
-beside them, and **Approve** is in the header; approval still returns to Pi. This is example data.*
-
-### First session
-
-In the folder you work in, `jig` starts Pi with Jig loaded. `/jig` shows the rules and setup state, `/jig doctor` names
-a missing piece, and `/lens` shows cost and waiting time after the first calls. A write asks before it runs; a
-production write is denied.
-
-### Works on
-
-- **Linux and WSL2:** tested in CI and daily use. **macOS:** runs, with Seatbelt in the sandbox; `filtered` and `ask`
-  networking mean `off` there ([sandbox](plugins/jig-sandbox/docs/network.md)). **Native Windows:** not yet, because of
-  the sandbox.
-- **Agent:** Pi 1.4 or later, tested with 1.5.2; Jig is a set of Pi plugins, and other agents are not supported.
+Every tool call is classified and decided against your rules before it runs: a read runs, a write asks, a production
+write is denied. What comes back is masked, and the call, its approval and its cost are recorded in a local file
+([Architecture](docs/architecture.md)).
 
 ## What you get
 
@@ -91,6 +66,18 @@ the specification its code follows. [jig-herdr](https://github.com/ClawdBuilder/
 Company-specific environments, sign-in services and internal tools live in a private company plugin, never here.
 [Writing a company plugin](docs/company-plugin.md) and the tested [`jig-acme`](examples/jig-acme/README.md) example
 show how; [Plugins](docs/plugins.md) is the map of every tool.
+
+## Works on
+
+- **Linux and WSL2:** tested in CI and daily use. **macOS:** runs, with Seatbelt in the sandbox; `filtered` and `ask`
+  networking mean `off` there ([sandbox](plugins/jig-sandbox/docs/network.md)). **Native Windows:** not yet, because of
+  the sandbox.
+- **Agent:** Pi 1.4 or later, tested with 1.5.2; Jig is a set of Pi plugins, and other agents are not supported.
+
+![A dark browser code review with two Java diff files, a file list, a review summary and Approve in the header; example data](docs/img/review-dark.png)
+
+*A code review in Jig's browser page, in its graphite theme. The file list and diffs are on the left, the summary stays
+beside them, and **Approve** is in the header; approval still returns to Pi. This is example data.*
 
 ## What is next
 
