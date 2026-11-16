@@ -131,7 +131,7 @@ const MOVED_BY_ENV: ReadonlyArray<{ variable: string; list?: true; inside?: stri
     { variable: "DOCKER_CONFIG", inside: "config.json" },
 ];
 
-function flavour(platform: NodeJS.Platform | undefined): typeof path.posix {
+export function flavour(platform: NodeJS.Platform | undefined): typeof path.posix {
     return (platform ?? process.platform) === "win32" ? path.win32 : path.posix;
 }
 
@@ -520,7 +520,7 @@ function comparable(absolute: string, platform: NodeJS.Platform | undefined): st
     return system === "win32" || system === "darwin" ? absolute.normalize("NFC").toLowerCase() : absolute;
 }
 
-function isInside(child: string, parent: string, sep: string): boolean {
+export function isInside(child: string, parent: string, sep: string): boolean {
     return child === parent || child.startsWith(parent.endsWith(sep) ? parent : parent + sep);
 }
 
@@ -550,7 +550,7 @@ export function filePathsOf(
 
 /** Every form a path can be reached by: as written once folded, and with its links followed. `unfolded` is the same
  *  path with its `..` still in place, which the system reads differently when a link comes before one. */
-function formsOf(folded: string, platform: NodeJS.Platform | undefined, unfolded: string = folded): string[] {
+export function formsOf(folded: string, platform: NodeJS.Platform | undefined, unfolded: string = folded): string[] {
     const forms = new Set([comparable(folded, platform)]);
     forms.add(comparable(followLinks(folded, platform), platform));
     if (unfolded !== folded) forms.add(comparable(followLinks(unfolded, platform), platform));

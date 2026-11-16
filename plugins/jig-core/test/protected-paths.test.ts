@@ -15,6 +15,7 @@ import {
     relocatedStores,
 } from "../src/protected-paths.ts";
 import type { CheckContext, Env, ProtectedPath } from "../src/protected-paths.ts";
+import { writableFolders } from "../src/writable-folders.ts";
 import { start } from "./support/harness.ts";
 import type { Harness, StartOptions } from "./support/harness.ts";
 import { rawRecords, tempState } from "./support/state.ts";
@@ -823,6 +824,43 @@ describe("case", () => {
         assert.ok(check("write", path.join(agent, "JIG.JSON"), mac));
         assert.equal(check("read", path.join(home, ".SSH", "id_ed25519"), context({ platform: "linux" })), undefined);
         assert.equal(check("read", path.join(home, ".SSH", "id_ed25519")), undefined, "this process, which is Linux");
+    });
+});
+
+describe("the folders the file tools may write", () => {
+    test("the working folder is writable in every form, and a sibling is not", () => {
+        const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-"));
+        const real = path.join(dir, "real");
+        mkdirSync(real);
+        const link = path.join(dir, "link");
+        symlinkSync(real, link);
+        try {
+            // The working folder reached through a link, as /var is on macOS: a path inside it is inside whichever form
+            // it arrives in.
+            const writable = writableFolders([link]);
+            assert.equal(writable(path.join(real, "a.txt")), true, "the real folder, behind the link");
+            assert.equal(writable(path.join(link, "a.txt")), true, "the link itself");
+            assert.equal(writable("/srv/jig-writable-outside/a.txt"), false, "outside it");
+            assert.equal(writable(`${dir}-not-a-folder/a.txt`), false, "a name that only starts the same");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test("a path inside as written, outside once its links are followed, asks", () => {
+        const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-link-"));
+        const work = path.join(dir, "work");
+        const outside = path.join(dir, "outside");
+        mkdirSync(work);
+        mkdirSync(outside);
+        symlinkSync(outside, path.join(work, "link"));
+        try {
+            const writable = writableFolders([work]);
+            assert.equal(writable(path.join(work, "a.txt")), true, "inside both ways");
+            assert.equal(writable(path.join(work, "link", "a.txt")), false, "as written inside, followed outside");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
     });
 });
 
