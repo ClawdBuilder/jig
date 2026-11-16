@@ -12,6 +12,18 @@ For example, "commit these two files, push, and open a pull request": `git
 commit` takes exact paths, `git push` shows the commits it will send and waits
 for you, and `pr create` shows the body on a review screen.
 
+A `git status` call in a scratch repository, copied from a run:
+
+```text
+git status
+work  main
+no upstream
+base main: same commit
+2 changed files:
+ M a.txt
+?? b.txt
+```
+
 CI is not here: checks, runs, logs and CI watches are the `ci` tool of
 [`jig-ops`](../jig-ops/README.md). The two meet in one event. After a push and
 after a new pull request, `jig-git` announces `jig-git:pushed`, and `jig-ops`
