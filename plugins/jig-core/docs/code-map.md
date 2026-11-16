@@ -82,7 +82,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `section-defaults.ts` | A company's defaults for a plugin's section, with your own laid over them | `api.ts`, `config.ts` |
 | `state.ts` | What jig-core keeps while Pi runs: tools, configuration, questions, one record per call in flight | `api.ts`, `commands.ts` and 3 more |
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
-| `commands.ts` | The `/jig` commands: status, setup, doctor with its flags, rules, records | `index.ts` |
+| `commands.ts` | The `/jig` commands: status, doctor with its flags, rules, records, and the setup hand-off | `index.ts` |
 | `section-state.ts` | What one registered plugin section is: loaded, waiting for a person, not set, or invalid | `commands.ts`, `doctor-checks.ts` |
 
 ### Doctor
@@ -104,6 +104,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
 | `setup-plan.ts` | What setup asks, from the section states and the validators, the company's onboarding list laid over it, and the answer round trip; it follows a linked settings file to its target | `setup.ts`, `onboarding.ts` |
+| `setup-company.ts` | The company step: which company and where, then the confirmed profile write | `cli/main.ts`, `commands.ts` |
+| `setup-command.ts` | `/jig setup` inside Pi | `commands.ts` |
 | `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |

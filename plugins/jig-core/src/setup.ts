@@ -26,7 +26,12 @@ export interface SetupUi {
     notify(text: string, level: "info" | "warning" | "error"): void;
 }
 
-export async function runSetup(state: JigState, ui: SetupUi, requestedSection?: string): Promise<number> {
+export async function runSetup(
+    state: JigState,
+    ui: SetupUi,
+    requestedSection?: string,
+    apply: "terminal" | "reload" = "terminal",
+): Promise<number> {
     if (requestedSection !== undefined && !state.sectionChecks.has(requestedSection)) {
         const known = [...state.sectionChecks.keys()].sort();
         ui.notify(
@@ -108,7 +113,7 @@ export async function runSetup(state: JigState, ui: SetupUi, requestedSection?: 
         const where = shorten(result.file, homedir());
         const lines = [`Saved ${count} to ${where}${plan.link ? " (through your link)" : ""}.`];
         if (result.backup !== undefined) lines.push(`Backup: ${shorten(result.backup, homedir())}`);
-        lines.push("Start Pi again, or run /reload in it, to apply.");
+        lines.push(apply === "reload" ? "Run /reload to apply." : "Start Pi again, or run /reload in it, to apply.");
         ui.notify(lines.join("\n"), "info");
         return 0;
     } catch (error) {
