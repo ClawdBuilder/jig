@@ -11,6 +11,7 @@ import { piHostDir } from "../../../test/support/pi-host-dir.mjs";
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
 const FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company");
+const NEEDS_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-needs");
 
 let home: string;
 let agent: string;
@@ -423,6 +424,21 @@ describe("jig doctor", () => {
         assert.match(result.stdout, /Install it: jig install npm:@clawdbuilder\/jig/);
     });
 
+    test("a required field missing inside a loaded section is named, with its question", {
+        timeout: 60_000,
+    }, async () => {
+        settingsWith(NEEDS_FIXTURE);
+        // The section's own check passes (it only requires `login`), so the section loads; its onboarding list also needs
+        // `badge`, which nothing checks until a tool asks for it.
+        writeFileSync(path.join(agent, "jig.json"), JSON.stringify({ fixture: { login: "jdoe" } }));
+        const result = await run(["doctor", "--quiet"]);
+        assert.equal(result.code, 0, "a missing field is a warning, as a missing section is");
+        assert.match(result.stdout, /You need: Your Fixture badge/);
+        assert.match(result.stdout, /Add fixture\.badge to/);
+        assert.doesNotMatch(result.stdout, /You need: Your Fixture login/, "a value that is set is not named");
+        assert.doesNotMatch(result.stdout, /You need: Your Fixture note/, "an optional item is never named");
+    });
+
     test("two copies of Jig with different versions are a warning", { timeout: 60_000 }, async () => {
         const folder = path.join(agent, "git", "github.com", "example", "jig");
         mkdirSync(folder, { recursive: true });
@@ -560,6 +576,29 @@ describe("a package installed from git", () => {
         const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
         assert.equal(written.profile, "git-co");
         assert.equal(written.gitco.login, "gdev");
+    });
+
+    test("an optional field is offered as skippable, and Enter leaves it unset", {
+        timeout: 60_000,
+    }, async () => {
+        settingsWith(NEEDS_FIXTURE);
+        const result = await runSetup([
+            { when: "Which company setup do you use?", answer: "1" },
+            { when: "Use Needs Co's setup in:", answer: "1" },
+            { when: "Save this company choice?", answer: "y" },
+            { when: "needs 3 things", answer: "1" },
+            { when: "Your Fixture login", answer: "jdoe" },
+            { when: "Your Fixture badge", answer: "b-1" },
+            { when: "optional: press Enter", answer: "" },
+            { when: "Review these changes", answer: "1" },
+            { when: "Save these changes?", answer: "y" },
+        ]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.fixture.login, "jdoe");
+        assert.equal(written.fixture.badge, "b-1");
+        assert.equal(written.fixture.note, undefined, "the optional field was left unset");
+        assert.match(result.stdout, /Your Fixture note left unset \(optional\)\./);
     });
 });
 

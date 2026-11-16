@@ -1,5 +1,6 @@
 // The gate this plugin registers with jig-core. It does two things, and can only make a decision stricter:
-//   - holds: a call that a workflow's hold lists is denied until the hold's condition holds, in the bound repositories only;
+//   - holds: a call that a workflow's hold lists is denied until the hold's condition holds, in the bound repositories and
+//     the worktrees `bind` added to them;
 //   - calls that always ask: a plan to approve, a stage that needs you, a switch of workflow, a test run outside the sandbox.
 // A hold follows the session's active ticket. It reads the same conditions `advance` does, limited to the repository the call
 // acts in, and uses the last reading of a pull request rather than the network.

@@ -1,7 +1,7 @@
 // Holds, through the real jig-core: a call a workflow lists is denied until the hold's condition holds, in the bound repositories
 // only, and the gate never makes anything looser.
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import { fingerprintOf } from "../src/plan.ts";
@@ -95,6 +95,17 @@ describe("holds on write and edit", () => {
         const again = await w.other_("edit", { path: inOrders(w) });
         assert.equal(again.blocked, true);
         assert.match(again.reason ?? "", /plan.md changed since you approved it: run workflow submit_plan again/);
+    });
+
+    test("a worktree the workflow bound is held, and a link into it is held too", async (t) => {
+        const w = await started(t);
+        const bound = path.join(w.workspace, "unbound-PROJ-1");
+        const result = await w.call({ action: "bind", repo: "unbound" });
+        assert.equal(result.isError, false, result.text);
+        assert.equal((await w.other_("write", { path: path.join(bound, "A.java"), content: "x" })).blocked, true);
+        const { symlinkSync } = await import("node:fs");
+        symlinkSync(bound, path.join(w.workspace, "worktree-shortcut"));
+        assert.equal((await w.other_("write", { path: "worktree-shortcut/A.java", content: "x" })).blocked, true);
     });
 
     test("a link into a bound repository is held too", async (t) => {

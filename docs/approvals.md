@@ -94,6 +94,9 @@ a signature that only your device can make.
   it.
 - **Allow for this session.** An ask for that tool, action and environment
   becomes allow until the session ends. It never reaches past the floor.
+- **Always ask.** A tool can declare `always: "ask"`, and then every call asks:
+  the dialog has no "Allow for this session" answer and the review screen has no
+  `s` key. A rule may still deny the call.
 
 ## One dialog at a time
 

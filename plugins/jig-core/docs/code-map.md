@@ -92,6 +92,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor.ts` | `/jig doctor`: the check list, the levels, the counts, the metadata and the text report, quiet or full | `commands.ts`, `doctor-json.ts` |
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
+| `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
@@ -104,6 +105,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
 | `setup-plan.ts` | What setup asks, from the section states and the validators, the company's onboarding list laid over it, and the answer round trip; it follows a linked settings file to its target | `setup.ts`, `onboarding.ts` |
+| `setup-method-paths.ts` | A sign-in method's `*` paths: which expanded fields a method allows | `setup-plan.ts` |
+| `doctor-needs.ts` | The "You need:" lines: a missing section, or a required field a loaded section lacks | `doctor-checks.ts` |
 | `setup-company.ts` | The company step: which company and where, then the confirmed profile write | `cli/main.ts`, `commands.ts` |
 | `setup-command.ts` | `/jig setup` inside Pi | `commands.ts` |
 | `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |

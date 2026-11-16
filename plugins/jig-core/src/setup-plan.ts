@@ -10,6 +10,7 @@ import type { OnboardingEntry, OnboardingItem, OnboardingMethod } from "./contra
 import { inferredMethod, requiredPaths } from "./onboarding.ts";
 import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
+import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
 import { layered } from "./section-defaults.ts";
 import { setValuePath } from "./setup-write.ts";
 import { shorten } from "./secret-status.ts";
@@ -66,6 +67,8 @@ export interface SetupField {
     choices?: readonly string[];
     /** A fixed answer, from a company-only method; setup shows it and does not ask. */
     fixed?: string;
+    /** The company marks it optional: an empty answer leaves it unset, and the doctor does not ask for it. */
+    optional?: true;
 }
 
 export interface SetupReferenceChoice {
@@ -133,6 +136,11 @@ export interface SetupPlan {
 }
 
 export type SetupPlanResult = { plan: SetupPlan } | { problem: string };
+
+/** The question for an optional field: an empty answer leaves it unset. */
+function optionalQuestion(label: string): string {
+    return `${label} (optional: press Enter to leave it unset)`;
+}
 
 /** The question for a credential, built from the company's label without doubling its article. */
 function referenceQuestion(label: string): string {
@@ -221,9 +229,10 @@ function onboardingField(
         section: item.section,
         path: item.path,
         label: item.label,
-        question: item.label,
+        question: item.optional === true ? optionalQuestion(item.label) : item.label,
         ...(item.placeholder === undefined ? {} : { placeholder: item.placeholder }),
         kind: "text",
+        ...(item.optional === true ? { optional: true as const } : {}),
         reason,
     };
 }
@@ -249,6 +258,10 @@ function applyOnboarding(entry: OnboardingEntry, candidates: Array<{ section: Se
             if (item.why !== undefined) field.reason = item.why;
             if (item.kind === "text") {
                 if (item.placeholder !== undefined) field.placeholder = item.placeholder;
+                if (item.optional === true) {
+                    field.optional = true;
+                    field.question = optionalQuestion(item.label);
+                }
                 continue;
             }
             if (item.kind === "pick") {
@@ -285,47 +298,8 @@ export interface SetupChange {
 }
 
 /** A dynamic name that is safe to put in a dotted path. */
-function safeSegment(name: string): boolean {
+export function safeSegment(name: string): boolean {
     return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && !["__proto__", "constructor", "prototype"].includes(name);
-}
-
-/** Expands one `*` path segment against the configured objects: `services.*.ci.auth` -> each service name.
- *  Only object parents are expanded; a string mapping and a dotted key are left for a person to name. */
-function expandMethodPath(path: string, root: unknown): string[] {
-    const dynamic = path.includes("*");
-    let paths = [""];
-    for (const segment of path.split(".")) {
-        if (segment !== "*") {
-            paths = paths.map((prefix) => (prefix === "" ? segment : `${prefix}.${segment}`));
-            continue;
-        }
-        const next: string[] = [];
-        for (const prefix of paths) {
-            const value = prefix === "" ? root : getPath(root, prefix);
-            if (!isObject(value)) continue;
-            for (const name of Object.keys(value)) {
-                if (safeSegment(name)) next.push(prefix === "" ? name : `${prefix}.${name}`);
-            }
-        }
-        paths = next;
-    }
-    return paths;
-}
-
-/** Whether an expanded field path is allowed: its final object exists, or the method's declared `requires` does. */
-function methodPathAllowed(fieldPath: string, expanded: string, method: OnboardingMethod, root: unknown): boolean {
-    const original = fieldPath.split(".");
-    const dynamic = original.indexOf("*");
-    if (dynamic === -1) return true;
-    const expandedParts = expanded.split(".");
-    const wildcardObject = original
-        .slice(0, dynamic)
-        .concat(expandedParts[dynamic] ?? "")
-        .join(".");
-    if (method.requires !== undefined) {
-        return isObject(getPath(getPath(root, wildcardObject), method.requires));
-    }
-    return isObject(getPath(root, expanded.split(".").slice(0, -1).join(".")));
 }
 
 /** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
@@ -424,10 +398,11 @@ function setupMethods(
                     section,
                     path,
                     label: field.label,
-                    question: field.label,
+                    question: field.optional === true ? optionalQuestion(field.label) : field.label,
                     ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
                     ...(current === undefined ? {} : { current }),
                     kind: "text",
+                    ...(field.optional === true ? { optional: true as const } : {}),
                     reason: field.why ?? "The plugin's list says this field is needed.",
                 });
             }
@@ -776,7 +751,7 @@ function plainProblem(field: SetupField, message: string): string {
     return sentence.length > 240 ? `${sentence.slice(0, 237)}...` : sentence;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+export function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -796,7 +771,7 @@ function parentIsObject(value: unknown, path: string): boolean {
     return true;
 }
 
-function getPath(value: unknown, path: string): unknown {
+export function getPath(value: unknown, path: string): unknown {
     let at = value;
     for (const part of path.split(".")) {
         if (!isObject(at)) return undefined;

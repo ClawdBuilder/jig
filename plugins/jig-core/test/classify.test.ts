@@ -30,12 +30,13 @@ function deps(
 }
 
 describe("1. the tool's own declaration", () => {
-    test("is used first, with its action, approval and atLeast, and names the plugin", () => {
+    test("is used first, with its action, approval, atLeast and always, and names the plugin", () => {
         const answer: CallClass = {
             action: "push",
             environment: "external",
             effect: "write",
             atLeast: "ask",
+            always: "ask",
             approval: "review",
         };
         const result = classify(
@@ -126,6 +127,7 @@ describe("1. the tool's own declaration", () => {
             { environment: "", effect: "read" },
             { environment: "local", effect: "delete" },
             { environment: "local", effect: "read", atLeast: "never" },
+            { environment: "local", effect: "read", always: "never" },
             { environment: "local", effect: "read", approval: "banana" },
             { environment: "local", effect: "read", action: 7 },
             { effect: "read" },

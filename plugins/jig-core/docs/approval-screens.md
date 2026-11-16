@@ -18,8 +18,9 @@ before it gave:
 3. the first matching rule, which can be stricter or looser;
 4. a session allow, which turns an ask into an allow;
 5. the floor: a production write is denied, an unknown tool is allowed only by
-   a rule that names it exactly, an ask with no screen is denied, and a call to
-   one of Pi's file tools that touches a protected path is denied (see
+   a rule that names it exactly, a call whose tool declared `always: "ask"`
+   asks again, an ask with no screen is denied, and a call to one of Pi's file
+   tools that touches a protected path is denied (see
    [Protected paths](configuration.md#protected-paths));
 6. the gates other plugins registered, for a call that is not denied yet. They
    can only make it stricter: an allow becomes an ask or a deny, an ask becomes
@@ -29,14 +30,16 @@ before it gave:
 ## The screens
 
 - **Dialog:** Pi's selector with the header and the summary. Allow, Allow for
-  this session, or Decline.
+  this session, or Decline. A call declared `always: "ask"` offers Allow and
+  Decline only.
 - **Review screen:** for a preview with a body, or when a rule or the tool asks
   for it, in the terminal interface. It opens as a floating window (90% wide,
   at most 85% high, centred). On a terminal smaller than 60 columns or 16 rows,
   or when the overlay cannot open, it stays inline. A scrollable preview (up and
   down, PgUp and PgDn, Home and End).
   - `y` allows, `s` allows for the session, `n` or Esc declines, `o` opens the
-    rendered preview in the browser. With `approvals.openInBrowser` set to `"always"` in `jig.json`, it also opens
+    rendered preview in the browser. A call declared `always: "ask"` has no
+    `s` answer. With `approvals.openInBrowser` set to `"always"` in `jig.json`, it also opens
     once, as the screen appears.
   - The status line says how it went: the address that was opened, or why it could not be (the launcher failed, or
     there is none). The question stays open either way.

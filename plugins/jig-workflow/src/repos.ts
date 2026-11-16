@@ -109,10 +109,17 @@ export function short(commit: string | undefined): string {
 // ---- which repository a call acts in --------------------------------------------------------------------------------
 
 function realOrResolved(target: string): string {
-    try {
-        return realpathSync(target);
-    } catch {
-        return path.resolve(target);
+    let current = path.resolve(target);
+    const missing: string[] = [];
+    for (;;) {
+        try {
+            return path.join(realpathSync(current), ...missing);
+        } catch {
+            const parent = path.dirname(current);
+            if (parent === current) return path.resolve(target);
+            missing.unshift(path.basename(current));
+            current = parent;
+        }
     }
 }
 
@@ -162,9 +169,14 @@ export type Scope =
  * none, the one Pi runs in; any other tool names no repository, so it is the work's as a whole.
  */
 export function scopeOf(call: CallPlace, bound: readonly string[]): Scope {
+    // A bound root and a call's path can reach the same folder by different spellings: a link, a relative path, or a worktree
+    // `bind` recorded with its link followed. Compare both sides in their real form, and keep the root as it was bound.
+    const roots = bound.map((root) => ({ root, real: realOrResolved(root) }));
+    const inside = (candidate: string): string | undefined =>
+        roots.find((entry) => isInside(realOrResolved(candidate), entry.real))?.root;
     if (call.tool === "write" || call.tool === "edit") {
         for (const candidate of call.paths) {
-            const root = bound.find((root) => isInside(candidate, root));
+            const root = inside(candidate);
             if (root !== undefined) return { kind: "repository", root };
         }
         return { kind: "elsewhere" };
@@ -177,7 +189,7 @@ export function scopeOf(call: CallPlace, bound: readonly string[]): Scope {
             const wanted = path.isAbsolute(named) ? named : path.join(workspaceOf(call.cwd), named);
             where = existsSync(wanted) ? containingRepo(wanted) : undefined;
         }
-        const root = where === undefined ? undefined : bound.find((candidate) => candidate === where);
+        const root = where === undefined ? undefined : roots.find((entry) => entry.real === where)?.root;
         return root === undefined ? { kind: "elsewhere" } : { kind: "repository", root };
     }
     return { kind: "work" };

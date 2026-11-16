@@ -114,6 +114,7 @@ async function decideCall(
             environmentKind,
             effect: classification.effect,
             ...(classification.atLeast === undefined ? {} : { atLeast: classification.atLeast }),
+            ...(classification.always === undefined ? {} : { always: classification.always }),
             ...(classification.approval === undefined ? {} : { approval: classification.approval }),
             ...(command === undefined ? {} : { command }),
             unknown: classification.source === "unknown",
@@ -239,7 +240,12 @@ async function askUser(
         asked === undefined
             ? preview
             : { ...preview, summary: `${preview.summary}\nAsked by ${asked.gate}: ${asked.reason}` };
-    const approval = await state.approvals.ask(ctx, { header: describeCall(described), preview: shown, kind });
+    const approval = await state.approvals.ask(ctx, {
+        header: describeCall(described),
+        preview: shown,
+        kind,
+        ...(classification.always === "ask" ? { always: true } : {}),
+    });
 
     call.approval = { kind, answer: approval.answer, waitedMs: approval.waitedMs };
     if (approval.answer === "decline") {

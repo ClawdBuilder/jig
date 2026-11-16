@@ -36,6 +36,7 @@ function declare(api: JigApi, tool = "fake", extra: Partial<ToolDeclaration> = {
             environment: String(input.env ?? "local"),
             effect: input.effect === "write" ? "write" : "read",
             ...(input.atLeast === "ask" ? { atLeast: "ask" as const } : {}),
+            ...(input.always === "ask" ? { always: "ask" as const } : {}),
         }),
         ...extra,
     });
@@ -146,6 +147,16 @@ describe("what is denied", () => {
             "Blocked by jig-core: fake wipe in local is refused by a rule in jig.json; /jig rules fake shows it.",
         );
         assert.equal((await harness.call({ tool: "fake", input: { action: "list" } })).blocked, false);
+    });
+
+    test("a tool's always ask shows the dialog on every call, without a session answer", async () => {
+        const harness = await begin({ ui: { select: () => "Allow" }, plugins: (api) => declare(api) });
+        for (let call = 0; call < 2; call++) {
+            const outcome = await harness.call({ tool: "fake", input: { always: "ask" } });
+            assert.equal(outcome.blocked, false, `call ${call}`);
+        }
+        assert.equal(harness.ui.selects.length, 2, "one dialog per call");
+        for (const select of harness.ui.selects) assert.deepEqual(select.options, ["Allow", "Decline"]);
     });
 
     test("the tool's own atLeast deny", async () => {
