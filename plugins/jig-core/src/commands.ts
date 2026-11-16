@@ -22,6 +22,7 @@ import { countQuickIssues } from "./doctor-secrets.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { doctorMarkers, formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
+import { modelAuthState, modelSignInLine } from "./model-auth.ts";
 import { shorten } from "./secret-status.ts";
 
 import { sectionState } from "./section-state.ts";
@@ -165,6 +166,8 @@ export function statusLines(state: JigState): string[] {
             ? `Configuration: ${state.personal.file}`
             : `Configuration: none found (${state.personal.file || "not loaded yet"}), defaults apply`,
     ];
+    const home = state.agentDir();
+    if (home !== "" && modelAuthState(home, state.env).kind === "missing") lines.push(modelSignInLine(home));
     for (const renamed of renamedInRules([...state.personal.config.rules, ...state.personal.config.classify])) {
         lines.push(
             `Renamed action: a rule names ${renamed.tool} ${renamed.from}; the old name no longer applies. Change it to ${renamed.to}.`,
