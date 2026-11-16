@@ -375,12 +375,29 @@ describe("a company transport", () => {
             },
         });
         const read = await h.call(GET_ISSUE);
-        assert.match(read.error?.message ?? "", /^Jira was not changed: sign in first \(SIGN_IN_REQUIRED\)$/);
+        assert.match(read.error?.message ?? "", /^Jira refused the read: sign in first \(SIGN_IN_REQUIRED\)$/);
         assert.doesNotMatch(read.error?.message ?? "", /token/i);
+        // Every write reads `/myself` first, so a refusal there is the read's; the write's own words need a refusal
+        // of the request after it, which the next test gives.
+        assert.equal((read.error?.message ?? "").includes("Nothing was sent"), false);
+        assert.deepEqual(h.jig.facts.get(read.id), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
+    });
+
+    test("a refused write says Jira was not changed", async () => {
+        const forward = proxyTo(h.jira, { "x-proxy-session": "p-77" });
+        h.configure({ site: SITE, auth: { transport: "company-proxy" } });
+        h.jig.transports.set("company-proxy", {
+            request: async (request, signal) => {
+                if (request.method === "GET") return forward.request(request, signal);
+                throw new TransportRefusal("SIGN_IN_REQUIRED", "sign in first", true, "req-2");
+            },
+        });
         const write = await h.call({ action: "comment", key: "PROJ-1", text: "hi" }, { ask: false });
-        assert.equal(write.error?.message, "Jira was not changed: sign in first (SIGN_IN_REQUIRED)");
-        assert.equal((write.error?.message ?? "").includes("Nothing was sent"), false);
-        assert.deepEqual(h.jig.facts.get(write.id), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-1" }]);
+        assert.match(
+            write.error?.message ?? "",
+            /^jira comment on PROJ-1: Jira was not changed: sign in first \(SIGN_IN_REQUIRED\)\.$/,
+        );
+        assert.deepEqual(h.jig.facts.get(write.id), [{ transportCode: "SIGN_IN_REQUIRED", requestId: "req-2" }]);
     });
 
     test("a refusal on /myself does not stop a write that can go on", async () => {

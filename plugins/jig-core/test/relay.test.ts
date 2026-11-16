@@ -434,7 +434,7 @@ test("jig-jira reads through a relay transport", async () => {
                 body?: string;
             };
             relayedHeaders = body.headers;
-            if (refusedWrite) {
+            if (refusedWrite && body.method !== "GET") {
                 response.setHeader("content-type", "application/json");
                 response.end(
                     JSON.stringify({
@@ -543,7 +543,7 @@ test("jig-logs searches through a relay, and reports a refusal in its own words"
         const refused = await w.call({ phrase: "message", environment: "staging", window: "30m" });
         assert.match(
             refused.error?.message ?? "",
-            /the log backend was not changed: logs are off in the relay \(SERVICE_OFF\)/,
+            /the log backend refused the read: logs are off in the relay \(SERVICE_OFF\)/,
         );
     } finally {
         await new Promise<void>((resolve) => relay.close(() => resolve()));
