@@ -273,6 +273,7 @@ describe("what plugins import", () => {
             "OnboardingMethodField",
             "OnboardingStore",
             "OpenedTunnel",
+            "OutputKeep",
             "PollOutcome",
             "Preview",
             "ProfileRegistration",

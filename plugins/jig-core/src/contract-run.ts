@@ -1,5 +1,6 @@
 // The program-runner part of the plugin contract: what a plugin may ask `exec.run` for, and what it returns.
 // Re-exported from contract.ts, which stays the one import plugins use.
+import type { ProgramCredential } from "./contract.ts";
 
 /** What a program's output keeps when it passes `maxOutputBytes`: the start, the end, or both ends with the middle left out. */
 export type OutputKeep = "head" | "tail" | "both";

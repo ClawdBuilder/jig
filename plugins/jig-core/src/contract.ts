@@ -993,4 +993,6 @@ export interface WatchDoneEvent {
     result: WatchResult;
 }
 
-export type { OutputKeep, ProgramCredential, RunOptions, RunResult } from "./contract-run.ts";
+import type { RunOptions, RunResult } from "./contract-run.ts";
+
+export type { OutputKeep, RunOptions, RunResult } from "./contract-run.ts";
