@@ -544,6 +544,22 @@ describe("/jig rules", () => {
         assert.match(rules, /^git push: external write -> ask \(decision: table; classified by: declaration\)$/m);
     });
 
+    test("names a tool that asks every time", async () => {
+        const harness = await begin({
+            plugins: (api) =>
+                api.declareTool({
+                    tool: "always",
+                    plugin: "jig-test",
+                    classify: () => ({ environment: "local", effect: "write", always: "ask" }),
+                }),
+        });
+        const rules = await jigCommand(harness, "rules always");
+        assert.match(
+            rules,
+            /^always: local write -> ask \(decision: floor; classified by: declaration; always asks: no allow lowers it\)$/m,
+        );
+    });
+
     test("shows the effect of a rule in configuration", async () => {
         const harness = await begin({
             tools,

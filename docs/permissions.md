@@ -80,10 +80,15 @@ example:
 | An unknown tool cannot be allowed by default; it needs a rule naming it | A new package must not get unchecked writes |
 | Credentials stay hidden from `bash` | That is the sandbox's job, and configuration does not reach into it. `/jig` says whether `bash` is sandboxed, and with no sandbox it says plainly that it is not |
 | `bash` run outside its sandbox asks | Only a rule naming the tool `bash`, the action `outside` and a command pattern allows it without asking; no wildcard and no default does. With no screen it is refused |
+| A tool can declare `always: "ask"` | Every call asks; no rule or session allow lowers it. A rule may deny it |
 | Pi's file tools refuse **protected paths** (see below) | A credential the agent can read leaks a login, and a folder it can write could load code or loosen a rule |
 | The files Pi loads from a project at its next start are **guarded** for the file tools, by path and whether they exist yet | Pi runs them outside the sandbox on the next start; writing one would change what Pi does, or turn its sandbox off |
 | A file-tool write **outside the working folder** asks, unless it is in a folder the person allowed (`/sandbox allow`) | Bash reaches no further, and a write outside the project can change what runs later; with no terminal it is refused, like every ask |
 | A plugin's **gate** can only make a decision stricter | A plugin must not be able to undo what you or the floor decided. `jig-workflow` holds calls this way |
+
+`always: "ask"` is new in 0.5.7. An older Jig ignores it; a tool that also
+declares `atLeast: "ask"` still asks there, though a rule or a session allow can
+lower that older ask.
 
 Configuration can always add strictness. For example, it can mask a test
 environment too, make every write ask, deny a tool outright, or protect more

@@ -34,6 +34,8 @@ export interface AskRequest {
     header: string;
     preview: Preview;
     kind: ApprovalKind;
+    /** The tool declared `always: "ask"`: there is no "allow for this session" answer. */
+    always?: boolean;
 }
 
 export interface Approval {
@@ -96,13 +98,14 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
     }
 
     async function showSelector(ctx: AskContext, request: AskRequest): Promise<Answer | undefined> {
-        // A tool can say what the buttons mean for its call. The three words stay distinct, so one answer is never two.
+        // A tool can say what the buttons mean for its call. The words stay distinct, so one answer is never two.
         const given = request.preview.answers;
         const words = [word(given?.allow, ALLOW), word(given?.session, ALLOW_SESSION), word(given?.decline, DECLINE)];
-        const labels = new Set(words).size === 3 ? words : [ALLOW, ALLOW_SESSION, DECLINE];
+        const usual = new Set(words).size === 3 ? words : [ALLOW, ALLOW_SESSION, DECLINE];
+        const labels: string[] = request.always === true ? [usual[0] ?? ALLOW, usual[2] ?? DECLINE] : usual;
         const picked = await ctx.ui.select(selectorTitle(request), labels, signalOption(ctx));
         if (picked === labels[0]) return "allow";
-        if (picked === labels[1]) return "allow-session";
+        if (picked === labels[1]) return request.always === true ? "decline" : "allow-session";
         if (picked === labels[2]) return "decline";
         return undefined;
     }
@@ -132,6 +135,7 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
                     preview: request.preview,
                     openInBrowser: () => openPreview(request.preview, request.header),
                     openAtStart: options.openInBrowser?.() === "always",
+                    always: request.always === true,
                 },
                 tui as never,
                 theme as never,
