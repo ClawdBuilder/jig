@@ -4,6 +4,8 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+A change a user would notice is one file in [`changelog.d/`](changelog.d/): its `### Added`, `### Changed`, `### Fixed` or `### Removed` heading and its line. The release folds them here.
+
 ## [0.5.7] - 2026-11-17
 
 Setup does more for you (defaults found on the machine, a company's proposals and repositories), a tool can require an ask that nothing lowers, and macOS is supported by CI.
