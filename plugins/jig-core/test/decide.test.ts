@@ -67,6 +67,32 @@ describe("the tool's atLeast", () => {
     });
 });
 
+describe("a tool's always ask", () => {
+    const always = call("local", "write", { tool: "tool", always: "ask" });
+
+    test("is a floor rule, above a rule that allows and a session allow", () => {
+        for (const verdict of [
+            run(always),
+            run(always, { rules: [{ tool: "tool", decision: "allow" }] }),
+            run(always, { sessionAllows: new Set([sessionKey(always)]) }),
+        ]) {
+            assert.deepEqual([verdict.decision, verdict.source, verdict.floor], ["ask", "floor", "always-ask"]);
+        }
+    });
+
+    test("a rule can still deny it", () => {
+        const verdict = run(always, { rules: [{ tool: "tool", decision: "deny" }] });
+        assert.deepEqual([verdict.decision, verdict.source], ["deny", "rule"]);
+        assert.match(verdict.reason ?? "", /refused by a rule in jig\.json/);
+    });
+
+    test("with no screen it is refused, like every other ask", () => {
+        const verdict = run(always, { hasUI: false });
+        assert.deepEqual([verdict.decision, verdict.floor], ["deny", "no-screen"]);
+        assert.match(verdict.reason ?? "", /no screen to ask on/);
+    });
+});
+
 describe("rules from configuration", () => {
     const rule = (extra: Partial<Rule>): Rule => ({ tool: "tool", decision: "ask", ...extra });
 

@@ -104,6 +104,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
 | `setup-plan.ts` | What setup asks, from the section states and the validators, the company's onboarding list laid over it, and the answer round trip; it follows a linked settings file to its target | `setup.ts`, `onboarding.ts` |
+| `setup-method-paths.ts` | A sign-in method's `*` paths: which expanded fields a method allows | `setup-plan.ts` |
+| `doctor-needs.ts` | The "You need:" lines: a missing section, or a required field a loaded section lacks | `doctor-checks.ts` |
 | `setup-company.ts` | The company step: which company and where, then the confirmed profile write | `cli/main.ts`, `commands.ts` |
 | `setup-command.ts` | `/jig setup` inside Pi | `commands.ts` |
 | `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |

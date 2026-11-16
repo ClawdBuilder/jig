@@ -326,6 +326,7 @@ export function ruleLines(state: JigState, only: string | undefined, hasUI: bool
                 environmentKind: policy.environments.kindOf(classification.environment),
                 effect: classification.effect,
                 ...(classification.atLeast === undefined ? {} : { atLeast: classification.atLeast }),
+                ...(classification.always === undefined ? {} : { always: classification.always }),
                 unknown: classification.source === "unknown",
             },
             rules: policy.rules,
@@ -338,7 +339,8 @@ export function ruleLines(state: JigState, only: string | undefined, hasUI: bool
                 : "";
         const where = `${classification.environment} ${classification.effect} -> ${verdict.decision}`;
         const because = `decision: ${verdict.source}; classified by: ${CLASS_LABEL[classification.source]}`;
-        lines.push(`${label}: ${where} (${because})${flag}`);
+        const always = classification.always === "ask" ? "; always asks: no allow lowers it" : "";
+        lines.push(`${label}: ${where} (${because}${always})${flag}`);
     };
 
     for (const name of names) {

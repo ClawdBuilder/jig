@@ -22,6 +22,7 @@ import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionState } from "./section-state.ts";
+import { onboardingLines } from "./doctor-needs.ts";
 import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
 import { relayHealth } from "./relay.ts";
@@ -569,26 +570,3 @@ function firstMessages(messages: readonly string[]): string {
 }
 
 /** What the active company's onboarding list says its people must supply, for the sections that are not loaded yet. */
-function onboardingLines(context: DoctorContext, settingsShown: string): DoctorLine[] {
-    const entry = context.onboarding;
-    if (entry === undefined) return [];
-    const lines: DoctorLine[] = [];
-    for (const [index, item] of entry.items.entries()) {
-        if (item.kind === "info" || item.kind === "login") continue;
-        const state = sectionState(context.personal, item.section);
-        if (state === "loaded") continue;
-        const store = item.kind === "reference" ? (item.preferredStore ?? entry.preferredStore) : undefined;
-        const hint = item.kind === "reference" ? item.addHints?.[store ?? "env"] : undefined;
-        lines.push({
-            id: `config.need.${index}`,
-            group: "config",
-            level: "warn",
-            title: `You need: ${item.label}`,
-            detail:
-                item.why ??
-                `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
-            fix: hint ?? "Run jig setup and it asks for this.",
-        });
-    }
-    return lines;
-}
