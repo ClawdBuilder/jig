@@ -687,7 +687,7 @@ describe("jig setup", () => {
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
     });
 
-    test("offers the company's repositories and writes when.remotes", { timeout: 60_000 }, async () => {
+    test("offers the company's repositories and writes when.remotes", { timeout: 60_000, skip: ptySkip }, async () => {
         settingsWith(FIXTURE);
         const result = await runSetup([
             { when: "Which company setup do you use?", answer: "1" },
