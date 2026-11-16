@@ -23,9 +23,12 @@ git push origin main v0.3.0
    integrity with npm (a version already there is skipped only on an exact match, and a mismatch fails), publishes
    `@clawdbuilder/jig` with provenance, confirms the registry has the version, and only then writes the GitHub release.
    So `npm install -g @clawdbuilder/jig@<version>` and `pi install npm:@clawdbuilder/jig@<version>` get the same release.
-   The repository secret `NPM_TOKEN` supplies npm authentication; Trusted Publishing is a later step. The workflow fails
-   when the tag does not name the version in `package.json`, or when the changelog has no section for it; otherwise it
-   writes the GitHub release with that section as its notes. A second run edits the release rather than failing.
+   The job waits for approval in the repository's **Release** environment; the user is the required reviewer, and only `v*`
+   tags may deploy there. It then publishes with npm Trusted Publishing (OIDC) and provenance, so no npm token is stored.
+   The `NPM_TOKEN` secret is deleted after the first release that publishes this way. The workflow needs npm 11.5.1 or
+   later, fails when the tag does not name the version in `package.json`, or when the changelog has no section for it;
+   otherwise it writes the GitHub release with that section as its notes. A second run edits the release rather than
+   failing.
 
 A tag that was pushed before that workflow existed has a tag but no page. Run the workflow by hand (**Actions**, **Release**,
 **Run workflow**) and name the tag: it writes the page from that tag's own changelog, and does not mark it the latest release.
