@@ -18,7 +18,7 @@ import { isMethod, METHODS, sealed } from "./engine/plan.ts";
 import type { Plan, SignIn } from "./engine/plan.ts";
 import { byteLengthOf, displayOf, isUpload, joined, plainOf, upload } from "./engine/text.ts";
 import type { Text, Upload } from "./engine/text.ts";
-import { InputError, shortList, shown } from "./engine/values.ts";
+import { InputError, shortList, shown, namedPath } from "./engine/values.ts";
 import type { Auth, Body, Collection, Environment, FileRef, SavedRequest } from "./model.ts";
 import { pruned } from "./optional.ts";
 import { agentValues, createResolver, secretNamesOf } from "./resolve.ts";
@@ -145,12 +145,12 @@ function checkedHeader(
 /** A file of the request, read from inside the collection's folder. */
 function uploadOf(collection: Collection, file: FileRef): Upload {
     const found = confined(collection.root, file.path);
-    if (found.problem !== undefined) throw new InputError(`the file ${shown(file.path, 60)} ${found.problem}`);
+    if (found.problem !== undefined) throw new InputError(`the file ${namedPath(file.path)} ${found.problem}`);
     try {
         const size = fs.statSync(found.path).size;
         if (size > MAX_UPLOAD_BYTES)
             throw new InputError(
-                `the file ${shown(file.path, 60)} is larger than ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB`,
+                `the file ${namedPath(file.path)} is larger than ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB`,
             );
         return upload(path.basename(found.path), fs.readFileSync(found.path));
     } catch (error) {
@@ -160,7 +160,7 @@ function uploadOf(collection: Collection, file: FileRef): Upload {
                 ? String((error as { code: unknown }).code)
                 : "";
         throw new InputError(
-            `the file ${shown(file.path, 60)} ${code === "EISDIR" ? "is a folder, not a file" : "could not be read"}`,
+            `the file ${namedPath(file.path)} ${code === "EISDIR" ? "is a folder, not a file" : "could not be read"}`,
         );
     }
 }
