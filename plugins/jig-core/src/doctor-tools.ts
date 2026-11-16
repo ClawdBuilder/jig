@@ -10,13 +10,14 @@ import { run as runProgram } from "./exec.ts";
 import { shorten } from "./secret-status.ts";
 import { APPARMOR_SYSCTL, distroOf, findPrograms, installCommand } from "./kit/sandbox-programs.ts";
 import { isObject } from "./kit/values.ts";
+import { modelProviderLine } from "./model-auth.ts";
 import type { ProgramPaths } from "./kit/sandbox-programs.ts";
 
 export async function loginChecks(context: DoctorContext, options: DoctorOptions): Promise<DoctorLine[]> {
     const texts = sectionTexts(context).map((text) => text.toLowerCase());
     const lookup =
         options.pathLookup ?? ((program: string, env: NodeJS.ProcessEnv) => findOnPath(program, env, options.platform));
-    const lines: DoctorLine[] = [];
+    const lines: DoctorLine[] = [modelProviderLine(context.agentDir, context.env)];
     const checks: Array<{
         tool: string;
         word: string;
