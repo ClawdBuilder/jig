@@ -58,6 +58,12 @@ The command runs from `node_modules`, where Node will not strip TypeScript itsel
 that does, so the installed copy behaves like a checkout. If `jig` cannot find Pi, it says so with the folder to set in
 `PI_HOST_DIR` (or `JIG_PI_HOST`).
 
+## Packages
+
+A Pi package goes into Jig's home with `jig install npm:…`, into your own Pi with `pi install npm:…`, or into both.
+`jig install -l` writes the project's `.pi/settings.json`, which both read. The launcher is optional; [The
+launcher](launcher.md) covers it, and Jig works without it.
+
 ## Setting up
 
 ```text

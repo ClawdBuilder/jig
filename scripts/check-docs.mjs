@@ -8,6 +8,7 @@ const DEPRECATED = ["0.4.0", "0.4.1"];
 const MAX_PARAGRAPH = 350;
 const MAX_CELL = 100;
 const MAX_README = 120;
+const MAX_FIRST_BLOCK = 20;
 
 function walk(dir, out = []) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -97,6 +98,24 @@ export function checkDocs(root) {
         const text = readFileSync(file, "utf8");
         const lines = text.split("\n");
         const isPluginReadme = /^plugins\/[^/]+\/README\.md$/.test(rel);
+        if (rel === "README.md") {
+            // Install first, with a runnable block early and the output a run printed after it.
+            const firstSection = lines.findIndex((line) => /^##\s/.test(line));
+            if (firstSection < 0 || !/^##\s+Install\s*$/.test(lines[firstSection] ?? "")) {
+                failures.push(`${rel}: the first section must be Install`);
+            }
+            const firstFence = lines.findIndex((line) => /^\s*```/.test(line));
+            if (firstFence < 0 || !/^```\s*bash\s*$/.test(lines[firstFence] ?? "")) {
+                failures.push(`${rel}: the first code block must be a bash block`);
+            } else if (firstFence + 1 > MAX_FIRST_BLOCK) {
+                failures.push(`${rel}:${firstFence + 1} the first runnable block is after line ${MAX_FIRST_BLOCK}`);
+            }
+            const nextSection = lines.findIndex((line, index) => index > firstSection && /^##\s/.test(line));
+            const installLines = lines.slice(firstSection + 1, nextSection < 0 ? lines.length : nextSection);
+            if (!installLines.some((line) => /^```\s*text\s*$/.test(line))) {
+                failures.push(`${rel}: Install has no text output block`);
+            }
+        }
         if (isPluginReadme) {
             if (!/^# jig-[^:]+: .+/.test(lines[0] ?? "")) failures.push(`${rel}:1 title must be "# jig-x: ..."`);
             const second = lines.slice(1).find((line) => line.trim() !== "");

@@ -1,7 +1,7 @@
-# A release is a tag. This job checks that the tag names the version in package.json, that ci-ok passed on the tagged commit,
-# and that npm has the same tarball before it writes the GitHub release from the changelog section of that version. Pushing
-# the tag is the only step a person takes; running the workflow by hand publishes the page for an older tag, without npm.
-# docs/releases.md has the rest.
+# A release is a tag. The publish job checks that the tag names the version in package.json, that ci-ok passed on the
+# tagged commit, and that npm has the same tarball, then publishes with Trusted Publishing. The release job writes the
+# GitHub release from the changelog section, after a tag's publish or by hand for an older tag. Pushing the tag is the
+# only step a person takes for a release; a manual run never publishes to npm. docs/releases.md has the rest.
 name: Release
 
 on:
@@ -15,33 +15,50 @@ on:
         type: string
 
 permissions:
-  contents: write
-  checks: read
-  id-token: write
+  contents: read
 
 jobs:
-  release:
-    name: Release
+  publish:
+    name: Publish
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    environment: Release
+    permissions:
+      contents: read
+      checks: read
+      id-token: write
     steps:
       # The tag's own commit, so its package.json and its changelog are the ones the release is about.
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          ref: ${{ github.ref_name }}
           persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
+          registry-url: https://registry.npmjs.org
+
+      - name: npm supports Trusted Publishing
+        run: |
+          version="$(npm --version)"
+          echo "npm ${version}"
+          if [ "$(printf '%s\n' "11.5.1" "${version}" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm ${version} cannot publish with Trusted Publishing; the job needs npm 11.5.1 or later"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
 
       # The tag, the manifest and the changelog are three names for one release: a tag that disagrees with either is a release
       # that ships something other than what its notes say, so it fails here instead of publishing.
       - name: The tag, package.json and the changelog agree
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ github.ref_name }}
         run: |
           version="${TAG#v}"
           package="$(node -p "require('./package.json').version")"
@@ -54,7 +71,6 @@ jobs:
       # A tag only releases code CI has already passed on that commit. The branch gate is not enough: this checks the
       # check-run on the tagged commit, so a tag moved onto an unchecked commit fails here.
       - name: Require ci-ok on the tagged commit
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -67,11 +83,7 @@ jobs:
 
       # The tarball integrity is the honest comparison for "is this version the code we tagged?". A version already on
       # npm is skipped only when its published tarball hash equals a fresh pack of this tag; a different hash fails.
-      # The GitHub release is written only after the registry confirms the version, so a failed publish leaves no page.
       - name: Publish to npm, then confirm
-        if: github.event_name == 'push'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           version="$(node -p "require('./package.json').version")"
           packdir="$(mktemp -d)"
@@ -87,7 +99,6 @@ jobs:
             fi
             echo "@clawdbuilder/jig@${version} is already published with this content; nothing to publish"
           else
-            npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
             npm publish --provenance --access public
           fi
           # npm may take many minutes to show a new version. Wait up to 30 minutes, and say so while waiting; a failure
@@ -105,6 +116,41 @@ jobs:
             echo "::error::npm does not report @clawdbuilder/jig@${version} after 30 minutes (last: ${got:-not found}); the publish may have succeeded, so re-run this job"
             exit 1
           fi
+
+  release:
+    name: Release
+    needs: publish
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.publish.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      # The tag's own commit, so its package.json and its changelog are the ones the release is about.
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      # The tag, the manifest and the changelog are three names for one release: a tag that disagrees with either is a release
+      # that ships something other than what its notes say, so it fails here instead of writing the page.
+      - name: The tag, package.json and the changelog agree
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+        run: |
+          version="${TAG#v}"
+          package="$(node -p "require('./package.json').version")"
+          if [ "${version}" != "${package}" ]; then
+            echo "::error::tag ${TAG} does not name package.json's version ${package}"
+            exit 1
+          fi
+          node scripts/release-notes.mjs "${version}" > /dev/null
 
       # Running this again is safe: a tag whose release exists is edited, not refused. A page published by hand for an older
       # tag does not become the latest release, which belongs to the newest tag.
@@ -125,4 +171,3 @@ jobs:
           else
             gh release create "${TAG}" --title "${TAG}" --notes-file "${notes}" "${latest[@]}"
           fi
-

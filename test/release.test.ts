@@ -204,6 +204,24 @@ describe("release-notes", () => {
     });
 });
 
+test("publishing uses Trusted Publishing behind the Release environment, with no stored npm token", () => {
+    const workflow = readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8");
+    const start = workflow.indexOf("  publish:");
+    const end = workflow.indexOf("  release:", start);
+    assert.ok(start !== -1 && end !== -1, "the workflow has publish and release jobs");
+    const publish = workflow.slice(start, end);
+    assert.match(publish, /environment: Release/);
+    assert.doesNotMatch(workflow, /NPM_TOKEN/);
+    assert.doesNotMatch(workflow, /NODE_AUTH_TOKEN/);
+    assert.match(publish, /id-token: write/);
+    assert.match(publish, /npm ci --ignore-scripts/);
+    assert.match(publish, /11\.5\.1/);
+    assert.match(publish, /npm publish --provenance --access public/);
+    assert.doesNotMatch(publish, /contents: write/, "publishing cannot write the repository");
+    assert.match(workflow, /needs: publish/);
+    assert.match(workflow, /github\.event_name == 'workflow_dispatch' \|\| needs\.publish\.result == 'success'/);
+});
+
 describe("this repository", () => {
     test("has an Unreleased heading to release from, and a version of the form 1.2.3", () => {
         const changelog = readFileSync(path.join(ROOT, "CHANGELOG.md"), "utf8");
