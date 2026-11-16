@@ -103,14 +103,105 @@ test("an indented line after a paragraph is an orphan, as the README had", () =>
 
 test("a list item's indented second paragraph is not an orphan", () => {
     const root = tree({
-        "README.md": "# Title\n\n- an item\n  - a sub-item\n\n  a second paragraph of the item\n\n- the next item\n",
+        "docs/page.md": "# Title\n\n- an item\n  - a sub-item\n\n  a second paragraph of the item\n\n- the next item\n",
     });
     assert.deepEqual(checkDocs(root).failures, []);
 });
 
 test("a wrapped list item line is not an orphan", () => {
-    const root = tree({ "README.md": "# Title\n\n- an item whose line wraps\n  and continues here\n" });
+    const root = tree({ "docs/page.md": "# Title\n\n- an item whose line wraps\n  and continues here\n" });
     assert.deepEqual(checkDocs(root).failures, []);
+});
+
+test("the root README's first section is Install, with a bash block by line 20", () => {
+    const fence = "```";
+    const good = tree({
+        "README.md": [
+            "# T",
+            "",
+            "Intro.",
+            "",
+            "## Install",
+            "",
+            `${fence}bash`,
+            "npx x setup",
+            fence,
+            "",
+            `${fence}text`,
+            "ok",
+            fence,
+            "",
+        ].join("\n"),
+    });
+    assert.deepEqual(
+        checkDocs(good).failures.filter((one: string) => one.includes("README.md")),
+        [],
+    );
+    const late = tree({
+        "README.md": [
+            "# T",
+            "",
+            "Intro.",
+            "",
+            ...Array.from({ length: 20 }, () => "filler"),
+            "",
+            "## Install",
+            "",
+            `${fence}bash`,
+            "run",
+            fence,
+            "",
+        ].join("\n"),
+    });
+    assert.ok(
+        checkDocs(late).failures.some((one: string) => one.includes("after line 20")),
+        checkDocs(late).failures.join("\n"),
+    );
+    const wrongFirst = tree({
+        "README.md": [
+            "# T",
+            "",
+            "## What",
+            "",
+            `${fence}bash`,
+            "run",
+            fence,
+            "",
+            "## Install",
+            "",
+            `${fence}text`,
+            "out",
+            fence,
+            "",
+        ].join("\n"),
+    });
+    assert.ok(checkDocs(wrongFirst).failures.some((one: string) => one.includes("first section must be Install")));
+});
+
+test("the root README's Install section shows a text output block", () => {
+    const fence = "```";
+    const missing = tree({ "README.md": ["# T", "", "## Install", "", `${fence}bash`, "run", fence, ""].join("\n") });
+    assert.ok(
+        checkDocs(missing).failures.some((one: string) => one.includes("no text output block")),
+        checkDocs(missing).failures.join("\n"),
+    );
+    const after = tree({
+        "README.md": [
+            "# T",
+            "",
+            "## Install",
+            "",
+            `${fence}bash`,
+            "run",
+            fence,
+            "",
+            `${fence}text`,
+            "out",
+            fence,
+            "",
+        ].join("\n"),
+    });
+    assert.deepEqual(checkDocs(after).failures, []);
 });
 
 test("the warning baseline counts each kind and fails only when a count goes up", () => {

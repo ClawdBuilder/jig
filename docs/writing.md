@@ -71,11 +71,14 @@ tests) is linked from CONTRIBUTING, not from README.
 
 ## The root README
 
-The repository README is about 100 to 120 lines. In this order: the name and a one-line purpose, badges, three or four
-sentences on what Jig is and why, one real screenshot, install (requirements, the two commands, the first `/jig`) and
-updating, a table of what you get by area, then five entry points, contributing, security and the licence. Detail goes
-to `docs/`: launcher to `docs/launcher.md`, package filtering to `docs/setup-and-doctor.md`, concept diagrams to
-`docs/architecture.md`, and the longer reading list to `docs/reading.md`. The introduction should not grow back into a
+The repository README is about 100 to 120 lines, and `check-docs` holds it to three rules: `## Install` is its first
+section, the first code block is a `bash` block by line 20, and Install carries a `text` block of output a run printed.
+In this order: the name and a one-line purpose, badges, three or four sentences on what Jig is and why, install (one
+line of requirements, the two commands, the output a run printed, then one sentence linking the home), the one-call
+diagram and two sentences for how it works, a table of what you get by area, one real screenshot, what is next, then
+five entry points, contributing, security and the licence. Detail goes to `docs/`: the home, packages and updating to
+`docs/setup-and-doctor.md`, the launcher to `docs/launcher.md`, concept diagrams to `docs/architecture.md`, and the
+longer reading list to `docs/reading.md` and the [docs index](README.md). The introduction should not grow back into a
 changelog, a plugin catalogue or an architecture page.
 
 ## Diagrams
