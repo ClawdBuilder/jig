@@ -1,4 +1,5 @@
 // The `updates` section: the one switch that turns Jig's background update notice off. It is checked like a plugin's own
+import { unknownField } from "./kit/fields.ts";
 // section so a company plugin can set `updates.check: false` as a default; the person's file wins over it.
 export const UPDATES_SECTION = "updates";
 
@@ -18,7 +19,7 @@ export function validateUpdatesSection(raw: unknown): readonly string[] {
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return ["updates must be an object"];
     const errors: string[] = [];
     for (const key of Object.keys(raw)) {
-        if (key !== "check") errors.push(`updates.${key} is not a known field`);
+        if (key !== "check") errors.push(unknownField("updates", key, ["check"]));
     }
     const check = (raw as { check?: unknown }).check;
     if (check !== undefined && typeof check !== "boolean") errors.push("updates.check must be true or false");

@@ -3,6 +3,7 @@
 // starts, so the rest of the plugin reads settings that are valid. Nothing here touches the disk: the files are read when a
 // call needs them (see catalog.ts).
 import { isObject, shown } from "./engine/values.ts";
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import type { Collection } from "./model.ts";
 import { checkReference } from "./reference.ts";
 import { SOURCES } from "./sources/index.ts";
@@ -88,7 +89,7 @@ function checkCollection(name: string, raw: unknown, errors: string[]): Configur
     const kinds = Object.keys(raw).filter((key) => known.includes(key));
     if (kinds.length === 0) {
         errors.push(`${at}: needs a source: one of ${known.join(", ")}`);
-        for (const key of Object.keys(raw)) errors.push(`${at}.${key}: unknown field`);
+        for (const key of Object.keys(raw)) errors.push(unknownField(at, key, [...MAPPING_FIELDS]));
         return undefined;
     }
     if (kinds.length > 1) {
@@ -157,7 +158,8 @@ function checkMapping(label: string, raw: unknown, errors: string[]): Environmen
         errors.push(bad);
         return undefined;
     }
-    for (const key of Object.keys(raw)) if (!MAPPING_FIELDS.has(key)) errors.push(`${at}.${key}: unknown field`);
+    for (const key of Object.keys(raw))
+        if (!MAPPING_FIELDS.has(key)) errors.push(unknownField(at, key, [...MAPPING_FIELDS]));
     const environment =
         typeof raw.environment === "string" && ENVIRONMENT_NAME.test(raw.environment) ? raw.environment : undefined;
     if (environment === undefined)
@@ -271,7 +273,8 @@ function checkNames(raw: unknown, key: string, pattern: RegExp, what: string, er
 export function readApi(raw: unknown): { settings?: ApiSettings; errors: string[] } {
     if (!isObject(raw)) return { errors: ["api: must be an object"] };
     const errors: string[] = [];
-    for (const key of Object.keys(raw)) if (!SECTION_FIELDS.has(key)) errors.push(`api.${key}: unknown field`);
+    for (const key of Object.keys(raw))
+        if (!SECTION_FIELDS.has(key)) errors.push(unknownField("api", key, [...SECTION_FIELDS]));
 
     const collections = checkCollections(raw.collections, errors);
     const environments = checkEnvironments(raw.environments, errors);

@@ -8,6 +8,7 @@
 import { connect, isIP, isIPv4, isIPv6 } from "node:net";
 import { printable } from "./kit/text.ts";
 import { isObject } from "./kit/values.ts";
+import { unknownField } from "./kit/fields.ts";
 import type { Timers } from "./watch/timers.ts";
 
 /** One check, as `jig.json` writes it, with the address split. `tcp` is kept as written, for messages. */
@@ -67,7 +68,8 @@ function parseOne(item: unknown, here: string, fail: Fail): StartCheck | undefin
         fail(key, message);
     };
     for (const key of Object.keys(item))
-        if (!FIELDS.includes(key)) bad(`${here}.${printable(key)}`, "is not a known field");
+        if (!FIELDS.includes(key))
+            bad(`${here}.${printable(key)}`, unknownField(here, key, FIELDS).replace(`${here}.${key}: `, ""));
     const { name, tcp, hint } = item;
     if (name === undefined) bad(`${here}.name`, "is required");
     else if (!isPrintableText(name, MAX_NAME_CHARS))

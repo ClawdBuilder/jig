@@ -85,8 +85,13 @@ describe("an unknown field is an error", () => {
     test("at the top: the problem names the file and the key, and the defaults apply", () => {
         const loaded = personal({ rule: [{ tool: "x", decision: "deny" }], rules: [{ tool: "y", decision: "deny" }] });
         assert.equal(loaded.problems.length, 1);
-        assert.deepEqual(loaded.problems[0], { source: FILE, key: "rule", message: "is not a known field" });
-        assert.equal(describeProblem(loaded.problems[0]!), `${FILE}: rule: is not a known field`);
+        assert.deepEqual(loaded.problems[0], {
+            source: FILE,
+            key: "rule",
+            message:
+                'unknown field. Did you mean "rules"? Valid keys: ui, environments, rules, classify, protectedPaths, secrets, records, spill, approvals, startChecks',
+        });
+        assert.match(describeProblem(loaded.problems[0]!), new RegExp(`${FILE}: rule: unknown field`));
         // The defaults, not half of the file: the rules in the file are not used either.
         assert.deepEqual(loaded.config.rules, []);
     });
@@ -126,7 +131,14 @@ describe("an unknown field is an error", () => {
 
     test("a plugin's section is unknown until the plugin registers it (see sections.test.ts)", () => {
         const loaded = personal({ git: { anything: true }, rules: [{ tool: "t", decision: "ask" }] });
-        assert.deepEqual(loaded.problems, [{ source: FILE, key: "git", message: "is not a known field" }]);
+        assert.deepEqual(loaded.problems, [
+            {
+                source: FILE,
+                key: "git",
+                message:
+                    'unknown field. Did you mean "ui"? Valid keys: ui, environments, rules, classify, protectedPaths, secrets, records, spill, approvals, startChecks',
+            },
+        ]);
         assert.deepEqual(loaded.config.rules, []);
     });
 

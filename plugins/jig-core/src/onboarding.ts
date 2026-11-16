@@ -9,6 +9,7 @@ import type {
     OnboardingMethodField,
     OnboardingStore,
 } from "./contract.ts";
+import { unknownField } from "./kit/fields.ts";
 
 /** The stores a list may name, in `jig.json`'s spelling. */
 export const ONBOARDING_STORES: readonly OnboardingStore[] = ["pass", "env", "keychain", "op", "cmd", "file"];
@@ -115,7 +116,7 @@ function checkMethodField(
               ? ["kind", "path", "label", "choices", "why", "value"]
               : ["kind", "path", "label", "why", "placeholder", "optional", "value"];
     for (const key of Object.keys(field)) {
-        if (!allowed.includes(key)) errors.push(`${at}.${key}: unknown field for ${kind}`);
+        if (!allowed.includes(key)) errors.push(unknownField(at, key, allowed));
     }
     if (!METHOD_PATH.test(String(field.path)) || !safeMethodPath(String(field.path)))
         errors.push(`${at}.path: a dotted path inside the section, without a prototype key`);
@@ -196,7 +197,8 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
         }
         const method = value as Record<string, unknown>;
         for (const key of Object.keys(method)) {
-            if (!["id", "label", "who", "fields", "requires"].includes(key)) errors.push(`${at}.${key}: unknown field`);
+            if (!["id", "label", "who", "fields", "requires"].includes(key))
+                errors.push(unknownField(at, key, ["id", "label", "who", "fields", "requires"]));
         }
         if (typeof method.id !== "string" || !METHOD_ID.test(method.id)) errors.push(`${at}.id: a lower-case id`);
         else if (ids.has(method.id)) errors.push(`${at}.id: ${JSON.stringify(method.id)} is used twice`);
@@ -251,7 +253,7 @@ function checkMethodChoice(
     }
     const choice = raw as Record<string, unknown>;
     for (const key of Object.keys(choice)) {
-        if (!["default", "hide", "add"].includes(key)) errors.push(`${at}.${key}: unknown field`);
+        if (!["default", "hide", "add"].includes(key)) errors.push(unknownField(at, key, ["default", "hide", "add"]));
     }
     if (choice.default !== undefined && (typeof choice.default !== "string" || !METHOD_ID.test(choice.default)))
         errors.push(`${at}.default: a method id`);

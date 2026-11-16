@@ -552,7 +552,7 @@ describe("plugin sections of jig.json", () => {
             config: { ...CONFIG, unregistered: {}, rules: [{ tool: "fake_tool", decision: "deny" }] },
             ui: ALLOW,
         });
-        assert.match(w.ui?.notifications[0]?.message ?? "", /jig\.json: unregistered: is not a known field/);
+        assert.match(w.ui?.notifications[0]?.message ?? "", /jig\.json: unregistered: unknown field/);
         assert.equal((await w.call("fake_tool", { env: "local" })).isError, false, "the deny rule was not used");
     });
 

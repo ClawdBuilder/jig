@@ -60,15 +60,17 @@ test("the section must be an object, and so must everything in it that holds fie
 });
 
 test("a field nobody defined is an error that names it, at every depth", () => {
-    assert.deepEqual(errorsOf({ ...section(), enviroments: {} }), ["logs.enviroments is not a known field"]);
+    assert.deepEqual(errorsOf({ ...section(), enviroments: {} }), [
+        'logs.enviroments: unknown field. Did you mean "environments"? Valid keys: backend, environments, maxWindow, timeoutSeconds',
+    ]);
     assert.deepEqual(errorsOf(section({ backend: { ...direct, timeout: 5 } })), [
-        "logs.backend.timeout is not a known field",
+        "logs.backend.timeout: unknown field. Valid keys: type, url, auth, transport, consoleProxy",
     ]);
     assert.deepEqual(errorsOf(section({ backend: { ...direct, auth: { token: "env:T", scheme: "x" } } })), [
-        "logs.backend.auth.scheme is not a known field",
+        "logs.backend.auth.scheme: unknown field. Valid keys: username, password, apiKey, token, signIn",
     ]);
     assert.deepEqual(errorsOf(section({ environments: { staging: { ...staging, indx: "x" } } })), [
-        "logs.environments.staging.indx is not a known field",
+        'logs.environments.staging.indx: unknown field. Did you mean "index"? Valid keys: jigEnvironment, index, timeField, messageField, filter',
     ]);
 });
 

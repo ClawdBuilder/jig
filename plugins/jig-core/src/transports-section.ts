@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { parseSecretReference } from "./secrets.ts";
 import { isObject } from "./kit/values.ts";
+import { unknownField } from "./kit/fields.ts";
 
 export const TRANSPORTS_SECTION = "transports";
 /** Default client label, as the protocol names it in the request body. */
@@ -111,7 +112,7 @@ function entryErrors(name: string, raw: unknown, errors: string[]): void {
         return;
     }
     for (const field of Object.keys(raw)) {
-        if (!ENTRY_FIELDS.has(field)) errors.push(`${key}.${field}: is not a known field`);
+        if (!ENTRY_FIELDS.has(field)) errors.push(unknownField(key, field, [...ENTRY_FIELDS]));
     }
     if (raw.kind !== "relay") errors.push(`${key}.kind: must be "relay"`);
     const url = urlProblem(raw.url);

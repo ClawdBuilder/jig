@@ -17,6 +17,7 @@ import { homedir } from "node:os";
 import { matchesName } from "./classify.ts";
 import { namesOutsideCommand } from "./decide.ts";
 import { errorMessage } from "./errors.ts";
+import { unknownField } from "./kit/fields.ts";
 import { isObject } from "./kit/values.ts";
 import { buildEnvironments } from "./environments.ts";
 import type { Environments } from "./environments.ts";
@@ -226,7 +227,10 @@ export function parseConfig(
         if (check === undefined) {
             // A feature Pi's settings filter out is off, not unknown: its section stays in the file and comes back with it.
             if (layers.off?.has(key) === true) continue;
-            fail(printable(key), "is not a known field");
+            fail(
+                printable(key),
+                unknownField("", key, [...OWN_SECTIONS, ...checks.keys()]).replace(`${printable(key)}: `, ""),
+            );
             continue;
         }
         written.add(key);
@@ -364,7 +368,9 @@ function printable(name: string): string {
 const at = (path: string, key: string): string => `${path}.${printable(key)}`;
 
 function knownFields(object: Record<string, unknown>, allowed: readonly string[], path: string, fail: Fail): void {
-    for (const key of Object.keys(object)) if (!allowed.includes(key)) fail(at(path, key), "is not a known field");
+    for (const key of Object.keys(object))
+        if (!allowed.includes(key))
+            fail(at(path, key), unknownField(path, key, allowed).replace(`${path}.${key}: `, ""));
 }
 
 function text(

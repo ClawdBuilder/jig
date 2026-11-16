@@ -314,7 +314,7 @@ describe("/jig", () => {
         const harness = await begin({ config: { rule: [], records: { retentionDays: 0 } } });
         const status = await jigCommand(harness);
         assert.match(status, /Configuration problems \(2\):/);
-        assert.match(status, /jig\.json: rule: is not a known field/);
+        assert.match(status, /jig\.json: rule: unknown field/);
         assert.match(status, /jig\.json: records\.retentionDays: must be a whole number of days/);
         assert.doesNotMatch(status, /none found/);
     });

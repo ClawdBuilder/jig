@@ -1,6 +1,7 @@
 // The `jira` section of jig.json: where the Jira is, how to sign in, and which fields `update` may set. jig-core checks
 // the section with validateJira when a session starts, so the rest of the plugin reads settings that are valid.
 import { isObject } from "../../jig-core/src/kit/values.ts";
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import { builtInField, checkJson, isFieldId, isFieldReference } from "./fields.ts";
 import { InputError } from "./values.ts";
 
@@ -134,7 +135,8 @@ function checkAuth(value: unknown, errors: string[]): Auth | undefined {
         return undefined;
     }
     const before = errors.length;
-    for (const name of Object.keys(value)) if (!AUTH_FIELDS.has(name)) errors.push(`jira.auth.${name}: unknown field`);
+    for (const name of Object.keys(value))
+        if (!AUTH_FIELDS.has(name)) errors.push(unknownField("jira.auth", name, [...AUTH_FIELDS]));
     const { email, token, oauth, cloudId, signIn, transport } = value;
 
     // A sign-in service and a transport each stand alone: they hold the session, so there is no token or email to give.
@@ -328,7 +330,8 @@ function checkSeconds(value: unknown, key: string, fallback: number, errors: str
 export function readJira(raw: unknown): { settings?: JiraSettings; errors: string[] } {
     if (!isObject(raw)) return { errors: ["jira: must be an object"] };
     const errors: string[] = [];
-    for (const name of Object.keys(raw)) if (!SECTION_FIELDS.has(name)) errors.push(`jira.${name}: unknown field`);
+    for (const name of Object.keys(raw))
+        if (!SECTION_FIELDS.has(name)) errors.push(unknownField("jira", name, [...SECTION_FIELDS]));
 
     const site = checkSite(raw.site, errors);
     const auth = checkAuth(raw.auth, errors);

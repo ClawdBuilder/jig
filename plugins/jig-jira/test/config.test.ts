@@ -261,10 +261,10 @@ describe("auth is exactly one way", () => {
 
     test("a field that auth does not have is an error that names it", () => {
         assert.deepEqual(validateJira({ site: SITE, auth: { token: "pass:x/y", password: "x" } }), [
-            "jira.auth.password: unknown field",
+            "jira.auth.password: unknown field. Valid keys: email, token, oauth, cloudId, signIn, transport",
         ]);
         assert.deepEqual(validateJira({ site: SITE, auth: { signIn: "sso", cookie: "x" } }), [
-            "jira.auth.cookie: unknown field",
+            "jira.auth.cookie: unknown field. Valid keys: email, token, oauth, cloudId, signIn, transport",
         ]);
     });
 });
@@ -300,8 +300,12 @@ describe("projects", () => {
 
 describe("the other fields", () => {
     test("an unknown field is an error, not a silent default", () => {
-        assert.deepEqual(validateJira({ ...cloud, updateField: ["summary"] }), ["jira.updateField: unknown field"]);
-        assert.deepEqual(validateJira({ ...cloud, url: SITE }), ["jira.url: unknown field"]);
+        assert.deepEqual(validateJira({ ...cloud, updateField: ["summary"] }), [
+            'jira.updateField: unknown field. Did you mean "updateFields"? Valid keys: site, auth, projects, updateFields, fields, createDefaults, privateNames, environment, timeoutSeconds, searchTimeoutSeconds, me, othersComments, commentSearch',
+        ]);
+        assert.deepEqual(validateJira({ ...cloud, url: SITE }), [
+            "jira.url: unknown field. Valid keys: site, auth, projects, updateFields, fields, createDefaults, privateNames, environment, timeoutSeconds, searchTimeoutSeconds, me, othersComments, commentSearch",
+        ]);
     });
 
     test("the section must be an object", () => {

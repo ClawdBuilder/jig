@@ -159,10 +159,10 @@ describe("the list", () => {
 
     test("an unknown field is an error, as elsewhere in the file", () => {
         assert.deepEqual(parse([{ name: "VPN", tcp: "h.example.com:1", url: "https://x" }]).said, [
-            "startChecks[0].url: is not a known field",
+            "startChecks[0].url: unknown field. Valid keys: name, tcp, hint",
         ]);
         assert.deepEqual(parse([{ name: "VPN", tcp: "h.example.com:1", Hint: "x" }]).said, [
-            "startChecks[0].Hint: is not a known field",
+            'startChecks[0].Hint: unknown field. Did you mean "hint"? Valid keys: name, tcp, hint',
         ]);
     });
 

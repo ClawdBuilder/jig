@@ -2,6 +2,7 @@
 // jig-core checks the section with validateMemory when it loads, so the rest of the plugin reads a section that is
 // valid, or absent.
 import os from "node:os";
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import path from "node:path";
 
 export interface RecallSettings {
@@ -49,7 +50,7 @@ export function validateMemory(raw: unknown): string[] {
     const fields = raw as Record<string, unknown>;
     const errors = Object.keys(fields)
         .filter((name) => !FIELDS.has(name))
-        .map((name) => `memory.${name}: unknown field`);
+        .map((name) => unknownField("memory", name, [...FIELDS]));
     const { ticketPattern, folder, recall } = fields;
     if (ticketPattern !== undefined) {
         if (typeof ticketPattern !== "string" || ticketPattern === "") {

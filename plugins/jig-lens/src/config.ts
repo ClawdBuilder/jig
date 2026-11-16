@@ -1,4 +1,5 @@
 // The `lens` section of jig.json: the viewers' port. jig-core checks the section with validateLens when it loads, so
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 // the rest of the plugin reads a section that is valid, or absent.
 
 export interface LensSettings {
@@ -31,7 +32,7 @@ export function validateLens(raw: unknown): string[] {
         .filter((name) => !FIELDS.has(name))
         .map((name) => {
             const instead = REMOVED[name];
-            if (instead === undefined) return `lens.${name}: unknown field`;
+            if (instead === undefined) return unknownField("lens", name, [...FIELDS]);
             return `lens.${name}: removed, because ${instead}; delete it`;
         });
     if (fields.port !== undefined && !validPort(fields.port)) {

@@ -4,6 +4,7 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { hasToolSearch, NOT_DEFERRABLE, TOOL_SEARCH, TOOLS_SECTION } from "./kit/tools.ts";
 import { isObject } from "./kit/values.ts";
+import { unknownField } from "./kit/fields.ts";
 import type { JigState } from "./state.ts";
 
 const FIELDS = new Set(["deferred"]);
@@ -15,7 +16,8 @@ const MAX_NAMES = 200;
 export function validateToolsSection(raw: unknown): string[] {
     if (!isObject(raw)) return [`${TOOLS_SECTION} must be an object such as { "deferred": ["mongo"] }`];
     const errors: string[] = [];
-    for (const key of Object.keys(raw)) if (!FIELDS.has(key)) errors.push(`${TOOLS_SECTION}.${key}: unknown field`);
+    for (const key of Object.keys(raw))
+        if (!FIELDS.has(key)) errors.push(unknownField(TOOLS_SECTION, key, [...FIELDS]));
     const deferred = raw.deferred;
     if (deferred === undefined) return errors;
     if (!Array.isArray(deferred) || deferred.length > MAX_NAMES) {
