@@ -46,8 +46,7 @@ export const ACTION_NAMES: readonly string[] = NAMES;
 
 const parameters = Type.Object(
     {
-        // The 0.x alias stays accepted at the tool boundary; 0.5 removes it with the alias table.
-        action: stringEnum([...NAMES, "submit-plan"], {
+        action: stringEnum(NAMES, {
             description: NAMES.map((name) => `- ${name}: ${ACTIONS[name].summary}`).join("\n"),
         }),
         ticket: Type.Optional(

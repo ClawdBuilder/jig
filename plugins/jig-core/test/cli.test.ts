@@ -449,8 +449,8 @@ describe("jig doctor", () => {
         );
         const result = await run(["doctor"]);
         assert.match(result.stdout, /Rule action run-folder is now run_folder/);
-        assert.match(result.stdout, /still applies through 0\.4\.x/);
-        assert.match(result.stdout, /stop applying in 0\.5\.0/);
+        assert.match(result.stdout, /no longer applies/);
+        assert.match(result.stdout, /Change run-folder to run_folder/);
     });
 
     test("--json prints the report and keeps the exit code", { timeout: 60_000 }, async () => {
@@ -893,17 +893,40 @@ describe("CLI conventions", () => {
         });
     });
 
-    test("an unknown command or option is one line, a hint and exit 2", { timeout: 20_000 }, async () => {
-        // A word that is not a command starts Pi with it as the message, so the hint lives on `jig help`.
-        const command = await run(["help", "setpu"]);
-        assert.equal(command.code, 2);
-        assert.match(command.stderr, /Unknown command setpu\. Did you mean jig setup\?/);
-        assert.match(command.stderr, /Run jig --help/);
+    test("a near miss of a command is a hint and exit 2, not a model session", { timeout: 20_000 }, async () => {
+        const typos: Array<[string, string]> = [
+            ["setpu", "setup"],
+            ["doctr", "doctor"],
+            ["instal", "install"],
+            ["updat", "update"],
+        ];
+        for (const [typed, expected] of typos) {
+            const command = await run([typed]);
+            assert.equal(command.code, 2, typed);
+            assert.match(command.stderr, new RegExp(`Unknown command ${typed}\\. Did you mean jig ${expected}\\?`));
+            assert.match(command.stderr, /To ask Pi, run: jig "/);
+        }
+        const help = await run(["help", "setpu"]);
+        assert.equal(help.code, 2);
+        assert.match(help.stderr, /Unknown command setpu\. Did you mean jig setup\?/);
+        assert.match(help.stderr, /Run jig --help/);
         const option = await run(["doctor", "--bogus"]);
         assert.equal(option.code, 2);
         assert.match(option.stderr, /jig doctor: unknown option --bogus/);
         assert.match(option.stderr, /jig doctor --help/);
         assert.doesNotMatch(option.stderr, /Usage: jig doctor/);
+    });
+
+    test("a word far from every command, and a message with spaces, still go to Pi", { timeout: 20_000 }, async () => {
+        const options = { env: { PI_BIN: "/bin/echo", JIG_NO_TMUX: "1" } };
+        const word = await run(["build"], options);
+        assert.equal(word.code, 0, word.stderr);
+        assert.match(word.stdout, /build/);
+        assert.doesNotMatch(word.stderr, /Unknown command/);
+        const message = await run(["please fix the build"], options);
+        assert.equal(message.code, 0, message.stderr);
+        assert.match(message.stdout, /please fix the build/);
+        assert.doesNotMatch(message.stderr, /Unknown command/);
     });
 
     test("setup without a terminal names --yes and exits 2", { timeout: 20_000 }, async () => {

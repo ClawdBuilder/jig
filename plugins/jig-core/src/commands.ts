@@ -167,7 +167,7 @@ export function statusLines(state: JigState): string[] {
     ];
     for (const renamed of renamedInRules([...state.personal.config.rules, ...state.personal.config.classify])) {
         lines.push(
-            `Renamed action: a rule names ${renamed.tool} ${renamed.from}; it is ${renamed.to} since 0.4.0, and the old name stops applying in 0.5.0.`,
+            `Renamed action: a rule names ${renamed.tool} ${renamed.from}; the old name no longer applies. Change it to ${renamed.to}.`,
         );
     }
     const issues = countQuickIssues(doctorContext(state));

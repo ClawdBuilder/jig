@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-16: the 0.4.x action aliases are gone](#2026-11-16-the-04x-action-aliases-are-gone)
 - [2026-11-12: `jig update` moves the home's packages, never the Pi binary](#2026-11-12-jig-update-moves-the-homes-packages-never-the-pi-binary)
 - [2026-11-12: Jig lives in its own Pi folder, and `jig` is Pi for it](#2026-11-12-jig-lives-in-its-own-pi-folder-and-jig-is-pi-for-it)
 - [2026-11-09: sediment moved out of plugin design pages](#2026-11-09-sediment-moved-out-of-plugin-design-pages)
@@ -91,6 +92,15 @@ folders give each its own settings, sessions and packages, and any Pi package ca
 that set it for the launcher must use `JIG_PACKAGE_DIR`; the launcher, `docs/launcher.md` and the pinned `JIG_*` list in
 `surface.test.ts` changed together. A misspelled `jig` command now starts Pi with the word as its message, because
 anything that is not a command is a message.
+
+## 2026-11-16: the 0.4.x action aliases are gone
+
+Jig 0.4.0 renamed actions to snake case and said the old names would stop applying in 0.5.0. Jig is 0.5.5, so the
+aliases are removed now. A rule, a role's `actions` or `ask` list, or a workflow hold that still names `run-folder`,
+`submit-plan` or another old name no longer matches. `/jig` and `jig doctor` still name each old rule action and its
+replacement, so the loss is reported where the configuration check can see it. The alternative was to keep the promise
+in the text, but that keeps a second name for every action alive indefinitely and leaves the product claiming a removal
+that already happened. Tool names are unchanged.
 
 ## 2026-11-12: `jig update` moves the home's packages, never the Pi binary
 

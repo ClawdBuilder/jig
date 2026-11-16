@@ -271,7 +271,7 @@ describe("/jig doctor secrets", () => {
         assert.ok(line, "the rename is named");
         assert.equal(line.level, "warn");
         assert.match(line.title, /Rule action run-folder is now run_folder/);
-        assert.match(line.detail ?? "", /still applies through 0\.4\.x/);
+        assert.match(line.detail ?? "", /no longer applies/);
     });
 
     test("a missing pass entry says so plainly and gives the pass command", async () => {

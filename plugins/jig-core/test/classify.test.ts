@@ -141,7 +141,7 @@ describe("1. the tool's own declaration", () => {
 });
 
 describe("an action renamed in 0.4.0", () => {
-    test("a classification rule that names the old action still matches, and the call gets the new one", () => {
+    test("a classification rule that names the old action no longer matches", () => {
         const result = classify(
             "api",
             { action: "postman_environments" },
@@ -158,8 +158,7 @@ describe("an action renamed in 0.4.0", () => {
                 ],
             }),
         );
-        assert.equal(result.source, "rule");
-        assert.equal(result.action, "postman_environments");
+        assert.notEqual(result.source, "rule");
     });
 });
 

@@ -134,7 +134,7 @@ Pi's MCP server commands, for the Jig home.
 ${EXIT_CODES}`,
 };
 
-export const COMMANDS = [...Object.keys(HELP), "uninstall"] as string[];
+export const COMMANDS = [...Object.keys(HELP), ...Object.keys(PI_PACKAGES), "uninstall", "help"] as string[];
 
 /** The refusal for a word a sub-command does not take, and the way to send that message to Pi instead. */
 export function strayWordsMessage(command: string, argv: readonly string[], word: string): string {
