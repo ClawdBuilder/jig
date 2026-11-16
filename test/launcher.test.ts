@@ -67,6 +67,22 @@ describe("the files", () => {
         }
     });
 
+    test("an array is expanded only through the + form, so an empty one cannot fail under set -u", () => {
+        // bash before 4.4, which macOS ships, calls "${list[@]}" and "${#list[@]}" an unbound variable when the list is
+        // empty and `set -u` is on. `${list[@]+"${list[@]}"}` yields nothing instead, and the launcher counts its
+        // arguments rather than asking for the length.
+        const source = readFileSync(LAUNCHER, "utf8").replace(/^\s*#.*$/gm, "");
+        const bare = [...source.matchAll(/(.)"\$\{([A-Za-z_][A-Za-z0-9_]*)\[@\]}"/g)].filter(
+            (match) => match[1] !== "+",
+        );
+        assert.deepEqual(
+            bare.map((match) => match[0]),
+            [],
+            "a quoted array expansion without the + form",
+        );
+        assert.doesNotMatch(source, /\$\{#[A-Za-z_][A-Za-z0-9_]*\[@\]\}/, "an array length under set -u");
+    });
+
     test("tmux.conf takes the clipboard helper from JIG_PACKAGE_DIR, and the helper is there", () => {
         const conf = readFileSync(path.join(REPO, "bin", "tmux.conf"), "utf8");
         assert.ok(conf.includes('"$JIG_PACKAGE_DIR/bin/clipboard-copy"'));
@@ -134,6 +150,15 @@ describe("a run that is not interactive", () => {
             JIG_COMMAND: undefined,
             JIG_TMUX_SESSION: undefined,
         });
+    });
+
+    test("a bare run with no arguments reaches tmux and starts a session", async () => {
+        const result = await world.run([], TERMINAL);
+        assert.equal(result.status, 0, result.stderr);
+        assert.doesNotMatch(result.stderr, /unbound variable/);
+        assert.equal(result.stdout, "", "Pi is not run by this process: the session runs it");
+        const session = launch(world);
+        assert.deepEqual(session.command, [LAUNCHER], "no argument is passed on");
     });
 
     test("there is no warm start to turn off: --no-warm is Pi's argument now", async () => {
