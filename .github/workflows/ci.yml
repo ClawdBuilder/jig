@@ -417,6 +417,39 @@ jobs:
   # One name for branch protection to require, whatever jobs and matrix entries there are: `ci-ok` is the check to mark as required. It
   # runs even when a job failed or was cancelled (`always()`), and fails unless every job it needs succeeded. A new job above must be
   # added to `needs` (a test, plugins/jig-core/test/ci-config.test.ts, fails until it is).
+  # Advisory: macOS is not a required platform yet, so this job reports and is not in ci-ok. It runs the same checks and
+  # suite as `checks`, and the tests that need the Linux sandbox skip themselves with their reason.
+  macos-advisory:
+    name: macOS (advisory)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The tests resolve Pi's own packages from the installed Pi, as `checks` does. Exactly this version, the latest.
+      - name: Install Pi
+        run: |
+          npm install -g @earendil-works/pi-coding-agent@1.5.2
+          npm ls -g --depth=0 @earendil-works/pi-coding-agent
+
+      - name: Types and Biome
+        run: npm run check
+
+      - name: Tests
+        run: npm test
+
   ci-ok:
     name: ci-ok
     if: ${{ always() }}
