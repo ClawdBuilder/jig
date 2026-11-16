@@ -201,13 +201,18 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const standalone = context.standalone === true;
     const namedJigHome = context.env.JIG_HOME !== undefined && context.env.JIG_HOME.trim() !== "";
     const folder = shorten(context.agentDir, home);
+    // The `jig` command sets PI_CODING_AGENT_DIR from the home itself, so in the standalone doctor that variable says
+    // nothing about who chose the folder: name the default home, or JIG_HOME when it named one.
+    const defaultHome = path.resolve(home, ".jig");
     const folderWhy = namedJigHome
         ? "from JIG_HOME"
-        : fromEnv
-          ? "from PI_CODING_AGENT_DIR"
-          : standalone
-            ? "the default home"
-            : "the default folder";
+        : standalone && path.resolve(context.agentDir) === defaultHome
+          ? "the default home"
+          : fromEnv
+            ? "from PI_CODING_AGENT_DIR"
+            : standalone
+              ? "the default home"
+              : "the default folder";
     const wsl =
         platform === "linux" && (context.env.WSL_DISTRO_NAME !== undefined || context.env.WSL_INTEROP !== undefined);
     const system = platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : wsl ? "Linux (WSL)" : "Linux";
