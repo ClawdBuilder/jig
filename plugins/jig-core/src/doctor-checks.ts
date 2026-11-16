@@ -22,7 +22,7 @@ import {
 import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
-import { sectionState } from "./section-state.ts";
+import { sectionDetail, sectionState } from "./section-state.ts";
 import { onboardingLines } from "./doctor-needs.ts";
 import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
@@ -456,7 +456,8 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
     for (const name of sections) {
         const state = sectionState(context.personal, name);
         if (state === "loaded") {
-            lines.push({ id: `config.section.${name}`, group: "config", level: "ok", title: name, detail: "loaded" });
+            const detail = sectionDetail(context.personal, name);
+            lines.push({ id: `config.section.${name}`, group: "config", level: "ok", title: name, detail });
         } else if (state === "company defaults incomplete") {
             const messages = context.personal.incomplete.get(name) ?? [];
             lines.push({
@@ -563,10 +564,9 @@ function protectedLines(context: DoctorContext, options: DoctorOptions): DoctorL
 }
 
 function firstMessages(messages: readonly string[]): string {
-    if (messages.length === 0) return "the check did not say what is missing.";
     const [first, ...rest] = messages;
-    const more = rest.length === 0 ? "" : ` (and ${rest.length} more)`;
-    return `${first}${more}`;
+    if (first === undefined) return "the check did not say what is missing.";
+    return `${first}${rest.length === 0 ? "" : ` (and ${rest.length} more)`}`;
 }
 
 /** What the active company's onboarding list says its people must supply, for the sections that are not loaded yet. */

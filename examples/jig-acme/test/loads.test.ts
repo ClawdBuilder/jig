@@ -49,6 +49,25 @@ describe("loaded after jig-core and every built plugin", () => {
         }
     });
 
+    test("a company connection you leave out with null is gone, and the plugin never sees a null", async () => {
+        world = await startWorld({
+            personal: { mongo: { connections: { prod: null }, access: { prod: null } } },
+        });
+        const mongo = world.api.config.section("mongo") as {
+            connections: Record<string, unknown>;
+            access: Record<string, unknown>;
+        };
+        assert.deepEqual(Object.keys(mongo.connections).sort(), ["dev", "staging"]);
+        assert.equal(Object.hasOwn(mongo.access, "prod"), false);
+        assert.equal(JSON.stringify(mongo).includes("null"), false);
+        assert.deepEqual(await world.problems(), []);
+        const lines = await world.jigLines();
+        assert.ok(
+            lines.some((line) => /mongo \(loaded; you left out connections\.prod, access\.prod\)/.test(line)),
+            lines.join("\n"),
+        );
+    });
+
     test("/jig lists the environments, and says what is still missing for this user", async () => {
         world = await startWorld();
         const lines = await world.jigLines();

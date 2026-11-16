@@ -9,6 +9,7 @@ import { defaultConfig, emptyAdditions } from "../src/config.ts";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "../src/config.ts";
 import { doctorMarkers, formatDoctor, runDoctor } from "../src/doctor.ts";
 import type { DoctorContext, DoctorLine, DoctorOptions, DoctorReport } from "../src/doctor.ts";
+import type { OnboardingEntry } from "../src/contract.ts";
 import { countQuickIssues, findOnPath } from "../src/doctor-secrets.ts";
 
 let home: string;
@@ -38,6 +39,7 @@ function loaded(overrides: Partial<LoadedConfig> = {}): LoadedConfig {
         sections: new Map(),
         incomplete: new Map(),
         invalid: new Set(),
+        removed: new Map(),
         ...overrides,
     };
 }
@@ -119,6 +121,49 @@ describe("/jig doctor checks", () => {
         assert.equal(line.group, "config");
         assert.equal(line.detail, "The gateway asks for it.");
         assert.equal(line.fix, "Run jig setup and it asks for this.");
+    });
+
+    test("a field you left out with a null is not a 'you need' line", async () => {
+        const onboarding: OnboardingEntry = {
+            items: [
+                { kind: "text", section: "acme", path: "hosts.qa.url", label: "The QA host" },
+                { kind: "text", section: "acme", path: "hosts.prod.url", label: "The production host" },
+            ],
+        };
+        const report = await runDoctor(
+            context({
+                checks: [["acme", () => []]],
+                overrides: {
+                    personal: loaded({
+                        sections: new Map([["acme", {}]]),
+                        removed: new Map([["acme", ["hosts.prod"]]]),
+                    }),
+                    onboarding,
+                },
+            }),
+            options(),
+        );
+        const titles = report.lines.map((line) => line.title);
+        assert.ok(titles.includes("You need: The QA host"), text(report));
+        assert.ok(!titles.includes("You need: The production host"), text(report));
+    });
+
+    test("a loaded section says which company entries you left out with a null", async () => {
+        const report = await runDoctor(
+            context({
+                checks: [["acme", () => []]],
+                overrides: {
+                    personal: loaded({
+                        sections: new Map([["acme", {}]]),
+                        removed: new Map([["acme", ["hosts.prod"]]]),
+                    }),
+                },
+            }),
+            options(),
+        );
+        const line = report.lines.find((entry) => entry.id === "config.section.acme");
+        assert.equal(line?.level, "ok");
+        assert.equal(line?.detail, "loaded; you left out hosts.prod");
     });
 
     test("an unanswered company proposal is one config warning, never a failure", async () => {

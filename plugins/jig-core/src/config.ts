@@ -24,7 +24,7 @@ import type { Environments } from "./environments.ts";
 import type { ApprovalKind, ClassifyRule, Decision, Effect, EnvironmentConfig, Rule } from "./contract.ts";
 import { coversHome, expandProtected, isListablePath, mergeProtected } from "./protected-paths.ts";
 import type { ProtectedPath, ProtectedSource } from "./protected-paths.ts";
-import { layered } from "./section-defaults.ts";
+import { frozenSection, layered, removedBySection, withoutRemoved } from "./section-defaults.ts";
 import { parseStartChecks } from "./start-checks.ts";
 import type { StartCheck } from "./start-checks.ts";
 
@@ -156,6 +156,8 @@ export interface LoadedConfig {
     /** Plugin sections the file has and the plugin does not get, because they failed their check. A section the file
      *  does not have is not here: it is simply not set. */
     invalid: Set<string>;
+    /** Per section, the company map entries a `null` of yours leaves out, as dotted paths: `/jig` and the doctor say so. */
+    removed: Map<string, readonly string[]>;
 }
 
 /** Reads and checks the file. Never throws: every failure becomes a problem, and the defaults apply. `checks` holds the
@@ -171,6 +173,7 @@ export function loadConfigFile(
         config: defaultConfig(),
         problems,
         invalid: new Set(),
+        removed: new Map(),
         // A file that cannot be read still leaves the company's defaults.
         ...companyOnly(checks, layers, new Set()),
     });
@@ -208,6 +211,7 @@ export function parseConfig(
     sections: Map<string, unknown>;
     incomplete: Map<string, string[]>;
     invalid: Set<string>;
+    removed: Map<string, readonly string[]>;
 } {
     const problems: Problem[] = [];
     const fail: Fail = (key, message) => problems.push({ source, key, message });
@@ -218,8 +222,9 @@ export function parseConfig(
 
     if (!isObject(value)) {
         fail("(file)", "must hold one JSON object");
-        return { config, problems, invalid, ...companyOnly(checks, layers, new Set()) };
+        return { config, problems, invalid, removed: new Map(), ...companyOnly(checks, layers, new Set()) };
     }
+    const removed = removedBySection(layers.defaults, value);
     const written = new Set<string>();
     for (const [key, raw] of Object.entries(value)) {
         if (OWN_SECTIONS.includes(key)) continue;
@@ -261,6 +266,7 @@ export function parseConfig(
         sections,
         incomplete: company.incomplete,
         invalid,
+        removed,
     };
 }
 
@@ -271,35 +277,17 @@ interface SectionRead {
     messages: string[];
 }
 
-/** A frozen copy of a section and of every value in it: a plugin that changes what it was given changes nothing. A
- *  value that cannot be cloned (no section should hold one) is frozen where it is, so the promise still holds. */
-function frozenSection(value: unknown): unknown {
-    let copy = value;
-    try {
-        copy = structuredClone(value);
-    } catch {
-        copy = value;
-    }
-    return deepFreeze(copy);
-}
-
-function deepFreeze<T>(value: T): T {
-    if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-        Object.freeze(value);
-        for (const inner of Object.values(value)) deepFreeze(inner);
-    }
-    return value;
-}
-
 /**
  * Checks a section the user wrote. With company defaults it is checked laid over them, so the user writes only what
  * they change; a section nobody gave defaults for is checked as it is. When the two do not fit and the section is
  * complete without the defaults, it is used as written (the mismatch is still said); otherwise the plugin gets nothing.
  */
 function readSection(name: string, raw: unknown, check: SectionCheck, layers: SectionLayers): SectionRead {
+    // A `null` of yours is a removal, never a value: no check sees one, and no plugin gets one.
+    const mine = withoutRemoved(raw);
     if (!layers.defaults.has(name)) {
-        const messages = runSectionCheck(check, raw);
-        return { value: raw, use: messages.length === 0, messages };
+        const messages = runSectionCheck(check, mine);
+        return { value: mine, use: messages.length === 0, messages };
     }
     const merged = layered(
         layers.defaults.get(name),
@@ -312,9 +300,9 @@ function readSection(name: string, raw: unknown, check: SectionCheck, layers: Se
     const messages = runSectionCheck(check, merged);
     if (messages.length === 0) return { value: merged, use: true, messages };
     const said = `the company defaults for "${printable(name)}", with your settings laid over them, are not valid: `;
-    const alone = runSectionCheck(check, raw).length === 0;
+    const alone = runSectionCheck(check, mine).length === 0;
     const why = `${said}${messages.join("; ")}${alone ? " (your own section is used as you wrote it)" : ""}`;
-    return { value: raw, use: alone, messages: [why.slice(0, 2 * MAX_MESSAGE_CHARS)] };
+    return { value: mine, use: alone, messages: [why.slice(0, 2 * MAX_MESSAGE_CHARS)] };
 }
 
 /**

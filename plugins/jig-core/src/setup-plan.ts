@@ -13,7 +13,7 @@ import { inferredMethod, requiredPaths } from "./onboarding.ts";
 import { onboardingItemAt, onboardingOrder } from "./onboarding.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
 import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
-import { layered } from "./section-defaults.ts";
+import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { setValuePath } from "./setup-write.ts";
 import { shorten } from "./secret-status.ts";
 import { sectionState } from "./section-state.ts";
@@ -158,6 +158,12 @@ function addOnboardingFields(
         if (item.kind === "info" || item.kind === "login" || item.kind === "proposal") continue;
         if (!state.sectionChecks.has(item.section)) continue;
         if (!safePath(item.path) || !PATH_SHAPE.test(item.path)) continue;
+        const rawValue = raw[item.section];
+        const rawSection = isObject(rawValue) ? rawValue : {};
+        const defaults = state.defaults.get(item.section);
+        // A `null` of yours left the entry out: it is not missing, and setup must not ask for it again.
+        if (removedAt(removedPaths(defaults, rawSection), item.path) !== undefined) continue;
+        if (!parentIsObject(rawSection, item.path)) continue;
         let candidate = byName.get(item.section);
         if (candidate === undefined) {
             candidate = {
@@ -168,10 +174,6 @@ function addOnboardingFields(
             candidates.push(candidate);
         }
         if (candidate.section.fields.some((field) => field.path === item.path)) continue;
-        const rawValue = raw[item.section];
-        const rawSection = isObject(rawValue) ? rawValue : {};
-        if (!parentIsObject(rawSection, item.path)) continue;
-        const defaults = state.defaults.get(item.section);
         const merged = layered(
             defaults,
             rawSection,
@@ -300,12 +302,7 @@ export function safeSegment(name: string): boolean {
     return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && !["__proto__", "constructor", "prototype"].includes(name);
 }
 /** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
-function setupMethods(
-    state: SetupState,
-    section: string,
-    rawSection: Record<string, unknown>,
-    merged: unknown,
-): SetupMethod[] {
+function setupMethods(state: SetupState, section: string, merged: unknown): SetupMethod[] {
     const registered = state.onboardingMethods?.get(section) ?? [];
     const choice = state.onboarding?.methods?.[section];
     const hidden = new Set(choice?.hide ?? []);
@@ -533,6 +530,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
         }
         const fields: SetupField[] = [];
         for (const [path, message] of paths) {
+            if (removedAt(removedPaths(defaults, rawSection), path) !== undefined) continue;
             if (!safePath(path)) {
                 notes.push(`${labelOf(name)} needs a change that setup cannot ask for here.`);
                 continue;
@@ -581,7 +579,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
                 reason: reasonFor(message),
             });
         }
-        const methods = setupMethods(state, name, rawSection, merged);
+        const methods = setupMethods(state, name, merged);
         if (fields.length > 0 || notes.length > 0 || methods.length > 0) {
             candidates.push({
                 section: { name, label: labelOf(name), fields, ...(methods.length === 0 ? {} : { methods }), notes },

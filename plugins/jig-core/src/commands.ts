@@ -26,7 +26,7 @@ import { stateDir } from "./paths.ts";
 import { shorten } from "./secret-status.ts";
 import { modelAuthState, modelSignInLine } from "./model-auth.ts";
 
-import { sectionState } from "./section-state.ts";
+import { sectionDetail } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
 import type { JigState } from "./state.ts";
@@ -176,7 +176,7 @@ export function statusLines(state: JigState): string[] {
     if (deferred.length > 0) lines.push(`Deferred tools (found with tool_search): ${deferred.join(", ")}`);
     const sections = [...state.sectionChecks.keys()];
     if (sections.length > 0) {
-        const shown = sections.map((name) => `${name} (${sectionState(state.personal, name)})`);
+        const shown = sections.map((name) => `${name} (${sectionDetail(state.personal, name)})`);
         lines.push(`Plugin sections in the file: ${shown.join(", ")}`);
     }
     lines.push(...pluginLines(state));

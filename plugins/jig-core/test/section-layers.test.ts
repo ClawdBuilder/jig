@@ -71,6 +71,20 @@ function setup(
     return { state, api, file, load, problems };
 }
 
+test("a null entry removes the company's entry of that name", () => {
+    const out = layered(
+        { mongo: { connections: { staging: { host: "s" }, prod: { host: "p" } } } },
+        { mongo: { connections: { prod: null } } },
+    );
+    assert.deepEqual(out, { mongo: { connections: { staging: { host: "s" } } } });
+});
+
+test("a null for a key the company does not have is harmless, and nothing in the result is null", () => {
+    const out = layered({ acme: { host: "h" } }, { acme: { host: "mine", unknown: null }, other: null });
+    assert.deepEqual(out, { acme: { host: "mine" } });
+    assert.equal(JSON.stringify(out).includes("null"), false);
+});
+
 describe("your section is checked laid over the company's defaults", () => {
     test("you write only what you change: the company gives the sign-in, you give the site", () => {
         const { api, load, problems } = setup({ jira: { site: "https://jira.example.com" } });
@@ -578,5 +592,129 @@ describe("an ordered map", () => {
         ]);
         assert.equal(out.accounts["github.com:acme/orders-*"], "mine");
         assert.equal(out.accounts["github.com:acme/*"], "company");
+    });
+});
+
+/** Whether any value in a section is null: a plugin must never see one. */
+function hasNull(value: unknown): boolean {
+    if (value === null) return true;
+    if (Array.isArray(value)) return value.some(hasNull);
+    return isObject(value) && Object.values(value).some(hasNull);
+}
+
+/** A check that accepts a `hosts` map by name: enough to try one entry of a map the company gave. */
+function hostsCheck(raw: unknown): string[] {
+    if (!isObject(raw)) return ["jira: must be an object"];
+    if (!isObject(raw.hosts)) return ["jira.hosts: required, by name"];
+    return [];
+}
+
+describe("a null leaves one company entry out", () => {
+    test("at any depth, and the result has no null anywhere", () => {
+        const out = layered(
+            { hosts: { staging: { api: "a", db: "d" }, prod: { api: "p" } } },
+            { hosts: { staging: { db: null } } },
+        );
+        assert.deepEqual(out, { hosts: { staging: { api: "a" }, prod: { api: "p" } } });
+        assert.equal(hasNull(out), false);
+    });
+
+    test("inside an object that replaces the company's whole, where it would otherwise stay", () => {
+        const out = layered(
+            { auth: { transport: "corp-proxy", user: "company" } },
+            { auth: { token: "pass:work/jira", user: null } },
+            ["auth"],
+        );
+        assert.deepEqual(out, { auth: { token: "pass:work/jira" } });
+        assert.equal(hasNull(out), false);
+    });
+
+    test("does not count as choosing among the keys that exclude each other", () => {
+        const out = layered(
+            { backend: { auth: { transport: "corp-proxy" }, transport: "https://company.example.com" } },
+            { backend: { auth: null } },
+            [],
+            [["backend.auth", "backend.transport"]],
+        );
+        assert.deepEqual(out, { backend: { transport: "https://company.example.com" } });
+    });
+
+    test("a null for a key the company does not have is not a value, is not reported, and does not make the section invalid", () => {
+        const { api, load, state, problems } = setup({
+            jira: { site: "https://jira.example.com", auth: { token: "pass:work/jira" }, colour: null },
+        });
+        api.config.addSectionDefaults("jira", COMPANY_AUTH);
+        load();
+        assert.deepEqual(api.config.section("jira"), {
+            site: "https://jira.example.com",
+            auth: { token: "pass:work/jira" },
+        });
+        assert.deepEqual(problems(), []);
+        assert.equal(state.personal.removed.size, 0);
+    });
+
+    test("the loader records what a null left out, for /jig and the doctor", () => {
+        const { api, load, state } = setup({ jira: { hosts: { prod: null } } }, { check: hostsCheck, replace: false });
+        api.config.addSectionDefaults("jira", { hosts: { staging: { url: "s" }, prod: { url: "p" } } });
+        load();
+        assert.deepEqual(api.config.section("jira"), { hosts: { staging: { url: "s" } } });
+        assert.deepEqual([...state.personal.removed], [["jira", ["hosts.prod"]]]);
+    });
+
+    test("a section nobody gave defaults for does not reject a null either", () => {
+        const { api, load, problems } = setup({
+            jira: { site: "https://jira.example.com", auth: { token: "pass:work/jira" }, colour: null },
+        });
+        load();
+        assert.deepEqual(api.config.section("jira"), {
+            site: "https://jira.example.com",
+            auth: { token: "pass:work/jira" },
+        });
+        assert.deepEqual(problems(), []);
+    });
+
+    test("when your own section is used as written, a null of yours is still left out of it", () => {
+        const { api, load, problems } = setup({
+            jira: {
+                site: "https://jira.example.com",
+                auth: { token: "pass:work/jira" },
+                colour: null,
+            },
+        });
+        api.config.addSectionDefaults("jira", { region: "eu" });
+        load();
+        assert.deepEqual(api.config.section("jira"), {
+            site: "https://jira.example.com",
+            auth: { token: "pass:work/jira" },
+        });
+        assert.match(problems()[0] ?? "", /\(your own section is used as you wrote it\)$/);
+    });
+
+    test("/jig says the entry was left out by you", async () => {
+        let harness: Harness | undefined;
+        const kept = tempState();
+        kept.start();
+        try {
+            harness = await start({
+                config: { jira: { hosts: { prod: null } } },
+                plugins: (api) => {
+                    api.config.registerSection("jira", hostsCheck);
+                    api.config.addSectionDefaults("jira", {
+                        hosts: { staging: { url: "s" }, prod: { url: "p" } },
+                    });
+                },
+            });
+            const command = harness.host.commands.get("jig");
+            assert.ok(command);
+            await command.handler("", harness.ctx as never);
+            const shown = [
+                ...harness.ui.notifications.map((entry) => entry.message),
+                ...harness.ui.selects.flatMap((entry) => entry.options),
+            ].join("\n");
+            assert.match(shown, /Plugin sections in the file: jira \(loaded; you left out hosts\.prod\)/);
+        } finally {
+            await harness?.shutdown();
+            kept.stop();
+        }
     });
 });

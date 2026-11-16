@@ -19,6 +19,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
+import type { OnboardingEntry } from "../src/contract.ts";
 import { applyAnswer, buildSetupPlan, messagePaths, safePath } from "../src/setup-plan.ts";
 import { buildReference } from "../src/setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "../src/setup-write.ts";
@@ -565,5 +566,76 @@ describe("path helpers", () => {
         assert.equal(safePath("services.0.host"), false);
         assert.equal(safePath("__proto__.x"), false);
         assert.equal(safePath("a..b"), false);
+    });
+});
+
+/** A state whose company defaults give a map of hosts, so a `null` of the person's can leave one out. */
+function mapState(personal: unknown, options: { onboarding?: OnboardingEntry; check?: SectionCheck } = {}): SetupState {
+    writeFileSync(file, JSON.stringify(personal));
+    const defaults = new Map<string, unknown>([["acme", { hosts: { staging: { url: "s" }, prod: { url: "p" } } }]]);
+    const check =
+        options.check ??
+        ((raw: unknown) => {
+            const hosts = (raw as { hosts?: Record<string, { url?: unknown }> }).hosts;
+            if (hosts === undefined) return ["acme.hosts: required, by name"];
+            return Object.entries(hosts)
+                .filter(([, host]) => typeof host.url !== "string")
+                .map(([name]) => `acme.hosts.${name}.url is required`);
+        });
+    const checks = new Map<string, SectionCheck>([["acme", check]]);
+    return {
+        personal: loadConfigFile(file, checks, { defaults, replace: new Map(), oneOf: new Map(), union: new Map() }),
+        sectionChecks: checks,
+        defaults,
+        replace: new Map(),
+        oneOf: new Map(),
+        union: new Map(),
+        configPath: file,
+        env: {},
+        platform: "linux",
+        pathLookup: () => "/usr/bin/program",
+        enabledBackends: [],
+        disabledBackends: [],
+        companyBackends: [],
+        commands: {},
+        ...(options.onboarding === undefined ? {} : { onboarding: options.onboarding }),
+    };
+}
+
+describe("an entry your null left out", () => {
+    test("is not asked again when the company's list names it", () => {
+        const state = mapState(
+            { acme: { hosts: { prod: null } } },
+            {
+                onboarding: {
+                    items: [
+                        { kind: "text", section: "acme", path: "hosts.qa.url", label: "QA host" },
+                        { kind: "text", section: "acme", path: "hosts.prod.url", label: "Prod host" },
+                    ],
+                },
+            },
+        );
+        const built = buildSetupPlan(state);
+        assert.ok("plan" in built, "the plan is built");
+        const paths = built.plan.sections.flatMap((section) => section.fields.map((field) => field.path));
+        assert.deepEqual(paths, ["hosts.qa.url"], "the entry you left out is not a question");
+    });
+
+    test("is not asked again when a validator still names it", () => {
+        const state = mapState(
+            { acme: { hosts: { prod: null } } },
+            {
+                check: (raw) => {
+                    const prod = (raw as { hosts?: { prod?: unknown } }).hosts?.prod;
+                    return prod === null || prod === undefined
+                        ? ["acme.hosts.prod is required, the production database"]
+                        : [];
+                },
+            },
+        );
+        const built = buildSetupPlan(state);
+        assert.ok("plan" in built, "the plan is built");
+        const paths = built.plan.sections.flatMap((section) => section.fields.map((field) => field.path));
+        assert.deepEqual(paths, [], "setup has no question that would undo the removal");
     });
 });

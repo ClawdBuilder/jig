@@ -260,6 +260,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
             sections: new Map(),
             incomplete: new Map(),
             invalid: new Set(),
+            removed: new Map(),
         },
         company: emptyAdditions(),
         onboarding: undefined,

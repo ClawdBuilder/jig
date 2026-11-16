@@ -79,7 +79,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `config.ts` | `jig.json` and what company plugins add; an error never makes the plugin guess | `api.ts`, `commands.ts` and 4 more |
-| `section-defaults.ts` | A company's defaults for a plugin's section, with your own laid over them | `api.ts`, `config.ts` |
+| `section-defaults.ts` | A company's defaults for a plugin's section: your own laid over them, a `null` leaving one out | `api.ts`, `config.ts`, `setup-plan.ts`, `doctor-needs.ts` |
 | `state.ts` | What jig-core keeps while Pi runs: tools, configuration, questions, one record per call in flight | `api.ts`, `commands.ts` and 3 more |
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
 | `commands.ts` | The `/jig` commands: status, doctor with its flags, rules, records, and the setup hand-off | `index.ts` |
