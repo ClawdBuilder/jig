@@ -20,6 +20,7 @@ beforeEach(() => {
     agentDir = path.join(home, "agent");
     recordsDir = path.join(home, "state");
     mkdirSync(agentDir);
+    writeFileSync(path.join(agentDir, "auth.json"), JSON.stringify({ anthropic: { type: "api_key", key: "test" } }));
     mkdirSync(recordsDir);
     mkdirSync(path.join(home, "pass"));
 });

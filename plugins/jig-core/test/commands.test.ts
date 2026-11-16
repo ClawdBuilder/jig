@@ -193,6 +193,7 @@ describe("/jig", () => {
         assert.match(status, /Tools on the unknown default \(they ask until classified\): mystery\n/);
         assert.match(status, /Open watches: 0/);
         assert.match(status, /Configuration: none found \(.*jig\.json\), defaults apply/);
+        assert.match(status, /No model provider is signed in for .* Type \/login inside jig/);
     });
 
     test("shows the lines plugins registered for it, one line each; a plugin that fails is named and the others still show", async () => {

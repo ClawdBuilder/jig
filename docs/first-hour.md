@@ -31,6 +31,11 @@ This makes the Jig home (`~/.jig`), installs every plugin into it with Pi, and w
 `pi` is not changed: `jig` is Pi for the home. [`jig-core`](../plugins/jig-core/README.md) is the one that governs
 the others, so it must always be loaded. To load only some plugins, see [Install](../README.md#install).
 
+## 1b. Sign in to a model provider
+
+Before the first session, sign in once: type `/login` inside `jig` to choose one, or run `jig auth login <provider>` in a
+terminal. Jig never asks for the key; Pi stores it in the home's `auth.json`.
+
 ## 2. Run `/jig`
 
 Start Jig in your scratch repository and type:

@@ -13,29 +13,21 @@ and records every call it allows. It never signs in: the tool that owns a login 
 
 ## Install
 
-Install with npx. Jig needs Pi 1.4 or later and Node.js 22.19 or later ([Compatibility](docs/compatibility.md)).
+Jig needs Pi 1.4 or later and Node.js 22.19 or later ([Compatibility](docs/compatibility.md)).
 
 ```bash
 npx @clawdbuilder/jig setup
 jig
 ```
 
-`jig doctor` checks the machine and names anything missing:
+After setup, sign in to a model provider: type `/login` inside jig to choose one, or run `jig auth login <provider>` in a
+terminal.
+
+`jig` is Pi for `~/.jig` (or `JIG_HOME`); see [Setup and doctor](docs/setup-and-doctor.md) and [Your first hour](docs/first-hour.md).
 
 ```text
 Jig doctor · 12 ok · 0 warnings · 0 failures · 7 skipped
-
-This machine
-  ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
-  ok Pi — 1.5.2
-  ok Jig — 0.5.5
-…
-All checks passed; 7 could not be checked here.
 ```
-
-`jig` is Pi for Jig's own folder, the home: `~/.jig`, or `JIG_HOME`. Your own `pi` is unchanged; the home, packages,
-updating and uninstalling are in [Setup and doctor](docs/setup-and-doctor.md). [Your first hour](docs/first-hour.md)
-goes from here to your first approval.
 
 ## How it works
 

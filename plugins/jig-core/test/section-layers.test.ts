@@ -259,7 +259,10 @@ describe("defaults that need something only you can give", () => {
             const command = harness.host.commands.get("jig");
             assert.ok(command);
             await command.handler("", harness.ctx as never);
-            const shown = harness.ui.notifications.map((entry) => entry.message).join("\n");
+            const shown = [
+                ...harness.ui.notifications.map((entry) => entry.message),
+                ...harness.ui.selects.flatMap((entry) => entry.options),
+            ].join("\n");
             assert.match(shown, /Plugin sections in the file: jira \(company defaults incomplete\)/);
             assert.match(
                 shown,

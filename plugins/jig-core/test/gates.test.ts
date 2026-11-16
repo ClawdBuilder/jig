@@ -371,7 +371,10 @@ describe("a gate can never loosen a decision", () => {
         });
         for (let n = 0; n < 7; n++) assert.equal((await harness.call({ tool: "fake" })).blocked, false, `answer ${n}`);
         await harness.host.commands.get("jig")?.handler("", harness.ctx as never);
-        const text = harness.ui.notifications.map((item) => item.message).join("\n");
+        const text = [
+            ...harness.ui.notifications.map((item) => item.message),
+            ...harness.ui.selects.flatMap((item) => item.options),
+        ].join("\n");
         assert.equal(text.match(/gate "odd"/g)?.length, 1, "reported once, whatever the number of odd answers");
         assert.match(text, /answered with something that is not ask or deny/);
     });

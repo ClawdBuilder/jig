@@ -208,6 +208,11 @@ if (first === undefined || first === "--") {
     process.stdout.write(json ? `${JSON.stringify({ schema: 1, version: packageVersion })}\n` : `${packageVersion}\n`);
 } else if (first === "help") {
     await help(args.slice(1));
+} else if (first === "auth" && args.length === 2 && (args[1] === "--help" || args[1] === "-h")) {
+    process.stdout.write(
+        `In Jig, \`jig auth\` signs in for this home; credentials are stored in ${path.join(home, "auth.json")}.\n`,
+    );
+    startPi(args);
 } else if (JIG_COMMANDS.has(first)) {
     await loadHooks();
     let main;

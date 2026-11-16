@@ -570,6 +570,7 @@ describe("jig setup", () => {
         assert.deepEqual(calls(), [], "no pi install: the home already has Jig");
         assert.ok(existsSync(path.join(home, ".local", "bin", "jig")));
         assert.match(result.stdout, /jig is on your PATH|is not on your PATH/);
+        assert.match(result.stdout, /No model provider is signed in for .* Type \/login inside jig/);
     });
 
     test("--yes copies the old jig.json and never a credential file", async () => {

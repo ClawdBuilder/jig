@@ -214,10 +214,15 @@ reports (user and password)`. When they do not form a grid, it keeps the plain l
 | This machine | Node.js, Pi, Jig, the system and Pi's folder |
 | Configuration | the settings file, each plugin section, and the protected files |
 | Secrets | the stores that are on, and each reference: found, missing, locked or not checked |
-| Logins | `gh` and `glab`, only when your settings use them |
+| Logins | the model provider for the home, plus `gh` and `glab` when your settings use them |
 | Network | only with `--network`: the configured hosts and the latest release |
 | Sandbox | whether `bash` is sandboxed, and the programs it needs |
 | Records | where today's records go, and whether they can be written |
+
+The model provider line is `ok` when `auth.json` names a provider or a provider key is set in the environment, `warn`
+when the home has neither and no extension is installed, and `skip` when an extension package is installed because its
+provider cannot be checked without loading Pi. The fix for a warning is `/login` inside `jig`, or
+`jig auth login <provider>` in a terminal.
 
 A `skip` is not a failure. Every store is asked for metadata only: an entry exists, a variable is set, a file's
 size and mode, a Keychain lookup without the password, a 1Password item list without its fields, or a login

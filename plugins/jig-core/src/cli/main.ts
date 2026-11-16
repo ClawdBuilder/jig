@@ -17,6 +17,7 @@ import type { LoadFailure } from "./headless.ts";
 import { terminalUi } from "./terminal.ts";
 import { update as updateCommand } from "./update.ts";
 import { jigHome } from "./home.ts";
+import { modelAuthState, modelSignInLine } from "../model-auth.ts";
 import { bootstrap } from "./bootstrap.ts";
 import type { BootstrapUi } from "./bootstrap.ts";
 import { findPi } from "./pi-command.ts";
@@ -318,6 +319,7 @@ async function setup(args: readonly string[]): Promise<number> {
     if (!interactive) {
         if (words.yes) {
             ui.notify("Skipped the setup questions; run `jig setup` in a terminal to answer them.", "info");
+            if (modelAuthState(home, process.env).kind === "missing") ui.notify(modelSignInLine(home), "warning");
             screen?.close();
             return 0;
         }
@@ -363,7 +365,10 @@ async function setup(args: readonly string[]): Promise<number> {
         const step = await companyStep(loaded.state, ui as SetupUi);
         if (step === "cancel") return 130;
         if (step === "failed") return 1;
-        return await runSetup(loaded.state, ui as SetupUi, words.section);
+        const code = await runSetup(loaded.state, ui as SetupUi, words.section);
+        if (code === 0 && modelAuthState(home, process.env).kind === "missing")
+            ui.notify(modelSignInLine(home), "warning");
+        return code;
     } catch (error) {
         ui.notify(`Setup stopped: ${errorMessage(error)}`, "error");
         return 1;
