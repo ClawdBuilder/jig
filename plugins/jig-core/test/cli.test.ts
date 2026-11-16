@@ -893,6 +893,16 @@ describe("CLI conventions", () => {
         });
     });
 
+    test("jig auth --help puts a Jig header before Pi's unchanged help", { timeout: 20_000 }, async () => {
+        const result = await run(["auth", "--help"]);
+        assert.equal(result.code, 0, result.stderr);
+        assert.match(
+            result.stdout,
+            /^In Jig, `jig auth` signs in for this home; credentials are stored in .*auth\.json\./,
+        );
+        assert.match(result.stdout, /pi auth login <provider>/);
+    });
+
     test("a near miss of a command is a hint and exit 2, not a model session", { timeout: 20_000 }, async () => {
         const typos: Array<[string, string]> = [
             ["setpu", "setup"],
