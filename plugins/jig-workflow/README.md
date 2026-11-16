@@ -12,6 +12,13 @@ You write the workflows; the plugin has none built in, only examples to copy, su
 with `/workflow start feature PROJ-123`: the agent then reads each stage's goal, asks for tests and
 approvals through the `workflow` tool, and moves on when `advance` finds every exit condition met.
 
+A `workflow status` call before any workflow starts, copied from a run:
+
+```text
+workflow status
+No active ticket, and no workflow is running. Make a ticket active with /ticket KEY, then workflow start.
+```
+
 ![Workflow files name the stages; evidence is made where it can be checked and saved against a commit in workflow.json; eight conditions are read from it; a gate in jig-core holds calls](../../docs/img/workflow-flow.svg)
 
 *From file to hold. A stage's exit conditions say which evidence counts, each result is saved against the commit or plan it is about, and the same conditions that stop `advance` make the gate hold a call.*
@@ -90,7 +97,7 @@ At session start, a line says which stage the active ticket is in and what is mi
 - **Evidence is recorded against what it is about.** A new commit ends a test result, and an edited plan
   needs approving again ([State](docs/state.md)).
 - **Setup failures and stage events.** A command that could not run tests says “tests did not run” and points at
-  `workflow.tests`; a stage move publishes `jig:stage-done`. The old `submit-plan` name is accepted through 0.4.x.
+  `workflow.tests`; a stage move publishes `jig:stage-done`.
 - **Tests run in the sandbox.** Without `jig-sandbox`, or for a command set to run `outside`, a test run asks
   first, naming the command. A Gradle wrapper gets the JDK that fits ([Tests](docs/tests.md#the-jdk-of-a-gradle-build)).
 - **The agent cannot mark anything passed.** It asks for a run, an approval or a check, and the plugin

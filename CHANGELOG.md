@@ -4,6 +4,10 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 ## [Unreleased]
 
+### Removed
+
+- The 0.4.x action aliases are gone: a rule, role or workflow that still uses an old hyphenated action name must use its snake_case name. `jig doctor` names the old rule action and its replacement.
+
 ## [0.5.5] - 2026-11-12
 
 Jig gets its own home (`~/.jig`, or `JIG_HOME`) and `jig` is Pi for it; a company's session relay is set up in `jig.json`.

@@ -11,6 +11,13 @@ applies your rules, asks you when a rule says so, masks and redacts the result,
 and records the call. For example, `git push` is a write to `external`, so
 `jig-core` shows you the push and waits for your `y` before it runs.
 
+A `watch list` call, copied from a run with nothing waiting:
+
+```text
+watch list
+No open watches, and none finished in the last 24 hours.
+```
+
 ![Every tool call passes through jig-core's hooks before and after it runs](../../docs/img/one-call.svg)
 
 *One call, end to end: it is classified, decided and, when a rule says ask, put to you before it runs; what comes back is redacted, masked, capped and recorded. [Architecture](../../docs/architecture.md) shows how the hooks fit; [Permissions](../../docs/permissions.md) has the rules and the floor.*

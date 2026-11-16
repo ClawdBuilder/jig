@@ -49,6 +49,19 @@ Three more commands help you look around:
 - `/jig rules` shows the decision for every tool and action, and where it came from;
 - `/jig records` shows where today's records are.
 
+From a terminal, `jig doctor` reads the same setup without starting Pi:
+
+```text
+Jig doctor · 12 ok · 0 warnings · 0 failures · 7 skipped
+
+This machine
+  ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
+  ok Pi — 1.5.2
+  ok Jig — 0.5.5
+…
+All checks passed; 7 could not be checked here.
+```
+
 ## 3. Set up one plugin: `jig-git`
 
 Jig reads one file, `~/.jig/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
