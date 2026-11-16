@@ -269,6 +269,15 @@ api.onboarding?.register({
   token itself.
 - **`login` is a command, not a credential.** Doctor runs `status` and says whether it is signed in; setup prints `login` and does
   not run it. A tool already checked by Jig (gh, glab) is not checked twice.
+- **`proposal` asks before writing an entry into a section the person owns,** such as `startChecks`, `git.accounts` or a
+  `secrets.pass` binding. Show the entry, your reason, and let them answer; a yes adds it, a no is kept in the Jig home's
+  `onboarding.json` and setup does not ask again. The person's own list stays authoritative and can be edited or emptied at
+  any time. A `startChecks` proposal has no `path` or `key`; a map proposal names its `path` and `key`:
+  ```json
+  { "kind": "proposal", "section": "startChecks", "value": { "name": "VPN", "tcp": "vpn.example.com:443" },
+    "label": "A check that the VPN is up", "why": "Your tools need it." }
+  ```
+  An older Jig refuses an onboarding list that uses this kind; it does not ignore it. Require the Jig that knows it.
 - **`info` comes before the questions and `pick` offers your plain choices.** Items are asked in your order, and the sections you
   name come first; the rest of the settings keep their own order.
 - **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never

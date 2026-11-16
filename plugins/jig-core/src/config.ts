@@ -631,7 +631,7 @@ function whyNotAStoreFolder(value: unknown): string | undefined {
 }
 
 /** `{ storeDir, gnupgHome, unlockAtStart }`: the folders `pass` and its GnuPG use, and whether to unlock it at start. */
-function parsePassBinding(raw: unknown, path: string, fail: Fail): PassBinding {
+export function parsePassBinding(raw: unknown, path: string, fail: Fail): PassBinding {
     const out: PassBinding = {};
     if (!isObject(raw)) {
         fail(path, "must be an object with storeDir, gnupgHome and unlockAtStart");

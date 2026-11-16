@@ -121,6 +121,33 @@ describe("/jig doctor checks", () => {
         assert.equal(line.fix, "Run jig setup and it asks for this.");
     });
 
+    test("an unanswered company proposal is one config warning, never a failure", async () => {
+        const report = await runDoctor(
+            context({
+                overrides: {
+                    onboarding: {
+                        items: [
+                            {
+                                kind: "proposal",
+                                section: "startChecks",
+                                value: { name: "VPN", tcp: "vpn.example.com:443" },
+                                label: "A check that the VPN is up",
+                                why: "The tools need it.",
+                            },
+                        ],
+                    },
+                },
+            }),
+            options(),
+        );
+        const line = report.lines.find((entry) => entry.id === "config.proposals");
+        assert.ok(line, text(report));
+        assert.equal(line.level, "warn");
+        assert.equal(line.group, "config");
+        assert.match(line.detail ?? "", /1 proposed entry/);
+        assert.equal(report.counts.fail, 0);
+    });
+
     test("a working setup passes, with a summary and the groups a person expects", async () => {
         const report = await runDoctor(context(), options());
         const shown = text(report);

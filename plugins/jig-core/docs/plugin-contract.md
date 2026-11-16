@@ -156,7 +156,9 @@ closed instead of running ungoverned.
   asked each time `/jig` runs and may return nothing. Each line is cut to one
   line of 300 characters; a `lines` that throws shows as `<plugin>: its status
   could not be read`. Registering the same plugin again replaces it.
-- **`onboarding.register(entry)`** is a company's list of what its people must supply, for `/jig setup` and `/jig doctor`:
+- **`onboarding.register(entry)`** is a company's list of what its people must supply, for `/jig setup` and `/jig doctor`.
+  It includes `proposal` items, which setup asks before writing an entry into a person-owned section; an older Jig refuses
+  the list rather than ignoring the kind.
   `preferredStore`, and `items` of kind `text`, `pick`, `reference`, `login` or `info`, each naming the section and dotted
   path an answer goes to. Setup asks the items in the company's order, with its labels and hints, and doctor turns the ones
   still missing into "you need" lines. It is optional: without it, setup uses the section validators. A test can stand in

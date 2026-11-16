@@ -1,7 +1,9 @@
 // The `jig` command: doctor and setup from any terminal, with no Pi session and no model. It loads the plugins Pi would
 // load, registers their sections and defaults, and reads the same jig.json; nothing here starts a tool or connects.
 import path from "node:path";
-import { runSetup } from "../setup.ts";
+import { runSetup, setupStateFrom } from "../setup.ts";
+import { buildSetupPlan } from "../setup-plan.ts";
+import { pendingProposalCount } from "../setup-proposal.ts";
 import type { SetupUi } from "../setup.ts";
 import { doctorContext } from "../doctor-checks.ts";
 import { doctorMarkers, formatDoctor, runDoctor } from "../doctor.ts";
@@ -235,7 +237,20 @@ async function setup(args: readonly string[]): Promise<number> {
     }
     if (!interactive) {
         if (words.yes) {
-            ui.notify("Skipped the setup questions; run `jig setup` in a terminal to answer them.", "info");
+            let proposals = 0;
+            try {
+                const loaded = await loadHeadless({ agentDir: home });
+                const built = buildSetupPlan(setupStateFrom(loaded.state));
+                if ("plan" in built) proposals = pendingProposalCount(built.plan);
+            } catch {
+                // With no questions to read, the count is 0; the sentence still says the questions were skipped.
+            }
+            ui.notify(
+                proposals === 0
+                    ? "Skipped the setup questions; run `jig setup` in a terminal to answer them."
+                    : `Skipped the setup questions; ${proposals} proposed ${proposals === 1 ? "entry was" : "entries were"} not added. Run jig setup in a terminal to answer them.`,
+                "info",
+            );
             if (modelAuthState(home, process.env).kind === "missing") ui.notify(modelSignInLine(home), "warning");
             screen?.close();
             return 0;

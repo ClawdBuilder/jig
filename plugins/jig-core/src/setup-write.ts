@@ -34,11 +34,49 @@ const BACKEND_LABEL: Record<SecretBackend, string> = {
 /** The JSON of exactly the changed fields, for the "Show the exact change" choice and nowhere else. */
 export function exactChangeLines(changes: readonly SetupChange[]): string[] {
     const grouped: Record<string, unknown> = {};
-    for (const change of changes) {
-        if (!isObject(grouped[change.section])) grouped[change.section] = {};
-        setValuePath(grouped[change.section] as Record<string, unknown>, change.path, change.value);
-    }
+    for (const change of changes) applyChange(grouped, change);
     return JSON.stringify(grouped, null, 4).split("\n");
+}
+
+function getAt(object: Record<string, unknown>, dotted: string): unknown {
+    let current: unknown = object;
+    for (const part of dotted === "" ? [] : dotted.split(".")) {
+        if (!isObject(current)) return undefined;
+        current = current[part];
+    }
+    return current;
+}
+
+/** Applies one accepted change: a map key, a list append, or a whole value. */
+function applyChange(document: Record<string, unknown>, change: SetupChange): void {
+    const candidate = document[change.section];
+    const section: Record<string, unknown> = isObject(candidate) ? candidate : {};
+    if (change.append === true) {
+        const current = change.path === "" ? section : getAt(section, change.path);
+        const list = Array.isArray(current) ? [...current, change.value] : [change.value];
+        if (change.path === "") document[change.section] = list;
+        else {
+            setValuePath(section, change.path, list);
+            document[change.section] = section;
+        }
+        return;
+    }
+    if (change.key !== undefined) {
+        const current = change.path === "" ? section : getAt(section, change.path);
+        const map = isObject(current) ? { ...current, [change.key]: change.value } : { [change.key]: change.value };
+        if (change.path === "") document[change.section] = map;
+        else {
+            setValuePath(section, change.path, map);
+            document[change.section] = section;
+        }
+        return;
+    }
+    if (change.path === "") {
+        document[change.section] = change.value;
+        return;
+    }
+    if (!isObject(document[change.section])) document[change.section] = {};
+    setValuePath(document[change.section] as Record<string, unknown>, change.path, change.value);
 }
 
 /** The write gate: re-read, refuse a changed file, back up beside it, then replace it whole and atomically. */
@@ -89,15 +127,7 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
     }
 
     const after = structuredClone(plan.raw);
-    for (const change of changes) {
-        if (change.path === "") {
-            // A top-level value, such as the `profile` that says which company setup applies.
-            after[change.section] = change.value;
-            continue;
-        }
-        if (!isObject(after[change.section])) after[change.section] = {};
-        setValuePath(after[change.section] as Record<string, unknown>, change.path, change.value);
-    }
+    for (const change of changes) applyChange(after, change);
     const enabling = [
         ...new Set(changes.flatMap((change) => (change.enableBackend === undefined ? [] : [change.enableBackend]))),
     ];
