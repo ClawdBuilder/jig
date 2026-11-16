@@ -15,6 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
+import { launcherBashPath } from "../../../test/support/launcher-world.ts";
 import { piHostDir } from "../../../test/support/pi-host-dir.mjs";
 import { ptyArgv, ptyAvailable } from "../../../test/support/pty.ts";
 
@@ -25,10 +26,17 @@ const NEEDS_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-compan
 const PROPOSAL_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-proposal");
 // A terminal test needs a pty: `script` on macOS keeps the terminal it is given, so a runner without one skips.
 const ptySkip = ptyAvailable() ? false : "no usable pty on this machine";
+// `jig auth --help` and a word that is not a command start Pi through the launcher (`bin/pi`), which needs bash 4.4 or
+// later; macOS ships 3.2. Link a newer bash first on PATH, as a person with Homebrew's would; without one, those tests
+// skip with the launcher's reason instead of failing on the version check.
+const launcherBash = launcherBashPath();
+const launcherSkip =
+    launcherBash === undefined ? "the launcher needs bash 4.4 or later, and this machine has none" : false;
 
 let home: string;
 let agent: string;
 let work: string;
+let launcherBin: string;
 
 beforeEach(() => {
     home = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-cli-")));
@@ -41,6 +49,10 @@ beforeEach(() => {
     // and the command sees that it already is the home's copy instead of handing over to itself.
     mkdirSync(path.join(agent, "npm", "node_modules", "@clawdbuilder"), { recursive: true });
     symlinkSync(ROOT, path.join(agent, "npm", "node_modules", "@clawdbuilder", "jig"), "dir");
+    launcherBin = path.join(home, "launcher-bin");
+    mkdirSync(launcherBin, { recursive: true });
+    // The launcher's `#!/usr/bin/env bash` finds this one, not macOS's 3.2.
+    if (launcherBash !== undefined) symlinkSync(launcherBash, path.join(launcherBin, "bash"));
 });
 const children = new Set<ChildProcess>();
 
@@ -87,6 +99,7 @@ function env(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv 
         HOME: home,
         JIG_HOME: agent,
         PI_CODING_AGENT_DIR: agent,
+        PATH: `${launcherBin}${path.delimiter}${process.env.PATH ?? ""}`,
         LANG: "C",
         LC_ALL: "C",
         NO_COLOR: "1",
@@ -986,7 +999,10 @@ describe("CLI conventions", () => {
         });
     });
 
-    test("jig auth --help puts a Jig header before Pi's unchanged help", { timeout: 20_000 }, async () => {
+    test("jig auth --help puts a Jig header before Pi's unchanged help", {
+        timeout: 20_000,
+        skip: launcherSkip,
+    }, async () => {
         const result = await run(["auth", "--help"]);
         assert.equal(result.code, 0, result.stderr);
         assert.match(
@@ -1020,7 +1036,10 @@ describe("CLI conventions", () => {
         assert.doesNotMatch(option.stderr, /Usage: jig doctor/);
     });
 
-    test("a word far from every command, and a message with spaces, still go to Pi", { timeout: 20_000 }, async () => {
+    test("a word far from every command, and a message with spaces, still go to Pi", {
+        timeout: 20_000,
+        skip: launcherSkip,
+    }, async () => {
         const options = { env: { PI_BIN: "/bin/echo", JIG_NO_TMUX: "1" } };
         const word = await run(["build"], options);
         assert.equal(word.code, 0, word.stderr);
