@@ -38,7 +38,7 @@ Pi's `write`. A name alone matches every action of the tool.
 
 | Tool | Held when |
 |---|---|
-| `write`, `edit` | a path the call writes is inside a bound repository |
+| `write`, `edit` | a path the call writes is inside a bound repository, or a worktree `workflow bind` added to it |
 | `git`, `pr` | the call's `repo` (or, without one, the repository Pi runs in) is a bound repository |
 | any other | always, in the work the session has active |
 
@@ -83,7 +83,8 @@ and the question is the `bash` tool's own, asked in a nested call for that repos
   guard for what bash may change; this hold does not see the command's file writes.
 - **Another session on the same ticket,** and a child agent (`jig-agents`): the gate follows the active
   ticket of the session it runs in. A child that has no active ticket is not held.
-- **A repository that is not bound.** Binding is what puts a repository in scope ([State](state.md)).
+- **A repository that is not bound.** Binding is what puts a repository in scope ([State](state.md)). A worktree made
+  outside `workflow bind` is not bound either; run `workflow bind` for it if work there must be held.
 - **Before `session_start`,** when the plugin has not yet learned the active ticket.
 
 ## How the gate finds the ticket
