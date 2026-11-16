@@ -2,6 +2,7 @@
 // the plugin registers, never code: setup and doctor read it and ask or report. A plugin without a list is fine — setup falls
 // back to the section validators, which is less pretty but never blocked.
 import { checkDetect } from "./detect.ts";
+import { requiredFields, requiredPaths } from "./onboarding-methods.ts";
 import { checkProposal } from "./setup-proposal.ts";
 import type {
     OnboardingEntry,
@@ -12,8 +13,10 @@ import type {
     OnboardingStore,
 } from "./contract.ts";
 import { unknownField } from "./kit/fields.ts";
+
 /** The stores a list may name, in `jig.json`'s spelling. */
 export const ONBOARDING_STORES: readonly OnboardingStore[] = ["pass", "env", "keychain", "op", "cmd", "file"];
+
 const SECTION = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const PATH = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
 const METHOD_ID = /^[a-z][a-z0-9-]{0,63}$/;
@@ -21,67 +24,21 @@ const METHOD_PATH = /^(?:[A-Za-z0-9_*][A-Za-z0-9_*-]*)(?:\.[A-Za-z0-9_*][A-Za-z0
 const LABEL_MAX = 120;
 const WHY_MAX = 400;
 const DETAIL_MAX = 600;
+
 function oneLine(value: unknown, max: number): value is string {
     return (
         typeof value === "string" && value.trim() !== "" && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value)
     );
 }
+
 function optionalLine(value: unknown, at: string, max: number, errors: string[]): void {
     if (value !== undefined && !oneLine(value, max))
         errors.push(`${at}: must be one line of at most ${max} characters`);
-}
-/** The fields every method value must have: a reference, or text that is not optional. */
-export function requiredFields(method: OnboardingMethod): OnboardingMethodField[] {
-    return method.fields.filter(
-        (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
-    );
-}
-/** The required paths of a method, sorted. Kinds and optional fields do not decide the method; the set of paths does.
- *  A subset is allowed and the most specific method wins, as long as two sets are not identical. */
-export function requiredPaths(method: OnboardingMethod): string {
-    return requiredFields(method)
-        .map((field) => field.path)
-        .sort()
-        .join("|");
 }
 
 /** Whether every segment of a method path is safe: not a prototype key. */
 function safeMethodPath(path: string): boolean {
     return path.split(".").every((segment) => !["__proto__", "constructor", "prototype"].includes(segment));
-}
-
-/**
- * The method a section value uses: the most specific required path set matched by the value, or undefined on a tie or
- * no match. A `*` in a method path matches one name at that level.
- */
-export function inferredMethod(methods: readonly OnboardingMethod[], value: unknown): OnboardingMethod | undefined {
-    const has = (current: unknown, path: string): boolean => {
-        const segments = path.split(".");
-        const walk = (node: unknown, index: number): boolean => {
-            if (index === segments.length) return node !== undefined;
-            const segment = segments[index] ?? "";
-            if (typeof node !== "object" || node === null || Array.isArray(node)) return false;
-            if (segment === "*") return Object.values(node).some((child) => walk(child, index + 1));
-            return Object.hasOwn(node, segment) && walk((node as Record<string, unknown>)[segment], index + 1);
-        };
-        return walk(current, 0);
-    };
-    let best: OnboardingMethod | undefined;
-    let size = -1;
-    let tie = false;
-    for (const method of methods) {
-        const required = requiredFields(method);
-        if (required.length === 0 || !required.every((field) => has(value, field.path))) continue;
-        const count = required.length;
-        if (count > size) {
-            best = method;
-            size = count;
-            tie = false;
-        } else if (count === size) {
-            tie = true;
-        }
-    }
-    return tie ? undefined : best;
 }
 
 /** One field of a plugin method, or of a company-only fixed method. */

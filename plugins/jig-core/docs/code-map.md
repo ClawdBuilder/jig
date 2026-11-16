@@ -105,6 +105,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
 | `setup-plan.ts` | What setup asks, from the section states and the validators, the company's onboarding list laid over it, and the answer round trip; it follows a linked settings file to its target | `setup.ts`, `onboarding.ts` |
+| `setup-onboarding.ts` | Lays the company's onboarding list over the validator fields: labels, hints and order | `setup-plan.ts` |
 | `setup-method-paths.ts` | A sign-in method's `*` paths: which expanded fields a method allows | `setup-plan.ts` |
 | `setup-proposal.ts` | A company's proposed entry for a person-owned section, asked once and remembered when declined | `onboarding.ts`, `setup-plan.ts`, `setup.ts`, `doctor-needs.ts` |
 | `doctor-needs.ts` | The "You need:" lines: a missing section, or a required field a loaded section lacks | `doctor-checks.ts` |
@@ -112,7 +113,8 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-command.ts` | `/jig setup` inside Pi | `commands.ts` |
 | `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |
 | `detect.ts` | The fixed probes a `detect` item may name, and the line setup shows for what one found | `onboarding.ts` (the name check), `setup.ts` |
-| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts` |
+| `onboarding-methods.ts` | The method a section value uses: the fields it requires, their paths, the best match | `onboarding.ts`, `setup-plan.ts` |
+| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts`, `setup-onboarding.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
 | `cli/main.ts` | The `jig` command's own words: the doctor's exit code and report, setup's bootstrap, company step and exit codes, and the update word | `bin/jig.mjs` |
@@ -172,6 +174,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `exec.ts` | Runs programs for tools: an argument list, never a shell, with a timeout and a minimal environment | `api.ts`, `preview-html.ts`, `secrets.ts` |
 | `exec-output.ts` | What a program's output keeps past the cap: head, tail, or both | `exec.ts` |
 | `contract-run.ts` | The `exec.run` options and result, re-exported from `contract.ts` | `contract.ts`, `exec.ts` |
+| `contract-watch.ts` | The watch part of the contract: result, news, poll, kind and info, re-exported from `contract.ts` | `contract.ts` |
 | `git-config-guard.ts` | Refuses a repository whose own configuration would run a command when git runs | `exec.ts` |
 
 ### The request kit (kit/)
