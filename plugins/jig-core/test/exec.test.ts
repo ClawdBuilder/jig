@@ -107,6 +107,64 @@ describe("run", () => {
             assert.match(result.stderr, /\[output cut at 100 bytes\]/);
         });
 
+        for (const keep of ["head", "tail", "both"] as const) {
+            test(`a short stream comes back untouched with keep "${keep}"`, async () => {
+                for (const text of ["a\nb", "a\nb\n", "one line"]) {
+                    const result = await run(node, ["-e", `process.stdout.write(${JSON.stringify(text)})`], {
+                        maxOutputBytes: 100,
+                        keep,
+                    });
+                    assert.equal(result.stdout, text, keep);
+                }
+            });
+        }
+
+        test("both, with the stream between the limit and twice it, shows every byte once", async () => {
+            const result = await run(node, ["-e", "process.stdout.write('a'.repeat(150))"], {
+                maxOutputBytes: 100,
+                keep: "both",
+            });
+            assert.equal(result.stdout, "a".repeat(150));
+            assert.doesNotMatch(result.stdout, /output cut/);
+        });
+
+        test("keeping the tail: the final line survives, and the marker counts what was left out", async () => {
+            const result = await run(node, ["-e", "process.stdout.write('x'.repeat(10000) + '\\nLAST LINE\\n')"], {
+                maxOutputBytes: 200,
+                keep: "tail",
+            });
+            assert.equal(result.code, 0);
+            assert.ok(result.stdout.includes("LAST LINE"), result.stdout.slice(0, 120));
+            assert.match(result.stdout, /\[output cut: the first \d+ bytes were left out\]/);
+            // The count is the total less what is shown, the marker included.
+            const shown = result.stdout.split("\n[output cut:")[0] ?? "";
+            const omitted = Number(/the first (\d+) bytes/.exec(result.stdout)?.[1]);
+            assert.equal(omitted, 10000 + "\nLAST LINE\n".length - Buffer.byteLength(shown, "utf8"));
+        });
+
+        test("keeping both ends: the start and the end, and the marker counts the middle", async () => {
+            const result = await run(node, ["-e", "process.stdout.write('a'.repeat(5000) + 'b'.repeat(5000))"], {
+                maxOutputBytes: 100,
+                keep: "both",
+            });
+            assert.ok(result.stdout.startsWith("a".repeat(100)));
+            assert.ok(result.stdout.includes("b".repeat(100)));
+            assert.match(result.stdout, /\[output cut: 9800 bytes were left out in the middle\]/);
+        });
+
+        test("a multi-byte character at the cut stays whole", async () => {
+            for (const keep of ["tail", "both"] as const) {
+                const result = await run(node, ["-e", "process.stdout.write('é'.repeat(200))"], {
+                    maxOutputBytes: 101,
+                    keep,
+                });
+                assert.doesNotMatch(result.stdout, /\uFFFD/, keep);
+                const body = result.stdout.split("\n[output cut:")[0] ?? "";
+                assert.match(body, /^é+$/, keep);
+                assert.equal(Buffer.byteLength(body, "utf8") % 2, 0, `${keep}: whole characters only`);
+            }
+        });
+
         test("output within the cap is not marked", async () => {
             const result = await run(node, ["-e", "process.stdout.write('a'.repeat(50))"], { maxOutputBytes: 100 });
             assert.equal(result.stdout, "a".repeat(50));

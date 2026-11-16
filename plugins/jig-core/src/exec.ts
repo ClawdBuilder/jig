@@ -10,6 +10,7 @@ import { accessSync, constants, existsSync, realpathSync, statSync } from "node:
 import path from "node:path";
 import type { Readable, Writable } from "node:stream";
 import type { ProgramCredential, RunOptions, RunResult } from "./contract.ts";
+import { collector } from "./exec-output.ts";
 import { gitConfigRefusal } from "./git-config-guard.ts";
 
 /** Asks the sandbox (when there is one) whether the agent's shell can write a place. Passed in by jig-core's API. */
@@ -262,28 +263,6 @@ function gitSubcommand(args: readonly string[]): string | undefined {
     return undefined;
 }
 
-/** Collects output up to a byte limit and drops the rest, so a program that prints without end cannot fill memory. */
-function collector(limit: number): { add(chunk: Buffer): void; text(): string } {
-    const chunks: Buffer[] = [];
-    let kept = 0;
-    let cut = false;
-    return {
-        add(chunk) {
-            const room = limit - kept;
-            if (room <= 0) {
-                cut = true;
-                return;
-            }
-            const piece = chunk.length > room ? chunk.subarray(0, room) : chunk;
-            if (piece.length < chunk.length) cut = true;
-            chunks.push(piece);
-            kept += piece.length;
-        },
-        // The marker tells the caller the output is incomplete, which a plain cut would hide.
-        text: () => Buffer.concat(chunks).toString("utf8") + (cut ? `\n[output cut at ${limit} bytes]\n` : ""),
-    };
-}
-
 async function spawnProgram(
     file: string,
     args: readonly string[],
@@ -315,8 +294,9 @@ async function spawnProgram(
         }
         track(child);
 
-        const stdout = collector(limit);
-        const stderr = collector(limit);
+        const keep = options.keep ?? "head";
+        const stdout = collector(limit, keep);
+        const stderr = collector(limit, keep);
         let stop: "timeout" | "aborted" | undefined;
         let settled = false;
         let timer: NodeJS.Timeout | undefined;

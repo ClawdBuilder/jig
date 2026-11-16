@@ -39,12 +39,14 @@ export interface Limits {
     requestSec: number;
     /** Output beyond this many bytes is cut. */
     maxBytes: number;
+    /** What the cut keeps: the end, for a log. */
+    keep?: "tail" | "both";
 }
 
 export const READ: Limits = { timeoutMs: 30_000, requestSec: 25, maxBytes: 8 * 1024 * 1024 };
-export const LOGS: Limits = { timeoutMs: 60_000, requestSec: 50, maxBytes: 2 * 1024 * 1024 };
+export const LOGS: Limits = { timeoutMs: 60_000, requestSec: 50, maxBytes: 2 * 1024 * 1024, keep: "tail" };
 /** For `set image` and `rollout undo`, which answer as soon as the cluster has accepted the change. */
-export const CHANGE: Limits = { timeoutMs: 60_000, requestSec: 50, maxBytes: 1024 * 1024 };
+export const CHANGE: Limits = { timeoutMs: 60_000, requestSec: 50, maxBytes: 1024 * 1024, keep: "both" };
 
 /** The text jig-core adds to output it cut at `limit` bytes. It is the only sign of a cut, and a cut reply has lost its
  *  end: a JSON document no longer parses, and curl's status line is gone. */
@@ -102,6 +104,7 @@ export async function startKubectl(
         timeoutMs: limits.timeoutMs,
         signal: kube.signal,
         maxOutputBytes: limits.maxBytes,
+        ...(limits.keep === undefined ? {} : { keep: limits.keep }),
         env: programEnvironment(),
     });
 }

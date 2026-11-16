@@ -46,6 +46,11 @@ options)` and never through a shell.
     key.
   - Your global and system configuration are not checked, and neither is
     `git clone`, which makes a new repository.
+- **What the output keeps.** `exec.run` keeps the start of a program's output up to `maxOutputBytes` (10 MiB by
+  default). `keep: "tail"` keeps the end instead — a log, a test run, a deploy — and `keep: "both"` keeps each end;
+  both ends cut at a line boundary when one is near and never split a UTF-8 character, and the marker says how many
+  bytes were left out (`keep: "tail"` has them at the start, `"both"` in the middle).
+
 - **`gh` and `glab` get the same checks.** `exec.run("git", ...)`,
   `exec.run("gh", ...)` and `exec.run("glab", ...)` are checked like `exec.git`,
   because all of them start git.
