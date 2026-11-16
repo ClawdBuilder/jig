@@ -266,7 +266,13 @@ test("a program is started with exactly its environment, in its folder, and its 
 
     const log = readFileSync(command.log, "utf8");
     const printed = JSON.parse(log.split("\n")[0] ?? "") as { env: Record<string, string>; cwd: string };
-    assert.deepEqual(printed.env, { ONLY: "this" }, "nothing of this process's environment goes along");
+    // macOS adds this to every process's environment, so it is the one name the program may see beside its own.
+    const shown = Object.fromEntries(
+        Object.entries(printed.env).filter(
+            ([name]) => !(process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING"),
+        ),
+    );
+    assert.deepEqual(shown, { ONLY: "this" }, "nothing of this process's environment goes along");
     assert.equal(printed.cwd, folder);
     assert.match(log, /to stderr/, "the error output is in the log too");
     assert.equal(statSync(command.log).mode & 0o777, 0o600);

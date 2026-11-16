@@ -248,7 +248,11 @@ describe("the broker's life", () => {
         assert.notEqual(launch.cwd, s.project, "never the project");
         assert.ok(launch.cwd.startsWith(path.join(root, "tmp", "jig-sandbox-1000")));
         assert.ok(launch.cwd.endsWith(`${path.sep}broker`));
-        assert.deepEqual(Object.keys(launch.env).sort(), ["CLAUDE_CODE_TMPDIR", "HOME", "LANG", "PATH", "TMPDIR"]);
+        // macOS adds this to every process's environment; it is not one of the variables the sandbox sets.
+        const names = Object.keys(launch.env).filter(
+            (name) => !(process.platform === "darwin" && name === "__CF_USER_TEXT_ENCODING"),
+        );
+        assert.deepEqual(names.sort(), ["CLAUDE_CODE_TMPDIR", "HOME", "LANG", "PATH", "TMPDIR"]);
         assert.equal(launch.env.CLAUDE_CODE_TMPDIR, path.join(path.dirname(launch.cwd), "tmp"));
         assert.ok(!JSON.stringify(launch.env).includes("token-value"));
         assert.equal(s.brokers.log.stops, 0);
