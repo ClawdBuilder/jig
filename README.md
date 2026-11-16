@@ -14,6 +14,32 @@ one approval path and one record around all of them.
 Jig never signs in; the tool that owns a login does ([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
 A production result is masked before the model sees it. The same rules govern `bash`, pull requests, Jira, databases, APIs, CI and child agents.
 
+## Install
+
+Install with npx. Jig needs Pi 1.4 or later and Node.js 22.19 or later ([Compatibility](docs/compatibility.md)).
+
+```bash
+npx @clawdbuilder/jig setup
+jig
+```
+
+`jig doctor` checks the machine and names anything missing:
+
+```text
+Jig doctor · 12 ok · 0 warnings · 0 failures · 7 skipped
+
+This machine
+  ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
+  ok Pi — 1.5.2
+  ok Jig — 0.5.5
+…
+All checks passed; 7 could not be checked here.
+```
+
+`jig` is Pi for Jig's own folder, the home: `~/.jig`, or `JIG_HOME`. Your own `pi` is unchanged; the home, packages,
+updating and uninstalling are in [Setup and doctor](docs/setup-and-doctor.md). [Your first hour](docs/first-hour.md)
+goes from here to your first approval.
+
 ## How it works
 
 - **Every call is classified.** `jig-core` works out the environment and whether a call reads or writes, then applies
@@ -34,55 +60,11 @@ A production result is masked before the model sees it. The same rules govern `b
 *A code review in Jig's browser page, in its graphite theme. The file list and diffs are on the left, the summary stays
 beside them, and **Approve** is in the header; approval still returns to Pi. This is example data.*
 
-## Install
-
-Jig needs Pi 1.4 or later and Node.js 22.19 or later. [Compatibility](docs/compatibility.md) has the tested
-versions and the names Jig keeps stable.
-
-```bash
-npx @clawdbuilder/jig setup
-jig
-```
-
-`jig doctor` checks the machine and names anything missing:
-
-```text
-Jig doctor · 12 ok · 0 warnings · 0 failures · 7 skipped
-
-This machine
-  ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
-  ok Pi — 1.5.2
-  ok Jig — 0.5.5
-…
-All checks passed; 7 could not be checked here.
-```
-
-`jig` is Pi for Jig's own folder, the **home**: `~/.jig`, or `JIG_HOME` when you set it. The home has its own
-settings, sessions, packages and `jig.json`, so Jig never changes your own `pi`. `setup` makes the home, installs Jig
-in it with Pi, and puts the `jig` command in `~/.local/bin`.
-
-- **Your own Pi stays yours.** `pi` starts your Pi; `jig` starts Pi with the home. A Pi package goes into Jig with
-  `jig install npm:…`, into your Pi with `pi install npm:…`, or into both. `jig install -l` writes the project's
-  `.pi/settings.json`, which both read.
-- **One Jig.** `jig` always runs the Jig installed in the home, so the command and its plugins are one version.
-- **Updating.** `jig update` moves the packages in the home, Jig included. It never updates the Pi binary, because
-  your `pi` shares it: `pi update --self` does that.
-- **Uninstalling** is deleting the home and the `jig` command.
-
-Start Jig and run `/jig`, or run `jig doctor` in a terminal; [Setup and doctor](docs/setup-and-doctor.md) covers both.
-
-The launcher is optional; [The launcher](docs/launcher.md) covers it. Jig works without it.
-
 ### First session
 
-Start Jig in the folder you work in:
-
-```bash
-jig
-```
-
-Then `/jig` shows the rules and setup state, `/jig doctor` names any missing piece, and `/lens` shows cost and
-waiting time after the first calls. A write asks before it runs; a production write is denied.
+In the folder you work in, `jig` starts Pi with Jig loaded. `/jig` shows the rules and setup state, `/jig doctor` names
+a missing piece, and `/lens` shows cost and waiting time after the first calls. A write asks before it runs; a
+production write is denied.
 
 ### Works on
 
