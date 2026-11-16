@@ -70,6 +70,25 @@ export function baselineFailures(warnings, baseline) {
     return failures;
 }
 
+/** A line that begins a Markdown block: a list item, a table row, a heading, a quote or a fence. */
+function beginsBlock(line) {
+    return /^\s*([-*+]\s|\d+[.)]\s|>|\||#{1,6}\s|```)/.test(line);
+}
+
+/** A line that is a list item. */
+function beginsList(line) {
+    return /^\s*([-*+]\s|\d+[.)]\s)/.test(line);
+}
+
+/** The first line of the last block of prose before `index`, skipping the blank lines between them. */
+function blockBefore(lines, index) {
+    let start = index - 1;
+    while (start >= 0 && (lines[start] ?? "").trim() === "") start--;
+    if (start < 0) return undefined;
+    while (start > 0 && (lines[start - 1] ?? "").trim() !== "") start--;
+    return start;
+}
+
 export function checkDocs(root) {
     const failures = [];
     const warnings = [];
@@ -108,6 +127,20 @@ export function checkDocs(root) {
                 }
             }
             if (fence) continue;
+            // An indented line that starts a block after a blank line is an orphan: Markdown folds it into the
+            // paragraph above, so a bullet's second line with its bullet gone reads as a fragment. An indented
+            // continuation of a list item, table or quote is fine.
+            if (/^\s{2,}\S/.test(line) && !beginsBlock(line) && (lines[index - 1] ?? "").trim() === "") {
+                const start = blockBefore(lines, index);
+                const above = start === undefined ? "" : (lines[start] ?? "");
+                let ok = beginsBlock(above);
+                // An indented paragraph above this line can itself be a list item's second paragraph; look one block up.
+                if (!ok && /^\s{2,}\S/.test(above)) {
+                    const outer = start === undefined ? undefined : blockBefore(lines, start);
+                    ok = outer !== undefined && beginsList(lines[outer] ?? "");
+                }
+                if (!ok) failures.push(`${rel}:${index + 1} indented line after a paragraph (orphan)`);
+            }
             if (/^\s*\|/.test(line)) {
                 for (const cell of line.split("|")) {
                     if (cell.trim().length > MAX_CELL) warnings.push(`${rel}:${index + 1} table cell is long`);

@@ -101,7 +101,10 @@ show how; [Plugins](docs/plugins.md) is the map of every tool.
 
 Work with a page behind it, not a promise:
 
-  from `jig-jira`, and embeddings or a graph only after real-ticket recall shows misses.
+- **Measure memory before growing it.** [jig-memory](plugins/jig-memory/README.md) measures recall on real tickets before
+  any embeddings or a graph ([Recall](plugins/jig-memory/docs/recall.md)).
+- **Traces and charts from `jig-lens`.** An OpenTelemetry export to MLflow, and Datasette charts, are later
+  ([Viewers](plugins/jig-lens/docs/viewers.md)).
 
 ## Learn more
 
