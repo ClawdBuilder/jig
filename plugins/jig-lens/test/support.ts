@@ -1,7 +1,7 @@
 // Test support: sample record files in jig-core's own format, a temporary state folder, and a fake Pi. The records are
 // built with jig-core's callRecord and turnRecord, so a change to the format that jig-lens does not follow fails here
 // and not on somebody's machine. Only the Pi calls the plugin makes are faked; none of Pi's SDK is loaded.
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
@@ -22,9 +22,9 @@ import type { Viewer, ViewerCommand, ViewerState } from "../src/viewer.ts";
 /** The moment the sample records are measured from. */
 export const NOW = new Date("2026-10-30T12:00:00.000Z");
 
-/** A temporary state folder, removed when the test ends. */
+/** A temporary state folder, removed when the test ends. Resolved, because macOS's temp folder is a link. */
 export function tempState(t: TestContext): string {
-    const dir = mkdtempSync(path.join(os.tmpdir(), "jig-lens-"));
+    const dir = realpathSync(mkdtempSync(path.join(os.tmpdir(), "jig-lens-")));
     t.after(() => rmSync(dir, { recursive: true, force: true }));
     return dir;
 }

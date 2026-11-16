@@ -1,7 +1,7 @@
 // Gates: checks other plugins register, asked about each call after the rules have decided. The whole point of the contract
 // is what a gate cannot do, so most of these tests try to make one loosen a decision, or change what runs, and fail.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -97,7 +97,7 @@ describe("what a gate sees", () => {
     });
 
     test("for write and edit, the absolute paths: as written, and with a link followed", async () => {
-        const root = mkdtempSync(path.join(tmpdir(), "jig-gate-paths-"));
+        const root = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-gate-paths-")));
         try {
             mkdirSync(path.join(root, "real"));
             symlinkSync(path.join(root, "real"), path.join(root, "link"));

@@ -2,7 +2,16 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import type { ChildProcess, ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    realpathSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -20,7 +29,7 @@ let agent: string;
 let work: string;
 
 beforeEach(() => {
-    home = mkdtempSync(path.join(tmpdir(), "jig-cli-"));
+    home = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-cli-")));
     // The Jig home is `~/.jig`: it is Pi's agent folder for `jig`, and where the home's own Jig copy lives.
     agent = path.join(home, ".jig");
     work = path.join(home, "work");
