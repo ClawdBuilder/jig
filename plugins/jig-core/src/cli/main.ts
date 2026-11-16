@@ -1,16 +1,15 @@
 // The `jig` command: doctor and setup from any terminal, with no Pi session and no model. It loads the plugins Pi would
 // load, registers their sections and defaults, and reads the same jig.json; nothing here starts a tool or connects.
 import path from "node:path";
-import { buildSetupPlan } from "../setup-plan.ts";
-import { setupStateFrom, runSetup } from "../setup.ts";
+import { runSetup } from "../setup.ts";
 import type { SetupUi } from "../setup.ts";
 import { doctorContext } from "../doctor-checks.ts";
 import { doctorMarkers, formatDoctor, runDoctor } from "../doctor.ts";
+import { companyStep } from "../setup-company.ts";
 import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
 import { helpFor, strayWordsMessage } from "./help.ts";
 import { npmInstall, piVersion, jigPackage } from "../pi-version.ts";
-import { loadPersonalConfig } from "../state.ts";
 import type { JigState } from "../state.ts";
 import { loadHeadless, ownPackage } from "./headless.ts";
 import type { LoadFailure } from "./headless.ts";
@@ -21,8 +20,6 @@ import { modelAuthState, modelSignInLine } from "../model-auth.ts";
 import { bootstrap } from "./bootstrap.ts";
 import type { BootstrapUi } from "./bootstrap.ts";
 import { findPi } from "./pi-command.ts";
-import { writeSetup } from "../setup-write.ts";
-import type { SetupChange } from "../setup-plan.ts";
 
 /** A package whose syntax this Node cannot strip is not a broken package: Pi's loader reads it, the command's does not. */
 function unreadableByThisLoader(reason: string): boolean {
@@ -160,83 +157,6 @@ async function doctor(args: readonly string[]): Promise<number> {
     return failed > 0 ? 1 : 0;
 }
 
-/** The company step: which setup applies, and where. It writes the profile entry, then setup asks the rest. */
-async function companyStep(state: JigState, ui: SetupUi): Promise<"ok" | "cancel" | "failed"> {
-    const companies = [...state.companies.values()];
-    if (companies.length === 0) {
-        ui.notify("No company plugin is installed: this setup is just yours.", "info");
-        return "ok";
-    }
-    const labels = companies.map((company) => `${company.displayName} (${company.name})`);
-    const choice = await ui.select("Which company setup do you use?", [...labels, "None, just me"]);
-    if (choice === undefined) return "cancel";
-    if (choice === "None, just me") {
-        const change: SetupChange = { section: "profile", path: "", label: "Company setup", value: "none" };
-        return writeProfile(state, ui, [change], "Company setup: none, just me.");
-    }
-    const index = labels.indexOf(choice);
-    const company = companies[index];
-    if (company === undefined) return "cancel";
-    const where = await ui.select(`Use ${company.displayName}'s setup in:`, ["Everywhere", `Only in ${process.cwd()}`]);
-    if (where === undefined) return "cancel";
-    const label = company.name;
-    const changes: SetupChange[] =
-        where === "Everywhere"
-            ? [
-                  { section: "profiles", path: `${label}.plugin`, label: "Company setup", value: company.name },
-                  { section: "profile", path: "", label: "Company setup", value: label },
-              ]
-            : [
-                  {
-                      section: "profiles",
-                      path: `${label}.plugin`,
-                      label: "Company setup",
-                      value: company.name,
-                  },
-                  {
-                      section: "profiles",
-                      path: `${label}.when.folders`,
-                      label: "Company setup",
-                      value: [`${process.cwd()}/**`],
-                  },
-                  { section: "profile", path: "", label: "Company setup", value: "auto" },
-              ];
-    const summary =
-        where === "Everywhere"
-            ? `Company setup: ${company.displayName}, in every folder.`
-            : `Company setup: ${company.displayName}, only in ${process.cwd()}.`;
-    return writeProfile(state, ui, changes, summary);
-}
-
-/** Writes the profile choice with the same gate as the rest: read again, back up, replace atomically. */
-async function writeProfile(
-    state: JigState,
-    ui: SetupUi,
-    changes: SetupChange[],
-    summary: string,
-): Promise<"ok" | "cancel" | "failed"> {
-    const built = buildSetupPlan(setupStateFrom(state));
-    if ("problem" in built) {
-        ui.notify(built.problem, "warning");
-        return "failed";
-    }
-    const ok = await ui.confirm(
-        "Save this company choice?",
-        `${summary}\n\nA backup is kept next to your settings file.`,
-    );
-    if (!ok) return "cancel";
-    try {
-        const result = writeSetup(built.plan, changes, state.now());
-        ui.notify(`Saved to ${result.file}.${result.backup === undefined ? "" : ` Backup: ${result.backup}`}`, "info");
-        loadPersonalConfig(state);
-        return "ok";
-    } catch (error) {
-        ui.notify(`The company choice was not saved: ${errorMessage(error)}`, "error");
-        return "failed";
-    }
-}
-
-/** A setup that cannot ask: it prints what it did, and every offer gets the safe default. */
 function plainUi(): BootstrapUi {
     return {
         notify(text, level) {
@@ -248,8 +168,6 @@ function plainUi(): BootstrapUi {
         },
     };
 }
-
-/** What `jig setup` takes: one section to ask about even when it is valid, and the bootstrap's flags. */
 interface SetupWords {
     section?: string;
     bin?: string;
@@ -257,7 +175,6 @@ interface SetupWords {
     from?: string;
     yes: boolean;
 }
-
 function parseSetupArgs(args: readonly string[]): SetupWords | { problem: string } {
     const parsed: SetupWords = { yes: false };
     const usage = "\nRun jig setup --help for usage.";
@@ -285,7 +202,7 @@ function parseSetupArgs(args: readonly string[]): SetupWords | { problem: string
     return parsed;
 }
 
-/** Runs the setup and returns its exit code: 0 done or nothing to do, 1 failed, 2 needs a terminal or bad arguments. */
+/** Runs the setup and returns its exit code: 0 done or nothing to do, 1 failed, 130 cancelled. */
 async function setup(args: readonly string[]): Promise<number> {
     if (args.includes("--help") || args.includes("-h")) {
         process.stdout.write(`${helpFor("setup")}\n`);
@@ -363,8 +280,8 @@ async function setup(args: readonly string[]): Promise<number> {
     }
     try {
         const step = await companyStep(loaded.state, ui as SetupUi);
-        if (step === "cancel") return 130;
-        if (step === "failed") return 1;
+        if (step.status === "cancel") return 130;
+        if (step.status === "failed") return 1;
         const code = await runSetup(loaded.state, ui as SetupUi, words.section);
         if (code === 0 && modelAuthState(home, process.env).kind === "missing")
             ui.notify(modelSignInLine(home), "warning");

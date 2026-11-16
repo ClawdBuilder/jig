@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { modelAuthState, modelProviderLine } from "../src/model-auth.ts";
+import { modelAuthState, modelProviderLine, modelSignInLine } from "../src/model-auth.ts";
 
 function home(): string {
     return mkdtempSync(path.join(tmpdir(), "jig-model-auth-"));
 }
+
+test("the sign-in line shortens the home it names", () => {
+    assert.match(modelSignInLine(path.join(homedir(), ".jig")), /signed in for ~\/\.jig\./);
+});
 
 test("no auth file and no extension is missing, and the doctor warns with the next step", () => {
     const dir = home();

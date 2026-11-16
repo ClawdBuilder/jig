@@ -1,7 +1,9 @@
 // Whether this Jig home has a model provider a person can use. It reads only local files and environment names:
 // no credential is printed, no sign-in is attempted, and no model is called.
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
+import { shorten } from "./secret-status.ts";
 import type { DoctorLine } from "./doctor.ts";
 
 /** A provider environment variable Pi reads without an auth.json entry. */
@@ -34,7 +36,7 @@ function readObject(file: string): Record<string, unknown> | undefined {
 
 /** The one line a person sees when no provider is signed in for this home. */
 export function modelSignInLine(home: string): string {
-    return `No model provider is signed in for ${home}. Type /login inside jig to choose one, or run \`jig auth login <provider>\` in a terminal.`;
+    return `No model provider is signed in for ${shorten(home, homedir())}. Type /login inside jig to choose one, or run \`jig auth login <provider>\` in a terminal.`;
 }
 
 /** What the home's local files and environment say about a model provider. */

@@ -16,6 +16,7 @@ import type { GateOutcome } from "./gates.ts";
 import { buildPreview, defaultSummary, describeCall, isInvalidInput } from "./preview.ts";
 import { homedir } from "node:os";
 import { checkFileTool, filePathsOf } from "./protected-paths.ts";
+import { writableFolders } from "./writable-folders.ts";
 import type { Answer, ErrorKind } from "./records.ts";
 import { rememberCall } from "./state.ts";
 import type { CallState, JigState } from "./state.ts";
@@ -62,6 +63,16 @@ function blockInvalid(state: JigState, event: ToolCallEvent, message: string): T
     return { block: true, reason: `Blocked by jig-core: ${event.toolName} cannot run with this input: ${message}` };
 }
 
+/**
+ * The floor's write rule, with or without a sandbox: the working folder, plus the folders a person allowed when a
+ * sandbox is running. With no sandbox the old rule compared only the string Pi passed, so a write inside the working
+ * folder still asked when its path arrived through a link.
+ */
+function writableScope(state: JigState, cwd: string): (absolute: string) => boolean {
+    const allowed = state.sandbox?.active === true ? (state.sandbox.allowedFolders?.() ?? []) : [];
+    return writableFolders([cwd, ...allowed], process.platform);
+}
+
 async function decideCall(
     state: JigState,
     event: ToolCallEvent,
@@ -93,21 +104,7 @@ async function decideCall(
         entries: policy.protectedPaths,
         cwd,
         home: homedir(),
-        canWrite: (absolute: string) => {
-            const fold = process.platform === "darwin" || process.platform === "win32";
-            const normalized = (value: string): string => {
-                const slashed = value.split("\\").join("/").replace(/\/+$/, "");
-                return fold ? slashed.toLowerCase() : slashed;
-            };
-            const inside = (folder: string): boolean => {
-                const path = normalized(folder);
-                const target = normalized(absolute);
-                return target === path || target.startsWith(`${path}/`);
-            };
-            if (inside(cwd)) return true;
-            if (state.sandbox?.active !== true) return false;
-            return (state.sandbox.allowedFolders?.() ?? []).some(inside);
-        },
+        canWrite: writableScope(state, cwd),
     });
     let verdict = decide({
         call: {

@@ -36,6 +36,7 @@ so this table cannot drift from the code.
 | `sandbox.ts` | The session's sandbox: the broker, the state, the rules for each command, `prepare` and `capture` | `aftermath.ts`, `background/tasks-deps.ts` and 4 more |
 | `sandbox-types.ts` | The shapes it is built from and hands out: its state, its inputs, what `prepare` returns | `aftermath.ts`, `background/types.ts` and 4 more |
 | `sandbox-setup.ts` | The session's private folders and the base configuration given to the runtime | `sandbox.ts` |
+| `runtime-tmp.ts` | The runtime's socket folder: fits in `sun_path`, else `/tmp`, else a named error | `sandbox.ts` |
 | `sandbox-messages.ts` | The words of a refusal, an error and a hint, as plain functions | `sandbox.ts` |
 | `broker-client.ts` | Pi's side of the broker: starts it, sends requests over its pipe, stops it | `index.ts`, `sandbox-types.ts`, `sandbox.ts` |
 | `programs.ts` | Re-exports jig-core kit's program lookup (bubblewrap, socat, ripgrep) and install wording | `doctor.ts`, `network/wiring.ts` and 2 more |

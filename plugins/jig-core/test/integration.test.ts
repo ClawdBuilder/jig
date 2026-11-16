@@ -1,7 +1,8 @@
 // jig-core inside a real Pi session: the SDK with its scripted model, the real tool registry, the real hooks, and a few
 // fake tools. Each test starts its own session.
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import type { Component } from "@earendil-works/pi-tui";
@@ -218,6 +219,29 @@ describe("writes", () => {
                 ["read", "local", "read", "allow", "builtin"],
             ],
         );
+    });
+});
+
+describe("the folders the file tools may write with no sandbox", () => {
+    test("a path inside the working folder writes, through a link too, and a temp path asks", async () => {
+        const w = await begin({ config: CONFIG });
+        const temp = mkdtempSync(path.join(tmpdir(), "jig-write-scope-"));
+        try {
+            // The temp folder is outside the working folder: it asks, and writes nothing.
+            const outside = await w.call("write", { path: path.join(temp, "note.txt"), content: "hello\n" });
+            assert.match(outside.text, /outside the folders bash can write|needs approval/);
+            assert.equal(existsSync(path.join(temp, "note.txt")), false);
+
+            // A link inside the working folder that points inside it: both forms are inside, so it writes.
+            const inner = path.join(w.cwd, "inner");
+            mkdirSync(inner, { recursive: true });
+            symlinkSync(inner, path.join(w.cwd, "link"));
+            const linked = await w.call("write", { path: "link/note.txt", content: "through a link\n" });
+            assert.equal(linked.isError, false, linked.text);
+            assert.equal(readFileSync(path.join(inner, "note.txt"), "utf8"), "through a link\n");
+        } finally {
+            rmSync(temp, { recursive: true, force: true });
+        }
     });
 });
 
