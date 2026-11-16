@@ -37,6 +37,8 @@ export interface Stage {
     exit: Condition[];
     /** Tools made active while the work is in this stage (stage-tools.ts). */
     tools?: string[];
+    /** For `scenarios-pass`: the scenario numbers this stage accepts, before the later ones. */
+    scenarios?: number[];
 }
 
 /** One entry of a hold's `calls`: a tool, and optionally one of its actions. */
@@ -68,7 +70,7 @@ export interface Parsed {
 }
 
 const FILE_FIELDS = new Set(["name", "description", "match", "branch", "stages", "holds"]);
-const STAGE_FIELDS = new Set(["id", "goal", "exit", "tools"]);
+const STAGE_FIELDS = new Set(["id", "goal", "exit", "tools", "scenarios"]);
 const HOLD_FIELDS = new Set(["until", "calls"]);
 const MATCH_FIELDS = new Set(["ticket"]);
 
@@ -217,15 +219,35 @@ function parseStages(raw: unknown, errors: string[]): Stage[] {
             }
         }
         const tools = parseStageTools(entry.tools, at, errors);
+        const scenarios = parseStageScenarios(entry.scenarios, at, errors);
         if (typeof id === "string")
             stages.push({
                 id,
                 ...(goal === undefined ? {} : { goal }),
                 exit,
                 ...(tools === undefined ? {} : { tools }),
+                ...(scenarios === undefined ? {} : { scenarios }),
             });
     });
     return stages;
+}
+
+/** A stage's `scenarios`: the numbers this stage's `scenarios-pass` accepts; validated here, against the plan later. */
+function parseStageScenarios(raw: unknown, at: string, errors: string[]): number[] | undefined {
+    if (raw === undefined) return undefined;
+    if (!Array.isArray(raw) || raw.length === 0 || raw.length > 50) {
+        errors.push(`${at}.scenarios: must be a list of 1 to 50 scenario numbers`);
+        return undefined;
+    }
+    const numbers: number[] = [];
+    raw.forEach((value, position) => {
+        const where = `${at}.scenarios[${position}]`;
+        if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 50) {
+            errors.push(`${where}: must be a scenario number from 1 to 50`);
+        } else if (numbers.includes(value)) errors.push(`${where}: ${value} is listed twice`);
+        else numbers.push(value);
+    });
+    return numbers;
 }
 
 /** A stage's `tools`: tool names, each once. Whether this session has the tool is said when the stage is entered. */

@@ -4,6 +4,7 @@ import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { InputError } from "../../jig-core/src/kit/values.ts";
 import { previewChanged } from "../../jig-core/src/kit/actions.ts";
+import { digest } from "./host.ts";
 import { fingerprintOf, MAX_PLAN_CHARS, parsePlan, repositoryWarnings } from "./plan.ts";
 import { inspect } from "./repos.ts";
 import type { Runtime, Work } from "./runtime.ts";
@@ -174,5 +175,75 @@ export async function scenario(rt: Runtime, params: Params): Promise<ActionResul
     return {
         text: `Recorded scenario ${number} of ${ticket} as ${result}${evidence === undefined ? "" : ` (evidence: ${evidence.kind} ${evidence.ref.length > 80 ? `${evidence.ref.slice(0, 80)}...` : evidence.ref})`}. ${passed} of ${scenarios.length} scenarios pass.`,
         details: { ticket, number, result, passed, total: scenarios.length },
+    };
+}
+
+const WAIVER_REASON = { min: 10, max: 500 };
+
+function waiverParts(
+    rt: Runtime,
+    params: Params,
+): {
+    ticket: string;
+    work: Work;
+    number: number;
+    reason: string;
+    scenario: ReturnType<typeof parsePlan>["scenarios"][number];
+} {
+    const ticket = ticketOf(rt, params);
+    const { work, state } = started(rt, ticket);
+    const number = params.number as number;
+    const text = readText(work.paths.plan);
+    if (state.plan === undefined || state.plan.fingerprint !== fingerprintOf(text)) {
+        throw new InputError(
+            "the plan is not approved as it stands: run workflow submit_plan first, so the scenarios are the ones the user read",
+        );
+    }
+    const scenarios = parsePlan(text).scenarios;
+    const scenario = scenarios.find((candidate) => candidate.number === number);
+    if (scenario === undefined)
+        throw new InputError(`the plan has no scenario ${number}; it has 1 to ${scenarios.length}`);
+    const reason = typeof params.reason === "string" ? params.reason.trim() : "";
+    if (reason.length < WAIVER_REASON.min || reason.length > WAIVER_REASON.max) {
+        throw new InputError(
+            `a waiver needs a reason of ${WAIVER_REASON.min} to ${WAIVER_REASON.max} characters: say why this scenario cannot be run`,
+        );
+    }
+    return { ticket, work, number, reason, scenario };
+}
+
+/** The question for a waiver: the scenario, its text and the reason, so the person decides with the facts. */
+export async function waivePreview(
+    rt: Runtime,
+    params: Params,
+): Promise<{ summary: string; body: string; fingerprint: string }> {
+    const { ticket, number, reason, scenario } = waiverParts(rt, params);
+    return {
+        summary: `Waive scenario ${number} of ${ticket}: ${scenario.text}`,
+        body: `Scenario ${number}: ${scenario.text}\n\nReason: ${reason}`,
+        fingerprint: digest("waive", ticket, String(number), scenario.hash, reason),
+    };
+}
+
+/** Records a person's waiver after the approval it was shown in. The model cannot call this without that question. */
+export async function waive(rt: Runtime, params: Params, call: Call): Promise<ActionResult> {
+    const { ticket, work, number, reason, scenario } = waiverParts(rt, params);
+    const approved = rt.host.approvedPreview(call.toolCallId);
+    const expected = digest("waive", ticket, String(number), scenario.hash, reason);
+    if (approved === undefined || approved.fingerprint !== expected) {
+        throw new Error(
+            "the waiver was not put to the person in this call, so nothing was recorded. Call workflow waive again.",
+        );
+    }
+    updateState(work.paths.dir, (current) => {
+        current.scenarios[String(number)] = {
+            hash: scenario.hash,
+            at: rt.host.now().toISOString(),
+            waiver: { reason, by: "person", at: rt.host.now().toISOString() },
+        };
+    });
+    return {
+        text: `Waived scenario ${number} of ${ticket}: ${reason}`,
+        details: { ticket, number, waived: true, total: parsePlan(readText(work.paths.plan)).scenarios.length },
     };
 }

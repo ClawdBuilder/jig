@@ -37,6 +37,28 @@ describe("writing and reading", () => {
         assert.deepEqual([state.tests, state.scenarios, state.reviews, state.ci, state.observed], [{}, {}, [], [], {}]);
     });
 
+    test("an old result still reads, and a waiver is a record without a result", () => {
+        const state = fresh();
+        state.scenarios["1"] = {
+            result: "pass",
+            hash: "s1",
+            evidence: { kind: "text", ref: "the old evidence" },
+            at: NOW.toISOString(),
+        };
+        state.scenarios["2"] = {
+            hash: "s2",
+            at: NOW.toISOString(),
+            waiver: { reason: "The environment is unavailable this week.", by: "person", at: NOW.toISOString() },
+        };
+        writeState(dir, state);
+        const read = readState(dir);
+        assert.equal(read.kind, "state");
+        if (read.kind !== "state") return;
+        assert.equal(read.state.scenarios["1"]?.result, "pass");
+        assert.deepEqual(read.state.scenarios["2"]?.waiver, state.scenarios["2"]?.waiver);
+        assert.equal(read.state.scenarios["2"]?.result, undefined);
+    });
+
     test("a state written is the state read, in a private file, and no temporary file is left", () => {
         const state = fresh();
         state.plan = { fingerprint: "f", at: NOW.toISOString(), scenarios: 2 };

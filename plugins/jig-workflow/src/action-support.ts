@@ -21,6 +21,7 @@ export interface Params {
     base?: string;
     number?: number;
     result?: "pass" | "fail";
+    reason?: string;
     evidence?: { path?: string; toolResult?: string; text?: string };
     to?: string;
 }

@@ -37,10 +37,13 @@ export interface TestResult {
 export type EvidenceKind = "path" | "toolResult" | "text";
 
 export interface ScenarioResult {
-    result: "pass" | "fail";
+    /** A pass or a fail; absent when the person waived the scenario instead. */
+    result?: "pass" | "fail";
     /** A hash of the scenario's text when the result was recorded. */
     hash: string;
     evidence?: { kind: EvidenceKind; ref: string };
+    /** A person's waiver, recorded only through the approval question; it belongs to this scenario text. */
+    waiver?: { reason: string; by: "person"; at: string };
     at: string;
 }
 
@@ -200,22 +203,22 @@ function normalize(raw: unknown): WorkflowState | string {
     }
     if (isObject(raw.scenarios)) {
         for (const [number, entry] of Object.entries(raw.scenarios)) {
-            if (
-                !isObject(entry) ||
-                !str(entry.hash) ||
-                !str(entry.at) ||
-                !["pass", "fail"].includes(String(entry.result))
-            )
-                continue;
+            if (!isObject(entry) || !str(entry.hash) || !str(entry.at)) continue;
+            const waiver = entry.waiver;
+            const waived = isObject(waiver) && str(waiver.reason) && waiver.by === "person" && str(waiver.at);
+            if (!waived && !["pass", "fail"].includes(String(entry.result))) continue;
             const evidence = entry.evidence;
             state.scenarios[number] = {
-                result: entry.result as "pass" | "fail",
+                ...(waived ? {} : { result: entry.result as "pass" | "fail" }),
                 hash: entry.hash,
                 at: entry.at,
                 ...(isObject(evidence) &&
                 str(evidence.ref) &&
                 ["path", "toolResult", "text"].includes(String(evidence.kind))
                     ? { evidence: { kind: evidence.kind as EvidenceKind, ref: evidence.ref } }
+                    : {}),
+                ...(waived
+                    ? { waiver: { reason: waiver.reason as string, by: "person" as const, at: waiver.at as string } }
                     : {}),
             };
         }

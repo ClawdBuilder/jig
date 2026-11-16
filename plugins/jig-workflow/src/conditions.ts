@@ -29,6 +29,8 @@ export interface EvidenceInit {
     live: boolean;
     /** The user answered yes to the question `advance` asked. */
     approvedNow?: boolean;
+    /** For a staged `scenarios-pass`: the numbers this stage accepts; absent means every scenario. */
+    scenarios?: readonly number[];
     signal?: AbortSignal;
 }
 
@@ -313,25 +315,44 @@ function scenariosPass(ev: Evidence): ConditionResult {
         return result("scenarios-pass", false, [
             "the plan must be approved first, so that the scenarios are the ones you read",
         ]);
-    const scenarios = parsePlan(ev.planText()).scenarios;
-    const lines: string[] = [];
+    const all = parsePlan(ev.planText()).scenarios;
+    if (all.length === 0) return result("scenarios-pass", false, ["the plan has no scenarios"]);
+    const wanted = ev.init.scenarios;
+    const scenarios = wanted === undefined ? all : all.filter((scenario) => wanted.includes(scenario.number));
+    const unknown =
+        wanted === undefined ? [] : wanted.filter((number) => !all.some((scenario) => scenario.number === number));
+    const lines: string[] = unknown.map(
+        (number) =>
+            `scenario ${number}: this stage names it, but the plan does not have it: edit the workflow or the plan`,
+    );
     let passed = 0;
+    let waived = 0;
+    const waivedLines: string[] = [];
     for (const scenario of scenarios) {
         const recorded = ev.state.scenarios[String(scenario.number)];
-        if (recorded === undefined)
-            lines.push(`scenario ${scenario.number}: no result yet: run it, then record it with workflow scenario`);
-        else if (recorded.hash !== scenario.hash)
+        if (recorded === undefined) {
+            lines.push(
+                `scenario ${scenario.number}: no result yet: run it, then record it with workflow scenario or workflow waive`,
+            );
+        } else if (recorded.hash !== scenario.hash) {
             lines.push(`scenario ${scenario.number}: it changed since its result was recorded: run it again`);
-        else if (recorded.result === "fail")
+        } else if (recorded.waiver !== undefined) {
+            waived++;
+            waivedLines.push(`scenario ${scenario.number}: waived by person: ${recorded.waiver.reason}`);
+        } else if (recorded.result === "fail") {
             lines.push(`scenario ${scenario.number}: failed: fix the cause and record a pass with evidence`);
-        else if (recorded.evidence === undefined)
+        } else if (recorded.result !== "pass" || recorded.evidence === undefined) {
             lines.push(`scenario ${scenario.number}: passed without evidence: record it again with evidence`);
-        else passed++;
+        } else passed++;
     }
-    if (scenarios.length === 0) return result("scenarios-pass", false, ["the plan has no scenarios"]);
-    return lines.length === 0
-        ? result("scenarios-pass", true, [`all ${passed} scenarios passed, each with evidence`])
-        : result("scenarios-pass", false, lines);
+    if (lines.length === 0) {
+        const scope = wanted === undefined ? `all ${scenarios.length}` : `the ${scenarios.length}`;
+        return result("scenarios-pass", true, [
+            `${scope} scenario${scenarios.length === 1 ? "" : "s"} passed${waived === 0 ? "" : " or waived"}${waived === 0 ? ", each with evidence" : ` (${waived} waived)`}`,
+            ...waivedLines,
+        ]);
+    }
+    return result("scenarios-pass", false, [...lines, ...waivedLines]);
 }
 
 function youApprove(ev: Evidence): ConditionResult {

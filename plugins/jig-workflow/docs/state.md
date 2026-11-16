@@ -17,11 +17,13 @@ counts if the commit it names is still HEAD.
 | `notesAtStage` | The hash of `notes.md` when the stage began |
 | `history` | Each start, advance and back, with the time |
 | `plan` | The approved fingerprint, the time, the number of scenarios |
-| `scenarios` | By number: the result, the evidence (kind and reference), the time, the scenario's hash |
+| `scenarios` | By number: the result or a person's waiver, evidence, time and hash |
 | `tests` | By repository folder: the last result, and the JDK a Gradle build was given ([Tests](tests.md)) |
 | `reviews` | The `jig-review:approved` events that cover commits: review id, time, folders and commits |
 | `ci` | The `jig-ops:ci-finished` results: folder, commit, outcome, time (the last 20) |
 | `observed` | The last reading per repository (`gh pr view`, or the merge request on GitLab): pull request, head, checks, time |
+
+A scenario result written before waivers existed keeps its `result`; an old Jig reads that as before, and a waiver entry has no `result`, so an old Jig treats it as not recorded. The state version stays `1`.
 
 The workflow's stages and conditions are not copied into the file. The name points at the file that
 `/workflow list` shows, so fixing a workflow file mid-ticket takes effect at the next reload. If the file

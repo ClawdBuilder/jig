@@ -61,7 +61,7 @@ A fixed list, checked by the plugin itself, so a file never runs code. Each is d
 | `review-done` | A `jig-review` approval covers each bound repository's current HEAD |
 | `pull-request-open` | Each bound repository's branch has an open pull request (a merge request on GitLab) |
 | `checks-pass` | The pull request's head is HEAD, and its checks passed (a CI watch, or the checks `gh` or `glab` show) |
-| `scenarios-pass` | Every numbered scenario of the approved plan passed, each with evidence |
+| `scenarios-pass` | All scenarios in scope passed or were waived; a stage may name a subset |
 | `you-approve` | You answer yes to moving on, in a dialog |
 
 ## Tool: `workflow`
@@ -75,6 +75,7 @@ A fixed list, checked by the plugin itself, so a file never runs code. Each is d
 | `submit_plan` | local write, asks | Checks `plan.md` and shows it for your approval, with a fingerprint |
 | `test` | local write | Runs a bound repository's tests at HEAD, in the sandbox, and records the result |
 | `scenario` | local write | Records pass or fail for one numbered scenario; a pass needs evidence |
+| `waive` | local write, asks | Records a person's reason for skipping one numbered scenario |
 | `advance` | local write | Moves one stage when every exit condition holds, or lists what is missing |
 | `back` | local write | Moves to an earlier stage; always allowed, and nothing recorded is erased |
 
