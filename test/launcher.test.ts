@@ -4,7 +4,17 @@
 // standing in for /dev/tty).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+    accessSync,
+    chmodSync,
+    constants,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { LAUNCHER, REPO, launcherSkipReason, makeWorld, sawPi } from "./support/launcher-world.ts";
@@ -667,6 +677,26 @@ describe("reattaching", { skip: launcherSkip }, () => {
             result.stderr,
             /^jig: reattaching to the Pi still running here \(pi-work-111, last active \w{3} \d{2} \d{2}:\d{2}\); `pi --new` starts another\n$/,
         );
+    });
+
+    test("a date without -d still shows the moment: -r for macOS, else the value as it came", async () => {
+        const file = sessions(`0 1700000000 pi-work-111 ${world.work}`);
+        const date = path.join(world.bin, "date");
+        rmSync(date);
+        const fake = (body: string): void => {
+            writeFileSync(date, `#!/bin/bash\n${body}`);
+            chmodSync(date, 0o755);
+        };
+        // A `date` like macOS's: no -d, and -r <epoch> prints the moment.
+        fake(
+            'if [ "$1" = "-d" ]; then exit 1; fi\nif [ "$1" = "-r" ]; then printf "Jan 01 00:00\\n"; exit 0; fi\nexit 1\n',
+        );
+        const bsd = await world.run([], { ...TERMINAL, FAKE_TMUX_SESSIONS: file, FAKE_TMUX_ATTACH_STATUS: "4" });
+        assert.match(bsd.stderr, /last active Jan 01 00:00\); `pi --new` starts another/);
+        fake("exit 1\n");
+        world.forget();
+        const neither = await world.run([], { ...TERMINAL, FAKE_TMUX_SESSIONS: file, FAKE_TMUX_ATTACH_STATUS: "4" });
+        assert.match(neither.stderr, /last active 1700000000\); `pi --new` starts another/);
     });
 
     test("after the attach returns the launcher says so when that Pi is still running", async () => {

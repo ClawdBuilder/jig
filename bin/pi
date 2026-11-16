@@ -96,7 +96,8 @@ attach_to() {
     after_tmux "$1"; exit "$status"
 }
 
-when() { date -d "@$1" '+%b %d %H:%M' 2>/dev/null || printf '%s' "$1"; }
+# The moment a session was last active: GNU date reads an epoch with -d @, macOS's with -r, and neither leaves it as it came.
+when() { date -d "@$1" '+%b %d %H:%M' 2>/dev/null || date -r "$1" '+%b %d %H:%M' 2>/dev/null || printf '%s' "$1"; }
 
 # Detached sessions of Jig's server that were started in $PWD, newest activity first, as "<activity> <name>". Sessions open
 # in a window (attached) are never candidates. @jig_cwd is set from inside the session (below).
