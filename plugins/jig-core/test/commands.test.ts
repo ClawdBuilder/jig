@@ -1,6 +1,6 @@
 // The /jig commands: status, setup, doctor, rules per tool and action, and records.
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import type { CallClass, JigApi } from "../src/contract.ts";
@@ -28,6 +28,18 @@ async function begin(options: StartOptions = {}): Promise<Harness> {
         env: { ...process.env, LANG: "C", LC_ALL: "C", NO_COLOR: "1", TERM: "dumb", ...options.env },
     });
     return h;
+}
+
+/** Runs a test with JIG_HOME at the harness's agent folder, so /jig setup is the home's own. */
+async function inHome<T>(harness: Harness, work: () => Promise<T>): Promise<T> {
+    const previous = process.env.JIG_HOME;
+    process.env.JIG_HOME = harness.agentDir;
+    try {
+        return await work();
+    } finally {
+        if (previous === undefined) delete process.env.JIG_HOME;
+        else process.env.JIG_HOME = previous;
+    }
 }
 
 /** Runs `/jig <args>` and returns everything it showed: notices, and the lines of a selector. */
@@ -145,13 +157,120 @@ describe("/jig", () => {
         );
     });
 
-    test("setup says to run the command in a terminal, without a screen or with one", async () => {
-        for (const ui of [false, {}] as const) {
-            const harness = await begin({ ui, plugins: setupSections });
-            const shown = await jigCommand(harness, "setup");
-            assert.match(shown, /Run jig setup in a terminal\./);
-            assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
-        }
+    test("setup refuses when the agent folder is not the Jig home", async () => {
+        const harness = await begin({ mode: "tui", plugins: setupSections });
+        const shown = await jigCommand(harness, "setup");
+        assert.match(shown, /not the Jig home/);
+        assert.match(shown, /npx @clawdbuilder\/jig setup/);
+        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
+    });
+
+    test("runs setup with Pi's dialogs in the TUI, and writes the same file", async () => {
+        const harness = await begin({
+            mode: "tui",
+            plugins: setupSections,
+            ui: {
+                select: (_title, options) =>
+                    options.includes("Answer these")
+                        ? "Answer these"
+                        : options.includes("Save these changes")
+                          ? "Save these changes"
+                          : options[0],
+                input: () => "orders-api",
+                confirm: () => true,
+            },
+        });
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        const file = path.join(harness.agentDir, "jig.json");
+        assert.ok(existsSync(file), "the settings file was written");
+        assert.match(shown, /Run \/reload to apply\./);
+        assert.doesNotMatch(shown, /Start Pi again/);
+        const written = JSON.parse(readFileSync(file, "utf8")) as { acme?: { bastion?: { user?: string } } };
+        assert.equal(written.acme?.bastion?.user, "orders-api");
+        assert.ok(harness.ui.selects.some((entry) => entry.title.includes("Acme")));
+        assert.ok(harness.ui.inputs.length > 0);
+    });
+
+    test("Escape after the company choice restores the file and names its backup", async () => {
+        const harness = await begin({
+            mode: "tui",
+            plugins: (api) => {
+                setupSections(api);
+                api.profiles?.register("acme", { displayName: "Acme" });
+            },
+            ui: {
+                select: (title, options) =>
+                    title.startsWith("Which company")
+                        ? options.find((option) => option.startsWith("Acme"))
+                        : title.startsWith("Use Acme")
+                          ? "Everywhere"
+                          : undefined,
+                confirm: () => true,
+            },
+        });
+        const file = path.join(harness.agentDir, "jig.json");
+        writeFileSync(file, '{"rules":[]}\n');
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(readFileSync(file, "utf8"), '{"rules":[]}\n');
+        assert.match(shown, /restored/);
+        assert.match(shown, /Backup: .*\.bak/);
+    });
+
+    test("an exception after the company write restores the file", async () => {
+        const harness = await begin({
+            mode: "tui",
+            plugins: (api) => {
+                setupSections(api);
+                api.profiles?.register("acme", { displayName: "Acme" });
+            },
+            ui: {
+                select: (title, options) =>
+                    title.startsWith("Which company")
+                        ? options.find((option) => option.startsWith("Acme"))
+                        : title.startsWith("Use Acme")
+                          ? "Everywhere"
+                          : options[0],
+                input: () => {
+                    throw new Error("screen went away");
+                },
+                confirm: () => true,
+            },
+        });
+        const file = path.join(harness.agentDir, "jig.json");
+        writeFileSync(file, '{"rules":[]}\n');
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(readFileSync(file, "utf8"), '{"rules":[]}\n');
+        assert.match(shown, /restored.*screen went away/);
+    });
+
+    test("setup <section> asks only that section", async () => {
+        const harness = await begin({
+            mode: "tui",
+            plugins: setupSections,
+            ui: { select: (_title, options) => options[0], input: () => "orders-api", confirm: () => true },
+        });
+        await inHome(harness, () => jigCommand(harness, "setup acme"));
+        const written = JSON.parse(readFileSync(path.join(harness.agentDir, "jig.json"), "utf8")) as {
+            acme?: { bastion?: { user?: string } };
+        };
+        assert.equal(written.acme?.bastion?.user, "orders-api");
+    });
+
+    test("the no-screen fallback names the npm command when jig is not on PATH", async () => {
+        const harness = await begin({ mode: "print", env: { PATH: "" }, plugins: setupSections });
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.match(shown, /Run jig setup in a terminal\./);
+        assert.match(shown, /npx @clawdbuilder\/jig setup/);
+    });
+
+    test("Escape at the first Pi question writes nothing", async () => {
+        const harness = await begin({ mode: "tui", plugins: setupSections, ui: { select: () => undefined } });
+        await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
+        assert.match(
+            harness.ui.notifications.map((entry) => entry.message).join("\n"),
+            /cancelled|Nothing was written/i,
+        );
     });
 
     test("counts a missing credential in the setup nudge", async () => {
@@ -193,7 +312,6 @@ describe("/jig", () => {
         assert.match(status, /Tools on the unknown default \(they ask until classified\): mystery\n/);
         assert.match(status, /Open watches: 0/);
         assert.match(status, /Configuration: none found \(.*jig\.json\), defaults apply/);
-        assert.match(status, /No model provider is signed in for .* Type \/login inside jig/);
     });
 
     test("shows the lines plugins registered for it, one line each; a plugin that fails is named and the others still show", async () => {

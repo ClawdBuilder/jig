@@ -4,6 +4,7 @@
 //   /jig rules [tool]  the effective decision per tool and action, and where each came from
 //   /jig records       where today's records are, and a one-line summary
 import { homedir } from "node:os";
+import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { classify } from "./classify.ts";
 import type { Classification, ClassSource } from "./classify.ts";
@@ -22,13 +23,14 @@ import { countQuickIssues } from "./doctor-secrets.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { doctorMarkers, formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
-import { modelAuthState, modelSignInLine } from "./model-auth.ts";
 import { shorten } from "./secret-status.ts";
+import { modelAuthState, modelSignInLine } from "./model-auth.ts";
 
 import { sectionState } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
 import type { JigState } from "./state.ts";
+import { runSetupCommand } from "./setup-command.ts";
 
 /** A list longer than this is shown in a scrollable selector instead of a notice. */
 const NOTICE_LINES = 12;
@@ -47,15 +49,7 @@ export function registerCommands(pi: ExtensionAPI, state: JigState): void {
                 .split(/\s+/)
                 .filter((part) => part !== "");
             if (word === undefined || word === "") return show(ctx, "jig status", statusLines(state));
-            if (word === "setup") {
-                if (rest.length > 0) return show(ctx, "jig setup", ["Usage: /jig setup"]);
-                // The questions need a real terminal: Pi's own screen hides them in a dialog, and the CLI can run outside Pi.
-                // One code path asks; this one just says where.
-                return show(ctx, "jig setup", [
-                    "Run jig setup in a terminal.",
-                    "It asks the same questions without Pi, and writes the same file.",
-                ]);
-            }
+            if (word === "setup") return runSetupCommand(state, ctx, rest);
             if (word === "doctor") return show(ctx, "jig doctor", await doctorLines(state, rest));
             if (word === "rules") return show(ctx, "jig rules", ruleLines(state, rest[0], ctx.hasUI));
             if (word === "records") return show(ctx, "jig records", recordsLines(state));
