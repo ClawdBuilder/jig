@@ -850,6 +850,24 @@ describe("the folders the file tools may write", () => {
         }
     });
 
+    test("a folder written with a link, a trailing separator or another case folds to the same folder (darwin)", () => {
+        const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-fold-"));
+        const real = path.join(dir, "Real");
+        mkdirSync(path.join(real, "deep"), { recursive: true });
+        symlinkSync(real, path.join(dir, "Link"));
+        try {
+            // macOS folds case, so a target in another case is the same file; the folder's own path must fold first,
+            // or one of its forms (`..`, a trailing separator, a link) does not line up with the target's.
+            for (const folder of [`${real}/../Real`, `${real}/`, path.join(dir, "Link")]) {
+                const writable = writableFolders([folder], "darwin");
+                assert.equal(writable(path.join(dir, "real", "deep", "x.ts")), true, folder);
+                assert.equal(writable(path.join(real, "deep", "x.ts")), true, folder);
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test("a path inside as written, outside once its links are followed, asks", () => {
         const dir = mkdtempSync(path.join(tmpdir(), "jig-writable-link-"));
         const work = path.join(dir, "work");

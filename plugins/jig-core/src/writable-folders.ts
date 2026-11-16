@@ -12,10 +12,13 @@ export function writableFolders(
     folders: readonly string[],
     platform: NodeJS.Platform | undefined = process.platform,
 ): (absolute: string) => boolean {
-    const sep = flavour(platform).sep;
-    const wanted = folders.flatMap((folder) => formsOf(folder, platform));
+    const pathApi = flavour(platform);
+    const sep = pathApi.sep;
+    // Fold first, as `checkFileTool` does: `formsOf` takes the resolved, case-folded string, so a folder written with
+    // `..`, a trailing separator or another case must become the same string as the target before their forms are taken.
+    const wanted = folders.flatMap((folder) => formsOf(pathApi.resolve(folder), platform));
     return (absolute) => {
-        const have = formsOf(absolute, platform);
+        const have = formsOf(pathApi.resolve(absolute), platform);
         return have.every((form) => wanted.some((folder) => isInside(form, folder, sep)));
     };
 }
