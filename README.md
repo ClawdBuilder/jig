@@ -44,6 +44,19 @@ npx @clawdbuilder/jig setup
 jig
 ```
 
+`jig doctor` checks the machine and names anything missing:
+
+```text
+Jig doctor · 12 ok · 0 warnings · 0 failures · 7 skipped
+
+This machine
+  ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
+  ok Pi — 1.5.2
+  ok Jig — 0.5.5
+…
+All checks passed; 7 could not be checked here.
+```
+
 `jig` is Pi for Jig's own folder, the **home**: `~/.jig`, or `JIG_HOME` when you set it. The home has its own
 settings, sessions, packages and `jig.json`, so Jig never changes your own `pi`. `setup` makes the home, installs Jig
 in it with Pi, and puts the `jig` command in `~/.local/bin`.
@@ -101,7 +114,10 @@ show how; [Plugins](docs/plugins.md) is the map of every tool.
 
 Work with a page behind it, not a promise:
 
-  from `jig-jira`, and embeddings or a graph only after real-ticket recall shows misses.
+- **Measure memory before growing it.** [jig-memory](plugins/jig-memory/README.md) measures recall on real tickets before
+  any embeddings or a graph ([Recall](plugins/jig-memory/docs/recall.md)).
+- **Traces and charts from `jig-lens`.** An OpenTelemetry export to MLflow, and Datasette charts, are later
+  ([Viewers](plugins/jig-lens/docs/viewers.md)).
 
 ## Learn more
 

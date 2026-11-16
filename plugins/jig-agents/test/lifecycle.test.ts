@@ -10,6 +10,7 @@ import { realHost } from "../src/host.ts";
 import type { Host } from "../src/host.ts";
 import { sweep, watchParent, WATCHDOG_MS } from "../src/orphans.ts";
 import { listChildren, readMeta, removeOld, runDirOf, writeMeta } from "../src/store.ts";
+import { START } from "../../jig-core/test/support/clock.ts";
 import type { Meta } from "../src/store.ts";
 import { FAKE_CHILD, sleep, startWorld, until } from "./world.ts";
 import type { World } from "./world.ts";
@@ -331,7 +332,10 @@ describe("the state folder", () => {
                     const dir = runDirOf(stateDir, "s", id);
                     writeMeta(dir, meta({ id, state, parentPid: process.pid }));
                     if (id.startsWith("old")) {
-                        const old = new Date(Date.now() - 30 * 24 * 3600_000);
+                        // Age from the clock the sweep reads (the world's fake clock), not from today: a real age
+                        // drifts against a fixed fake time until "old" no longer is.
+                        const age = 30 * 24 * 3600_000;
+                        const old = new Date(START - age);
                         utimesSync(path.join(dir, "meta.json"), old, old);
                     }
                 }
