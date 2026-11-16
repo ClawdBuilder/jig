@@ -64,7 +64,27 @@ function badAnswer(message: string, requestId?: string): TransportRefusal {
 }
 
 /** Parse one relay answer. Throws TransportRefusal for every outcome except `response`. */
-function answerOf(value: unknown, requestId: string): TransportResponse {
+/** The seconds a person sets, as a message says them: whole seconds, no trailing ".0". */
+function seconds(ms: number): string {
+    return `${Math.round(ms / 1000)} s`;
+}
+
+/**
+ * A relay timeout as the caller reads it. The relay words the deadline it stopped at, which is its own and shorter than
+ * the call's; the person set the call's. So the message keeps the relay's words and names both numbers, the setting first.
+ */
+function timeoutMessage(relayWords: string, callMs: number, relayMs: number): string {
+    const base = relayWords === "" ? "no answer from the relay" : relayWords;
+    const both = callMs === relayMs ? "" : `, the relay's deadline ${seconds(relayMs)}`;
+    return `${base}; the call's timeout is ${seconds(callMs)}${both}`;
+}
+
+function answerOf(
+    value: unknown,
+    requestId: string,
+    callTimeoutMs: number,
+    relayDeadlineMs: number,
+): TransportResponse {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
         throw badAnswer("the relay answered with something that is not a JSON object", requestId);
     }
@@ -98,7 +118,8 @@ function answerOf(value: unknown, requestId: string): TransportResponse {
         };
     }
     const code = codeOf(answer.code);
-    const message = typeof answer.message === "string" ? answer.message : "";
+    const said = typeof answer.message === "string" ? answer.message : "";
+    const message = code === "TIMEOUT" ? timeoutMessage(said, callTimeoutMs, relayDeadlineMs) : said;
     if (outcome === "refused")
         throw new TransportRefusal(code, message || "the relay refused the request", true, requestId);
     if (outcome === "unknown") {
@@ -220,7 +241,7 @@ export async function relayRequest(
         }
         throw badAnswer(`the relay answered HTTP ${reply.status} without a refused body`, id);
     }
-    return answerOf(value, id);
+    return answerOf(value, id, request.timeoutMs, timeoutMs);
 }
 
 /** Reads a relay's health. The token is optional; with it the relay also returns `services`. */
