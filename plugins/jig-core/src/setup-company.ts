@@ -35,34 +35,39 @@ export async function companyStep(
     const index = labels.indexOf(choice);
     const company = companies[index];
     if (company === undefined) return { status: "cancel" };
-    const where = await ui.select(`Use ${company.displayName}'s setup in:`, ["Everywhere", `Only in ${cwd}`]);
+    const remoteScope =
+        company.remotes.length === 0
+            ? undefined
+            : `Repositories of ${company.displayName} (${company.remotes.join(", ")})`;
+    const where = await ui.select(`Use ${company.displayName}'s setup in:`, [
+        "Everywhere",
+        `Only in ${cwd}`,
+        ...(remoteScope === undefined ? [] : [remoteScope]),
+    ]);
     if (where === undefined) return { status: "cancel" };
     const label = company.name;
+    const base: SetupChange[] = [
+        { section: "profiles", path: `${label}.plugin`, label: "Company setup", value: company.name },
+    ];
     const changes: SetupChange[] =
         where === "Everywhere"
-            ? [
-                  { section: "profiles", path: `${label}.plugin`, label: "Company setup", value: company.name },
-                  { section: "profile", path: "", label: "Company setup", value: label },
-              ]
+            ? [...base, { section: "profile", path: "", label: "Company setup", value: label }]
             : [
+                  ...base,
                   {
                       section: "profiles",
-                      path: `${label}.plugin`,
+                      path: where === remoteScope ? `${label}.when.remotes` : `${label}.when.folders`,
                       label: "Company setup",
-                      value: company.name,
-                  },
-                  {
-                      section: "profiles",
-                      path: `${label}.when.folders`,
-                      label: "Company setup",
-                      value: [`${cwd}/**`],
+                      value: where === remoteScope ? [...company.remotes] : [`${cwd}/**`],
                   },
                   { section: "profile", path: "", label: "Company setup", value: "auto" },
               ];
     const summary =
         where === "Everywhere"
             ? `Company setup: ${company.displayName}, in every folder.`
-            : `Company setup: ${company.displayName}, only in ${cwd}.`;
+            : where === remoteScope
+              ? `Company setup: ${company.displayName}, in repositories matching ${company.remotes.join(", ")}.`
+              : `Company setup: ${company.displayName}, only in ${cwd}.`;
     return writeProfile(state, ui, changes, summary);
 }
 

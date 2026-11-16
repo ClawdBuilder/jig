@@ -499,3 +499,13 @@ describe("/profile", () => {
         assert.equal(values("z"), undefined);
     });
 });
+
+test("a company's remotes are checked like a profile's when.remotes", () => {
+    const state = createState({} as ExtensionAPI);
+    const core = buildApi(state);
+    assert.throws(
+        () => core.profiles?.register("acme", { displayName: "Acme", remotes: [""] }),
+        /remotes must be a list/,
+    );
+    assert.doesNotThrow(() => core.profiles?.register("acme", { displayName: "Acme", remotes: ["github.com:Acme/*"] }));
+});

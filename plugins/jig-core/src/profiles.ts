@@ -48,6 +48,20 @@ export interface Selection {
     why: string;
 }
 
+/** A company's declared `remotes`, checked like a profile's `when.remotes`. */
+export function validateCompanyRemotes(raw: unknown, name: string): void {
+    if (
+        raw !== undefined &&
+        (!Array.isArray(raw) ||
+            raw.length > MAX_PATTERNS ||
+            raw.some((remote) => typeof remote !== "string" || remote === "" || remote.length > MAX_PATTERN_CHARS))
+    ) {
+        throw new TypeError(
+            `profiles.register(${name}): remotes must be a list of at most ${MAX_PATTERNS} patterns (text, not empty)`,
+        );
+    }
+}
+
 export function validateProfilesSection(raw: unknown): string[] {
     if (!isObject(raw))
         return [`${PROFILES_SECTION} must be an object of profiles, such as { "acme": { "plugin": "jig-acme" } }`];
