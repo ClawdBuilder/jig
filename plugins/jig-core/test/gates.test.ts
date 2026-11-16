@@ -344,7 +344,7 @@ describe("a gate can never loosen a decision", () => {
         });
         const prod = await harness.call({ tool: "fake", input: { env: "prod", effect: "write" } });
         assert.equal(prod.blocked, true);
-        assert.match(prod.reason ?? "", /writes to production are never allowed/);
+        assert.match(prod.reason ?? "", /fake call is refused by Jig's floor/);
         const protectedPath = await harness.call({
             tool: "write",
             input: { path: path.join(harness.agentDir, "jig.json") },

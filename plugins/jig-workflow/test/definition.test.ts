@@ -169,8 +169,8 @@ describe("a hold's call", () => {
         assert.equal(callText({ tool: "edit" }), "edit");
     });
 
-    test("an action renamed in 0.4.0 keeps matching through its old name", () => {
-        assert.deepEqual(parseCall("workflow submit-plan"), { tool: "workflow", action: "submit_plan" });
+    test("an action renamed in 0.4.0 is left under its old name, which no longer matches", () => {
+        assert.deepEqual(parseCall("workflow submit-plan"), { tool: "workflow", action: "submit-plan" });
         assert.equal(callText({ tool: "workflow", action: "submit_plan" }), "workflow submit_plan");
     });
 });
