@@ -249,8 +249,11 @@ jobs:
       - name: Set up the replica set and wait for the jump host
         if: ${{ !cancelled() }}
         run: |
-          # Waits until a command succeeds. A container that has stopped ends the wait at once, with its log, so a member that
-          # cannot start fails this step in seconds and not after all the time it would have waited.
+          # Waits until a command succeeds. A container that has stopped ends the wait with its log. A MongoDB member is
+          # started once more first: at a container's first start the image's own init mongod and the real one can race for
+          # port 27017 (run 42765667723, 2026-11-10, exit 48), and starting the same container again gives it a second try.
+          # A second stop is a real failure; the jump host is never restarted.
+          restarted=0
           wait_until() {
             local what=$1
             shift
@@ -258,8 +261,24 @@ jobs:
               if "$@" > /dev/null 2>&1; then return 0; fi
               for name in mongo1 mongo2 mongo3 jump; do
                 if [ "$(docker inspect -f '{{.State.Running}}' "$name")" != true ]; then
+                  case "$name" in
+                    mongo1|mongo2|mongo3)
+                      if [ "$restarted" = 0 ]; then
+                        restarted=1
+                        echo "::warning::$name stopped while waiting for $what; starting it once more"
+                        # The same container again, so its data volume (and a replica set it already joined) is kept; a
+                        # `docker compose up` could recreate it and lose that.
+                        if ! docker start "$name" > /dev/null; then
+                          echo "::error::$name could not be started again while waiting for $what"
+                          docker logs --tail 60 "$name" 2>&1 || true
+                          return 1
+                        fi
+                        continue
+                      fi
+                      ;;
+                  esac
                   echo "::error::$name stopped while waiting for $what"
-                  docker logs --tail 60 "$name" 2>&1
+                  docker logs --tail 60 "$name" 2>&1 || true
                   return 1
                 fi
               done
