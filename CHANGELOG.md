@@ -8,6 +8,14 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 - The 0.4.x action aliases are gone: a rule, role or workflow that still uses an old hyphenated action name must use its snake_case name. `jig doctor` names the old rule action and its replacement.
 
+### Changed
+
+- A refusal names the call and the next step (`… is refused by Jig's floor: … Tell the person; do not retry or work
+  around it`; a rule in `jig.json` says `/jig rules <tool>` shows it), a refused read says the read was refused rather
+  than that nothing changed, a relay timeout names the call's setting before the relay's own deadline, and `jig doctor`
+  names the default home instead of the variable it sets. A company plugin's test that matched "writes to production are
+  never allowed" or "a rule in the configuration denies this call" needs the new wording.
+
 ## [0.5.5] - 2026-11-12
 
 Jig gets its own home (`~/.jig`, or `JIG_HOME`) and `jig` is Pi for it; a company's session relay is set up in `jig.json`.
