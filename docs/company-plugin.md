@@ -299,6 +299,7 @@ The user's own `~/.jig/jig.json` is laid over the company's defaults before the 
 | An object in a key the plugin names in `replace` | Yours replaces the company's whole, so the two never make a mix |
 | A key that excludes another (`oneOf`) | The company's value for the other keys is dropped |
 | A list in a key the plugin names in `union` | The company's entries first, then yours, each once |
+| `null` for a key in a map | The company's entry of that name is left out (RFC 7396's merge patch) |
 
 - **`replace` is for one choice among several.** A Jira `auth` of `{ signIn }` and one of `{ email, token }` are alternatives:
   merged, they would make a login that is neither.
@@ -306,6 +307,11 @@ The user's own `~/.jig/jig.json` is laid over the company's defaults before the 
   removes the company's other.
 - **`union` is for a list that you and the company both add to,** such as the folders `workflow` reads workflow files from.
   Replaced, a folder of yours would take the company's away.
+- **`null` leaves one company entry out.** If the company gives `mongo.connections.staging` and
+  `mongo.connections.prod`, writing `"mongo": { "connections": { "prod": null } }` in your `jig.json` leaves only
+  `staging`. It only takes away a company value: a protected path or a rule of the floor is not a section value, so
+  this cannot loosen one, and a `null` for a name the company does not have changes nothing. The plugin never sees a
+  `null`; the key is gone.
 - **Each plugin names its own keys.** A key is a path from the section's root, with `*` for any one name.
 
 | Section | `replace` | `oneOf` | `union` |
