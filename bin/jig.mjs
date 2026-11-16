@@ -218,7 +218,21 @@ if (first === undefined || first === "--") {
         process.exit(1);
     }
     process.exit(await main.run(first, args.slice(1)));
+} else if (await guardTypo()) {
+    // guardTypo printed the hint and exited.
 } else {
     // Pi's own command, a flag, or a message: Pi with the home, through the launcher.
     startPi(args);
+}
+
+/** A one-word near miss of a command is almost always a typo; a message with spaces still goes to Pi. */
+async function guardTypo() {
+    if (first === undefined || first.startsWith("-") || first.includes(" ")) return false;
+    const { nearestCommand } = await loadHelp();
+    const near = nearestCommand(first);
+    if (near === undefined) return false;
+    process.stderr.write(
+        `Unknown command ${first}. Did you mean jig ${near}? To ask Pi, run: jig "${first} …"\n`,
+    );
+    process.exit(2);
 }
