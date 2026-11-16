@@ -132,7 +132,7 @@ test("push: a commit that lands after the preview is refused as changed since th
     );
     assert.match(
         result.error?.message ?? "",
-        /git push changed since the preview; run it again to see the new preview/,
+        /git push: changed since the preview; run it again to see the new preview/,
     );
     assert.throws(() => git(r.origin, "rev-parse", "--verify", "refs/heads/feature/p7"), "nothing was pushed");
     ok(await h.call("git", { action: "push", repo: r.name }));

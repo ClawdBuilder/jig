@@ -3,6 +3,7 @@
 import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { InputError } from "../../jig-core/src/kit/values.ts";
+import { previewChanged } from "../../jig-core/src/kit/actions.ts";
 import { fingerprintOf, MAX_PLAN_CHARS, parsePlan, repositoryWarnings } from "./plan.ts";
 import { inspect } from "./repos.ts";
 import type { Runtime, Work } from "./runtime.ts";
@@ -45,9 +46,7 @@ export async function submitPlan(rt: Runtime, params: Params, call: Call): Promi
         );
     }
     if (approved.fingerprint !== plan.fingerprint) {
-        throw new Error(
-            "plan.md changed since the preview the user approved: nothing was recorded. Call submit_plan again.",
-        );
+        throw new Error(previewChanged("plan.md") + " Call submit_plan again.");
     }
     updateState(work.paths.dir, (state) => {
         state.plan = {

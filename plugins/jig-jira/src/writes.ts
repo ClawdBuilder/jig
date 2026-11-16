@@ -6,6 +6,7 @@
 //   - A write is never sent twice. When the reply is lost (a timeout, a dropped connection, a 5xx), whether the write
 //     happened is unknown, so it is not repeated: the issue is read once, and the tool says what that read shows.
 import { jig } from "../../jig-core/src/client.ts";
+import { previewChanged } from "../../jig-core/src/kit/actions.ts";
 import type { Env } from "./api.ts";
 import { JiraError, LostReplyError, NotSentError, transportFacts } from "./http.ts";
 import type { Call } from "./params.ts";
@@ -55,9 +56,7 @@ export async function runWrite(
 
     const approved = jig().approvedPreview(toolCallId);
     if (approved?.fingerprint !== undefined && approved.fingerprint !== fingerprintOf(plan)) {
-        throw new Error(
-            `${where(call, plan)}: changed since the preview; run it again to see the new preview. Nothing was sent.`,
-        );
+        throw new Error(previewChanged(where(call, plan)));
     }
 
     const record = (key: string | undefined): void => {

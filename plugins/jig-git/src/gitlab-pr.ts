@@ -1,5 +1,6 @@
 // The `pr` actions on a GitLab project: which forge a call means, and where each action goes. A pull request is a merge request
 // there; the actions, their names and their parameters are the same.
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { forgeOf } from "./forge.ts";
 import type { GitlabHome, Home } from "./forge.ts";
 import { getMr, openMrFor, parseThread, planComments, planList, planView } from "./gitlab-pr-read.ts";
@@ -115,6 +116,17 @@ export function planGitlabPr(
         case "watch":
             return planWatch(p, call, home);
         default:
-            throw new Error(`pr: unknown action ${String(params.action)}`);
+            throw new Error(
+                unknownAction("pr", params.action, [
+                    "create",
+                    "edit",
+                    "ready",
+                    "comment",
+                    "reply",
+                    "resolve",
+                    "review",
+                    "merge",
+                ]),
+            );
     }
 }

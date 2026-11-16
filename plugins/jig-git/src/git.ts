@@ -1,5 +1,6 @@
 // The `git` tool: the local repository, and the remote write that goes with it (push).
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { Type } from "typebox";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { planClone } from "./clone.ts";
@@ -188,7 +189,7 @@ function planGit(params: Readonly<Record<string, unknown>>, call: Call): Promise
         case "push":
             return planPush(p, call);
         default:
-            throw new Error(`git: unknown action ${String(params.action)}`);
+            throw new Error(unknownAction("git", params.action, Object.keys(GIT_ACTIONS)));
     }
 }
 

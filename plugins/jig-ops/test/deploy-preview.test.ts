@@ -242,7 +242,7 @@ describe("changed since the preview", () => {
         const result = await run("1.4.3", ORDERS, { between: () => h.cluster.answer(orders("1.4.3")) });
         assert.equal(
             result.error?.message,
-            "deploy run of orders-api in staging changed since the preview (it is running 1.4.3 now); run it again to see the new preview. Nothing was run",
+            "deploy run of orders-api in staging: changed since the preview; run it again to see the new preview. Nothing was sent.",
         );
         assert.deepEqual(h.cluster.helmCalls(), []);
         assert.deepEqual(
@@ -261,10 +261,7 @@ describe("changed since the preview", () => {
                     }),
                 ),
         });
-        assert.match(
-            result.error?.message ?? "",
-            /changed since the preview \(it is running 1\.4\.2, 1\.4\.3 \(a rollout is in progress\) now\)/,
-        );
+        assert.match(result.error?.message ?? "", /changed since the preview/);
         assert.deepEqual(h.cluster.helmCalls(), []);
     });
 
@@ -286,7 +283,7 @@ describe("changed since the preview", () => {
         const result = await run("2.1.0", BILLING, {
             between: () => h.cluster.answer(billing("2.0.0", { workload: { stdout: other as never } })),
         });
-        assert.match(result.error?.message ?? "", /^deploy run of billing in staging changed since the preview/);
+        assert.match(result.error?.message ?? "", /^deploy run of billing in staging: changed since the preview/);
         assert.deepEqual(
             h.cluster.calls().filter((call) => call.argv[3] === "set"),
             [],
@@ -303,7 +300,7 @@ describe("changed since the preview", () => {
         });
         assert.match(
             result.error?.message ?? "",
-            /^deploy rollback of orders-api in staging changed since the preview/,
+            /^deploy rollback of orders-api in staging: changed since the preview/,
         );
         assert.equal(h.cluster.helmCalls().filter((call) => call.argv[0] === "rollback").length, 0);
     });

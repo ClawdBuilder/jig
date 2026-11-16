@@ -172,7 +172,7 @@ test("create: a branch that is not pushed at its tip is refused before any write
     );
     assert.match(
         result.error?.message ?? "",
-        /pr create changed since the preview; run it again to see the new preview/,
+        /pr create: changed since the preview; run it again to see the new preview/,
     );
     assert.equal(writes().length, 0);
     assert.match(
@@ -797,7 +797,7 @@ test("merge: a head that moves after the preview is refused, and nothing is merg
     );
     assert.match(
         result.error?.message ?? "",
-        /pr merge changed since the preview; run it again to see the new preview/,
+        /pr merge: changed since the preview; run it again to see the new preview/,
     );
     assert.equal(writes().length, 0);
 });

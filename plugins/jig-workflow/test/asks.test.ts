@@ -73,7 +73,7 @@ describe("submit_plan", () => {
         w.beforeAnswer = () => writeFileSync(path.join(w.ticketDir(), "plan.md"), `${PLAN}\n3. A late scenario.\n`);
         const result = await w.call({ action: "submit_plan" });
         assert.equal(result.isError, true);
-        assert.match(result.text, /plan.md changed since the preview the user approved: nothing was recorded/);
+        assert.match(result.text, /plan.md: changed since the preview/);
         assert.equal(w.state()?.plan, undefined);
     });
 

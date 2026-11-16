@@ -436,7 +436,7 @@ describe("trigger", () => {
         );
         assert.match(
             result.error?.message ?? "",
-            /^ci trigger of orders-api changed since the preview; run it again to see the new preview\. Nothing was sent$/,
+            /^ci trigger of orders-api: changed since the preview; run it again to see the new preview\. Nothing was sent\.$/,
         );
         assert.deepEqual(posts(g), []);
     });

@@ -545,7 +545,7 @@ test("restore: a change that happens after the preview is refused", async () => 
     );
     assert.match(
         result.error?.message ?? "",
-        /git restore changed since the preview; run it again to see the new preview/,
+        /git restore: changed since the preview; run it again to see the new preview/,
     );
     assert.equal(fs.readFileSync(path.join(r.dir, "README.md"), "utf8"), "a different edit\n", "nothing was discarded");
 });

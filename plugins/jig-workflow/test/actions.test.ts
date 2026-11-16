@@ -33,7 +33,7 @@ describe("input that is not valid is refused before anyone is asked", () => {
         const w = await world(t);
         assert.match(
             (await w.call({ action: "deploy" })).text,
-            /workflow: unknown action "deploy"; use one of list, status, start/,
+            /workflow: unknown action "deploy"\. Usage: workflow <action>/,
         );
         assert.match((await w.call({ action: "list", ticket: "PROJ-1" })).text, /workflow list does not use ticket/);
         assert.match((await w.call({ action: "scenario", number: 1 })).text, /workflow scenario needs result/);

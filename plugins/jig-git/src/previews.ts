@@ -4,6 +4,7 @@
 //   - execute() plans again, refuses if the plan differs from the one the user approved, and runs it.
 // So whatever changed while the user was reading (a new commit, a moved pull request head) is caught, not pushed.
 import { createHash } from "node:crypto";
+import { previewChanged } from "../../jig-core/src/kit/actions.ts";
 import type { Facts, Preview } from "../../jig-core/src/contract.ts";
 import { jig } from "../../jig-core/src/client.ts";
 import type { GitSettings } from "./config.ts";
@@ -43,7 +44,7 @@ export function checkUnchanged(toolCallId: string, planned: Planned, label: stri
     const approved = jig().approvedPreview(toolCallId);
     if (approved?.fingerprint === undefined || planned.preview.fingerprint === undefined) return;
     if (approved.fingerprint !== planned.preview.fingerprint) {
-        throw new Error(`${label} changed since the preview; run it again to see the new preview`);
+        throw new Error(previewChanged(label));
     }
 }
 

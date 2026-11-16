@@ -2,6 +2,7 @@
 // origin decides which, never the call. Reads are allowed. Every write asks the user first, and the text of a write is shown on
 // the review screen before it is sent.
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { Type } from "typebox";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { describeActions } from "./params.ts";
@@ -198,7 +199,7 @@ function planGithubPr(params: Readonly<Record<string, unknown>>, call: Call): Pr
         case "watch":
             return planWatch(p, call);
         default:
-            throw new Error(`pr: unknown action ${String(params.action)}`);
+            throw new Error(unknownAction("pr", params.action, Object.keys(PR_ACTIONS)));
     }
 }
 

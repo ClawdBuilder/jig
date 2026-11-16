@@ -319,7 +319,7 @@ test("release_create: a release that exists is refused; so is a change after the
     );
     assert.match(
         moved.error?.message ?? "",
-        /release release_create changed since the preview; run it again to see the new preview/,
+        /release release_create: changed since the preview; run it again to see the new preview/,
     );
     assert.equal(h.gh.callsOf("release create").length, 0);
 });
@@ -349,6 +349,6 @@ test("a call the action does not take is refused with the usage line", async () 
     );
     assert.match(
         (await h.call("release", { action: "tag_delete", tag: "v1" })).error?.message ?? "",
-        /^release: unknown action "tag_delete"; use one of tags, releases, tag_create, tag_push, release_create$/,
+        /^release: unknown action "tag_delete"\. Usage: release <action>/,
     );
 });
