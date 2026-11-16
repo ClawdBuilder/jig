@@ -1071,7 +1071,7 @@ describe("CLI conventions", () => {
         assert.equal(result.code, 0, result.stderr);
         assert.match(
             result.stdout,
-            /^In Jig, `jig auth` signs in for this home; credentials are stored in .*auth\.json\./,
+            /^In Jig, `jig auth` signs in for this home; credentials are stored in ~\/\.jig\/auth\.json\./,
         );
         assert.match(result.stdout, /Usage:\n  pi auth/);
     });

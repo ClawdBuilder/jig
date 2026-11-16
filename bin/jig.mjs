@@ -35,6 +35,11 @@ const home = (() => {
     const named = process.env.JIG_HOME?.trim();
     return named === undefined || named === "" ? path.join(homedir(), ".jig") : path.resolve(named);
 })();
+
+/** A path as a person reads it: `~/...` under `base`, otherwise as written. The same rule as jig-core's `shorten()`. */
+function shorten(where, base) {
+    return where === base || where.startsWith(`${base}${path.sep}`) ? `~${where.slice(base.length)}` : where;
+}
 const outerPiDir = process.env.PI_CODING_AGENT_DIR?.trim();
 if (outerPiDir !== undefined && outerPiDir !== "" && path.resolve(outerPiDir) !== home) {
     process.env.JIG_OUTER_PI_DIR = path.resolve(outerPiDir);
@@ -209,9 +214,8 @@ if (first === undefined || first === "--") {
 } else if (first === "help") {
     await help(args.slice(1));
 } else if (first === "auth" && args.length === 2 && (args[1] === "--help" || args[1] === "-h")) {
-    process.stdout.write(
-        `In Jig, \`jig auth\` signs in for this home; credentials are stored in ${path.join(home, "auth.json")}.\n`,
-    );
+    const authFile = shorten(path.join(home, "auth.json"), homedir());
+    process.stdout.write(`In Jig, \`jig auth\` signs in for this home; credentials are stored in ${authFile}.\n`);
     startPi(args);
 } else if (JIG_COMMANDS.has(first)) {
     await loadHooks();
