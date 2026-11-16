@@ -62,6 +62,62 @@ describe("a read in a test environment", () => {
     });
 });
 
+describe("a service", () => {
+    test("resolves to the database that connection maps, and the record names that database", async () => {
+        h.backend.answers.find = [];
+        const result = await h.call({
+            action: "find",
+            environment: "staging",
+            service: "orders",
+            collection: "orders",
+        });
+        assert.equal(ok(result), "mongo find staging orders_staging.orders: 0 documents");
+        assert.equal(factsOf(result.id).database, "orders_staging");
+    });
+
+    test("the preview names the resolved database", async () => {
+        h.backend.answers.count = 2;
+        const result = await h.call({
+            action: "update",
+            environment: "staging",
+            service: "orders",
+            collection: "orders",
+            filter: { status: "open" },
+            update: { $set: { status: "shipped" } },
+            which: "one",
+        });
+        assert.match(result.preview?.summary ?? "", /orders_staging\.orders/);
+    });
+
+    test("uses the other environment's name for the same service", async () => {
+        h.backend.answers.find = [];
+        const result = await h.call({
+            action: "find",
+            environment: "production",
+            service: "orders",
+            collection: "orders",
+        });
+        assert.equal(ok(result), "mongo find production orders.orders: 0 documents");
+        assert.equal(factsOf(result.id).database, "orders");
+    });
+
+    test("an unknown service names the known ones and the closest", async () => {
+        const result = await h.call({ action: "find", environment: "staging", service: "order", collection: "orders" });
+        assert.match(refusalOf(result), /no service "order".*known services: billing, orders.*did you mean "orders"/);
+    });
+
+    test("database and service together is refused", async () => {
+        const result = await h.call({
+            action: "find",
+            environment: "staging",
+            database: "orders",
+            service: "orders",
+            collection: "orders",
+        });
+        assert.match(refusalOf(result), /give database or service, not both/);
+    });
+});
+
 describe("mongo access", () => {
     test("reads the configured rules with no database, and opens no connection", async () => {
         h.load({

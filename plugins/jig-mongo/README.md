@@ -6,7 +6,8 @@
 `jig-core` decides each call by environment: reads run, a write to `staging` asks you with a preview, and every write to
 production is denied. What the agent may see is set by an allow list or a deny list.
 
-For example, to debug a stuck order the agent runs `count`, then `find` on `orders.orders` in `staging`. It then runs `explain`
+For example, to debug a stuck order the agent runs `count`, then `find` on `orders.orders` in `staging`; it can say
+`service: "orders"` and the connection resolves the database name for that environment. It then runs `explain`
 to see whether the query used an index, and `update` to fix the test document, after you approve the preview.
 
 ![A mongo call: jig-core decides by environment, the field walk checks every field against the access lists and refuses a denied one, the route opens the environment's connection, MongoDB answers, and the rows come back with denied fields stripped and production masked](../../docs/img/mongo-walk.svg)

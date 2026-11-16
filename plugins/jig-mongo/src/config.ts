@@ -5,6 +5,7 @@ import { createAccess, readAllow, readDeny, readReference } from "./access.ts";
 import type { Access, AccessRules } from "./access.ts";
 import { jig } from "../../jig-core/src/client.ts";
 import { InputError, isObject, shortList, shown } from "./values.ts";
+import { checkServices } from "./services.ts";
 
 export interface SshRoute {
     kind: "ssh";
@@ -14,20 +15,16 @@ export interface SshRoute {
     key: string;
     port?: number;
 }
-
 /** A tunnel a company plugin provides, by name. */
 export interface TunnelRoute {
     kind: "tunnel";
     name: string;
 }
-
 export type Route = { kind: "direct" } | SshRoute | TunnelRoute;
-
 export interface HostPort {
     host: string;
     port: number;
 }
-
 export interface ParsedUri {
     scheme: "mongodb" | "mongodb+srv";
     hosts: HostPort[];
@@ -37,7 +34,6 @@ export interface ParsedUri {
     options: string;
     text: string;
 }
-
 export interface Connection {
     environment: string;
     /** The name that picks this connection, when its environment has several. */
@@ -54,6 +50,8 @@ export interface Connection {
      * Turning it off for production is the user's choice, and `/jig` says so.
      */
     requireIndex?: boolean;
+    /** Service name to database name for this connection; only strings, a null in the person's section removes a company entry. */
+    services?: ReadonlyMap<string, string>;
     via: Route;
 }
 
@@ -96,6 +94,7 @@ const CONNECTION_FIELDS: ReadonlySet<string> = new Set([
     "authSource",
     "tls",
     "requireIndex",
+    "services",
     "via",
 ]);
 const ACCESS_FIELDS: ReadonlySet<string> = new Set(["deny", "allow", "javascript"]);
@@ -115,7 +114,6 @@ const URI_SHAPE = /^(mongodb(?:\+srv)?):\/\/(?:([^@/?#]*)@)?([^/?#]+)(?:\/([^?#]
 /** Options that would carry a credential or switch off the checks of the certificate. */
 const URI_OPTION_REFUSED = /password|secret|token|authmechanismproperties|tlsinsecure|tlsallowinvalid/i;
 const MAX_CONNECTIONS = 20;
-
 function checkReference(value: unknown, key: string, errors: string[]): string | undefined {
     // The value is not repeated: a mistaken reference may be the secret itself.
     if (typeof value === "string" && SECRET_REFERENCE.test(value)) return value;
@@ -269,6 +267,7 @@ function checkConnection(
         if (typeof raw.requireIndex === "boolean") requireIndex = raw.requireIndex;
         else errors.push(`${at}.requireIndex: must be true or false`);
     }
+    const services = checkServices(raw.services, `${at}.services`, errors);
     const via = checkVia(raw.via, uri, `${at}.via`, errors);
     if (
         errors.length > before ||
@@ -288,6 +287,7 @@ function checkConnection(
         ...(authSource === undefined ? {} : { authSource }),
         ...(tls === undefined ? {} : { tls }),
         ...(requireIndex === undefined ? {} : { requireIndex }),
+        ...(services === undefined || services.size === 0 ? {} : { services }),
     };
 }
 

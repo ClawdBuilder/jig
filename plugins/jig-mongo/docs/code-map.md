@@ -11,6 +11,7 @@ Read it with the code open. Back to the [jig-mongo overview](../README.md).
 | `backend.ts` | The seam between the tool and the MongoDB driver. The tool asks for what it… | `driver.ts`, `reads.ts`, `require-index.ts` and 3 more |
 | `bson.ts` | What comes back from the driver, as plain JSON that never depends on driver… | `access.ts`, `reads.ts`, `render.ts` and 1 more |
 | `config.ts` | The `mongo` section of jig.json: where each environment's database is, how… | `index.ts`, `route.ts`, `session.ts` and 1 more |
+| `services.ts` | A connection's service-to-database map, with a null leaving out a company entry | `config.ts` |
 | `driver.ts` | The official MongoDB driver behind the Backend seam. `adaptClient` is the… | `tool.ts` |
 | `ejson.ts` | Extended JSON as the model writes it: `{"$oid": "..."}`, `{"$date": "..."}`… | `bson.ts`, `driver.ts`, `expr.ts` and 3 more |
 | `errors.ts` | Failures of the route and the server, and what to tell the model about each.… | `require-index.ts`, `route.ts`, `session.ts` and 1 more |

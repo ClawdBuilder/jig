@@ -14,6 +14,7 @@ export type Param =
     | "environment"
     | "cluster"
     | "database"
+    | "service"
     | "collection"
     | "filter"
     | "projection"
@@ -166,6 +167,8 @@ export interface Call {
     /** Which of the environment's connections, when it has several. */
     cluster?: string;
     database?: string;
+    /** A service name resolved to database before the call is planned. */
+    service?: string;
     collection?: string;
     filter?: Doc;
     projection?: Doc;
@@ -186,7 +189,7 @@ export interface Call {
     verbosity?: "queryPlanner" | "executionStats";
 }
 
-const TEXT_PARAMS: readonly Param[] = ["environment", "cluster", "database", "collection", "field", "name"];
+const TEXT_PARAMS: readonly Param[] = ["environment", "cluster", "database", "service", "collection", "field", "name"];
 const OBJECT_PARAMS: readonly Param[] = ["filter", "projection", "sort", "update", "replacement", "keys", "options"];
 const LIST_PARAMS: readonly Param[] = ["pipeline", "documents", "operations"];
 const present = (value: unknown): boolean => value !== undefined && value !== null;
@@ -200,10 +203,22 @@ export function parseCall(input: Readonly<Record<string, unknown>>): Call {
     if (!isAction(action)) throw new InputError(unknownAction("mongo", action, ACTION_NAMES));
     const spec: ActionSpec = ACTIONS[action];
     // `cluster` goes with `environment` in every action; whether the environment takes it is for the configuration to say.
-    const accepted = new Set<string>(["action", "cluster", ...spec.required, ...spec.optional]);
+    const acceptsService = spec.required.includes("database");
+    const accepted = new Set<string>([
+        "action",
+        "cluster",
+        ...(acceptsService ? ["service"] : []),
+        ...spec.required,
+        ...spec.optional,
+    ]);
     const extra = Object.keys(input).filter((name) => present(input[name]) && !accepted.has(name));
     if (extra.length > 0) throw new InputError(`mongo ${action} does not use ${extra.join(", ")}. ${usage(action)}`);
-    const missing = spec.required.filter((name) => !present(input[name]));
+    if (present(input.database) && present(input.service)) {
+        throw new InputError("mongo: give database or service, not both; service is resolved to a database");
+    }
+    const missing = spec.required.filter(
+        (name) => !(name === "database" && present(input.service)) && !present(input[name]),
+    );
     if (missing.length > 0) throw new InputError(`mongo ${action} needs ${missing.join(", ")}. ${usage(action)}`);
     if (JSON.stringify(input).length > MAX_REQUEST_CHARACTERS)
         throw new InputError("the request is longer than 256 KiB; shorten the filter, the documents or the pipeline");

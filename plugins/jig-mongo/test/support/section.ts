@@ -11,11 +11,13 @@ export function defaultSection(extra: Record<string, unknown> = {}): Record<stri
                 uri: "mongodb://db.staging.example.com:27017",
                 user: "agent",
                 password: STAGING_PASSWORD.reference,
+                services: { orders: "orders_staging", billing: "billing_staging" },
             },
             production: {
                 uri: "mongodb://db.example.com:27017",
                 user: "agent-readonly",
                 password: PRODUCTION_PASSWORD.reference,
+                services: { orders: "orders", billing: "billing" },
             },
         },
         access: {

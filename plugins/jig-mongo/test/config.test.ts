@@ -70,6 +70,28 @@ describe("a valid section", () => {
         assert.equal(settings?.connections.get("production")?.uri.hosts[0]?.port, 27017);
     });
 
+    test("services map a service to a database, and a null in the person's section leaves a company entry out", () => {
+        const raw = section({ staging: connection({ services: { orders: "orders_staging", billing: null } }) });
+        assert.equal(
+            (settingsOf(raw)?.connections.get("staging")?.services as Map<string, string> | undefined)?.get("orders"),
+            "orders_staging",
+        );
+        assert.equal(
+            (settingsOf(raw)?.connections.get("staging")?.services as Map<string, string> | undefined)?.has("billing"),
+            false,
+        );
+        assert.match(errorsOf(section({ staging: connection({ services: { "not a name": "x" } }) })), /service name/);
+        assert.match(
+            errorsOf(section({ staging: connection({ services: { orders: "not a database!" } }) })),
+            /must be a database name or null/,
+        );
+        const merged = layered(
+            { connections: { staging: { services: { orders: "orders_staging" } } } },
+            { connections: { staging: { services: { orders: null } } } },
+        );
+        assert.deepEqual(settingsOf(merged)?.connections.get("staging")?.services, undefined);
+    });
+
     test("optional fields: authSource, tls, an ssh port, a tunnel, a replica set list without a route", () => {
         const raw = section({
             staging: connection({

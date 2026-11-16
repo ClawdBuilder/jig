@@ -20,7 +20,7 @@ import type { Planned } from "./plan.ts";
 import { Session, systemSessionDeps } from "./session.ts";
 import type { SessionDeps } from "./session.ts";
 import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
-import { InputError, RefusedError, errorMessage, shortList, shown } from "./values.ts";
+import { InputError, RefusedError, errorMessage, nearestName, shortList, shown } from "./values.ts";
 import type { Prepared, WriteRun } from "./writes.ts";
 
 export interface MongoOptions {
@@ -111,6 +111,19 @@ function check(input: Readonly<Record<string, unknown>>): Checked {
     const call = parseCall(input);
     const settings = requiredSettings();
     const connection = connectionOf(settings, call);
+    if (call.service !== undefined) {
+        const database = connection.services?.get(call.service);
+        if (database === undefined) {
+            const known = [...(connection.services?.keys() ?? [])].sort();
+            const near = nearestName(call.service, known);
+            throw new InputError(
+                known.length === 0
+                    ? `${placeOf(call)} has no services configured: add services to its connection in jig.json`
+                    : `${placeOf(call)} has no service ${shown(call.service, 30)}; known services: ${shortList(known)}${near === undefined ? "" : `; did you mean ${shown(near, 30)}?`}`,
+            );
+        }
+        call.database = database;
+    }
     const kind = jig().environments.kindOf(call.environment);
     if (kind !== "test" && kind !== "production") {
         throw new InputError(
@@ -162,8 +175,11 @@ function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 }
 
 /** The facts of a call, with the connection's name when the environment has several. */
-const withCluster = (c: Checked, facts: Facts): Facts =>
-    c.call.cluster === undefined ? facts : { ...facts, cluster: c.call.cluster };
+const withCluster = (c: Checked, facts: Facts): Facts => ({
+    ...facts,
+    ...(c.call.cluster === undefined ? {} : { cluster: c.call.cluster }),
+    ...(c.call.service === undefined || c.call.database === undefined ? {} : { database: c.call.database }),
+});
 
 export function createTool(options: MongoOptions = {}): MongoTool {
     const connect = options.connect ?? connectDriver;
