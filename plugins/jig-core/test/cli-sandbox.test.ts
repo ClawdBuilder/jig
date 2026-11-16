@@ -40,7 +40,9 @@ describe("the sandbox on this machine", () => {
         assert.match(failures.map((line) => line.fix).join("\n"), /bubblewrap/);
     });
 
-    test("a real namespace start is checked", async () => {
+    test("a real namespace start is checked", {
+        skip: process.platform === "linux" ? false : "the Linux namespaces",
+    }, async () => {
         const lines = await sandboxChecks(context("/usr/bin"), {
             platform: "linux",
             run: async () => ({

@@ -5,6 +5,9 @@ import { spawnSync } from "node:child_process";
 
 /** Whether this machine's `script` can make a pty: a test that needs one skips when it cannot. */
 export function ptyAvailable(): boolean {
+    // BSD `script`, which macOS ships, keeps the terminal it is given: a pipe or a socket on stdin makes it fail with
+    // "tcgetattr/ioctl: Operation not supported on socket" before the command runs.
+    if (process.platform === "darwin" && process.stdin.isTTY !== true) return false;
     const found = spawnSync("sh", ["-c", "command -v script"], { encoding: "utf8" });
     return found.status === 0 && found.stdout.trim() !== "";
 }

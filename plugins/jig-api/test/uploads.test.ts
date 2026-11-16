@@ -103,7 +103,7 @@ describe("a file outside it", () => {
             "../elsewhere/secret.txt",
             path.join(outside, "secret.txt"),
             "files/../../elsewhere/secret.txt",
-            "/etc/hostname",
+            "/etc/hosts",
         ]) {
             postman(src);
             for (const request of ["Form", "Body"]) {
