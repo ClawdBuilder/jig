@@ -1,7 +1,9 @@
 // The parameters of the `mongo` tool. One flat object, because several model providers reject a top-level union. ACTIONS says
 // which parameters each action takes; the schema's action list, the usage lines in errors and the checks in parseCall all come
 // from it, so they cannot drift apart.
+import { actionList } from "../../jig-core/src/kit/actions.ts";
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { Type } from "typebox";
 import { COLLECTION_NAME, DATABASE_NAME } from "./access.ts";
 import { checkExtended } from "./ejson.ts";
@@ -96,25 +98,21 @@ export function usage(action: ActionName): string {
     return `Usage: mongo ${action} {${[...required, ...optional.map((name) => `${name}?`)].join(", ")}}`;
 }
 
-function describeActions(): string {
-    return ACTION_NAMES.join(", ");
-}
-
 const json = (description: string) =>
     Type.Unsafe<Record<string, unknown>>({ type: "object", additionalProperties: true, description });
 
 export const parameters = Type.Object({
     action: stringEnum(ACTION_NAMES, {
-        description: `What to do: ${describeActions()}`,
+        description: `What to do: ${actionList(ACTION_NAMES)}`,
     }),
-    environment: Type.Optional(Type.String({ description: "Environment." })),
+    environment: Type.Optional(Type.String({ description: "Environment name, e.g. staging." })),
     cluster: Type.Optional(
         Type.String({
             description: "Connection name where an environment has several, e.g. orders.",
         }),
     ),
-    database: Type.Optional(Type.String({ description: "Database." })),
-    collection: Type.Optional(Type.String({ description: "Collection." })),
+    database: Type.Optional(Type.String({ description: "Database name; default: the connection's." })),
+    collection: Type.Optional(Type.String({ description: "Collection name; default: the action's." })),
     filter: Type.Optional(json('Extended JSON, e.g. {"status": "open", "_id": {"$oid": "..."}}')),
     projection: Type.Optional(json('Fields to return, e.g. {"status": 1}; allow lists narrow.')),
     sort: Type.Optional(json('Sort order: {"createdAt": -1}')),
@@ -199,8 +197,7 @@ const present = (value: unknown): boolean => value !== undefined && value !== nu
  */
 export function parseCall(input: Readonly<Record<string, unknown>>): Call {
     const action = input.action;
-    if (!isAction(action))
-        throw new InputError(`mongo: unknown action ${shown(action, 30)}; use one of ${ACTION_NAMES.join(", ")}`);
+    if (!isAction(action)) throw new InputError(unknownAction("mongo", action, ACTION_NAMES));
     const spec: ActionSpec = ACTIONS[action];
     // `cluster` goes with `environment` in every action; whether the environment takes it is for the configuration to say.
     const accepted = new Set<string>(["action", "cluster", ...spec.required, ...spec.optional]);

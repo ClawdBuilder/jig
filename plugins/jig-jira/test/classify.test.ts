@@ -224,7 +224,9 @@ describe("the README", () => {
                 field,
             );
         }
-        assert.deepEqual(validateJira({ ...valid, other: 1 }), ["jira.other: unknown field"]);
+        assert.deepEqual(validateJira({ ...valid, other: 1 }), [
+            "jira.other: unknown field. Valid keys: site, auth, projects, updateFields, fields, createDefaults, privateNames, environment, timeoutSeconds, searchTimeoutSeconds, me, othersComments, commentSearch",
+        ]);
     });
 
     test("its auth forms are the section's five modes, and the defaults it states are the code's", () => {

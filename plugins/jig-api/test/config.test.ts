@@ -135,7 +135,7 @@ describe("the collections", () => {
         ]);
         assert.deepEqual(errorsOf({ collections: { a: { yaml: "/work/x" } } }), [
             "api.collections.a: needs a source: one of postman, http, bruno, openapi",
-            "api.collections.a.yaml: unknown field",
+            "api.collections.a.yaml: unknown field. Valid keys: environment, signIn, transport",
         ]);
         assert.deepEqual(errorsOf({ collections: { a: { http: HTTP, postman: POSTMAN } } }), [
             "api.collections.a: use exactly one source (got http, postman)",
@@ -146,7 +146,9 @@ describe("the collections", () => {
     });
 
     test("an unknown field is an error at every level, and a misspelt one is not a silent default", () => {
-        assert.deepEqual(errorsOf(section({ adhoc: ["staging"] })), ["api.adhoc: unknown field"]);
+        assert.deepEqual(errorsOf(section({ adhoc: ["staging"] })), [
+            'api.adhoc: unknown field. Did you mean "adHoc"? Valid keys: collections, environments, secrets, reads, adHoc, timeoutSec, allowPlainLocal',
+        ]);
         assert.deepEqual(errorsOf({ collections: { a: { http: HTTP, folder: "x" } } }), [
             "api.collections.a.folder: unknown field",
         ]);
@@ -154,7 +156,7 @@ describe("the collections", () => {
             "api.collections.a.enviroments: unknown field",
         ]);
         assert.deepEqual(errorsOf(section({ environments: { Staging: { environment: "staging", signin: "x" } } })), [
-            "api.environments.Staging.signin: unknown field",
+            'api.environments.Staging.signin: unknown field. Did you mean "signIn"? Valid keys: environment, signIn, transport',
         ]);
     });
 

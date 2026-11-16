@@ -43,8 +43,8 @@ supply, not because its address is secret.
 
 A write that asks shows what it will do before the call runs. The tool keeps a
 digest (or fingerprint) of that preview and makes it again just before sending:
-if anything changed, it **refuses** with “changed since the preview; run it
-again to see the new preview” and sends nothing. A write is sent once. If its
+if anything changed, it **refuses** with “changed since the preview” and says
+nothing was changed; run it again to see the new preview. A write is sent once. If its
 reply is lost, the tool reads once to see whether it happened, says what it
 found, and never sends it again; if it cannot tell, it says the outcome is
 unknown and asks you to check. Each tool’s own “action | what the preview

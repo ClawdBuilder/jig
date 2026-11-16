@@ -82,11 +82,13 @@ test("the settings of the other type are reported with the ones that are missing
 
 test("a field nobody defined is still unknown, for either type", () => {
     assert.deepEqual(errorsOf(section(loki, { staging: { ...lokiStaging, selektor: "x" } })), [
-        "logs.environments.staging.selektor is not a known field",
+        'logs.environments.staging.selektor: unknown field. Did you mean "selector"? Valid keys: jigEnvironment, selector, filter',
     ]);
-    assert.deepEqual(errorsOf(section({ ...loki, timeout: 5 })), ["logs.backend.timeout is not a known field"]);
+    assert.deepEqual(errorsOf(section({ ...loki, timeout: 5 })), [
+        "logs.backend.timeout: unknown field. Valid keys: type, url, auth, transport, tenant",
+    ]);
     assert.deepEqual(errorsOf(section({ ...direct, timeout: 5 }, { staging: elasticStaging })), [
-        "logs.backend.timeout is not a known field",
+        "logs.backend.timeout: unknown field. Valid keys: type, url, auth, transport, consoleProxy",
     ]);
 });
 

@@ -3,6 +3,7 @@
 // classified and what the person approved is what is sent. Planning is where invalid input is found, and every such finding
 // is an InputError: jig-core blocks the call without asking.
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { previewChanged } from "../../jig-core/src/kit/actions.ts";
 import { jig } from "../../jig-core/src/client.ts";
 import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
 import type { CallClass, Preview } from "../../jig-core/src/contract.ts";
@@ -266,9 +267,7 @@ export function createTool(options: ApiOptions = {}): ApiTool {
     function guard(toolCallId: string, label: string, fingerprint: string): void {
         const approved = jig().approvedPreview(toolCallId);
         if (approved?.fingerprint !== undefined && approved.fingerprint !== fingerprint) {
-            throw new Error(
-                `${label}: changed since the preview; run it again to see the new preview. Nothing was sent.`,
-            );
+            throw new Error(previewChanged(label));
         }
     }
 

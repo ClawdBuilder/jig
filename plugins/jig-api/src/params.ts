@@ -1,7 +1,9 @@
 // The parameters of the `api` tool. One flat object, because several model providers reject a top-level union. ACTIONS says
 // which parameters each action takes; the schema's action list, the usage lines in errors and the checks in parseCall all
 // come from it, so they cannot drift apart.
+import { actionList } from "../../jig-core/src/kit/actions.ts";
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { Type } from "typebox";
 import { MAX_TIMEOUT_SEC } from "./config.ts";
 import { METHODS } from "./engine/plan.ts";
@@ -48,18 +50,13 @@ export function usage(action: ActionName): string {
     return `Usage: api ${action} {${[...required, ...optional.map((name) => `${name}?`)].join(", ")}}`;
 }
 
-/** The actions with the parameters each needs, for the schema: `list() show(request) ...`. */
-function describeActions(): string {
-    return ACTION_NAMES.join(", ");
-}
-
 export const parameters = Type.Object({
-    action: stringEnum(ACTION_NAMES, { description: `What to do: ${describeActions()}` }),
-    collection: Type.Optional(Type.String({ description: "Collection." })),
-    folder: Type.Optional(Type.String({ description: "Folder." })),
+    action: stringEnum(ACTION_NAMES, { description: `What to do: ${actionList(ACTION_NAMES)}` }),
+    collection: Type.Optional(Type.String({ description: "Saved collection name; default: all." })),
+    folder: Type.Optional(Type.String({ description: "Saved request folder; default: all." })),
     request: Type.Optional(Type.String({ description: "Request name from list." })),
     text: Type.Optional(Type.String({ description: "list: text in name, folder or address." })),
-    environment: Type.Optional(Type.String({ description: "Collection environment." })),
+    environment: Type.Optional(Type.String({ description: "Environment name; show filters by it." })),
     variables: Type.Optional(
         Type.Object(
             {},
@@ -149,7 +146,7 @@ const present = (value: unknown): boolean => value !== undefined && value !== nu
 export function parseCall(input: Readonly<Record<string, unknown>>): Call {
     const action = input.action;
     if (!isAction(action)) {
-        throw new InputError(`api: unknown action ${shown(action, 30)}; use one of ${ACTION_NAMES.join(", ")}`);
+        throw new InputError(unknownAction("api", action, ACTION_NAMES));
     }
     const spec: ActionSpec = ACTIONS[action];
     const accepted = new Set<string>(["action", ...spec.required, ...spec.optional]);

@@ -170,10 +170,7 @@ test("create: a branch that is not pushed at its tip is refused before any write
             },
         },
     );
-    assert.match(
-        result.error?.message ?? "",
-        /pr create changed since the preview; run it again to see the new preview/,
-    );
+    assert.match(result.error?.message ?? "", /pr create: changed since the preview\. Nothing was changed/);
     assert.equal(writes().length, 0);
     assert.match(
         (await h.call("pr", { action: "create", repo: p.r.name, title: "T", body: BODY, base: "feature/one" })).error
@@ -795,10 +792,7 @@ test("merge: a head that moves after the preview is refused, and nothing is merg
         { action: "merge", repo: p.r.name, number: 42, method: "merge" },
         { between: () => serveMr(p, { sha: OTHER }) },
     );
-    assert.match(
-        result.error?.message ?? "",
-        /pr merge changed since the preview; run it again to see the new preview/,
-    );
+    assert.match(result.error?.message ?? "", /pr merge: changed since the preview\. Nothing was changed/);
     assert.equal(writes().length, 0);
 });
 

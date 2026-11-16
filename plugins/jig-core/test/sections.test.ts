@@ -80,7 +80,14 @@ describe("sections in the file", () => {
     test("a top-level key nobody registered is an unknown field, and the defaults apply", () => {
         const file = write({ lens: { port: 3300 }, git: { timeout: 1 }, rules: [{ tool: "t", decision: "ask" }] });
         const loaded = loadConfigFile(file, new Map([["git", gitCheck]]));
-        assert.deepEqual(loaded.problems, [{ source: file, key: "lens", message: "is not a known field" }]);
+        assert.deepEqual(loaded.problems, [
+            {
+                source: file,
+                key: "lens",
+                message:
+                    "unknown field. Valid keys: ui, environments, rules, classify, protectedPaths, secrets, records, spill, approvals, startChecks, git",
+            },
+        ]);
         assert.deepEqual(loaded.config.rules, []);
         // The registered section is still handed to its plugin.
         assert.deepEqual(loaded.sections.get("git"), { timeout: 1 });
@@ -89,7 +96,10 @@ describe("sections in the file", () => {
     test("with no plugin registered, any section is unknown", () => {
         const loaded = loadConfigFile(write({ git: {} }));
         assert.equal(loaded.problems[0]?.key, "git");
-        assert.equal(loaded.problems[0]?.message, "is not a known field");
+        assert.equal(
+            loaded.problems[0]?.message,
+            'unknown field. Did you mean "ui"? Valid keys: ui, environments, rules, classify, protectedPaths, secrets, records, spill, approvals, startChecks',
+        );
     });
 
     test("a registered section that is not in the file is simply absent: no check, no problem", () => {
@@ -181,7 +191,9 @@ describe("through the API", () => {
         const { state, api, file } = setup({ lens: {} });
         loadPersonalConfig(state, file);
         assert.equal(api.config.section("lens"), undefined);
-        assert.deepEqual(state.policy().problems.map(describeProblem), [`${file}: lens: is not a known field`]);
+        assert.deepEqual(state.policy().problems.map(describeProblem), [
+            `${file}: lens: unknown field. Valid keys: ui, environments, rules, classify, protectedPaths, secrets, records, spill, approvals, startChecks, tools, transports, updates, profiles, profile`,
+        ]);
     });
 
     test("a section that is not in the file reads back as undefined, with no problem", () => {

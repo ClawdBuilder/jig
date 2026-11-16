@@ -14,6 +14,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { isObject } from "./kit/values.ts";
+import { unknownField } from "./kit/fields.ts";
 
 export const PROFILES_SECTION = "profiles";
 export const PROFILE_SECTION = "profile";
@@ -69,7 +70,7 @@ export function validateProfilesSection(raw: unknown): string[] {
             continue;
         }
         for (const key of Object.keys(entry))
-            if (key !== "plugin" && key !== "when") errors.push(`${at}.${key}: unknown field`);
+            if (key !== "plugin" && key !== "when") errors.push(unknownField(at, key, ["plugin", "when"]));
         if (typeof entry.plugin !== "string" || !PLUGIN.test(entry.plugin)) {
             errors.push(`${at}.plugin must be the name the company plugin registered under, such as "jig-acme"`);
         }
@@ -79,7 +80,8 @@ export function validateProfilesSection(raw: unknown): string[] {
             continue;
         }
         for (const key of Object.keys(entry.when)) {
-            if (key !== "folders" && key !== "remotes") errors.push(`${at}.when.${key}: unknown field`);
+            if (key !== "folders" && key !== "remotes")
+                errors.push(unknownField(`${at}.when`, key, ["folders", "remotes"]));
         }
         for (const key of ["folders", "remotes"] as const) {
             const list = entry.when[key];

@@ -1,6 +1,7 @@
 // The `agents` section of jig.json: limits, roles' models, counts and waits. jig-core checks the section with `validateAgents` when it
 // loads, so the rest of the plugin reads a section that is valid, or absent. An unknown field is an error, as in jig-core.
 import os from "node:os";
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import path from "node:path";
 import { ACTION_NAME_PATTERN, TOOL_NAME_PATTERN } from "../../jig-core/src/kit/role-policy.ts";
 import type { ActionMap } from "../../jig-core/src/kit/role-policy.ts";
@@ -221,7 +222,7 @@ export function validateAgents(raw: unknown): string[] {
     if (!isObject(raw)) return ["agents: must be an object"];
     const errors = Object.keys(raw)
         .filter((name) => !FIELDS.has(name))
-        .map((name) => `agents.${name}: unknown field`);
+        .map((name) => unknownField("agents", name, [...FIELDS]));
 
     if (raw.roles !== undefined) {
         if (!isObject(raw.roles)) {
@@ -240,7 +241,11 @@ export function validateAgents(raw: unknown): string[] {
                 for (const field of Object.keys(settings)) {
                     if (!ROLE_FIELDS.has(field)) {
                         const reason = Object.hasOwn(ROLE_FILE_ONLY, field) ? ROLE_FILE_ONLY[field] : undefined;
-                        errors.push(`${at}.${field}: ${reason ?? "unknown field"}`);
+                        errors.push(
+                            reason === undefined
+                                ? unknownField(at, field, [...ROLE_FIELDS])
+                                : `${at}.${field}: ${reason}`,
+                        );
                     }
                 }
                 checkRoleSelection(errors, at, settings);
@@ -259,7 +264,7 @@ export function validateAgents(raw: unknown): string[] {
             errors.push("agents.limits: must be an object");
         } else {
             for (const field of Object.keys(raw.limits)) {
-                if (!LIMIT_FIELDS.has(field)) errors.push(`agents.limits.${field}: unknown field`);
+                if (!LIMIT_FIELDS.has(field)) errors.push(unknownField("agents.limits", field, [...LIMIT_FIELDS]));
             }
             for (const name of LIMIT_FIELDS) checkLimit(errors, "agents.limits", name, raw.limits[name]);
         }

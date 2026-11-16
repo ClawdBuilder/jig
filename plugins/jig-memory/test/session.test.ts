@@ -25,7 +25,9 @@ test("the factory registers the memory section with its check, even when jig-cor
     const jig = useJig(t);
     const check = jig.checks.get("memory");
     assert.ok(check, "registered once jig-core is published");
-    assert.deepEqual(check({ ticketPatern: PATTERN }), ["memory.ticketPatern: unknown field"]);
+    assert.deepEqual(check({ ticketPatern: PATTERN }), [
+        'memory.ticketPatern: unknown field. Did you mean "ticketPattern"? Valid keys: ticketPattern, folder, recall',
+    ]);
 });
 
 test("a message that names a ticket activates it: folder, jig-core, a recorded entry, and the notes as a message", (t) => {

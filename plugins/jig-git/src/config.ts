@@ -5,6 +5,7 @@
 // watch; they are `ops.watch` and `ops.artifacts` now, and the error for them says so.
 import { jig } from "../../jig-core/src/client.ts";
 import { isObject } from "../../jig-core/src/kit/values.ts";
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import { checkBranch } from "./names.ts";
 import { validateAccounts } from "../../jig-core/src/kit/accounts.ts";
 import type { AccountMap } from "../../jig-core/src/kit/accounts.ts";
@@ -97,7 +98,7 @@ export function validateGitSection(raw: unknown): string[] {
     const errors: string[] = [];
     for (const key of Object.keys(raw)) {
         if (Object.hasOwn(MOVED, key)) errors.push(`git.${key} moved to ${MOVED[key]}, which jig-ops reads`);
-        else if (!TOP.has(key)) errors.push(`git.${key} is not a known field`);
+        else if (!TOP.has(key)) errors.push(unknownField("git", key, [...TOP]));
     }
     if (raw.base !== undefined) {
         try {

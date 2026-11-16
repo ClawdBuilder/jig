@@ -651,7 +651,7 @@ describe("starting and ending a session", () => {
         const harness = await begin({ config: { rule: [], records: { retentionDays: 0 } } });
         const [note] = harness.notifications();
         assert.match(note ?? "", /jig-core: 2 configuration problems/);
-        assert.match(note ?? "", /jig\.json: rule: is not a known field/);
+        assert.match(note ?? "", /jig\.json: rule: unknown field/);
         assert.match(note ?? "", /jig\.json: records\.retentionDays:/);
         // The other notice at session start says whether bash is sandboxed, and is tested with the sandbox.
         assert.equal(harness.notifications().filter((message) => !message.startsWith("bash: ")).length, 1);

@@ -43,7 +43,9 @@ test("every documented field is accepted", () => {
 });
 
 test("a field nobody defined is an error that names it, at any depth", () => {
-    assert.deepEqual(validateGitSection({ baze: "main" }), ["git.baze is not a known field"]);
+    assert.deepEqual(validateGitSection({ baze: "main" }), [
+        'git.baze: unknown field. Did you mean "base"? Valid keys: base, protected, commitMessage, branchName, prTitle, prTemplate, cloneHost, watchComments, watchBots, forges, accounts',
+    ]);
     assert.deepEqual(validateGitSection("main"), ["git must be an object"]);
     assert.deepEqual(validateGitSection([]), ["git must be an object"]);
 });

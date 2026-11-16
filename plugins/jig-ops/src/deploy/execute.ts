@@ -4,6 +4,7 @@
 // took effect (it ran too long and was stopped, or the call was cancelled while it ran), it is not started again: the
 // rollout is read once, so the model and the user can see what the cluster shows, and nothing more is done.
 import { jig } from "../../../jig-core/src/client.ts";
+import { previewChanged } from "../../../jig-core/src/kit/actions.ts";
 import type { RunResult } from "../../../jig-core/src/contract.ts";
 import { CHANGE, startKubectl } from "../runtime/kubernetes/kubectl.ts";
 import type { Kube } from "../runtime/kubernetes/kubectl.ts";
@@ -68,8 +69,10 @@ export function checkUnchanged(toolCallId: string, plan: Plan): void {
     const approved = jig().approvedPreview(toolCallId);
     if (approved?.fingerprint === undefined || approved.fingerprint === plan.fingerprint) return;
     throw new Error(
-        `deploy ${plan.action} of ${plan.env.service} in ${plan.env.name} changed since the preview ` +
-            `(it is running ${plan.from} now); run it again to see the new preview. Nothing was run`,
+        previewChanged(
+            `deploy ${plan.action} of ${plan.env.service} in ${plan.env.name}`,
+            `it is running ${plan.from} now`,
+        ),
     );
 }
 

@@ -8,6 +8,7 @@
 // A value that is a credential, such as a password, is only ever a reference to a secret (`pass:logs/reader`). An error
 // about it never repeats the value: a mistake there may well be the secret itself, pasted by hand.
 import { jig } from "../../jig-core/src/client.ts";
+import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import { backends } from "./backends/index.ts";
 import type { LogBackend } from "./backends/index.ts";
 import { LONGEST_WINDOW, MAX_RANGE_MS, windowSpan } from "./time.ts";
@@ -92,7 +93,7 @@ const MAX_NAME_CHARS = 100;
 
 function unknownFields(raw: Record<string, unknown>, known: readonly string[], key: string, errors: string[]): void {
     for (const field of Object.keys(raw)) {
-        if (!known.includes(field)) errors.push(`${key}.${printable(field)} is not a known field`);
+        if (!known.includes(field)) errors.push(unknownField(key, field, known));
     }
 }
 
@@ -113,7 +114,7 @@ function checkFields(
         const owner = Object.values(backends).find((other) => other.config[level].includes(field));
         errors.push(
             owner === undefined
-                ? `${key}.${printable(field)} is not a known field`
+                ? unknownField(key, field, [...shared, ...backend.config[level]])
                 : `${key}.${printable(field)} is only used when logs.backend.type is "${owner.type}"`,
         );
     }

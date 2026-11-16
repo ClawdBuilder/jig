@@ -115,7 +115,7 @@ test("a wrong call is refused with the usage line before anything runs", async (
     );
     assert.match(
         (await h.call("git", { action: "drop" })).error?.message ?? "",
-        /^git: unknown action "drop"; use one of status, diff, log, show, blame, branches, fetch, clone, branch, worktree, commit, stash, sync, merge, rebase, cherry_pick, restore, push$/,
+        /^git: unknown action "drop"\. Usage: git <action>/,
     );
     assert.equal(h.jig.started_processes.length, before, "no program was started");
 });

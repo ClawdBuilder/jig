@@ -12,7 +12,9 @@ test("a section with no fields, or with its fields set correctly, is valid", () 
 });
 
 test("a misspelt field is an error that names it, not a silent default", () => {
-    assert.deepEqual(validateMemory({ ticketPatern: PATTERN }), ["memory.ticketPatern: unknown field"]);
+    assert.deepEqual(validateMemory({ ticketPatern: PATTERN }), [
+        'memory.ticketPatern: unknown field. Did you mean "ticketPattern"? Valid keys: ticketPattern, folder, recall',
+    ]);
 });
 
 test("the section must be an object", () => {

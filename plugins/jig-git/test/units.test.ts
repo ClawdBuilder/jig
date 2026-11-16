@@ -148,7 +148,7 @@ test("the parameters of a call are checked against the table, with the usage lin
     );
     assert.throws(
         () => checkParams("git", TABLE, { action: "drop" }),
-        /^Error: git: unknown action "drop"; use one of commit, status$/,
+        /^Error: git: unknown action "drop"\. Usage: git <action>/,
     );
     assert.throws(
         () => checkParams("git", TABLE, { action: "toString" }),

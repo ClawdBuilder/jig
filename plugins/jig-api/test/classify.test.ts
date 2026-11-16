@@ -297,9 +297,9 @@ describe("invalid input", () => {
         );
         rejected(
             { action: "fly" },
-            /^api: unknown action "fly"; use one of list, show, run, run_folder, call, postman_environments$/,
+            /^api: unknown action "fly"\. Usage: api <action> \(list, show, run, run_folder, call, postman_environments\)$/,
         );
-        rejected({}, /^api: unknown action undefined; use one of/);
+        rejected({}, /^api: unknown action "undefined"\. Usage:/);
         rejected({ action: "list", collection: 5 }, /^api list: collection must be text \(got 5\)/);
         rejected(
             { action: "run", request: "Get order", environment: "Staging", variables: [1] },

@@ -7,6 +7,7 @@ import { Type } from "typebox";
 import { JIG_EVENTS } from "../../jig-core/src/contract.ts";
 import type { CallClass, Facts, Preview, StageDoneEvent, ToolDeclaration } from "../../jig-core/src/contract.ts";
 import { InputError } from "../../jig-core/src/kit/values.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { canonicalAction } from "../../jig-core/src/kit/action-names.ts";
 import { jig } from "../../jig-core/src/client.ts";
 import * as actions from "./actions.ts";
@@ -119,9 +120,7 @@ export function checkInput(input: Readonly<Record<string, unknown>>): ActionName
     const asked = input.action;
     const action = typeof asked === "string" ? canonicalAction("workflow", asked) : "";
     if (!Object.hasOwn(ACTIONS, action)) {
-        throw new InputError(
-            `workflow: unknown action ${JSON.stringify(String(asked).slice(0, 40))}; use one of ${NAMES.join(", ")}`,
-        );
+        throw new InputError(unknownAction("workflow", asked, NAMES));
     }
     const spec = ACTIONS[action as ActionName] as { required?: readonly string[]; optional: readonly string[] };
     const accepted = new Set<string>(["action", ...(spec.required ?? []), ...spec.optional]);

@@ -2,6 +2,7 @@
 // the forge, so they ask. A tag is never deleted or moved from here, and a pushed tag is never forced. Tags are git; the releases
 // go to the forge of the repository, through gh or glab (see forge.ts).
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { Type } from "typebox";
 import type { CallClass } from "../../jig-core/src/contract.ts";
 import { forgeOf } from "./forge.ts";
@@ -449,7 +450,7 @@ async function planRelease(params: Readonly<Record<string, unknown>>, call: Call
         case "release_create":
             return planReleaseCreate(p, call);
         default:
-            throw new Error(`release: unknown action ${String(params.action)}`);
+            throw new Error(unknownAction("release", params.action, Object.keys(RELEASE_ACTIONS)));
     }
 }
 

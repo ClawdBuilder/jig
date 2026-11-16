@@ -12,6 +12,7 @@ import { jig } from "../../jig-core/src/client.ts";
 import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts";
 import { stringEnum } from "../../jig-core/src/kit/schema.ts";
 import { InputError } from "../../jig-core/src/kit/values.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { addCheck, CHECK_TEXT_LIMIT, checkLines, closeCheck, openChecks, readChecks } from "./checks.ts";
 import { isSafeKey } from "./store.ts";
 import { labelProblem, PASTED_LIMIT, pastedProblem, savePasted } from "./evidence.ts";
@@ -79,9 +80,7 @@ const DESCRIPTION =
 export function checkInput(input: Readonly<Record<string, unknown>>): ActionName {
     const action = input.action;
     if (typeof action !== "string" || !Object.hasOwn(ACTIONS, action)) {
-        throw new InputError(
-            `ticket: unknown action ${JSON.stringify(String(action).slice(0, 40))}; use one of ${NAMES.join(", ")}`,
-        );
+        throw new InputError(unknownAction("ticket", action, NAMES));
     }
     const name = action as ActionName;
     const required: readonly string[] = ACTIONS[name].required;

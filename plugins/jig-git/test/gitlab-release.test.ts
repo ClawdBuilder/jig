@@ -189,10 +189,7 @@ test("release_create: a release that exists is refused; so is a change after the
             },
         },
     );
-    assert.match(
-        moved.error?.message ?? "",
-        /release release_create changed since the preview; run it again to see the new preview/,
-    );
+    assert.match(moved.error?.message ?? "", /release release_create: changed since the preview\. Nothing was changed/);
     assert.equal(posts().length, 0);
     h.glab.on("api", { code: 1, stderr: "glab: 401 Unauthorized (HTTP 401)\n" }, [`=${p.base}/releases/v4`]);
     assert.match(

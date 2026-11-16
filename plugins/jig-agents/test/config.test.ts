@@ -41,11 +41,15 @@ describe("validateAgents", () => {
     });
 
     test("an unknown field is an error that names it, at every level", () => {
-        assert.deepEqual(validateAgents({ colour: 1 }), ["agents.colour: unknown field"]);
-        assert.deepEqual(validateAgents({ limits: { maxTokens: 5 } }), ["agents.limits.maxTokens: unknown field"]);
-        assert.deepEqual(validateAgents({ roles: { scout: { extensions: false } } }), [
-            "agents.roles.scout.extensions: unknown field",
-        ]);
+        assert.match(validateAgents({ colour: 1 })[0] ?? "", /^agents\.colour: unknown field\. Valid keys:/);
+        assert.match(
+            validateAgents({ limits: { maxTokens: 5 } })[0] ?? "",
+            /^agents\.limits\.maxTokens: unknown field\. Valid keys:/,
+        );
+        assert.match(
+            validateAgents({ roles: { scout: { extensions: false } } })[0] ?? "",
+            /^agents\.roles\.scout\.extensions: unknown field\. Valid keys:/,
+        );
     });
 
     test("every number has its range, and there is no 'no limit'", () => {
@@ -161,9 +165,10 @@ describe("validateAgents", () => {
             assert.doesNotMatch(errors[0] ?? "", /unknown field/);
         }
         // Anything else is still an unknown field.
-        assert.deepEqual(validateAgents({ roles: { scout: { memory: "project" } } }), [
-            "agents.roles.scout.memory: unknown field",
-        ]);
+        assert.match(
+            validateAgents({ roles: { scout: { memory: "project" } } })[0] ?? "",
+            /^agents\.roles\.scout\.memory: unknown field\. Valid keys:/,
+        );
     });
 
     test("a branch pattern must hold {name} and be a plausible branch name", () => {

@@ -220,7 +220,7 @@ describe("the API", () => {
         assert.deepEqual(readUpdates({ check: false }), { check: false });
         assert.deepEqual(validateUpdatesSection({ check: false }), []);
         assert.match(validateUpdatesSection({ check: "no" }).join(" "), /updates\.check must be true or false/);
-        assert.match(validateUpdatesSection({ nope: true }).join(" "), /updates\.nope is not a known field/);
+        assert.match(validateUpdatesSection({ nope: true }).join(" "), /updates\.nope: unknown field/);
     });
 
     test("jig-core checks two more sections of its own, which no plugin can register or give defaults for: profiles and profile", async () => {
@@ -317,7 +317,9 @@ describe("what plugins import", () => {
             "abort.ts",
             "accounts.ts",
             "action-names.ts",
+            "actions.ts",
             "browser.ts",
+            "fields.ts",
             "files.ts",
             "git-settings.ts",
             "http-error.ts",
@@ -342,7 +344,18 @@ describe("what plugins import", () => {
             "abort.ts": ["untilAborted"],
             "accounts.ts": ["AccountMap", "accountFor", "accountPattern", "accountRemote", "validateAccounts"],
             "action-names.ts": ["RENAMED_ACTIONS", "canonicalAction", "renamedAction", "renamedInRules"],
+            "actions.ts": [
+                "ActionSpec",
+                "ActionTable",
+                "actionList",
+                "checkParams",
+                "describeActions",
+                "previewChanged",
+                "unknownAction",
+                "usageLine",
+            ],
             "browser.ts": ["browserCommand"],
+            "fields.ts": ["closestField", "unknownField"],
             "files.ts": ["createFileDurably", "replaceFileDurably", "syncFolder"],
             "git-settings.ts": ["isDangerousGitSetting"],
             "http-error.ts": ["HttpError", "TransportRefusal", "isHttpError", "isTransportRefusal"],

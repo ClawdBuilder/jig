@@ -50,7 +50,7 @@ Fields whose names look like credentials (password, secret, token, apiKey) are n
 4. Use `which: "one"` unless the task is a real change to many. A filter that is empty is refused. More than 1000 documents is refused unless you raise `limit` on purpose.
 5. After the write, read the document again and check the change.
 
-If the tool says "changed since the preview", the count moved while the user read it. Nothing was sent. Look again and make the write again.
+If the tool says "changed since the preview", the count moved while the user read it. Nothing was changed. Look again and make the write again.
 
 If a write ends with "no answer" or "the outcome is unknown", the tool did not send it again, and neither must you. Read the data first. The message tells you what it read.
 

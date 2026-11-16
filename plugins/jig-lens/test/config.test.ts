@@ -11,7 +11,7 @@ test("a section with no fields, or with its port set correctly, is valid", () =>
 });
 
 test("a misspelt field is an error that names it, not a silent default", () => {
-    assert.deepEqual(validateLens({ prot: 3300 }), ["lens.prot: unknown field"]);
+    assert.deepEqual(validateLens({ prot: 3300 }), ['lens.prot: unknown field. Did you mean "port"? Valid keys: port']);
 });
 
 test("the section must be an object", () => {

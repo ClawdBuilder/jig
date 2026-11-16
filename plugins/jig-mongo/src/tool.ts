@@ -3,6 +3,7 @@
 // about and what the person approved is what runs. Planning is where invalid input is found, and every such finding is an
 // InputError: jig-core blocks the call without asking.
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { previewChanged } from "../../jig-core/src/kit/actions.ts";
 import { jig } from "../../jig-core/src/client.ts";
 import type { CallClass, Facts, Preview } from "../../jig-core/src/contract.ts";
 import type { Access } from "./access.ts";
@@ -233,10 +234,8 @@ export function createTool(options: MongoOptions = {}): MongoTool {
         const approved = jig().approvedPreview(toolCallId);
         if (approved?.fingerprint === undefined || approved.fingerprint === prepared.fingerprint) return;
         const before = counted.get(approved.fingerprint);
-        const change = before === undefined ? "" : ` (it was ${before}; now ${prepared.counted})`;
-        throw new ChangedError(
-            `${label}: changed since the preview${change}. Nothing was changed; run it again to see the new preview.`,
-        );
+        const detail = before === undefined ? undefined : `it was ${before}; now ${prepared.counted}`;
+        throw new ChangedError(previewChanged(label, detail));
     }
 
     async function runWrite(toolCallId: string, c: Checked, run: WriteRun, signal: AbortSignal) {

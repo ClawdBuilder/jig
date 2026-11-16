@@ -145,12 +145,9 @@ describe("a call is checked against its action's table", () => {
     });
 
     test("an unknown action lists the actions", () => {
-        assert.match(
-            problem({ action: "relink" }),
-            /^jira: action must be one of get, search, comments, .* \(got "relink"\)$/,
-        );
-        assert.match(problem({}), /\(got undefined\)$/);
-        assert.match(problem({ action: "__proto__" }), /got "__proto__"/);
+        assert.match(problem({ action: "relink" }), /^jira: unknown action "relink"\. Usage: jira <action>/);
+        assert.match(problem({}), /unknown action "undefined"\. Usage:/);
+        assert.match(problem({ action: "__proto__" }), /unknown action "__proto__"/);
         assert.equal(isAction("constructor"), false);
         assert.equal(isAction("get"), true);
     });

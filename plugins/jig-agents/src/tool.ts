@@ -5,6 +5,7 @@ import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { CallClass, ToolDeclaration } from "../../jig-core/src/contract.ts";
 import { InputError } from "../../jig-core/src/kit/values.ts";
+import { unknownAction } from "../../jig-core/src/kit/actions.ts";
 import { stripControl } from "./clean.ts";
 import { StartError } from "./launch.ts";
 import type { Role } from "./roles.ts";
@@ -89,9 +90,7 @@ export function describeTool(roles: Iterable<Role>): string {
 export function checkInput(input: Readonly<Record<string, unknown>>): ActionName {
     const action = input.action;
     if (typeof action !== "string" || !Object.hasOwn(ACTIONS, action)) {
-        throw new InputError(
-            `subagent: unknown action ${JSON.stringify(String(action).slice(0, 40))}; use one of ${NAMES.join(", ")}`,
-        );
+        throw new InputError(unknownAction("subagent", action, NAMES));
     }
     const spec = ACTIONS[action as ActionName] as { required?: readonly string[]; optional: readonly string[] };
     const accepted = new Set<string>(["action", ...(spec.required ?? []), ...spec.optional]);

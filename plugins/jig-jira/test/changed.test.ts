@@ -15,7 +15,7 @@ beforeEach(() => h.reset());
 
 const issue = (key: string): FakeIssue => h.jira.issues.get(key) as FakeIssue;
 const writes = () => h.jira.requests.filter((request) => request.method !== "GET");
-const CHANGED = "changed since the preview; run it again to see the new preview. Nothing was sent.";
+const CHANGED = "changed since the preview. Nothing was changed; run it again to see the new preview.";
 
 describe("a write whose plan differs from the approved preview is refused", () => {
     test("transition: the issue moved while the person read", async () => {

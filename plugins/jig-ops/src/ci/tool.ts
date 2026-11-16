@@ -9,6 +9,7 @@
 // system of the service does not have, a parameter it does not take, and a service nobody configured are refused in
 // classify with a TypeError, so jig-core blocks the call without asking.
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { previewChanged } from "../../../jig-core/src/kit/actions.ts";
 import { jig } from "../../../jig-core/src/client.ts";
 import type { CallClass, Preview } from "../../../jig-core/src/contract.ts";
 import { catalogOf, notSetUp } from "../catalog.ts";
@@ -46,10 +47,7 @@ function checkUnchanged(toolCallId: string, call: Call, plan: Plan): void {
     const approved = jig().approvedPreview(toolCallId);
     if (approved?.fingerprint === undefined || plan.preview.fingerprint === undefined) return;
     if (approved.fingerprint === plan.preview.fingerprint) return;
-    throw new Error(
-        `ci ${call.action} of ${call.service.name} changed since the preview; ` +
-            "run it again to see the new preview. Nothing was sent",
-    );
+    throw new Error(previewChanged(`ci ${call.action} of ${call.service.name}`));
 }
 
 export function createCiTool(options: CiWatchOptions & { announce: Announce }): CiTool {
