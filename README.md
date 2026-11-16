@@ -94,7 +94,7 @@ Work with a page behind it, not a promise:
 - [Setup and doctor](docs/setup-and-doctor.md): `jig setup`, `jig doctor` and what each finding means.
 
 The longer [reading paths](docs/reading.md) page keeps the order through Approvals, Secrets, Writing a company plugin,
-Decisions, Compatibility and the code maps. [Contributing](CONTRIBUTING.md) covers the checks and where code goes;
+Decisions, Compatibility and the code maps; the [docs index](docs/README.md) has every page, grouped. [Contributing](CONTRIBUTING.md) covers the checks and where code goes;
 [Security](SECURITY.md) says how to report a problem; [Releases](docs/releases.md) says what a version means. Every
 push runs the type check, Biome, the docs link check, the test suites and the integration services that have an address.
 
