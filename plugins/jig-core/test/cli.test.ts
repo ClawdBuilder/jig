@@ -11,6 +11,7 @@ import { piHostDir } from "../../../test/support/pi-host-dir.mjs";
 const ROOT = path.resolve(import.meta.dirname, "../../..");
 const BIN = path.join(ROOT, "bin/jig.mjs");
 const FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company");
+const NEEDS_FIXTURE = path.join(ROOT, "plugins/jig-core/test/fixtures/cli-company-needs");
 
 let home: string;
 let agent: string;
@@ -560,6 +561,29 @@ describe("a package installed from git", () => {
         const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
         assert.equal(written.profile, "git-co");
         assert.equal(written.gitco.login, "gdev");
+    });
+
+    test("an optional field is offered as skippable, and Enter leaves it unset", {
+        timeout: 60_000,
+    }, async () => {
+        settingsWith(NEEDS_FIXTURE);
+        const result = await runSetup([
+            { when: "Which company setup do you use?", answer: "1" },
+            { when: "Use Needs Co's setup in:", answer: "1" },
+            { when: "Save this company choice?", answer: "y" },
+            { when: "needs 3 things", answer: "1" },
+            { when: "Your Fixture login", answer: "jdoe" },
+            { when: "Your Fixture badge", answer: "b-1" },
+            { when: "optional: press Enter", answer: "" },
+            { when: "Review these changes", answer: "1" },
+            { when: "Save these changes?", answer: "y" },
+        ]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.equal(written.fixture.login, "jdoe");
+        assert.equal(written.fixture.badge, "b-1");
+        assert.equal(written.fixture.note, undefined, "the optional field was left unset");
+        assert.match(result.stdout, /Your Fixture note left unset \(optional\)\./);
     });
 });
 

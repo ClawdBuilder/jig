@@ -132,6 +132,31 @@ describe("a company's onboarding list", () => {
         assert.deepEqual(proxy?.choices, ["http://127.0.0.1:3128", "http://127.0.0.1:3129"]);
     });
 
+    test("an optional item is marked skippable, and a required one is not", () => {
+        const built = buildSetupPlan(
+            state({
+                items: [
+                    { kind: "text", section: "acme", path: "required.field", label: "Your required field" },
+                    {
+                        kind: "text",
+                        section: "acme",
+                        path: "optional.field",
+                        label: "Your optional field",
+                        optional: true,
+                    },
+                ],
+            }),
+        );
+        assert.ok("plan" in built, "the plan is built");
+        const fields = built.plan.sections.flatMap((section) => section.fields);
+        const required = fields.find((field) => field.path === "required.field");
+        assert.equal(required?.optional, undefined);
+        assert.equal(required?.question, "Your required field");
+        const optional = fields.find((field) => field.path === "optional.field");
+        assert.equal(optional?.optional, true);
+        assert.equal(optional?.question, "Your optional field (optional: press Enter to leave it unset)");
+    });
+
     test("the company's preferred store is first, and its suggested reference and hint are carried", () => {
         const built = buildSetupPlan(state(list));
         assert.ok("plan" in built);

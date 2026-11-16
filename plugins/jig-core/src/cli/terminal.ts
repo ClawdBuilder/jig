@@ -17,8 +17,13 @@ export function terminalUi(): TerminalScreen {
     const rl: Interface = createInterface({ input: process.stdin, output: process.stdout });
     const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
         const hint = placeholder === undefined ? "" : ` (${placeholder})`;
-        const answer = (await rl.question(`${title}${hint}: `)).trim();
-        return answer === "" && placeholder !== undefined ? placeholder : answer === "" ? undefined : answer;
+        try {
+            const answer = (await rl.question(`${title}${hint}: `)).trim();
+            return answer === "" && placeholder !== undefined ? placeholder : answer;
+        } catch {
+            // Ctrl+C, or the input closed: the only way an answer is missing.
+            return undefined;
+        }
     };
     return {
         async select(title, options) {
