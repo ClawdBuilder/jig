@@ -18,9 +18,20 @@ export interface Filter {
     text: string | undefined;
 }
 
-/** Whether the request reads: by its method, or because the configuration says so. */
-export function readsOf(settings: ApiSettings, request: SavedRequest): boolean {
-    return READ_METHODS.has(request.method) || settings.reads.has(request.name);
+/**
+ * Whether a request reads in the environment it runs in: by its method, or by a name in `api.reads`, which counts outside
+ * production only. `kind` is jig-core's kind for that environment; left out, no environment is named, and a name in
+ * `api.reads` reads only outside production, so the word says so.
+ */
+export function effectOf(
+    settings: ApiSettings,
+    request: SavedRequest,
+    kind?: string,
+): "reads" | "reads outside production" | "writes" {
+    if (READ_METHODS.has(request.method)) return "reads";
+    if (!settings.reads.has(request.name)) return "writes";
+    if (kind === undefined) return "reads outside production";
+    return kind === "production" ? "writes" : "reads";
 }
 
 /** What stops a request from running, in a few words, or undefined. */
@@ -91,7 +102,7 @@ export function listText(catalog: Catalog, settings: ApiSettings, filter: Filter
             const needs = neededVariables(collection, request, secretNames);
             const optional = optionalVariables(collection, request, secretNames);
             const flags = [
-                readsOf(settings, request) ? "reads" : "writes",
+                effectOf(settings, request),
                 ...(needs.length > 0 ? [`needs ${needs.join(", ")}`] : []),
                 ...(optional.length > 0 ? [`optional ${optional.join(", ")}`] : []),
                 ...(refusalOf(request) === undefined ? [] : [refusalOf(request) as string]),
@@ -166,6 +177,8 @@ export function showText(
     settings: ApiSettings,
     request: SavedRequest,
     label: string | undefined,
+    /** jig-core's kind for `label`; left out when no environment is named. */
+    kind?: string,
 ): string {
     const collection = catalog.collection(request.collection);
     const secretNames = secretNamesOf(collection, settings.secrets);
@@ -173,7 +186,7 @@ export function showText(
     const lines = [
         `${request.name} (${request.collection}, ${pathOf(request)})`,
         `${request.method} ${request.url}`,
-        `Effect: ${readsOf(settings, request) ? "reads" : "writes"}`,
+        `Effect: ${effectOf(settings, request, kind)}`,
     ];
     const refusal = refusalOf(request);
     if (refusal !== undefined) lines.push(`Status: ${refusal}`);

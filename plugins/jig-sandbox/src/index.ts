@@ -136,8 +136,10 @@ export function sandbox(options: SandboxOptions = {}): ExtensionFactory {
         const configured: () => SandboxSettings = options.settings ?? (() => settingsFrom(sandboxSection()));
         const settings: () => SandboxSettings = () => (readOnly ? { ...configured(), readOnly } : configured());
         const exec: BashOperations["exec"] = options.exec ?? createLocalBashOperations().exec;
+        // The doctor starts the broker for real: it asks for it here rather than knowing where the plugin keeps it.
+        const brokerScript = options.brokerScript ?? fileURLToPath(new URL("../broker/broker.mjs", import.meta.url));
         const core = new Sandbox({
-            brokerScript: options.brokerScript ?? fileURLToPath(new URL("../broker/broker.mjs", import.meta.url)),
+            brokerScript,
             env,
             files,
             platform,
@@ -201,6 +203,7 @@ export function sandbox(options: SandboxOptions = {}): ExtensionFactory {
             canWrite: (place) => core.canWrite(place),
             allowedFolders: () => allowed.folders(),
             whenReady: () => core.whenReady(),
+            brokerScript,
             run: (command, runOptions) => runForPlugin(command, runOptions),
         };
         // Where the session's commands run, for the dialog that asks about running one outside.

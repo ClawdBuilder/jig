@@ -54,7 +54,8 @@ directly. Otherwise:
 - **The environment.** Pi inside tmux sees this terminal's environment, as if started here. Every exported variable is passed on except
   those that describe the terminal or the shell (`TERM`, `TMUX`, `TERM_PROGRAM`, `SHLVL`, `PWD` and a few more; the list is in `bin/pi`).
 - **What an earlier terminal left behind.** A variable the tmux server holds from the terminal that started it, and this one does not
-  set, is removed from the session. Values travel through tmux's socket, never on a command line.
+  set, is removed from the session. Values travel through tmux's socket, never on a command line, except the session's own
+  name, which `tmux ls` shows anyway.
 
 Two things a launcher is often asked to do are settings of `jig.json` instead, and `jig-core` runs them inside Pi however it
 was started:

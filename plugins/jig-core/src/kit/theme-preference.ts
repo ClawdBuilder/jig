@@ -14,7 +14,7 @@ interface Saved {
 
 export const themePreferenceFile = (agentDir: string): string => path.join(agentDir, "theme.json");
 
-/** Pi's rule exactly: empty is unset, no trimming, a leading `~` expands, and a relative path stays relative. */
+/** Pi's rule for the agent folder: empty is unset, no trimming, a leading `~` expands, and a relative path stays relative. */
 export function agentDirFor(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string {
     const configured = env.PI_CODING_AGENT_DIR;
     if (configured) {

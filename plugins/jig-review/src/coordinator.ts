@@ -442,7 +442,7 @@ export class ReviewCoordinator {
         try {
             const resolvedSelection = resolveSelectionFiles(selection, this.tracker.touched, this.tracker.since);
             await this.workspace.requireGitRepo(resolvedSelection);
-            await this.reviewStore.cleanupInactiveReviews(this.currentReview?.id);
+            await this.cleanupStaleReviews(ctx);
             const review = await this.getReviewToOpen(resolvedSelection);
             const url = await this.ensureServer(review);
 

@@ -6,8 +6,8 @@ import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** `$JIG_STATE_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/jig`. A relative `XDG_STATE_HOME` is ignored, as the XDG
- *  specification says. This is jig-core's rule, repeated: a plugin never imports jig-core's modules (see its
- *  contract.ts), and the rule is short. */
+ *  specification says. This is jig-core's rule, copied: a plugin reaches jig-core through its contract, client and kit
+ *  (see its contract.ts), the state folder is not among them, and the rule is short. */
 export function stateDir(env: NodeJS.ProcessEnv = process.env): string {
     const chosen = env.JIG_STATE_DIR;
     if (chosen !== undefined && chosen !== "") return resolve(chosen);
@@ -17,8 +17,8 @@ export function stateDir(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 /**
- * Pi's agent folder: `$PI_CODING_AGENT_DIR` with a leading `~` expanded, else `~/.pi/agent`. This is Pi's rule, repeated, so
- * that the plugin needs nothing from Pi but its types to know where the session files are.
+ * Pi's agent folder: `$PI_CODING_AGENT_DIR` with a leading `~` expanded, else `~/.pi/agent`, through the kit's
+ * `agentDirFor`, so this plugin and the review page read the same folder.
  */
 export function agentDir(env: NodeJS.ProcessEnv = process.env): string {
     return agentDirFor(env);

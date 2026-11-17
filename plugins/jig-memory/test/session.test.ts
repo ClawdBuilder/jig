@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import factory from "../src/index.ts";
@@ -177,6 +177,24 @@ test("the ticket is restored on session_start from the branch, and its notes are
     assert.equal(resumed.sent.length, 0);
 });
 
+test("a session_start whose notes cannot be read warns once, and the session starts", (t) => {
+    const folder = tempFolder(t);
+    useJig(t, { memory: { ticketPattern: PATTERN, folder } });
+    const first = loadPlugin("/work");
+    first.start();
+    first.input("ACME-5");
+    // A disk that fails: notes.md is a folder, so reading it raises EISDIR.
+    const paths = ticketPaths(folder, "ACME-5");
+    rmSync(paths.notes);
+    mkdirSync(paths.notes);
+    const resumed = loadPlugin("/work", first.log);
+    resumed.start("resume");
+    assert.equal(resumed.notices.at(-1)?.level, "warning");
+    assert.match(resumed.notices.at(-1)?.text ?? "", /^Could not restore ticket ACME-5: /);
+    resumed.input("ACME-6 too");
+    assert.equal(resumed.notices.at(-1)?.text, "ACME-6 mentioned; /ticket ACME-6 switches");
+});
+
 test("a ticket turned off before the session ended is not restored", async (t) => {
     const jig = useJig(t, { memory: { ticketPattern: PATTERN, folder: tempFolder(t) } });
     const first = loadPlugin("/work");
@@ -329,6 +347,21 @@ test("after a compaction the current notes come back as a message, and the syste
             "never the system prompt",
         );
     assert.deepEqual(jig.tickets, ["ACME-7"], "a compaction does not change the ticket");
+});
+
+test("a session_compact whose notes cannot be read warns once, and the hook does not throw", (t) => {
+    const folder = tempFolder(t);
+    useJig(t, { memory: { ticketPattern: PATTERN, folder } });
+    const pi = loadPlugin("/work");
+    pi.start();
+    pi.input("look at ACME-7");
+    const paths = ticketPaths(folder, "ACME-7");
+    rmSync(paths.notes);
+    mkdirSync(paths.notes);
+    pi.compact();
+    assert.equal(pi.notices.at(-1)?.level, "warning");
+    assert.match(pi.notices.at(-1)?.text ?? "", /^Could not send the notes for ACME-7 after compaction: /);
+    assert.equal(pi.sent.length, 1, "no broken notes message; the activation message is the only one");
 });
 
 test("without a ticket, a compaction sends nothing", (t) => {

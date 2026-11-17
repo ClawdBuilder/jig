@@ -9,7 +9,7 @@ import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
 import type { CallClass, Preview } from "../../jig-core/src/contract.ts";
 import { checkTimeout } from "./ad-hoc.ts";
 import { loadCatalog } from "./catalog.ts";
-import { settingsOf } from "./config.ts";
+import { jigEnvironmentOf, settingsOf } from "./config.ts";
 import type { SavedRequest } from "./model.ts";
 import type { ApiSettings } from "./config.ts";
 import { createHttp } from "./engine/http.ts";
@@ -24,7 +24,7 @@ import { parameters, parseCall } from "./params.ts";
 import type { Call } from "./params.ts";
 import { planCall, planRequest } from "./planning.ts";
 import type { PlanContext } from "./planning.ts";
-import { listText, showText } from "./show.ts";
+import { effectOf, listText, showText } from "./show.ts";
 import { WORKSPACE_ID } from "./sources/postman-api.ts";
 import type { EnvironmentList } from "./sources/postman-api.ts";
 import type { EnvironmentLister } from "./sources/source.ts";
@@ -144,13 +144,12 @@ function environmentsText(name: string, workspace: string | undefined, list: Env
 }
 
 /**
- * Whether a saved request counts as a read in the environment it runs in. A name in `api.reads` makes a write method a read
- * outside production only: in production only GET, HEAD and OPTIONS are reads, so a POST there is a write and jig-core's
- * floor denies it. `api.reads` can therefore never talk a production write past the floor.
+ * Whether a saved request counts as a read in the environment it runs in, by the same rule `list` and `show` print. A name
+ * in `api.reads` makes a write method a read outside production only: in production only GET, HEAD and OPTIONS are reads, so
+ * a POST there is a write and jig-core's floor denies it. `api.reads` can never talk a production write past the floor.
  */
 function readsHere(ctx: PlanContext, request: SavedRequest, jigEnvironment: string): boolean {
-    if (READ_METHODS.has(request.method)) return true;
-    return ctx.kindOf(jigEnvironment) !== "production" && ctx.settings.reads.has(request.name);
+    return effectOf(ctx.settings, request, ctx.kindOf(jigEnvironment)) === "reads";
 }
 
 /** Plans every request the call sends. Throws an InputError for anything invalid. */
@@ -330,7 +329,11 @@ export function createTool(options: ApiOptions = {}): ApiTool {
                         return text(listText(ctx.catalog, ctx.settings, filter), { action: "list" });
                     }
                     const request = ctx.catalog.request(call.request, call.collection, call.folder);
-                    return text(showText(ctx.catalog, ctx.settings, request, call.environment), {
+                    const kind =
+                        call.environment === undefined
+                            ? undefined
+                            : ctx.kindOf(jigEnvironmentOf(ctx.settings, call.environment));
+                    return text(showText(ctx.catalog, ctx.settings, request, call.environment, kind), {
                         action: "show",
                         request: request.name,
                     });

@@ -127,7 +127,7 @@ export interface DoctorOptions {
     jigVersion?: string | null;
     /** The package's `repository` field, for the reinstall line. Default: this checkout's package.json. */
     jigRepository?: string;
-    /** The sandbox broker script to start. Default: the one beside this package. Tests pass a missing path. */
+    /** The sandbox broker script to start. Default: the one the sandbox provider names. Tests pass a missing path. */
     brokerScript?: string;
     /** The built-in agent roles folder. Default: the one beside this package. Tests pass a missing path. */
     rolesFolder?: string;

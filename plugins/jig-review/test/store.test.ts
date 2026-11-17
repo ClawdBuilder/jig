@@ -27,6 +27,31 @@ async function createStores(): Promise<{ reviewStore: ReviewStore; settings: Set
 const A_DAY_LATER = (): number => Date.now() + 25 * 60 * 60 * 1000;
 
 describe("ReviewStore", () => {
+    it("a review that leaves approved loses the approval it carried", async () => {
+        const { reviewStore } = await createStores();
+        const review = await reviewStore.create("head", "diff", "all");
+        const approved = await reviewStore.approve(review, { method: "page-and-pi" }, [
+            { repo: "", sha: "a".repeat(40) },
+        ]);
+        assert.equal(approved.status, "approved");
+        assert.equal(typeof approved.approvedAt, "string");
+        assert.ok(approved.approval !== undefined);
+        assert.ok(approved.approvedHeads !== undefined);
+        assert.equal(typeof approved.commentsResolved, "number");
+
+        const commented = await reviewStore.addSubmittedComments(approved, [{ body: "one more thing" }]);
+        assert.equal(commented.status, "awaiting-agent");
+        assert.ok(!("approval" in commented), "approval is present exactly when approved");
+        assert.ok(!("approvedAt" in commented));
+        assert.ok(!("approvedHeads" in commented), "nothing is vouched for once the review is open again");
+
+        const next = await reviewStore.addIteration(commented, "diff 2");
+        assert.equal(next.status, "awaiting-review");
+        assert.ok(!("approval" in next));
+        assert.ok(!("approvedAt" in next));
+        assert.ok(!("approvedHeads" in next));
+    });
+
     it("deletes empty pending reviews during inactive cleanup", async () => {
         const { reviewStore } = await createStores();
         const review = await reviewStore.create("head", "diff", "all");

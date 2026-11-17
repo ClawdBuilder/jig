@@ -674,6 +674,44 @@ describe("the doctor sees a broken install", () => {
         assert.match(line.fix ?? "", /Reinstall Jig/);
     });
 
+    test("the broker script is the one the sandbox provider names, not a path into its plugin", async () => {
+        const script = path.join(home, "provider-broker.mjs");
+        const report = await runDoctor(
+            context({
+                sections: new Map([["sandbox", {}]]),
+                overrides: {
+                    standalone: true,
+                    sandbox: { active: false, canWrite: () => false, brokerScript: script },
+                    env: { PATH: "" },
+                },
+            }),
+            options(),
+        );
+        const line = report.lines.find((entry) => entry.id === "sandbox.broker");
+        assert.ok(line, text(report));
+        assert.equal(line.level, "fail");
+        assert.match(line.detail ?? "", new RegExp(`the broker script is not there: ${script}`));
+    });
+
+    test("a sandbox that names no broker script is checked for no broker", async () => {
+        const report = await runDoctor(
+            context({
+                sections: new Map([["sandbox", {}]]),
+                overrides: {
+                    standalone: true,
+                    sandbox: { active: false, canWrite: () => false },
+                    env: { PATH: "" },
+                },
+            }),
+            options({ pathLookup: () => "/usr/bin/true" }),
+        );
+        assert.equal(
+            report.lines.find((entry) => entry.id === "sandbox.broker"),
+            undefined,
+            "no broker is claimed, so none is started",
+        );
+    });
+
     test("a missing built-in roles folder is a failure", async () => {
         const report = await runDoctor(
             context({ sections: new Map([["agents", {}]]) }),
