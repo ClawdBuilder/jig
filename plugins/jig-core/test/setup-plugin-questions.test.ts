@@ -1,7 +1,7 @@
 // What a plugin's own setup list does: a section nobody registered questions for is offered in setup's list, its questions
 // are asked with its sign-in methods, and a field a method covers is never asked as raw text (the `{"jira": {}}` retry loop).
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -19,6 +19,8 @@ import type { SetupUi } from "../src/setup.ts";
 import { validateJira } from "../../jig-jira/src/config.ts";
 import { JIRA_METHODS } from "../../jig-jira/src/index.ts";
 import { JIRA_SETUP } from "../../jig-jira/src/onboarding.ts";
+import { validateGitSection } from "../../jig-git/src/config.ts";
+import { GIT_SETUP } from "../../jig-git/src/onboarding.ts";
 import { fakePi } from "./support/fake-pi.ts";
 
 let home: string;
@@ -50,6 +52,17 @@ function stateWith(config: unknown = {}): ReturnType<typeof createState> {
             pending: { doc: "plugins/jig-mongo/README.md", example: { connections: {} } },
         },
     });
+    loadPersonalConfig(state, file);
+    return state;
+}
+
+/** A state with the real git section and questions; no `gh` on PATH unless a test gives it one. */
+function gitState(config: unknown = {}, env: NodeJS.ProcessEnv = { PATH: "" }): ReturnType<typeof createState> {
+    writeFileSync(file, JSON.stringify(config));
+    const state = createState(fakePi().pi, { env });
+    state.configPath = () => file;
+    const api = buildApi(state);
+    api.config.registerSection("git", validateGitSection, { first: ["accounts"], setup: GIT_SETUP });
     loadPersonalConfig(state, file);
     return state;
 }
@@ -375,6 +388,128 @@ describe("an entry of a map", () => {
         const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, any>;
         assert.deepEqual(written.orders, { accounts: { shop: "acme" } });
         assert.equal(Object.hasOwn(written.orders.accounts, "__proto__"), false);
+    });
+});
+
+describe("git's setup", () => {
+    test("without accounts it is ready (optional settings), and one mapping is the only question", () => {
+        const state = gitState();
+        const lines = pluginLines(setupStateFrom(state), {});
+        assert.deepEqual(
+            lines.map((line) => [line.label, line.status]),
+            [["Git", "ready (optional settings)"]],
+        );
+        assert.match(lines[0]?.text ?? "", /^Git\s+ready \(optional settings\)\s+Work with git/);
+        const questions = sectionQuestions(setupStateFrom(state), "git", {}, true);
+        assert.deepEqual(
+            questions.fields.map((field) => field.path),
+            ["accounts"],
+        );
+        const field = questions.fields[0];
+        assert.equal(field?.kind, "entry");
+        assert.equal(field?.optional, true);
+        assert.equal(field?.entry?.keyLabel, "Which repositories?");
+        assert.equal(field?.entry?.keyPlaceholder, "github.com:acme/*");
+        assert.equal(field?.entry?.valueLabel, "Which gh account?");
+        assert.equal(field?.entry?.detect, "gh-account");
+        assert.equal(field?.entry?.repeat, true);
+    });
+
+    test("jira, whose questions are required, is still not set up", () => {
+        const lines = pluginLines(setupStateFrom(stateWith({})), {});
+        assert.equal(lines.find((line) => line.label === "Jira")?.status, "not set up");
+    });
+
+    test("the doctor gives it no not-set-up line", () => {
+        const lines: Array<{ title: string; detail: string }> = [];
+        notSetupLines(doctorContext(gitState()), ["git"], lines as never);
+        assert.deepEqual(lines, [], "nothing to fix: git runs on its defaults until a mapping is wanted");
+    });
+
+    test("with accounts it is set up, and setup asks nothing for it", () => {
+        const state = gitState({ git: { accounts: { "github.com:acme/*": "acme-work" } } });
+        const lines = pluginLines(setupStateFrom(state), {});
+        assert.deepEqual(
+            lines.map((line) => [line.label, line.status]),
+            [["Git", "set up"]],
+        );
+        const built = buildSetupPlan(setupStateFrom(state));
+        assert.ok("plan" in built);
+        assert.deepEqual(
+            built.plan.sections.filter((section) => section.name === "git"),
+            [],
+        );
+    });
+
+    test("picking Git asks the login and one mapping, and done writes it", async () => {
+        const state = gitState();
+        const ui = new ScriptedUi(["Git", "Done"], [false, true])
+            .reading(/Which repositories/, "github.com:acme/*")
+            .reading(/Which gh account/, "acme-work")
+            .picking(/Review these changes/, "Save these changes");
+        const code = await runSetup(state, ui);
+        assert.equal(code, 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(
+            seen,
+            /notify: GitHub login: gh is not installed; install it, then run `gh auth login` in another/,
+        );
+        assert.doesNotMatch(seen, /Found on this machine/);
+        const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, any>;
+        assert.deepEqual(written.git, { accounts: { "github.com:acme/*": "acme-work" } });
+        assert.match(seen, /Git\s+set up/, "the list says set up without leaving setup");
+    });
+
+    test("repeat adds a second mapping, and the map stays in the order it was written", async () => {
+        const state = gitState();
+        const ui = new ScriptedUi(["Git", "Done"], [true, false, true])
+            .reading(/Which repositories/, "github.com:acme/*")
+            .reading(/Which gh account/, "acme-work")
+            .reading(/Which repositories/, "github.com:acme/svc")
+            .reading(/Which gh account/, "acme-svc")
+            .picking(/Review these changes/, "Save these changes");
+        const code = await runSetup(state, ui);
+        assert.equal(code, 0, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /Add another entry\?/);
+        const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, any>;
+        assert.deepEqual(Object.keys(written.git.accounts), ["github.com:acme/*", "github.com:acme/svc"]);
+        assert.deepEqual(written.git.accounts, {
+            "github.com:acme/*": "acme-work",
+            "github.com:acme/svc": "acme-svc",
+        });
+    });
+
+    test("a detected account is offered, and Enter takes it", async () => {
+        const bin = path.join(home, "bin");
+        mkdirSync(bin);
+        const gh = path.join(bin, "gh");
+        writeFileSync(gh, '#!/bin/sh\necho "  ✓ Logged in to github.com account acme-work (keyring)"\n');
+        chmodSync(gh, 0o755);
+        const state = gitState({}, { PATH: bin });
+        const ui = new ScriptedUi(["Git", "Done"], [false, true])
+            .reading(/Which repositories/, "github.com:acme/*")
+            .reading(/Which gh account/, "")
+            .picking(/Review these changes/, "Save these changes");
+        const code = await runSetup(state, ui);
+        assert.equal(code, 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /notify: Found on this machine: acme-work/);
+        assert.match(seen, /notify: GitHub login: run `gh auth login` in another terminal\./);
+        const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, any>;
+        assert.deepEqual(written.git.accounts, { "github.com:acme/*": "acme-work" });
+    });
+
+    test("jig setup git asks the login and the mapping without the list", async () => {
+        const state = gitState();
+        const ui = new ScriptedUi([], [false, true])
+            .reading(/Which repositories/, "github.com:acme/*")
+            .reading(/Which gh account/, "acme-work")
+            .picking(/Review these changes/, "Save these changes");
+        const code = await runSetup(state, ui, "git");
+        assert.equal(code, 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.doesNotMatch(seen, /which plugin do you want to set up/);
+        assert.match(seen, /GitHub login: gh is not installed/);
     });
 });
 

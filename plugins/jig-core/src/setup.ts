@@ -87,7 +87,7 @@ export async function runSetup(
         }
         ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
         for (const text of plan.intro) ui.notify(text, "info");
-        for (const login of plan.logins) ui.notify(loginLine(login), "info");
+        for (const login of plan.logins) ui.notify(loginLine(login, programPresent(planState, login.tool)), "info");
         for (const section of sections) {
             if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") return cancel(ui);
         }
@@ -97,7 +97,7 @@ export async function runSetup(
     // No section named: the company's and the validators' questions first, then the plugin list.
     ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
     for (const text of plan.intro) ui.notify(text, "info");
-    for (const login of plan.logins) ui.notify(loginLine(login), "info");
+    for (const login of plan.logins) ui.notify(loginLine(login, programPresent(planState, login.tool)), "info");
     for (const section of plan.sections) {
         if (section.fields.length === 0 && !section.askMethod) continue;
         const count = section.fields.length + (section.askMethod ? 1 : 0);
@@ -116,9 +116,18 @@ export async function runSetup(
     return finish(ui, plan, changes, apply, state.now);
 }
 
-/** The intro line for a login the list names: the person runs it, setup never does. */
-function loginLine(login: { label: string; command: string; why?: string }): string {
-    return `${login.label}: run \`${login.command}\` in another terminal.${login.why === undefined ? "" : ` ${login.why}`}`;
+/** The intro line for a login the list names: the person runs it, setup never does. When the program is missing, the line
+ *  says so and setup carries on, so a machine without it can still be set up. */
+function loginLine(login: { label: string; tool: string; command: string; why?: string }, installed: boolean): string {
+    const line = installed
+        ? `${login.label}: run \`${login.command}\` in another terminal.`
+        : `${login.label}: ${login.tool} is not installed; install it, then run \`${login.command}\` in another terminal.`;
+    return `${line}${login.why === undefined ? "" : ` ${login.why}`}`;
+}
+
+/** Whether a login's program is on PATH now: a lookup, so setup never starts it. */
+function programPresent(state: SetupState, tool: string): boolean {
+    return state.pathLookup(tool, state.env) !== undefined;
 }
 
 /** One section's questions: its fields, then its sign-in method and that method's fields. */
@@ -178,7 +187,8 @@ async function pluginMenu(
             continue;
         }
         for (const text of introOf(undefined, [setup.items])) ui.notify(text, "info");
-        for (const login of loginsOf(undefined, [setup.items])) ui.notify(loginLine(login), "info");
+        for (const login of loginsOf(undefined, [setup.items]))
+            ui.notify(loginLine(login, programPresent(planState, login.tool)), "info");
         const questions = sectionQuestions(planState, line.section, draft, true);
         const section: SetupSection = {
             name: line.section,
