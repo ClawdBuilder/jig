@@ -624,6 +624,7 @@ describe("jig setup", () => {
         const answers: Array<{ when: string; answer: string }> = [
             { when: "Copy jig.json into the home?", answer: "y" },
             { when: "Copy auth.json into the home too?", answer: "y" },
+            { when: "which plugin do you want to set up?", answer: "done" },
         ];
         let next = 0;
         const result = await new Promise<{ code: number | null }>((resolve, reject) => {

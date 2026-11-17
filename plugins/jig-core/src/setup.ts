@@ -1,28 +1,25 @@
-// `/jig setup`: the questions, the plain summary, and the one confirmation that writes. It is a command, never a tool,
-// so the model cannot run it. Every screen is plain words; the only JSON is behind "Show the exact change".
+// `/jig setup`: the questions, the plugin list, the plain summary, and the one confirmation that writes. It is a command,
+// never a tool, so the model cannot run it. Every screen is plain words; the only JSON is behind "Show the exact change".
 import { homedir } from "node:os";
 
-import { errorMessage } from "./errors.ts";
-import { run as runProgram } from "./exec.ts";
 import { effectiveBackends } from "./config.ts";
-import type { SecretBackend } from "./config.ts";
-import { findOnPath } from "./doctor-secrets.ts";
-import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
-import { detectedLine, detectValue } from "./detect.ts";
+import { detectValue } from "./detect.ts";
 import type { DetectName } from "./detect.ts";
-import { onboardingItemAt } from "./onboarding.ts";
-import type { OnboardingEntry } from "./contract.ts";
-import { probeSecret, shorten } from "./secret-status.ts";
-import type { SecretProbe } from "./secret-status.ts";
-import { applyAnswer, buildSetupPlan } from "./setup-plan.ts";
-import { askProposal, proposalSections } from "./setup-proposal.ts";
-import { buildReference, describeReference, storeChoiceLabel, storeLabel } from "./setup-reference.ts";
+import { findOnPath } from "./doctor-secrets.ts";
+import { errorMessage } from "./errors.ts";
+import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
+import { proposalSections } from "./setup-proposal.ts";
+import { ask, askMethods } from "./setup-ask.ts";
+import { buildSetupPlan } from "./setup-plan.ts";
+import type { SetupChange, SetupField, SetupPlan, SetupSection, SetupState } from "./setup-plan.ts";
+import { itemAt, introOf, loginsOf } from "./setup-questions.ts";
+import { DONE_LINE, LIST_TITLE, pendingLines, pluginLines, readyLines } from "./setup-menu.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
-import type { ReferenceParts } from "./setup-reference.ts";
-import type { SetupChange, SetupField, SetupPlan, SetupState } from "./setup-plan.ts";
+import { labelOf } from "./setup-fields.ts";
+import { sectionQuestions } from "./setup-section.ts";
+import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
 
-/** Runs the whole flow. It writes nothing unless the person confirms the summary. */
 /** What a screen has to offer: Pi's UI in a session, a terminal in the `jig` command. */
 export interface SetupUi {
     select(title: string, options: string[]): Promise<string | undefined>;
@@ -31,6 +28,7 @@ export interface SetupUi {
     notify(text: string, level: "info" | "warning" | "error"): void;
 }
 
+/** Runs the whole flow. It writes nothing unless the person confirms the summary. */
 export async function runSetup(
     state: JigState,
     ui: SetupUi,
@@ -38,7 +36,7 @@ export async function runSetup(
     apply: "terminal" | "reload" = "terminal",
 ): Promise<number> {
     let proposed = false;
-    let onboarding: OnboardingEntry | undefined;
+    let onboarding: ReturnType<typeof activeOnboarding>;
     try {
         onboarding = activeOnboarding(state);
         proposed = proposalSections(onboarding).has(requestedSection ?? "");
@@ -61,45 +59,49 @@ export async function runSetup(
         return 1;
     }
     const plan = built.plan;
-    if (requestedSection !== undefined && plan.sections.every((section) => section.fields.length === 0)) {
-        ui.notify(`Nothing to ask for ${requestedSection}.`, "info");
-        return 0;
-    }
-    if (plan.sections.length === 0) {
-        ui.notify("Nothing needs you right now. jig doctor has the full check.", "info");
-        return 0;
-    }
-    if (plan.intro.length > 0) ui.notify(plan.intro.join("\n"), "info");
-    for (const login of plan.logins) {
-        ui.notify(
-            `${login.label}: run \`${login.command}\` in another terminal.${login.why === undefined ? "" : ` ${login.why}`}`,
-            "info",
-        );
-    }
-    const notes = plan.sections.flatMap((section) => section.notes);
-    if (plan.sections.every((section) => section.fields.length === 0)) {
-        ui.notify([...notes, "Nothing was written."].join("\n"), "info");
-        return 0;
-    }
-
-    ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
     const draft = structuredClone(plan.raw);
     const changes: SetupChange[] = [];
-    // What the company's list asked setup to look for, looked for once per probe and only when its question comes up.
+    // What the company's list or a plugin's list asked setup to look for, looked for once per probe and only when its
+    // question comes up.
     const probes = new Map<DetectName, string | undefined>();
     const found = (field: SetupField): string | undefined => {
-        const item = onboardingItemAt(onboarding, field.section, field.path);
-        if (item === undefined || (item.kind !== "text" && item.kind !== "pick") || item.detect === undefined)
+        const item = itemAt(planState, field.section, field.path);
+        if (item === undefined || (item.kind !== "text" && item.kind !== "pick" && item.kind !== "entry"))
             return undefined;
+        if (item.detect === undefined) return undefined;
         if (!probes.has(item.detect)) probes.set(item.detect, detectValue(item.detect, state.env));
         const value = probes.get(item.detect);
         if (value === undefined) return undefined;
         return item.kind === "pick" && !item.choices.includes(value) ? undefined : value;
     };
 
+    // A named section asks only its own questions, whether or not it is set up.
+    if (requestedSection !== undefined) {
+        const sections = plan.sections.filter((section) => section.name === requestedSection);
+        if (sections.every((section) => section.fields.length === 0 && !section.askMethod)) {
+            ui.notify(`Nothing to ask for ${requestedSection}.`, "info");
+            const setup = planState.sectionSetup?.get(requestedSection);
+            if (setup?.pending !== undefined)
+                ui.notify(pendingLines(labelOf(requestedSection), setup).join("\n"), "info");
+            return 0;
+        }
+        ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
+        for (const text of plan.intro) ui.notify(text, "info");
+        for (const login of plan.logins) ui.notify(loginLine(login), "info");
+        for (const section of sections) {
+            if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") return cancel(ui);
+        }
+        return finish(ui, plan, changes, apply, state.now);
+    }
+
+    // No section named: the company's and the validators' questions first, then the plugin list.
+    ui.notify("Jig setup asks only what is missing. It never asks for a password or a token.", "info");
+    for (const text of plan.intro) ui.notify(text, "info");
+    for (const login of plan.logins) ui.notify(loginLine(login), "info");
     for (const section of plan.sections) {
-        if (section.fields.length === 0) continue;
-        const things = section.fields.length === 1 ? "1 thing" : `${section.fields.length} things`;
+        if (section.fields.length === 0 && !section.askMethod) continue;
+        const count = section.fields.length + (section.askMethod ? 1 : 0);
+        const things = count === 1 ? "1 thing" : `${count} things`;
         const choice = await ui.select(`${section.label} needs ${things}`, [
             "Answer these",
             "Skip this section",
@@ -107,16 +109,103 @@ export async function runSetup(
         ]);
         if (choice === undefined || choice === "Cancel setup") return cancel(ui);
         if (choice === "Skip this section") continue;
-        for (const field of section.fields) {
-            if ((await ask(state, plan, field, draft, changes, ui, found)) === "cancel") return cancel(ui);
-        }
+        if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") return cancel(ui);
     }
+    const menu = await pluginMenu(state, planState, ui, plan, draft, changes, found);
+    if (menu === "cancel") return cancel(ui);
+    return finish(ui, plan, changes, apply, state.now);
+}
 
+/** The intro line for a login the list names: the person runs it, setup never does. */
+function loginLine(login: { label: string; command: string; why?: string }): string {
+    return `${login.label}: run \`${login.command}\` in another terminal.${login.why === undefined ? "" : ` ${login.why}`}`;
+}
+
+/** One section's questions: its fields, then its sign-in method and that method's fields. */
+async function askSection(
+    state: JigState,
+    ui: SetupUi,
+    plan: SetupPlan,
+    section: SetupSection,
+    draft: Record<string, unknown>,
+    changes: SetupChange[],
+    found: (field: SetupField) => string | undefined,
+): Promise<"ok" | "cancel"> {
+    const required = section.fields.filter((field) => field.optional !== true);
+    const optional = section.fields.filter((field) => field.optional === true);
+    for (const field of required) {
+        if ((await ask(state, plan, field, draft, changes, ui, found)) === "cancel") return "cancel";
+    }
+    if ((await askMethods(state, plan, section, draft, changes, ui, found)) === "cancel") return "cancel";
+    for (const field of optional) {
+        if ((await ask(state, plan, field, draft, changes, ui, found)) === "cancel") return "cancel";
+    }
+    return "ok";
+}
+
+/** The plugin list: a plugin's questions, a plugin waiting for its questions, or one that needs nothing. Done saves. */
+async function pluginMenu(
+    state: JigState,
+    planState: SetupState,
+    ui: SetupUi,
+    plan: SetupPlan,
+    draft: Record<string, unknown>,
+    changes: SetupChange[],
+    found: (field: SetupField) => string | undefined,
+): Promise<"ok" | "cancel"> {
+    for (;;) {
+        const lines = pluginLines(planState, draft);
+        if (lines.length === 0) {
+            if (plan.sections.length === 0)
+                ui.notify("Nothing needs you right now. jig doctor has the full check.", "info");
+            return "ok";
+        }
+        const options = [...lines.map((line) => line.text), DONE_LINE];
+        const choice = await ui.select(LIST_TITLE, options);
+        if (choice === undefined) return "cancel";
+        if (!options.includes(choice)) return "cancel";
+        if (choice === DONE_LINE) return "ok";
+        const line = lines.find((one) => one.text === choice);
+        if (line === undefined) return "cancel";
+        const setup = planState.sectionSetup?.get(line.section);
+        if (setup === undefined) continue;
+        if (setup.pending !== undefined) {
+            ui.notify(pendingLines(line.label, setup).join("\n"), "info");
+            continue;
+        }
+        if (setup.items === undefined) {
+            ui.notify(readyLines(line.label, setup).join("\n"), "info");
+            continue;
+        }
+        for (const text of introOf(undefined, [setup.items])) ui.notify(text, "info");
+        for (const login of loginsOf(undefined, [setup.items])) ui.notify(loginLine(login), "info");
+        const questions = sectionQuestions(planState, line.section, draft, true);
+        const section: SetupSection = {
+            name: line.section,
+            label: questions.label,
+            fields: questions.fields,
+            ...(questions.methods === undefined ? {} : { methods: questions.methods }),
+            askMethod: questions.askMethod,
+            notes: questions.notes,
+        };
+        if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") return "cancel";
+        for (const note of section.notes) ui.notify(note, "info");
+    }
+}
+
+/** The summary, the one confirmation, and the write. Nothing is written before the yes. */
+async function finish(
+    ui: SetupUi,
+    plan: SetupPlan,
+    changes: SetupChange[],
+    apply: "terminal" | "reload",
+    now: () => Date,
+): Promise<number> {
+    const notes = [...plan.notes, ...plan.sections.flatMap((section) => section.notes)];
     if (changes.length === 0) {
         ui.notify([...notes, "Nothing was written."].join("\n"), "info");
         return 0;
     }
-
     const summary = summaryLines(plan, changes);
     const confirmation = [...summary, "", "A backup is kept next to your settings file."].join("\n");
     ui.notify(summary.join("\n"), "info");
@@ -124,15 +213,11 @@ export async function runSetup(
     if (review === undefined || review === "Cancel") return cancel(ui);
     if (review === "Show the exact change") {
         ui.notify(["Only these fields change:", ...exactChangeLines(changes)].join("\n"), "info");
-        const ok = await ui.confirm("Save these changes?", confirmation);
-        if (!ok) return cancel(ui);
-    } else {
-        const ok = await ui.confirm("Save these changes?", confirmation);
-        if (!ok) return cancel(ui);
     }
-
+    const ok = await ui.confirm("Save these changes?", confirmation);
+    if (!ok) return cancel(ui);
     try {
-        const result = writeSetup(plan, changes, state.now());
+        const result = writeSetup(plan, changes, now());
         const count = result.changes === 1 ? "1 change" : `${result.changes} changes`;
         const where = shorten(result.file, homedir());
         const lines = [`Saved ${count} to ${where}${plan.link ? " (through your link)" : ""}.`];
@@ -149,265 +234,6 @@ export async function runSetup(
         );
         return 1;
     }
-}
-
-/** One question at a time; a rejection is a plain sentence, then the same question again. */
-async function ask(
-    state: JigState,
-    plan: SetupPlan,
-    field: SetupField,
-    draft: Record<string, unknown>,
-    changes: SetupChange[],
-    ui: SetupUi,
-    found: (field: SetupField) => string | undefined,
-): Promise<"ok" | "cancel"> {
-    if (field.kind === "proposal") return askProposal(plan, field, draft, changes, ui);
-    if (field.kind === "reference") return askReference(state, plan, field, draft, changes, ui);
-    const detected = found(field);
-    if (field.kind === "pick") {
-        const choices = field.choices ?? [];
-        if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const ordered: string[] =
-            detected === undefined ? [...choices] : [detected, ...choices.filter((choice) => choice !== detected)];
-        const picked = await ui.select(`${field.label}: ${field.reason}`, ordered);
-        if (picked === undefined || !choices.includes(picked)) return "cancel";
-        const result = applyAnswer(plan, draft, field, picked);
-        if ("change" in result) {
-            changes.push(result.change);
-            return "ok";
-        }
-        ui.notify(result.problem, "warning");
-        return "ok";
-    }
-    for (;;) {
-        ui.notify(`${field.label}: ${field.reason}`, "info");
-        if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const text = await ui.input(field.question, detected ?? field.placeholder);
-        if (text === undefined) return "cancel";
-        const answer = text.trim() === "" && detected !== undefined ? detected : text;
-        // An optional field: an empty answer leaves it unset, and nothing is written for it.
-        if (field.optional === true && answer.trim() === "") {
-            ui.notify(`${field.label} left unset (optional).`, "info");
-            return "ok";
-        }
-        const result = applyAnswer(plan, draft, field, answer);
-        if ("change" in result) {
-            changes.push(result.change);
-            return "ok";
-        }
-        ui.notify(result.problem, "warning");
-    }
-}
-
-/** A credential: where it is kept, then the parts, then a status that never shows a value. */
-async function askReference(
-    state: JigState,
-    plan: SetupPlan,
-    field: SetupField,
-    draft: Record<string, unknown>,
-    changes: SetupChange[],
-    ui: SetupUi,
-): Promise<"ok" | "cancel"> {
-    const choice = field.reference;
-    if (choice === undefined || choice.stores.length === 0) {
-        ui.notify("No secret store is available for this. /jig doctor names the problem.", "warning");
-        return "cancel";
-    }
-    if (choice.disabled.length > 0) {
-        ui.notify(
-            `You turned off ${choice.disabled.map(storeLabel).join(", ")}, so ${
-                choice.disabled.length === 1 ? "it is" : "they are"
-            } not offered.`,
-            "info",
-        );
-    }
-
-    for (;;) {
-        const labels = choice.stores.map(
-            (store) => `${storeChoiceLabel(store)}${choice.preferred === store ? " (company default)" : ""}`,
-        );
-        const picked = await ui.select(field.question, labels);
-        if (picked === undefined || !labels.includes(picked)) return "cancel";
-        const index = labels.indexOf(picked);
-        const store = choice.stores[index];
-        if (store === undefined) continue;
-
-        if (store === "file") {
-            const ok = await ui.confirm(
-                "Use a file?",
-                "A file is plain text on disk. A password store or 1Password is safer.",
-            );
-            if (!ok) continue;
-        }
-
-        // The company's suggestion, when it wrote one for this store: a reference shape, never a value.
-        const shape = choice.suggested?.[store];
-        if (shape !== undefined) {
-            const use = await ui.select(`${storeLabel(store)}: use the company's suggestion?`, [
-                `Use ${describeReference(shape)}`,
-                "Build it another way",
-            ]);
-            if (use === undefined) return "cancel";
-            if (use.startsWith("Use ")) {
-                const settled = await settleReference(
-                    state,
-                    plan,
-                    field,
-                    draft,
-                    changes,
-                    ui,
-                    store,
-                    shape,
-                    `read from ${describeReference(shape)} (the company's suggestion)`,
-                );
-                if (settled === "ok" || settled === "cancel") return settled;
-            }
-        }
-
-        for (;;) {
-            const parts = await askParts(store, choice.commands, ui);
-            if (parts === undefined) return "cancel";
-            const built = buildReference(store, parts, choice.commands);
-            if ("problem" in built) {
-                ui.notify(built.problem, "warning");
-                continue;
-            }
-            const settled = await settleReference(
-                state,
-                plan,
-                field,
-                draft,
-                changes,
-                ui,
-                store,
-                built.reference,
-                `read from ${built.note}`,
-            );
-            if (settled === "ok" || settled === "cancel") return settled;
-        }
-    }
-}
-
-/** Checks, probes and records one built reference: "ok", "cancel", or "retry" for another try at this store. */
-async function settleReference(
-    state: JigState,
-    plan: SetupPlan,
-    field: SetupField,
-    draft: Record<string, unknown>,
-    changes: SetupChange[],
-    ui: SetupUi,
-    store: SecretBackend,
-    reference: string,
-    note: string,
-): Promise<"ok" | "cancel" | "retry"> {
-    const choice = field.reference;
-    const answer = applyAnswer(plan, draft, field, reference);
-    if ("problem" in answer) {
-        ui.notify(answer.problem, "warning");
-        return "retry";
-    }
-    const change = answer.change;
-    change.note = note;
-    if (choice !== undefined && !choice.enabled.includes(store)) change.enableBackend = store;
-    for (;;) {
-        const probe = await probeSecret(reference, probeOptions(state));
-        const status = statusText(store, probe);
-        ui.notify(status.text, status.level);
-        if (probe.status === "found" || probe.status === "unknown") {
-            changes.push(change);
-            return "ok";
-        }
-        if (probe.status === "invalid") {
-            ui.notify("That place cannot be used. Choose another.", "warning");
-            return "retry";
-        }
-        if (probe.fix !== undefined) ui.notify(probe.fix, "info");
-        const next = await ui.select("Not found yet", ["Check again", "Continue without it", "Cancel setup"]);
-        if (next === "Check again") continue;
-        if (next === "Continue without it") {
-            change.note = `${change.note} (not found yet)`;
-            changes.push(change);
-            return "ok";
-        }
-        return "cancel";
-    }
-}
-
-/** The plain questions for one store. It never asks for a value, and never shows a reference. */
-async function askParts(
-    store: SecretBackend,
-    commands: Readonly<Record<string, readonly string[]>>,
-    ui: SetupUi,
-): Promise<ReferenceParts | undefined> {
-    const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
-        const value = await ui.input(title, placeholder);
-        return value === undefined ? undefined : value.trim();
-    };
-    if (store === "op") {
-        const vault = await ask("Which 1Password vault?", "Work");
-        if (vault === undefined) return undefined;
-        const item = await ask("Which item in that vault?", "Jira");
-        if (item === undefined) return undefined;
-        const field = await ask("Which field of that item?", "token");
-        if (field === undefined) return undefined;
-        return { vault, item, field };
-    }
-    if (store === "keychain") {
-        const service = await ask("Which macOS Keychain service?", "example-tool");
-        if (service === undefined) return undefined;
-        const account = await ask("Which Keychain account?", "jdoe");
-        if (account === undefined) return undefined;
-        return { service, account };
-    }
-    if (store === "pass") {
-        const entry = await ask("Which entry in your password store?", "work/jira-token");
-        return entry === undefined ? undefined : { entry };
-    }
-    if (store === "env") {
-        const name = await ask("Which environment variable?", "JIRA_TOKEN");
-        return name === undefined ? undefined : { name };
-    }
-    if (store === "file") {
-        const file = await ask("Which file?", "~/.config/tool/token");
-        return file === undefined ? undefined : { file };
-    }
-    const command = await ui.select("Which command owns that login?", Object.keys(commands));
-    return command === undefined ? undefined : { command };
-}
-
-/** A found/missing/locked sentence in plain words. It never repeats the reference or a value. */
-function statusText(store: SecretBackend, probe: SecretProbe): { text: string; level: "info" | "warning" } {
-    const name = storeLabel(store);
-    if (probe.status === "found") {
-        const extra =
-            probe.backend === "op"
-                ? " The item is there; the field is not verified."
-                : probe.backend === "file"
-                  ? " The first line is not read until a tool needs it."
-                  : "";
-        return {
-            text: `Found in ${name}.${extra}${probe.warning === undefined ? "" : ` ${probe.warning}.`}`,
-            level: probe.warning === undefined ? "info" : "warning",
-        };
-    }
-    if (probe.status === "missing")
-        return { text: `Not in ${name} yet.${probe.fix === undefined ? "" : " Add it with:"}`, level: "warning" };
-    if (probe.status === "locked")
-        return { text: `Locked: ${probe.detail ?? `the store is locked`}.`, level: "warning" };
-    if (probe.status === "invalid") return { text: "That place cannot be used.", level: "warning" };
-    return { text: `Not checked: ${probe.detail ?? "Jig cannot check this store."}.`, level: "info" };
-}
-
-function probeOptions(state: JigState) {
-    return {
-        env: state.env,
-        passStoreDir: state.secrets.passStoreDir(),
-        agentDir: state.agentDir(),
-        platform: process.platform,
-        home: homedir(),
-        run: runProgram,
-        cwd: state.workingDir,
-    };
 }
 
 function cancel(ui: SetupUi): number {
@@ -435,5 +261,7 @@ export function setupStateFrom(state: JigState): SetupState {
         commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
         onboarding: activeOnboarding(state),
         onboardingMethods: state.onboardingMethods,
+        sectionSetup: state.sectionSetup,
+        companyActive: state.profile.selection.plugin !== undefined,
     };
 }

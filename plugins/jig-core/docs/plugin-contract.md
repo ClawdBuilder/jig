@@ -130,7 +130,19 @@ closed instead of running ungoverned.
     refused, and the same plugin loaded again replaces its own. The company overlay lives in its
     onboarding entry: `default`, `hide`, or `add` a fixed signIn/transport
     method as a prefill. No method id is written; setup infers the method from
-    the required paths.
+    the required paths. A method a company makes usable, such as its sign-in
+    service, names `companyOnly: true`, and is offered only while a company is
+    active.
+  - `{ setup }` declares what the section needs from a person, in the plugin's
+    own words. `summary` is one line for setup's plugin list and the doctor's
+    "not set up" line. `items` are the questions, in the plugin's order: the
+    company list's kinds, each naming this section (`entry` asks one key and
+    value of a map, `text.list` a short list). `proposal` is refused for a
+    plugin: that asks before writing a company's value. `pending` is for a
+    plugin that needs settings setup cannot ask for yet, with `doc` (a page in
+    this package) and `example` (a section to add by hand). Setup shows every
+    section that registered a `summary`; an older Jig ignores `setup` and the
+    section still works, so a plugin needs no version pin for it.
   - Defaults that are not valid alone, with no section of the user's, leave the
     plugin unconfigured and are shown by `/jig`, not reported as a problem.
 - **`protectedPaths.list()`** gives every protected path with its `kind`
@@ -159,8 +171,9 @@ closed instead of running ungoverned.
 - **`onboarding.register(entry)`** is a company's list of what its people must supply, for `/jig setup` and `/jig doctor`.
   It includes `proposal` items, which setup asks before writing an entry into a person-owned section; an older Jig refuses
   the list rather than ignoring the kind.
-  `preferredStore`, and `items` of kind `text`, `pick`, `reference`, `login` or `info`, each naming the section and dotted
-  path an answer goes to. Setup asks the items in the company's order, with its labels and hints, and doctor turns the ones
+  `preferredStore`, and `items` of kind `text`, `pick`, `reference`, `entry`, `login` or `info`, each naming the section and
+  dotted path an answer goes to; `text` takes `list: true` for a short list, and `entry` asks one key and value of a map.
+  Setup asks the items in the company's order, with its labels and hints, and doctor turns the ones
   still missing into "you need" lines. A `text` or `pick` item may name a `detect` probe (`user`, `git-email`, `gh-account`,
   `aws-profile`) for a proposed default; an unknown probe, or one on an `optional` item, is refused at registration, and an
   older Jig refuses the list rather than ignoring it.

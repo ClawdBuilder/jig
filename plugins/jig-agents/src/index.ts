@@ -45,7 +45,10 @@ export function agents(options: AgentsOptions = {}): ExtensionFactory {
             // What a role's `ask` adds up: a company's and yours both apply. Everything else in a role is replaced by the later layer.
             // A company's role folders and env names add to yours, and so does its ask list: a teammate's own settings
             // extend the company's rather than dropping them. `writes` and `tools` are never configuration.
-            api.config.registerSection("agents", validateAgents, { union: ["roles.*.ask.*", "folders", "env"] });
+            api.config.registerSection("agents", validateAgents, {
+                union: ["roles.*.ask.*", "folders", "env"],
+                setup: { summary: "Child agents, the roles they take, and what they may do." },
+            });
             api.declareTool(tool.declaration);
             api.watches.registerKind(watchKind(rt));
             api.status?.register("jig-agents", () => rt.statusLines());

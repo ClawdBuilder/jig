@@ -103,18 +103,26 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `setup.ts` | `/jig setup`: the questions, the credential store and status screens, the plain summary, the exact-change view and the one confirmation that writes | `commands.ts` |
-| `setup-plan.ts` | What setup asks, from the section states and the validators, the company's onboarding list laid over it, and the answer round trip; it follows a linked settings file to its target | `setup.ts`, `onboarding.ts` |
-| `setup-onboarding.ts` | Lays the company's onboarding list over the validator fields: labels, hints and order | `setup-plan.ts` |
+| `setup.ts` | `/jig setup`: the questions, the plugin list, the summary and the one write | `commands.ts` |
+| `setup-plan.ts` | The plan: the sections in play, their questions, and the company's proposals | `setup.ts`, `setup-company.ts` |
+| `setup-section.ts` | One section's questions: its items, the validator's fields and its sign-in method | `setup-plan.ts`, `setup.ts` |
+| `setup-questions.ts` | A plugin's `setup` checked at registration, the merged items, one question per path | `api.ts`, `setup-section.ts` |
+| `setup-methods-plan.ts` | A section's sign-in methods as setup offers them, with the company's default prefill | `setup-section.ts` |
+| `setup-answer.ts` | One answer checked by the section's own validator: a field, a map entry, a list | `setup-ask.ts` |
+| `setup-ask.ts` | One question at a time: a refusal that asks again, a credential, a method, an entry | `setup.ts` |
+| `setup-menu.ts` | Setup's plugin list: one line per plugin with its status, and what to do next | `setup.ts` |
+| `setup-values.ts` | The plain-object helpers setup shares: a dotted path and a safe write | `setup-*.ts` |
 | `setup-method-paths.ts` | A sign-in method's `*` paths: which expanded fields a method allows | `setup-plan.ts` |
 | `setup-proposal.ts` | A company's proposed entry for a person-owned section, asked once and remembered when declined | `onboarding.ts`, `setup-plan.ts`, `setup.ts`, `doctor-needs.ts` |
 | `doctor-needs.ts` | The "You need:" lines: a missing section, or a required field a loaded section lacks | `doctor-checks.ts` |
 | `setup-company.ts` | The company step: which company and where, then the confirmed profile write | `cli/main.ts`, `commands.ts` |
 | `setup-command.ts` | `/jig setup` inside Pi | `commands.ts` |
-| `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-plan.ts` |
+| `onboarding.ts` | A company's onboarding list checked when it registers, and the item for one section and path | `api.ts`, `setup-questions.ts` |
+| `onboarding-common.ts` | The shapes and words an onboarding list shares: sections, paths, stores | `onboarding*.ts` |
+| `onboarding-method-check.ts` | A section's sign-in methods and a company's choice, checked when they register | `onboarding.ts`, `api.ts` |
 | `detect.ts` | The fixed probes a `detect` item may name, and the line setup shows for what one found | `onboarding.ts` (the name check), `setup.ts` |
-| `onboarding-methods.ts` | The method a section value uses: the fields it requires, their paths, the best match | `onboarding.ts`, `setup-plan.ts` |
-| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-plan.ts`, `setup-onboarding.ts` |
+| `onboarding-methods.ts` | The method a section value uses: the fields it requires, their paths, the best match | `onboarding-method-check.ts`, `setup-methods-plan.ts` |
+| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-section.ts`, `setup-methods-plan.ts`, `setup-questions.ts`, `setup.ts`, `setup-onboarding.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
 | `cli/main.ts` | The `jig` command's own words: the doctor's exit code and report, setup's bootstrap, company step and exit codes, and the update word | `bin/jig.mjs` |
@@ -163,8 +171,10 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `contract.ts` | The types plugins share with jig-core: tool declarations, records, events, watches. Types only | most files, as types |
+| `contract-onboarding.ts` | The onboarding types: items, methods, plugin questions and their summary | `contract.ts` |
 | `client.ts` | How a plugin reaches jig-core at run time: `jig()` and `withJig()` | `index.ts`, and every other plugin |
 | `api.ts` | The API behind `jig()`: each function is a thin step onto the state | `index.ts` |
+| `api-options.ts` | The section options checked before anything is written: a path list and methods | `api.ts` |
 | `secrets.ts` | Resolves a reference such as `pass:work/token` just before a tool needs it | `state.ts` |
 | `signin.ts` | Sign-in services: how a company plugin signs requests in to its own systems | `state.ts` |
 | `transports.ts` | How a company plugin carries requests to its own systems itself | `state.ts` |

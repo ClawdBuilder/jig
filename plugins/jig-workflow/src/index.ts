@@ -32,7 +32,10 @@ export function workflow(options: WorkflowOptions = {}): ExtensionFactory {
         withJig((api) => {
             // A company's workflow folders and theirs add up, company first; so do the lists of workflows left out, so a
             // teammate cannot re-enable what the company disabled. Every other list is replaced by yours, as usual.
-            api.config.registerSection("workflow", validateWorkflow, { union: ["folders", "disabled"] });
+            api.config.registerSection("workflow", validateWorkflow, {
+                union: ["folders", "disabled"],
+                setup: { summary: "Workflow files, stages and the checks at each stage." },
+            });
             api.declareTool(tool.declaration);
             api.gates.register(createGate(rt));
         });

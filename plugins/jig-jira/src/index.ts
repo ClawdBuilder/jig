@@ -4,10 +4,32 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { withJig } from "../../jig-core/src/client.ts";
 import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { validateJira } from "./config.ts";
+import { JIRA_SETUP } from "./onboarding.ts";
 import { createTool } from "./tool.ts";
 import type { JiraOptions } from "./tool.ts";
 
 export type { JiraOptions };
+
+/** A Jira token: a secret reference the person builds from a store, with the shapes and the add commands setup shows. */
+function JIRA_TOKEN(label: string) {
+    return {
+        kind: "reference" as const,
+        path: "auth.token",
+        label,
+        why: "Jig reads the token from there when a tool needs it; it never sees the value here.",
+        stores: ["pass", "op", "keychain", "env", "file"] as const,
+        suggested: {
+            pass: "pass:work/jira-pat",
+            env: "env:JIRA_API_TOKEN",
+            op: "op://Work/jira/pat",
+        },
+        addHints: {
+            pass: "pass insert work/jira-pat",
+            env: "export JIRA_API_TOKEN=… where Pi starts",
+            op: "Save the token as the pat field of a Jira item in a vault.",
+        },
+    };
+}
 
 /** The extension, with parts a test can replace (the timeouts). Pi loads the default export below. */
 export const JIRA_METHODS = [
@@ -16,33 +38,51 @@ export const JIRA_METHODS = [
         label: "Email and API token",
         who: "Jira Cloud",
         fields: [
-            { kind: "text", path: "auth.email", label: "Your Jira email" },
-            { kind: "reference", path: "auth.token", label: "The Jira API token" },
+            {
+                kind: "text",
+                path: "auth.email",
+                label: "Your Jira email",
+                why: "Jira Cloud signs each request with it.",
+            },
+            JIRA_TOKEN("The Jira API token"),
         ],
     },
     {
         id: "data-center-pat",
         label: "Personal access token",
         who: "Jira Data Center",
-        fields: [{ kind: "reference", path: "auth.token", label: "The Jira personal access token" }],
+        fields: [JIRA_TOKEN("The Jira personal access token")],
     },
     {
         id: "oauth",
         label: "Token command (your OAuth helper prints a short-lived token)",
         who: "Jira Cloud or Data Center",
         fields: [
-            { kind: "reference", path: "auth.oauth", label: "The OAuth token command" },
-            { kind: "text", path: "auth.cloudId", label: "The Cloud site id", optional: true },
+            {
+                kind: "reference",
+                path: "auth.oauth",
+                label: "The OAuth token command",
+                why: "A command you trust prints a short-lived token; Jig stores only the command.",
+            },
+            {
+                kind: "text",
+                path: "auth.cloudId",
+                label: "The Cloud site id",
+                optional: true,
+                why: "Only Jira Cloud needs it; the token then goes to api.atlassian.com.",
+            },
         ],
     },
     {
         id: "sign-in-service",
         label: "Company sign-in service",
+        companyOnly: true,
         fields: [{ kind: "text", path: "auth.signIn", label: "The sign-in service name" }],
     },
     {
         id: "transport",
         label: "Company transport",
+        companyOnly: true,
         fields: [{ kind: "text", path: "auth.transport", label: "The transport name" }],
     },
 ] as const;
@@ -57,6 +97,7 @@ export function jigJira(options: JiraOptions = {}): ExtensionFactory {
                 replace: ["auth"],
                 union: ["privateNames"],
                 methods: JIRA_METHODS,
+                setup: JIRA_SETUP,
             });
 
             api.declareTool({ tool: "jira", plugin: "jig-jira", classify: tool.classify, preview: tool.preview });

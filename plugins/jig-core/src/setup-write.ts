@@ -139,9 +139,11 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
         if (secrets.backends !== undefined && !Array.isArray(secrets.backends)) {
             throw new SetupRefused("Your settings have a secret store list setup cannot change. /jig doctor names it.");
         }
+        // A file with no list uses the built-in default (`pass`, config.ts); turning another store on adds to it
+        // instead of replacing it.
         const backends = Array.isArray(secrets.backends)
             ? secrets.backends.filter((value): value is string => typeof value === "string")
-            : [];
+            : ["pass"];
         const disabled = Array.isArray(secrets.disabledBackends)
             ? secrets.disabledBackends.filter((value): value is string => typeof value === "string")
             : [];
@@ -172,7 +174,7 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
 function displayValue(value: unknown): string {
     if (typeof value === "boolean") return value ? "yes" : "no";
     if (typeof value === "number") return String(value);
-    const text = String(value);
+    const text = Array.isArray(value) ? value.map((one) => String(one)).join(", ") : String(value);
     if (isReference(text)) return "a value Jig reads when needed";
     return text
         .replace(/[\u0000-\u001f\u007f]/g, " ")

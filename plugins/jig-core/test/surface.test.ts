@@ -271,6 +271,7 @@ describe("what plugins import", () => {
             "OnboardingMethod",
             "OnboardingMethodChoice",
             "OnboardingMethodField",
+            "OnboardingSetup",
             "OnboardingStore",
             "OpenedTunnel",
             "OutputKeep",

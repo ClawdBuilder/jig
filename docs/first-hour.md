@@ -72,9 +72,9 @@ Nothing is blocked. 1 warning is worth a look.
 Jig reads one file, `~/.jig/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
 covers the questions, confirmation and backup.
 
-In this scratch repository no company plugin is loaded, so there is nothing for setup to fill in. Create the
-`git` section yourself, as an example of the file's shape. It names the branch new work starts from and the
-branches the tools will not change directly:
+Jig loads no company plugin here, so nothing fills the file in for you: `jig setup` shows what it can ask, and
+this page writes the `git` section by hand to show the file's shape. It names the branch new work starts from
+and the branches the tools will not change directly:
 
 ```json
 {

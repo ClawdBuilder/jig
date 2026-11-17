@@ -5,8 +5,39 @@
 import type { DoctorContext, DoctorLine } from "./doctor.ts";
 import { removedAt } from "./section-defaults.ts";
 import { sectionState } from "./section-state.ts";
-import { getPath } from "./setup-plan.ts";
+import { getPath } from "./setup-values.ts";
 import { decisionsFile, proposalId, proposalPresent, readDeclined } from "./setup-proposal.ts";
+
+/** The doctor's lines for sections that are not set up: a skip each for a plugin that can be asked, and one compact
+ *  "Not set" line for the rest. */
+export function notSetupLines(context: DoctorContext, sections: readonly string[], lines: DoctorLine[]): void {
+    const rest: string[] = [];
+    for (const section of sections) {
+        // The caller passes sections it found not set; a loaded one (it changed while the doctor ran) is not named.
+        if (sectionState(context.personal, section) === "loaded") continue;
+        const setup = context.sectionSetup?.get(section);
+        if (setup?.items === undefined) {
+            rest.push(section);
+            continue;
+        }
+        lines.push({
+            id: `config.section.${section}`,
+            group: "config",
+            level: "skip",
+            title: section,
+            detail: `not set up: ${setup.summary} Run jig setup ${section}.`,
+        });
+    }
+    if (rest.length > 0) {
+        lines.push({
+            id: "config.sections.not-set",
+            group: "config",
+            level: "skip",
+            title: "Not set",
+            detail: `${rest.join(", ")}; each plugin uses its defaults.`,
+        });
+    }
+}
 
 export function onboardingLines(context: DoctorContext, settingsShown: string): DoctorLine[] {
     const entry = context.onboarding;

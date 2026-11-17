@@ -9,12 +9,14 @@ import {
     addCompanySecretCommands,
     OWN_SECTIONS,
 } from "./config.ts";
-import type { Facts, JigApi, OnboardingEntry, SandboxProvider } from "./contract.ts";
+import type { Facts, JigApi, SandboxProvider } from "./contract.ts";
 import { git, run, setCredentialRegistrar } from "./exec.ts";
 import { TOOLS_SECTION } from "./kit/tools.ts";
 import { UPDATES_SECTION } from "./updates-section.ts";
 import type { ExecGuard } from "./exec.ts";
 import { checkOnboarding, checkOnboardingMethods } from "./onboarding.ts";
+import { checkMethodSections, checkPathList } from "./api-options.ts";
+import { checkSetup } from "./setup-questions.ts";
 import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
 import { PROFILE_SECTION, PROFILES_SECTION, validateCompanyRemotes } from "./profiles.ts";
@@ -25,14 +27,6 @@ import { oneOfProblem } from "./section-defaults.ts";
 import { callRecord, writeRecord } from "./records.ts";
 import { isAbsolute } from "node:path";
 import { randomUUID } from "node:crypto";
-/** Refuses a section option that must be a list of non-empty paths, such as `first` or `union`. */
-function checkPathList(value: unknown, section: string, option: string, example: string): void {
-    if (value === undefined) return;
-    if (!Array.isArray(value) || value.some((path) => typeof path !== "string" || path === "")) {
-        throw new TypeError(`registerSection(${section}): ${option} must be a list of paths such as ${example}`);
-    }
-}
-
 /** The longest a command run in the sandbox for a plugin may take. */
 const MAX_SANDBOX_RUN_MS = 2 * 60 * 60 * 1000;
 
@@ -44,14 +38,6 @@ function sandboxCanRun(state: JigState): boolean {
         return provider.active === true;
     } catch {
         return false;
-    }
-}
-
-/** A company entry may only name methods for a section that declared them. */
-function checkMethodSections(entry: OnboardingEntry, state: JigState, label: string): void {
-    for (const section of Object.keys(entry.methods ?? {})) {
-        if (state.sectionChecks.has(section) && !state.onboardingMethods.has(section))
-            throw new Error(`${label}: section ${JSON.stringify(section)} has no methods`);
     }
 }
 
@@ -283,6 +269,10 @@ export function buildApi(state: JigState): JigApi {
                 const checkedMethods = declared === undefined ? undefined : checkOnboardingMethods(name, declared);
                 if (checkedMethods !== undefined) nextMethods.set(name, checkedMethods);
                 else nextMethods.delete(name);
+                // The questions are the plugin's own: they name its section and nothing else, and are checked before
+                // any state is written, like the methods.
+                const declaredSetup = options?.setup;
+                const checkedSetup = declaredSetup === undefined ? undefined : checkSetup(name, declaredSetup);
                 // Validate the company entries against the prospective methods before any state is written.
                 let nextOnboarding = state.onboarding;
                 const nextCompanyOnboarding = new Map<string, typeof state.onboarding>();
@@ -304,6 +294,8 @@ export function buildApi(state: JigState): JigApi {
                 state.sectionChecks.set(name, validate);
                 if (checkedMethods !== undefined) state.onboardingMethods.set(name, checkedMethods);
                 else state.onboardingMethods.delete(name);
+                if (checkedSetup !== undefined) state.sectionSetup.set(name, checkedSetup);
+                else state.sectionSetup.delete(name);
                 state.onboarding = nextOnboarding;
                 for (const [company, entry] of nextCompanyOnboarding) {
                     const target = state.companies.get(company);

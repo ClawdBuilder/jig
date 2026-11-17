@@ -23,7 +23,7 @@ import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
 import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionDetail, sectionState } from "./section-state.ts";
-import { onboardingLines } from "./doctor-needs.ts";
+import { notSetupLines, onboardingLines } from "./doctor-needs.ts";
 import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
 import { relayHealth } from "./relay.ts";
@@ -65,6 +65,7 @@ export function doctorContext(state: JigState): DoctorContext {
         relay: { http: () => state.http },
         now: state.now,
         onboarding: activeOnboarding(state),
+        sectionSetup: state.sectionSetup,
     };
 }
 /** The relays declared in jig.json: health, the protocol it speaks, and whether the token resolves. */
@@ -486,15 +487,7 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
     }
     lines.push(...onboardingLines(context, shown));
 
-    if (notSet.length > 0) {
-        lines.push({
-            id: "config.sections.not-set",
-            group: "config",
-            level: "skip",
-            title: "Not set",
-            detail: `${notSet.join(", ")}; each plugin uses its defaults.`,
-        });
-    }
+    notSetupLines(context, notSet, lines);
     if (sections.length === 0) {
         lines.push({
             id: "config.sections",

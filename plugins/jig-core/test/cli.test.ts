@@ -629,6 +629,7 @@ describe("a package installed from git", () => {
             { when: "Your Fixture login", answer: "jdoe" },
             { when: "Your Fixture badge", answer: "b-1" },
             { when: "optional: press Enter", answer: "" },
+            { when: "which plugin do you want to set up?", answer: "done" },
             { when: "Review these changes", answer: "1" },
             { when: "Save these changes?", answer: "y" },
         ]);
@@ -669,6 +670,7 @@ describe("jig setup", () => {
             { when: "Save this company choice?", answer: "y" },
             { when: "needs 1 thing", answer: "1" },
             { when: "Your Fixture login", answer: "jdev" },
+            { when: "which plugin do you want to set up?", answer: "done" },
             { when: "Review these changes", answer: "2" },
             { when: "Save these changes?", answer: "y" },
         ]);
@@ -698,8 +700,7 @@ describe("jig setup", () => {
             { when: "Which company setup do you use?", answer: "1" },
             { when: "Use Fixture Co's setup in:", answer: "3" },
             { when: "Save this company choice?", answer: "y" },
-            { when: "needs 1 thing", answer: "1" },
-            { when: "Your Fixture login", answer: "jdoe" },
+            { when: "which plugin do you want to set up?", answer: "done" },
             { when: "Review these changes", answer: "1" },
             { when: "Save these changes?", answer: "y" },
         ]);
@@ -729,6 +730,7 @@ describe("jig setup", () => {
                 { when: "needs 2 things", answer: "1" },
                 { when: "Your Fixture login", answer: "" },
                 { when: "Your Fixture team", answer: "1" },
+                { when: "which plugin do you want to set up?", answer: "done" },
                 { when: "Review these changes", answer: "1" },
                 { when: "Save these changes?", answer: "y" },
             ],
@@ -756,6 +758,7 @@ describe("jig setup", () => {
                 { when: "Your Fixture login", answer: "" },
                 { when: "must start with a lowercase letter", answer: "jdoe" },
                 { when: "Your Fixture team", answer: "1" },
+                { when: "which plugin do you want to set up?", answer: "done" },
                 { when: "Review these changes", answer: "1" },
                 { when: "Save these changes?", answer: "y" },
             ],
@@ -780,6 +783,7 @@ describe("jig setup", () => {
             { when: "Save this company choice?", answer: "y" },
             { when: "needs 1 thing", answer: "1" },
             { when: "Your Fixture login", answer: "jdoe" },
+            { when: "which plugin do you want to set up?", answer: "done" },
             { when: "Review these changes", answer: "1" },
             { when: "Save these changes?", answer: "y" },
         ]);

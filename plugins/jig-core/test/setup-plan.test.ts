@@ -20,7 +20,9 @@ import { afterEach, beforeEach, describe, test } from "node:test";
 import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
 import type { OnboardingEntry } from "../src/contract.ts";
-import { applyAnswer, buildSetupPlan, messagePaths, safePath } from "../src/setup-plan.ts";
+import { buildSetupPlan } from "../src/setup-plan.ts";
+import { applyAnswer, messagePaths } from "../src/setup-answer.ts";
+import { safePath } from "../src/setup-values.ts";
 import { buildReference } from "../src/setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "../src/setup-write.ts";
 import type { SetupPlan, SetupState } from "../src/setup-plan.ts";
@@ -452,7 +454,8 @@ describe("the write gate", () => {
         const result = writeSetup(plan, changes, new Date("2026-11-04T17:00:00.000Z"));
         assert.ok(result.backup);
         const after = JSON.parse(readFileSync(file, "utf8"));
-        assert.deepEqual(after.secrets.backends, ["env"]);
+        // `pass` is the built-in default when no list is written; turning `env` on adds to it, never replaces it.
+        assert.deepEqual(after.secrets.backends, ["pass", "env"]);
         assert.deepEqual(after.secrets.disabledBackends, ["op"]);
     });
 

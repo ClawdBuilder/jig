@@ -52,7 +52,11 @@ export function session(options: SessionOptions = {}): ExtensionFactory {
         const slot = options.section ?? section;
         // Registered in every process, child sessions included: a `session` section in jig.json must not be an unknown
         // field there.
-        withJig((api) => api.config.registerSection("session", validateSessionSection));
+        withJig((api) =>
+            api.config.registerSection("session", validateSessionSection, {
+                setup: { summary: "The session file, the context view and idle compaction." },
+            }),
+        );
         if (isChild(env)) return;
         // `/jig` says what the setting is, when the person set one.
         withJig((api) =>
