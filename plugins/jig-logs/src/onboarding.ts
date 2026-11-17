@@ -27,7 +27,7 @@ export const LOGS_SETUP: OnboardingSetup = {
             section: "logs",
             path: "environments",
             label: "Log environment",
-            why: "Each environment says where its logs are; its name is what a search gives.",
+            why: "Each environment says where its logs are; its name is the one a search uses.",
             keyLabel: "Which environment?",
             keyPlaceholder: "staging",
             repeat: true,

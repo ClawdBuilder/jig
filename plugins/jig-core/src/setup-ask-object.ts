@@ -49,9 +49,14 @@ function formLabel(form: SetupObjectForm): string {
     return form.who === undefined ? label : `${label} — ${form.who}`;
 }
 
-/** A label in the middle of a sentence, such as "mongo connection" in "Which kind of mongo connection?". */
+/** A plain label in the middle of a sentence, such as "mongo connection" in "Which kind of mongo connection?". */
 function midSentence(label: string): string {
     return /^[A-Z][a-z]/.test(label) ? `${label[0]?.toLowerCase() ?? ""}${label.slice(1)}` : label;
+}
+
+/** Why there is nothing to ask: the settings already fix the only shape this object may take. */
+function nothingToAsk(ui: SetupUi, field: SetupField): void {
+    ui.notify(`The settings already decide this, so there is nothing to ask for ${midSentence(field.label)}.`, "info");
 }
 
 /** What asking one object came to: it was written, its name or its kind must be asked again, or the person cancelled. */
@@ -71,6 +76,11 @@ export async function askObject(
     let names = objectNames(plan, field, draft);
     if (names.length > 0) ui.notify(`Already set up: ${names.join(", ")}.`, "info");
     ui.notify(`${field.label}: ${field.reason}`, "info");
+    // Nothing to ask when the settings already decide the only shape this object may take: say so before the name.
+    if (applicableForms(spec.forms, plan, field.section, draft).length === 0) {
+        nothingToAsk(ui, field);
+        return "ok";
+    }
     for (;;) {
         const name = await askName(ui, field, names);
         if (name === "cancel") return "cancel";
@@ -101,10 +111,7 @@ async function addObject(
     for (;;) {
         const forms = applicableForms(spec.forms, plan, field.section, draft);
         if (forms.length === 0) {
-            ui.notify(
-                `The settings already decide this, so there is nothing to ask for ${midSentence(field.label)}.`,
-                "info",
-            );
+            nothingToAsk(ui, field);
             return "nothing";
         }
         const form = forms.length === 1 ? forms[0] : await pickForm(ui, field, forms);
@@ -135,7 +142,7 @@ async function askName(ui: SetupUi, field: SetupField, names: readonly string[])
             ui.notify(`Please enter a value for ${spec.keyLabel}`, "warning");
             continue;
         }
-        const problem = keyProblem(name, spec.keyLabel);
+        const problem = keyProblem(name);
         if (problem !== undefined) {
             ui.notify(problem, "warning");
             continue;
@@ -161,6 +168,33 @@ async function pickForm(
     return index < 0 ? undefined : forms[index];
 }
 
+/** Whether a validator's message names one field of a form, as a whole dotted path: "needs a uri with one host" names
+ *  `uri`, and "via.ssh.host is required" names `via.ssh.host` and not `host`. */
+function namesField(text: string, path: string): boolean {
+    const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^A-Za-z0-9_.-])${escaped}(?![A-Za-z0-9_.-])`).test(text);
+}
+
+/**
+ * The field a refusal asks again, or -1 for the whole form. A path that is a field's own is that field, and a path below
+ * one belongs to it. A path above the fields is an object the form builds: the field the message itself names is asked
+ * (a `via.ssh` refusal is really about the uri), and when the message names none, the whole form is asked, so a field
+ * that could not change the refusal is never asked for ever.
+ */
+export function fieldForRefusal(form: SetupObjectForm, at: string, problem: string): number {
+    const fields = form.fields;
+    const exact = fields.findIndex((sub) => sub.path === at);
+    if (exact >= 0) return exact;
+    let owner = -1;
+    for (const [index, sub] of fields.entries()) {
+        if (!at.startsWith(`${sub.path}.`)) continue;
+        if (owner < 0 || sub.path.length > (fields[owner]?.path.length ?? 0)) owner = index;
+    }
+    if (owner >= 0) return owner;
+    const named = fields.flatMap((sub, index) => (namesField(problem, sub.path) ? [index] : []));
+    return named.length === 1 ? (named[0] ?? -1) : -1;
+}
+
 /** One form's questions and the write: a refusal asks the field it names again, or the name, or the kind. */
 async function fillForm(
     state: JigState,
@@ -174,6 +208,8 @@ async function fillForm(
     const values = new Map<string, unknown>();
     // Each credential's store, by its field: a retry that picks another store keeps only the one it settles on.
     const enable = new Map<string, SecretBackend>();
+    // The credentials whose place is not there yet: the summary says so once, as a standalone credential's does.
+    const missing = new Set<string>();
     let asking = 0;
     let again = -1;
     for (;;) {
@@ -181,10 +217,11 @@ async function fillForm(
             // Only the field the refusal names is asked again: the others' answers are kept.
             const index = again;
             again = -1;
-            if ((await askObjectField(state, ui, field, form, index, values, enable)) === "cancel") return "cancel";
+            if ((await askObjectField(state, ui, field, form, index, values, enable, missing)) === "cancel")
+                return "cancel";
         } else {
             while (asking < form.fields.length) {
-                if ((await askObjectField(state, ui, field, form, asking, values, enable)) === "cancel")
+                if ((await askObjectField(state, ui, field, form, asking, values, enable, missing)) === "cancel")
                     return "cancel";
                 asking++;
             }
@@ -192,6 +229,7 @@ async function fillForm(
         const result = applyObject(plan, draft, field, name, Object.fromEntries(values));
         if ("change" in result) {
             if (enable.size > 0) result.change.enableBackends = [...new Set(enable.values())];
+            if (missing.size > 0) result.change.note = `${result.change.note ?? ""} (not found yet)`;
             return { change: result.change };
         }
         // The name or the map itself was refused: ask the name again.
@@ -199,12 +237,7 @@ async function fillForm(
             ui.notify(result.problem, "warning");
             return "retry";
         }
-        const at = form.fields.findIndex(
-            (sub) =>
-                sub.path === result.at ||
-                sub.path.startsWith(`${result.at}.`) ||
-                result.at?.startsWith(`${sub.path}.`) === true,
-        );
+        const at = fieldForRefusal(form, result.at, result.problem);
         // A path this form does not ask belongs to another kind of object: ask which kind again.
         if (at < 0) {
             ui.notify(result.problem, "warning");
@@ -225,6 +258,7 @@ async function askObjectField(
     index: number,
     values: Map<string, unknown>,
     enable: Map<string, SecretBackend>,
+    missing: Set<string>,
 ): Promise<"ok" | "cancel"> {
     const sub = form.fields[index];
     if (sub === undefined) return "ok";
@@ -251,6 +285,8 @@ async function askObjectField(
         if (probe === "retry") return "retry";
         if (probe === "cancel") return "cancel";
         values.set(sub.path, chosen.reference);
+        if (probe === "not-found") missing.add(sub.path);
+        else missing.delete(sub.path);
         if (sub.reference !== undefined && !sub.reference.enabled.includes(chosen.store))
             enable.set(sub.path, chosen.store);
         return "ok";

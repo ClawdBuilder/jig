@@ -102,9 +102,9 @@ Parameters and their checks: [Parameters](docs/parameters.md).
 
 In `~/.jig/jig.json`, under `api`. An unknown field is an error, and the tool
 then does nothing until the file is fixed (`/jig` lists the problems).
-`jig setup api` asks for one collection at a time — an `.http` folder, Bruno, a
-Postman file or an OpenAPI file — and the environment mappings, and `jig setup`
-offers it when no company plugin fills them in.
+`jig setup api` asks for one collection at a time — an `.http` folder, Bruno or a
+Postman file — and the environment mappings, and `jig setup` offers it when no
+company plugin fills them in.
 
 ```json
 { "api": { "collections": { "orders": { "http": "~/work/orders-api/http" } }, "environments": { "Staging": "staging" } } }
@@ -122,6 +122,16 @@ offers it when no company plugin fills them in.
 
 An environment name that is not mapped counts as production. Every field, with an
 example of each source, is in [Configuration](docs/configuration.md).
+
+An OpenAPI collection is added by hand: each environment it runs in also needs a
+server, which setup does not ask. Its shape, inside `api.collections`:
+
+```json
+{ "catalog": { "openapi": "~/work/catalog/openapi.yaml", "environments": ["Staging"],
+               "servers": { "Staging": "https://api.staging.example.com/v1" } } }
+```
+
+[OpenAPI](docs/openapi.md) says where it runs and why.
 
 ## Company part (in the company plugin)
 

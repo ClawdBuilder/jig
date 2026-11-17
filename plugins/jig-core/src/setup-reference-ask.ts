@@ -41,6 +41,8 @@ export async function chooseReference(
             "info",
         );
     }
+    // Why this credential is needed, as a text question says it, before where it is kept is asked.
+    ui.notify(field.reason, "info");
     // An empty answer where a place is already set keeps it: setup only asks again so it can change.
     const keep = field.keep === true && typeof field.current === "string" && field.current !== "";
     const labels = [

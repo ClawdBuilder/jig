@@ -9,7 +9,8 @@ How a service's OpenAPI spec (3.0 or 3.1, JSON or YAML) becomes runnable request
 ```
 
 A spec describes what an API can do, not what a team saved to run, and its servers rarely match a team's environment names. So an
-OpenAPI collection is held tighter than the others.
+OpenAPI collection is held tighter than the others, and `jig setup` does not offer one: it would also have to ask for the server
+of each environment. Add it by hand, with the shape above.
 
 | Field | Meaning |
 |---|---|

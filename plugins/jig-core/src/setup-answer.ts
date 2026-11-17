@@ -18,9 +18,9 @@ const KEY_MAX = 200;
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /** Why a map's name cannot be used, or undefined: the rule an `entry` and an `object` share. */
-export function keyProblem(key: string, label: string): string | undefined {
+export function keyProblem(key: string): string | undefined {
     if (key === "" || key.length > KEY_MAX || /[\u0000-\u001f\u007f]/.test(key)) {
-        return `${label} must be one line of at most ${KEY_MAX} characters.`;
+        return `That name must be one line of at most ${KEY_MAX} characters.`;
     }
     if (UNSAFE_KEYS.has(key)) return "That name cannot be used.";
     return undefined;
@@ -94,7 +94,7 @@ export function applyEntry(
     value: string,
 ): AnswerResult {
     const cleanKey = key.trim();
-    const problem = keyProblem(cleanKey, field.entry?.keyLabel ?? "The name");
+    const problem = keyProblem(cleanKey);
     if (problem !== undefined) return { problem };
     if (!safePath(field.path)) return { problem: cannotChange(field) };
     const existing = draft[field.section];
@@ -125,9 +125,11 @@ export function applyObject(
     const spec = field.object;
     if (spec === undefined) return { problem: cannotChange(field) };
     const cleanKey = key.trim();
-    const problem = keyProblem(cleanKey, spec.keyLabel);
+    const problem = keyProblem(cleanKey);
     if (problem !== undefined) return { problem };
-    if (!safePath(field.path)) return { problem: cannotChange(field) };
+    // The map's own path, and every path inside the new object: an answer is a path, and one setup cannot follow (a
+    // prototype key, an index) is refused here, never written. Registration refuses these too; this is the answer time.
+    if (!safePath(field.path) || !Object.keys(values).every(safePath)) return { problem: cannotChange(field) };
     const existing = draft[field.section];
     if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
         return { problem: cannotChange(field) };
@@ -159,20 +161,25 @@ export function applyObject(
         return { problem: `The plugin's check could not run for ${field.label}. Try another value.` };
     }
     const keyPath = `${field.path}.${cleanKey}`;
-    const refused = messages.find((message) =>
-        messagePaths(message, field.section).some(
-            (path) => path === field.path || path === keyPath || path.startsWith(`${keyPath}.`),
-        ),
+    const refused = messages.find(
+        (message) =>
+            messageNames(message, field.section, field.path) ||
+            messagePaths(message, field.section).some((path) => path === keyPath || path.startsWith(`${keyPath}.`)),
     );
     if (refused !== undefined) {
+        // The map itself refused: the name is asked again. A message about the new object: its own field is asked again.
+        if (messageNames(refused, field.section, field.path)) {
+            const text = plainObjectText(refused, field.section, field.path);
+            return { problem: `${field.label} was not added: ${text}` };
+        }
         const path = messagePaths(refused, field.section).find(
-            (one) => one === field.path || one === keyPath || one.startsWith(`${keyPath}.`),
+            (one) => one === keyPath || one.startsWith(`${keyPath}.`),
         );
         const at = path?.startsWith(`${keyPath}.`) === true ? path.slice(keyPath.length + 1) : undefined;
-        const strip = at === undefined ? field.path : `${keyPath}.${at}`;
+        const strip = at === undefined ? keyPath : (path ?? keyPath);
         const text = plainObjectText(refused, field.section, strip);
         return {
-            problem: at === undefined ? `${field.label} was not added: ${text}` : text,
+            problem: at === undefined ? `${field.label} ${cleanKey} was not added: ${text}` : text,
             ...(at === undefined ? {} : { at }),
         };
     }
@@ -242,8 +249,14 @@ function commit(
     } catch {
         return { problem: `The plugin's check could not run for ${field.label}. Try another value.` };
     }
-    const rejected = messages.filter((message) => messagePaths(message, field.section).includes(path));
-    if (rejected.length > 0) return { problem: plainProblem(field, rejected[0] ?? "") };
+    // The value's own path, the map the entry goes in, or the entry itself: a message about another entry of the same
+    // map leaves this answer alone.
+    const rejected = messages.filter(
+        (message) =>
+            messageNames(message, field.section, path) ||
+            (key !== undefined && messageNames(message, field.section, `${path}.${key}`)),
+    );
+    if (rejected.length > 0) return { problem: plainProblem(field, rejected[0] ?? "", key) };
     draft[field.section] = nextSection;
     const oldValue =
         key === undefined ? getAt(plan.raw[field.section], path) : getAt(getAt(plan.raw[field.section], path), key);
@@ -271,15 +284,27 @@ export function messagePaths(message: string, section: string): string[] {
     return found;
 }
 
+/** Whether a validator's message names one dotted path whole: "acme.sso.token is required" names `sso.token`, while a
+ *  message about `acme.sso.token.slot`, or about a map's sibling key such as `environments.prod.us`, does not. A map key
+ *  may hold a dot or a space, so the match is the literal path, with the same name characters `messagePaths` reads. */
+export function messageNames(message: string, section: string, path: string): boolean {
+    const full = `${section}.${path}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^A-Za-z0-9_.-])${full}(?![A-Za-z0-9_.-])`).test(message);
+}
+
 /** The refusal for a path setup will not write: a path it cannot follow, or one under a value it cannot change. */
 function cannotChange(field: SetupField): string {
     return `${field.label} cannot be changed here. /jig doctor names the problem.`;
 }
 
-function plainProblem(field: SetupField, message: string): string {
-    const key = `${field.section}.${field.path}`;
-    let text = message
-        .replace(new RegExp(`${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:?`, "ig"), "")
+function plainProblem(field: SetupField, message: string, key?: string): string {
+    // The message names the entry (`api.environments.Staging`) or the field; either way setup says its own label first.
+    let text = message;
+    for (const at of key === undefined ? [field.path] : [`${field.path}.${key}`, field.path]) {
+        const full = `${field.section}.${at}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        text = text.replace(new RegExp(`${full}:?`, "ig"), "");
+    }
+    text = text
         .replace(/[`"'{}]/g, "")
         .replace(/\s+/g, " ")
         .trim();

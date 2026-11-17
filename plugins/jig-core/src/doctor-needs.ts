@@ -49,6 +49,8 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
     const lines: DoctorLine[] = [];
     for (const [index, item] of entry.items.entries()) {
         if (item.kind === "info" || item.kind === "login" || item.kind === "proposal") continue;
+        // A field or a whole map the person left out with a `null` was removed on purpose, so it is never "needed".
+        if (removedAt(context.personal.removed.get(item.section) ?? [], item.path) !== undefined) continue;
         if (item.kind === "object") {
             // A map of objects is there when it has one: an empty one is not an answer.
             const value = getPath(context.sections.get(item.section), item.path);
@@ -58,13 +60,14 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
                 group: "config",
                 level: "warn",
                 title: `You need: ${item.label}`,
-                detail: item.why ?? `Add ${item.section}.${item.path} to ${settingsShown} by hand.`,
+                detail:
+                    item.why ??
+                    `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
                 fix: "Run jig setup and it asks for this.",
             });
             continue;
         }
         if (item.kind === "text" && item.optional === true) continue;
-        if (removedAt(context.personal.removed.get(item.section) ?? [], item.path) !== undefined) continue;
         const store = item.kind === "reference" ? (item.preferredStore ?? entry.preferredStore) : undefined;
         const hint = item.kind === "reference" ? item.addHints?.[store ?? "env"] : undefined;
         if (sectionState(context.personal, item.section) === "loaded") {

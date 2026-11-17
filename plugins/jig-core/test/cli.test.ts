@@ -826,7 +826,11 @@ describe("jig setup", () => {
                 password: "env:MONGO_STAGING_PASSWORD",
             },
         });
-        assert.match(result.stdout.replace(/\r/g, ""), /Mongo connection: staging \(new\)/);
+        assert.match(
+            result.stdout.replace(/\r/g, ""),
+            /Mongo connection: staging \(not found yet\) \(new\)/,
+            "the summary says the credential is not there yet",
+        );
     });
 
     test("jig setup mongo adds a second connection through an SSH host", {

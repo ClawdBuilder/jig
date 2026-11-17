@@ -127,7 +127,6 @@ function checkFields(raw: unknown, at: string, errors: string[]): void {
     }
 }
 
-/** The forms of one `object` item, or undefined when they are not a list setup can offer. */
 /** One form of an object: its label, its optional line, its `when` and its questions. */
 function checkForm(raw: unknown, at: string, many: boolean, errors: string[]): void {
     if (!isObject(raw)) {

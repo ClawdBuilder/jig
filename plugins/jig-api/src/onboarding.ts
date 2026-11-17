@@ -1,6 +1,7 @@
 // What a saved-request collection needs from a person, in plain questions, when no company plugin fills it in. A
-// collection is one of the four sources `src/sources/` reads, added one at a time; the environment mapping is a plain
-// string per name, and an unmapped name counts as production.
+// collection is one of the sources `src/sources/` reads, added one at a time; an OpenAPI collection is left out on
+// purpose, because it also needs a server per environment, which setup does not ask (the README shows the shape). The
+// environment mapping is a plain string per name, and an unmapped name counts as production.
 import type { OnboardingSetup } from "../../jig-core/src/contract.ts";
 
 export const API_SETUP: OnboardingSetup = {
@@ -11,7 +12,7 @@ export const API_SETUP: OnboardingSetup = {
             section: "api",
             path: "collections",
             label: "API collection",
-            why: "A collection is a folder or file of saved requests; its name is what a call gives.",
+            why: "A collection is a folder or file of saved requests; its name is the one a call uses.",
             keyLabel: "Which name should the calls use?",
             keyPlaceholder: "orders",
             repeat: true,
@@ -49,26 +50,6 @@ export const API_SETUP: OnboardingSetup = {
                             label: "Where is the collection file?",
                             placeholder: "~/work/orders.postman_collection.json",
                             why: "An exported collection; an environment file per environment is added by hand.",
-                        },
-                    ],
-                },
-                {
-                    label: "An OpenAPI file",
-                    fields: [
-                        {
-                            kind: "text",
-                            path: "openapi",
-                            label: "Where is the OpenAPI file?",
-                            placeholder: "~/work/orders/openapi.yaml",
-                            why: "A JSON or YAML specification.",
-                        },
-                        {
-                            kind: "text",
-                            path: "environments",
-                            label: "Which environment names does it run in?",
-                            list: true,
-                            placeholder: "Staging",
-                            why: "OpenAPI lists the environments it may run in; each must also be mapped below.",
                         },
                     ],
                 },
