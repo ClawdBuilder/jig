@@ -251,13 +251,7 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
     const reason = value.why ?? "The plugin's list says this is needed.";
     if (value.kind === "reference") {
         const reference = referenceChoice(state, undefined, undefined);
-        const preferred = value.preferredStore ?? item.preferredStore;
-        if (preferred !== undefined && reference.stores.includes(preferred)) {
-            reference.preferred = preferred;
-            reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
-        }
-        if (value.suggested !== undefined) reference.suggested = value.suggested;
-        if (value.addHints !== undefined) reference.addHints = value.addHints;
+        offerStores(reference, value, item);
         return {
             section: value.section,
             path: value.path,

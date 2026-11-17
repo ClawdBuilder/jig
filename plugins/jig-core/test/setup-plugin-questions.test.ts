@@ -406,6 +406,39 @@ describe("picking a plugin that is already set up", () => {
     });
 });
 
+describe("an item's credential stores", () => {
+    /** A section whose one question is a credential that names one store, on a machine with others. */
+    function storesState(): ReturnType<typeof createState> {
+        writeFileSync(file, JSON.stringify({ secrets: { commands: { gh: ["gh", "auth", "token"] } } }));
+        const state = createState(fakePi().pi, { env: {} });
+        state.configPath = () => file;
+        const api = buildApi(state);
+        api.config.registerSection("orders", () => [], {
+            setup: {
+                summary: "Read the orders of an account.",
+                items: [
+                    {
+                        kind: "reference",
+                        section: "orders",
+                        path: "auth.token",
+                        label: "The orders token",
+                        stores: ["env"],
+                    },
+                ],
+            },
+        });
+        loadPersonalConfig(state, file);
+        return state;
+    }
+
+    test("are the only places offered, as a method field's stores are", () => {
+        const questions = sectionQuestions(setupStateFrom(storesState()), "orders", {}, true);
+        const field = questions.fields.find((one) => one.path === "auth.token");
+        assert.equal(field?.kind, "reference");
+        assert.deepEqual(field?.reference?.stores, ["env"], "only the store the question names is offered");
+    });
+});
+
 describe("a plugin's sign-in methods", () => {
     test("a company-only form is offered only while a company is active", () => {
         const state = stateWith({});
