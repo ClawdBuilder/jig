@@ -104,6 +104,18 @@ test("the npm tarball has the command and the plugins, and no tests", { timeout:
     assert.ok(!result.files.some((file) => file.startsWith("local/")), "nothing local");
 });
 
+test("no EGM.md is packed: those are agent contracts for people working on the repository", {
+    timeout: 60_000,
+}, async () => {
+    const result = await pack();
+    const packed = result.files.filter((file) => /(^|\/)EGM\.md$/.test(file));
+    assert.deepEqual(packed, [], "EGM.md files in the tarball");
+    // npm applies a negation only to what comes before it, so it has to be the last entry of `files`; a pack of today's
+    // tree cannot show this once the last `src/EGM.md` is gone.
+    const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as { files: string[] };
+    assert.equal(manifest.files.at(-1), "!**/EGM.md", "the EGM.md exclusion comes after every include");
+});
+
 test("every path a runtime module resolves beside itself is in the tarball", { timeout: 60_000 }, async () => {
     const packed = new Set((await pack()).files);
     const missing = runtimeFiles().filter((entry) => !packed.has(entry.file));

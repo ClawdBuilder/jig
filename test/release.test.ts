@@ -101,7 +101,7 @@ describe("release", () => {
 
     test("one blank line where a fragment had two, and a blank line inside a fenced block is kept", () => {
         const fragments = {
-            "a.md": ["### Added", "", "- First.", "", "", "- Second.", ""].join("\n"),
+            "a.md": ["### Added", "", "- First.", "", "", "  More on the first.", "", "- Second.", ""].join("\n"),
             "b.md": ["### Added", "", "- Third.", ""].join("\n"),
             "c.md": ["### Added", "", "- A block follows.", "", "```text", "one", "", "two", "```", ""].join("\n"),
         };
@@ -109,9 +109,56 @@ describe("release", () => {
         const { status, output } = run("release.mjs", ["0.3.0", "--date", "2026-11-04", "--root", root]);
         assert.equal(status, 0, output);
         const text = readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
-        assert.match(text, /- First\.\n\n- Second\.\n\n- Third\.\n\n- A block follows\./, text);
+        assert.match(
+            text,
+            /- First\.\n\n  More on the first\.\n- Second\.\n- Third\.\n- A block follows\.\n\n```text/,
+            text,
+        );
         assert.match(text, /one\n\ntwo/, "the blank line of a fenced block is kept");
         assert.doesNotMatch(text.slice(text.indexOf("## [0.3.0]"), text.indexOf("## [0.2.0]")), /\n\n\n/);
+    });
+
+    test("writes tight lists: one newline between bullets, one blank line between headings, a bullet's own lines kept", () => {
+        const fragments = {
+            "a.md": ["### Added", "", "- First.", "", "", "- Second, which wraps", "  onto a second line.", ""].join(
+                "\n",
+            ),
+            "b.md": ["### Added", "", "- Third.", "", "  A second paragraph of the third.", ""].join("\n"),
+            "c.md": ["### Added", "", "- Fourth.", ""].join("\n"),
+            "d.md": ["### Fixed", "", "- A fix.", ""].join("\n"),
+            "e.md": "### Changed\n- A change.\n",
+        };
+        const root = project("0.2.0", CHANGELOG, fragments);
+        const { status, output } = run("release.mjs", ["0.3.0", "--date", "2026-11-04", "--root", root]);
+        assert.equal(status, 0, output);
+        const text = readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
+        const released = text.slice(text.indexOf("## [0.3.0]"), text.indexOf("## [0.2.0]"));
+        assert.equal(
+            released,
+            [
+                "## [0.3.0] - 2026-11-04",
+                "",
+                "### Added",
+                "",
+                "- First.",
+                "- Second, which wraps",
+                "  onto a second line.",
+                "- Third.",
+                "",
+                "  A second paragraph of the third.",
+                "- Fourth.",
+                "",
+                "### Changed",
+                "",
+                "- A change.",
+                "",
+                "### Fixed",
+                "",
+                "- A fix.",
+                "",
+                "",
+            ].join("\n"),
+        );
     });
 
     test("changes nothing with --dry-run, and says what it would change", () => {
