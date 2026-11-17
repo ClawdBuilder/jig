@@ -309,5 +309,5 @@ shows only the warnings and failures, with the summary. The full report is still
 The checks in detail are in [Configuration](../plugins/jig-core/docs/configuration.md#the-jig-commands). Where a reference comes from is in
 [Secrets](secrets.md#later).
 
-For 0.5.7, install the npm package `@clawdbuilder/jig@0.5.7`; the tarball is checked with the npm versions CI uses. The
+For 0.5.8, install the npm package `@clawdbuilder/jig@0.5.8`; the tarball is checked with the npm versions CI uses. The
 doctor checks the sandbox broker, the built-in roles folder and every Jig copy Pi loads.
