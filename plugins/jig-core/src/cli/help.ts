@@ -47,6 +47,8 @@ ${EXIT_CODES}`,
 Make the Jig home (~/.jig, or JIG_HOME) and install Jig in it with Pi, then ask
 only what is missing and write your settings file once, with a backup.
 Running it again does the questions only, and repairs a missing \`jig\` command.
+A \`jig\` command that runs another home is left alone, and setup says which home
+it runs and how to reach this one.
 
 Options:
   --bin <folder>   where the \`jig\` command goes (default: ~/.local/bin)
