@@ -521,6 +521,19 @@ describe("what a plugin registration refuses", () => {
             /cannot also be waiting/,
         );
     });
+
+    test("an item path setup cannot write, such as a prototype key or a list index", () => {
+        for (const path of ["__proto__.polluted", "services.0.host"]) {
+            assert.throws(
+                () =>
+                    api().config.registerSection("jira", validateJira, {
+                        setup: { ...base, items: [{ kind: "text", section: "jira", path, label: "A value" }] },
+                    }),
+                /setup\.items\[0\]\.path/,
+                path,
+            );
+        }
+    });
 });
 
 describe("the doctor", () => {

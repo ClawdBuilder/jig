@@ -4,7 +4,7 @@
 import type { SetupChange, SetupField, SetupPlan } from "./setup-plan.ts";
 import { layered } from "./section-defaults.ts";
 import { parseSecretReference } from "./secrets.ts";
-import { isObject, parentIsObject } from "./setup-values.ts";
+import { isObject, parentIsObject, safePath } from "./setup-values.ts";
 import { setValuePath } from "./setup-write.ts";
 
 /** What an answer did: a change to write, a plain refusal, or nothing because the current value stays. */
@@ -58,9 +58,10 @@ export function applyValue(
     field: SetupField,
     value: unknown,
 ): AnswerResult {
+    if (!safePath(field.path)) return { problem: cannotChange(field) };
     const existing = draft[field.section];
     if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
-        return { problem: `${field.label} cannot be changed here. /jig doctor names the problem.` };
+        return { problem: cannotChange(field) };
     }
     const nextSection = structuredClone(isObject(existing) ? existing : {});
     setValuePath(nextSection, field.path, value);
@@ -80,9 +81,10 @@ export function applyEntry(
         return { problem: `${field.entry?.keyLabel ?? "The name"} must be one line of at most ${KEY_MAX} characters.` };
     }
     if (UNSAFE_KEYS.has(cleanKey)) return { problem: "That name cannot be used." };
+    if (!safePath(field.path)) return { problem: cannotChange(field) };
     const existing = draft[field.section];
     if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
-        return { problem: `${field.label} cannot be changed here. /jig doctor names the problem.` };
+        return { problem: cannotChange(field) };
     }
     const nextSection = structuredClone(isObject(existing) ? existing : {});
     const current = getAt(nextSection, field.path);
@@ -142,6 +144,11 @@ export function messagePaths(message: string, section: string): string[] {
         if (path !== undefined && !found.includes(path)) found.push(path);
     }
     return found;
+}
+
+/** The refusal for a path setup will not write: a path it cannot follow, or one under a value it cannot change. */
+function cannotChange(field: SetupField): string {
+    return `${field.label} cannot be changed here. /jig doctor names the problem.`;
 }
 
 function plainProblem(field: SetupField, message: string): string {

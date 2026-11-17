@@ -21,7 +21,7 @@ import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
 import type { OnboardingEntry, OnboardingItem } from "../src/contract.ts";
 import { buildSetupPlan } from "../src/setup-plan.ts";
-import { applyAnswer, messagePaths } from "../src/setup-answer.ts";
+import { applyAnswer, applyEntry, applyValue, messagePaths } from "../src/setup-answer.ts";
 import { safePath } from "../src/setup-values.ts";
 import { buildReference } from "../src/setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "../src/setup-write.ts";
@@ -427,6 +427,33 @@ describe("one answer", () => {
         assert.ok(lens);
         assert.match((applyAnswer(plan, draft, lens, "  ") as { problem: string }).problem, /Please enter a value/);
         assert.match((applyAnswer(plan, draft, lens, "many") as { problem: string }).problem, /must be a number/);
+    });
+
+    test("refuses a path setup must not write, and never pollutes Object.prototype", () => {
+        const plan = build();
+        const draft = structuredClone(plan.raw);
+        const unsafe = {
+            section: "acme",
+            path: "__proto__.polluted",
+            label: "A value",
+            question: "A value",
+            kind: "text" as const,
+            reason: "Test.",
+        };
+        const field = applyValue(plan, draft, unsafe, "yes");
+        assert.ok("problem" in field, JSON.stringify(field));
+        assert.equal(({} as Record<string, unknown>).polluted, undefined, "Object.prototype is untouched");
+        assert.equal(Object.hasOwn(draft, "acme"), false, "nothing was kept in the draft");
+        const entry = applyEntry(
+            plan,
+            draft,
+            { ...unsafe, kind: "entry", entry: { keyLabel: "A name", valueLabel: "A value" } },
+            "a",
+            "b",
+        );
+        assert.ok("problem" in entry, JSON.stringify(entry));
+        assert.equal(({} as Record<string, unknown>).polluted, undefined);
+        assert.equal(Object.hasOwn(draft, "acme"), false);
     });
 });
 

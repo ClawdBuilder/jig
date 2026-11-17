@@ -6,7 +6,7 @@ import type { OnboardingEntry, OnboardingItem, OnboardingSetup, OnboardingStore 
 import { checkOnboarding, onboardingItemAt } from "./onboarding.ts";
 import { oneLine } from "./onboarding-common.ts";
 import type { SetupField, SetupReferenceChoice, SetupState } from "./setup-plan.ts";
-import { getPath, isObject } from "./setup-values.ts";
+import { getPath, isObject, safePath } from "./setup-values.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { optionalQuestion, referenceQuestion } from "./setup-fields.ts";
 import { referenceChoice } from "./setup-reference.ts";
@@ -47,6 +47,9 @@ export function checkSetup(section: string, raw: unknown): OnboardingSetup {
                 fail(section, `${at}: a plugin cannot propose an entry; ask for it with an "entry" item`);
             }
             if (item.kind === "info" || item.kind === "login") continue;
+            if (!safePath(item.path)) {
+                fail(section, `${at}.path: a dotted path of plain names setup can write, such as bastion.user`);
+            }
             if (item.section !== section) {
                 fail(
                     section,
