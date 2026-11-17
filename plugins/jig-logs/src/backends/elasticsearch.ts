@@ -192,7 +192,7 @@ export const elasticsearch: LogBackend = {
     },
 
     // Elasticsearch has no limit on the time a search covers, and 10 000 hits is the default `index.max_result_window`.
-    limits: { maxHits: 10_000, maxWindowMs: Number.POSITIVE_INFINITY },
+    limits: { maxWindowMs: Number.POSITIVE_INFINITY },
 
     search: searchBody,
     probe: probeBody,

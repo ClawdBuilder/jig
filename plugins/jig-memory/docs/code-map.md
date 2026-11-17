@@ -14,7 +14,7 @@ Read it with the code open. Back to the [jig-memory overview](../README.md).
 | `clip.ts` | Cutting text by size. The limits are in bytes, because a file or a message… | `evidence.ts`, `message.ts`, `notes-index.ts` |
 | `close.ts` | Closing a ticket: the plugin drafts card.md from the notes and evidence, the… | `session.ts` |
 | `config.ts` | The `memory` section of jig.json: where ticket folders live, what a ticket… | `index.ts`, `session.ts` |
-| `empty-files.ts` | Empty files in a ticket folder: a sign that a write was cut short. A machine… | `session.ts` |
+| `empty-files.ts` | Empty files in a ticket folder: a sign that a write was cut short. A machine… | `notices.ts` |
 | `evidence.ts` | Tool results while a ticket is active, kept as evidence. Each result is one… | `session.ts`, `tool.ts` |
 | `extract.ts` | What a text names that another ticket's text could name too: ticket keys,… | `card.ts`, `cards.ts`, `material.ts` and 2 more |
 | `index.ts` | Pi entry point of jig-memory. The factory only registers: the `memory`… || Pi |
@@ -22,6 +22,7 @@ Read it with the code open. Back to the [jig-memory overview](../README.md).
 | `message.ts` | What the agent reads about a ticket in messages: the notes after activation… | `session.ts` |
 | `notes-index.ts` | A search index of the tickets that have no card yet: the ## Now block and… | `recall.ts`, `session.ts` |
 | `notes.ts` | notes.md: the template a new ticket starts from, and the ## Now block, which… | `empty-files.ts`, `material.ts`, `session.ts` and 1 more |
+| `notices.ts` | What jig-memory says while it works: a line on Pi’s screen, one line of an error, and the empty-files warning | `session.ts` |
 | `recall.ts` | Recall: which earlier tickets look like this one. Shared keys come first: a… | `session.ts` |
 | `session.ts` | The active ticket, and what the agent is told about it. A ticket becomes… | `index.ts` |
 | `store.ts` | The ticket folder on disk: <folder>/<KEY>/ holds notes.md (what is known,… | `cards.ts`, `checks.ts`, `close.ts` and 5 more |

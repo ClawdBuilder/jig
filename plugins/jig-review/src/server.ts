@@ -80,7 +80,14 @@ export class ReviewServer {
     /** Starts the server if needed and returns its base URL, `http://localhost:<port>`. */
     public async start(): Promise<string> {
         if (this.server === undefined) {
-            this.server = serve({ fetch: this.createApp().fetch, hostname: "127.0.0.1", port: 0 }) as Server;
+            const app = this.createApp();
+            this.server = serve({
+                // Every response carries the security headers, a refusal made before a route included: they are added
+                // as the response leaves the server, not in the middleware that may return early.
+                fetch: async (request) => withSecurityHeaders(await app.fetch(request)),
+                hostname: "127.0.0.1",
+                port: 0,
+            }) as Server;
             await new Promise<void>((resolve) => {
                 this.server?.once("listening", resolve);
             });
@@ -148,11 +155,6 @@ export class ReviewServer {
                 return context.text("Forbidden", 403);
             }
             await next();
-            // On the finished response, not before: a response a handler builds itself (a file, the event stream) would
-            // otherwise lose the headers.
-            for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
-                if (!context.res.headers.has(name)) context.res.headers.set(name, value);
-            }
         });
         app.use(
             "/api/*",
@@ -323,6 +325,16 @@ const SECURITY_HEADERS: Record<string, string> = {
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
 };
+
+/** Adds the headers every response carries, as it leaves the server: a refusal made before a route, an error reply, and
+ *  one a handler builds itself (a file, the event stream) all get them. A header the response already has wins, so the
+ *  event stream keeps its own `Cache-Control`. */
+function withSecurityHeaders(response: Response): Response {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+        if (!response.headers.has(name)) response.headers.set(name, value);
+    }
+    return response;
+}
 
 async function readStaticAsset(requestPath: string, theme: ThemeChoice = "system"): Promise<Response> {
     const webRoot = getWebRoot();

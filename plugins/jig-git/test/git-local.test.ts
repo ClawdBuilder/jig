@@ -296,6 +296,27 @@ test("commit --amend: allowed while the commit is unpushed, refused once any rem
     assert.equal(git(r.dir, "log", "-1", "--format=%s"), "Reworded only");
 });
 
+test("commit: a protected branch is refused, and git.protected decides", async () => {
+    const r = fresh();
+    writeFile(r.dir, "protected.ts", "p\n");
+    const refused = await h.call("git", {
+        action: "commit",
+        repo: r.name,
+        paths: ["protected.ts"],
+        message: "Change main",
+    });
+    assert.match(
+        refused.error?.message ?? "",
+        /refusing to commit to protected branch main; git\.protected decides, and \[\] turns it off/,
+    );
+    assert.equal(git(r.dir, "log", "-1", "--format=%s"), "Initial commit", "nothing was committed");
+    assert.match(git(r.dir, "status", "--porcelain"), /\?\? protected\.ts/, "the file is untouched");
+    h.jig.setSection("git", { protected: [] });
+    ok(await h.call("git", { action: "commit", repo: r.name, paths: ["protected.ts"], message: "Change main" }));
+    h.jig.setSection("git", undefined);
+    assert.equal(git(r.dir, "log", "-1", "--format=%s"), "Change main");
+});
+
 test("commit: nothing to commit in the named paths says so", async () => {
     const r = fresh();
     git(r.dir, "switch", "-q", "-c", "feature/c5");
@@ -441,6 +462,28 @@ test("merge: a conflict aborts the merge, leaves the tree as it was, and is not 
     assert.equal(git(r.dir, "rev-parse", "HEAD"), before);
     assert.equal(git(r.dir, "status", "--porcelain"), "");
     assert.ok(!fs.existsSync(path.join(r.dir, ".git", "MERGE_HEAD")));
+});
+
+test("merge: a protected branch is refused, and git.protected decides", async () => {
+    const r = fresh();
+    git(r.dir, "switch", "-q", "-c", "feature/other", "--no-track", "origin/main");
+    commitFile(r.dir, "other.txt", "o\n", "Other work");
+    git(r.dir, "switch", "-q", "main");
+    const before = git(r.dir, "rev-parse", "HEAD");
+    const refused = await h.call("git", { action: "merge", repo: r.name, branch: "feature/other" });
+    assert.match(
+        refused.error?.message ?? "",
+        /refusing to merge into protected branch main; git\.protected decides, and \[\] turns it off/,
+    );
+    assert.equal(git(r.dir, "rev-parse", "HEAD"), before, "nothing was merged");
+    assert.ok(!fs.existsSync(path.join(r.dir, "other.txt")));
+    assert.ok(!fs.existsSync(path.join(r.dir, ".git", "MERGE_HEAD")));
+    h.jig.setSection("git", { protected: [] });
+    assert.match(
+        ok(await h.call("git", { action: "merge", repo: r.name, branch: "feature/other" })),
+        /^Merged feature\/other into main [0-9a-f]{7}\.\.[0-9a-f]{7} in svc\d+\.$/,
+    );
+    h.jig.setSection("git", undefined);
 });
 
 test("merge: a tree with changes is refused", async () => {
