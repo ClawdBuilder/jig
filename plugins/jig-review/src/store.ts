@@ -112,6 +112,7 @@ export class ReviewStore {
         comments: Omit<ReviewComment, "id" | "createdAt" | "status" | "submittedAt">[],
     ): Promise<ReviewRecord> {
         const now = new Date().toISOString();
+        forgetApproval(review);
         const created = comments.map((comment) => ({
             ...comment,
             id: crypto.randomUUID(),
@@ -130,6 +131,7 @@ export class ReviewStore {
     /** Adds the next round: the cumulative diff as it is after the agent answered. */
     public async addIteration(review: ReviewRecord, diff: string): Promise<ReviewRecord> {
         const now = new Date().toISOString();
+        forgetApproval(review);
         review.status = "awaiting-review";
         review.updatedAt = now;
         review.iterations.push({
@@ -242,6 +244,16 @@ export class ReviewStore {
     private getReviewPath(id: string): string {
         return path.join(this.settingsStore.reviewsDir, `${id}.json`);
     }
+}
+
+/** A review that leaves "approved" drops what the approval recorded: types.ts and rounds.md say those fields are present
+ *  exactly while it is approved, so a later reader never takes an old approval for the current one. */
+function forgetApproval(review: ReviewRecord): void {
+    delete review.approval;
+    delete review.approvedAt;
+    delete review.approvedDiffAgainst;
+    delete review.approvedHeads;
+    delete review.commentsResolved;
 }
 
 /** The second the review was made, with `:` written as `-` for file names. Two reviews in one second are the caller's to avoid. */

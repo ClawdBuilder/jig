@@ -8,6 +8,11 @@ appears in:
 - records or logs;
 - command lines.
 
+One exception: a library that must hold the secret in-process to sign in — the
+MongoDB driver, an SSH tunnel — receives it from the resolver for that
+connection's lifetime, and never returns, logs or records it
+([Decisions](decisions.md#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)).
+
 ## References and backends
 
 | Reference | Backend | Platforms | Status |
