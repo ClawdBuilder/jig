@@ -14,7 +14,7 @@
     "plugins/jig-git/src/gitlab-pr-write.ts": 663,
     "plugins/jig-git/src/pr-write.ts": 649,
     "plugins/jig-lens/src/web-queries.ts": 711,
-    "plugins/jig-memory/src/session.ts": 699,
+    "plugins/jig-memory/src/session.ts": 680,
     "plugins/jig-mongo/src/reads.ts": 599,
     "plugins/jig-review/src/coordinator.ts": 637,
     "plugins/jig-sandbox/src/rules.ts": 533
