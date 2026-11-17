@@ -2,10 +2,10 @@
 // in the agent folder's settings.json. It registers sections and company defaults and never starts a tool, a session, a
 // watch, a tunnel or a sign-in: nothing fires a hook or calls a tool here.
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildApi } from "../api.ts";
+import { agentDirFor } from "../kit/theme-preference.ts";
 import { publishJig } from "../client.ts";
 import { errorMessage } from "../errors.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
@@ -27,14 +27,6 @@ export interface LoadFailure {
     package: string;
     file?: string;
     reason: string;
-}
-
-/** The agent folder, found as Pi finds it. */
-export function agentDirFor(env: NodeJS.ProcessEnv = process.env): string {
-    const named = env.PI_CODING_AGENT_DIR;
-    return named !== undefined && named.trim() !== ""
-        ? path.resolve(named.trim())
-        : path.join(homedir(), ".pi", "agent");
 }
 
 /** A Pi that only records: nothing here runs a hook, opens a screen or starts a tool. */
