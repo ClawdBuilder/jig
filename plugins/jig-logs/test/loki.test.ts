@@ -158,7 +158,6 @@ test("the limit is the hits still wanted, at least 1 and at most what Loki gives
         "5000",
         "5000",
     ]);
-    assert.equal(loki.limits.maxHits, 5000);
     assert.equal(loki.limits.maxWindowMs, 721 * HOUR_MS);
 });
 

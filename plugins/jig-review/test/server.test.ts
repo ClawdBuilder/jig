@@ -304,6 +304,44 @@ test("responses are not cached, are not sniffed and send no referrer; the page c
     assert.doesNotMatch(policy, /https?:\/\//, "no other origin is allowed");
 });
 
+test("a refusal before a route, and the cookie redirect, carry the security headers too", async () => {
+    const session = await cookie();
+    const url = new URL(link);
+    const cases: Array<[string, number, { status: number; headers: http.IncomingHttpHeaders }]> = [
+        ["a wrong Host", 403, await request("/api/reviews", { cookie: session, host: "attacker.example" })],
+        ["a wrong secret", 403, await request("/review/r1/files?k=wrong")],
+        ["no cookie", 403, await request("/api/reviews")],
+        [
+            "a foreign Origin",
+            403,
+            await request("/api/ask", {
+                method: "POST",
+                cookie: session,
+                origin: "https://evil.example",
+                body: "{}",
+            }),
+        ],
+        ["the cookie redirect", 302, await request(`${url.pathname}${url.search}`)],
+        [
+            "a body that is not JSON",
+            400,
+            await request("/api/ask", {
+                method: "POST",
+                cookie: session,
+                origin: `http://localhost:${port}`,
+                body: "{ no",
+            }),
+        ],
+    ];
+    for (const [name, status, res] of cases) {
+        assert.equal(res.status, status, name);
+        assert.equal(res.headers["x-content-type-options"], "nosniff", name);
+        assert.equal(res.headers["referrer-policy"], "no-referrer", name);
+        assert.match(String(res.headers["content-security-policy"]), /default-src 'self'/, name);
+        assert.equal(res.headers["cache-control"], "no-store", name);
+    }
+});
+
 test("a path that leaves the page's folder is not served", async () => {
     const session = await cookie();
     for (const route of [
@@ -392,5 +430,11 @@ test("the event stream carries the security headers too, and starts with its fir
     assert.match(String(first.headers["content-type"]), /^text\/event-stream/);
     assert.equal(first.headers["x-content-type-options"], "nosniff");
     assert.match(String(first.headers["content-security-policy"]), /default-src 'self'/);
+    assert.equal(first.headers["referrer-policy"], "no-referrer");
+    assert.equal(
+        first.headers["cache-control"],
+        "no-cache, no-transform",
+        "a stream is never stored, and nothing in between may buffer or transform it",
+    );
     assert.match(first.text, /^event: connected/);
 });

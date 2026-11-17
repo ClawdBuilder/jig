@@ -133,7 +133,9 @@ describe("a company's onboarding list", () => {
         assert.ok("plan" in built, "the plan is built");
         const plan = built.plan;
         assert.equal(plan.intro[0], "Acme SSO — Acme's command signs you in.");
-        assert.deepEqual(plan.logins, [{ label: "GitHub login", command: "gh auth login", why: "Pull requests." }]);
+        assert.deepEqual(plan.logins, [
+            { label: "GitHub login", tool: "gh", command: "gh auth login", why: "Pull requests." },
+        ]);
         // The company's section comes first; lens, which the list does not name, keeps its place after it.
         assert.deepEqual(
             plan.sections.map((section) => section.name),
