@@ -3,12 +3,13 @@
 import { checkCommitMessage, checkPaths } from "./names.ts";
 import { digest } from "./previews.ts";
 import type { Call, Planned } from "./previews.ts";
-import { resolveRepo } from "./repo.ts";
+import { isProtected, resolveRepo } from "./repo.ts";
 import type { Repo } from "./repo.ts";
 import { git, gitOut, refExists, requireBranch, revParse, summaryOf } from "./run.ts";
 import { clip, firstLines, plural } from "./text.ts";
 import { operationOf, requireClean, shortHead } from "./git-guards.ts";
 import { guardedPathsFor, guardedTargets } from "./guarded.ts";
+import { RefusedError } from "../../jig-core/src/kit/values.ts";
 
 // ---- commit -------------------------------------------------------------------------------------------------------
 
@@ -40,6 +41,10 @@ export async function planCommit(params: CommitParams, call: Call): Promise<Plan
     const repo = await resolveRepo(params.repo, call.signal);
     const { signal } = call;
     const branch = await requireBranch(repo.root, repo.name, "committing", signal);
+    if (await isProtected(repo, branch, call.settings, signal))
+        throw new RefusedError(
+            `refusing to commit to protected branch ${branch}; git.protected decides, and [] turns it off`,
+        );
     if (amend) {
         if (!(await revParse(repo.root, "HEAD", signal))) throw new Error(`${branch} has no commit to amend`);
         const remote = await pushedTo(repo, signal);
