@@ -154,8 +154,10 @@ closed instead of running ungoverned.
   copy; changing it changes nothing.
 - **`sandbox.register(provider)`** says that `bash` runs in a sandbox. The
   provider has `active`, `mode` (the network mode), a `note` for `/jig` when it
-  is not active, `canWrite(path)` and, optionally, `whenReady()` and `run(command, options)`. Fields are read
-  when they are needed, so they may change. Registering again replaces the
+  is not active, `canWrite(path)` and, optionally, `whenReady()`, `brokerScript`
+  and `run(command, options)`. `brokerScript` is where the standalone doctor
+  finds the broker to start; a sandbox with no broker leaves it out. Fields are
+  read when they are needed, so they may change. Registering again replaces the
   provider. See [The sandbox](#the-sandbox).
 - **`gates.register(gate)`** adds a check to every call: a gate can make a decision stricter and never looser. See
   [Gates](#gates).
