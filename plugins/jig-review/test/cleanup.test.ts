@@ -12,7 +12,8 @@ import { ReviewCoordinator } from "../src/coordinator.ts";
 import { SettingsStore, workspaceDirFor } from "../src/settings.ts";
 import { ReviewStore } from "../src/store.ts";
 import type { ReviewRecord } from "../src/types.ts";
-import { context, fakeHost, openReview } from "./support/harness.ts";
+import { context, fakeHost, openReview, repositoryWithChange } from "./support/harness.ts";
+import { installFakeJig } from "./support/fake-jig.ts";
 import type { ReviewSession } from "./support/harness.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -183,5 +184,50 @@ describe("session_start", () => {
             true,
             "a record it cannot read is left alone",
         );
+    });
+});
+
+describe("the agent's start tool", () => {
+    test("a headless session does not clean up another session's pending review", async () => {
+        const { cwd } = folders();
+        repositoryWithChange(cwd, "Service.java");
+        const stale = await pendingReview(cwd, { ownerPid: deadPid() });
+        const jig = installFakeJig();
+        try {
+            const host = fakeHost();
+            const coordinator = new ReviewCoordinator(host.pi, cwd, { root: roots.get(cwd)! });
+            coordinator.register();
+            const session = context(cwd, "print");
+            try {
+                await host.tool("start_interactive_code_review", {}, session.ctx);
+                assert.equal(existsSync(stale.file), true, "a headless session never cleans up");
+            } finally {
+                await host.fire("session_shutdown", session.ctx);
+            }
+        } finally {
+            jig.remove();
+        }
+    });
+
+    test("an interactive session still tidies the same folder", async () => {
+        const { cwd } = folders();
+        repositoryWithChange(cwd, "Service.java");
+        const stale = await pendingReview(cwd, { ownerPid: deadPid() });
+        const jig = installFakeJig();
+        try {
+            const host = fakeHost();
+            const coordinator = new ReviewCoordinator(host.pi, cwd, { root: roots.get(cwd)! });
+            coordinator.register();
+            const session = context(cwd, "tui");
+            session.answer = () => false; // decline the browser offer
+            try {
+                await host.tool("start_interactive_code_review", {}, session.ctx);
+                assert.equal(existsSync(stale.file), false, "an interactive session still tidies");
+            } finally {
+                await host.fire("session_shutdown", session.ctx);
+            }
+        } finally {
+            jig.remove();
+        }
     });
 });
