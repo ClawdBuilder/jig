@@ -31,6 +31,7 @@ Read it with the code open. Back to the [jig-git overview](../README.md).
 | `guarded.ts` | What a tree-moving git operation would change in the files that run later… | `git-branch.ts`, `git-changes.ts`, `git-integrate.ts` and 1 more |
 | `index.ts` | jig-git: git, GitHub and GitLab for the agent. Three tools, `git`, `pr` and… || Pi |
 | `names.ts` | Checks on every name, path and text the model supplies, before it reaches a… | `clone.ts`, `config.ts`, `fetch-guard.ts` and 13 more |
+| `onboarding.ts` | What a git needs from a person: the `gh` login, and the `gh` account for each set of repositories | `index.ts` |
 | `origin-host.ts` | The real host behind the host in origin's address. An ssh origin often names… | `fetch-guard.ts`, `forge.ts`, `github.ts` and 1 more |
 | `params.ts` | What a tool with an `action` parameter accepts, written once: for each… | `git.ts`, `pr.ts`, `release.ts` and 1 more |
 | `pr-read.ts` | Pull requests, read only: view, list and comments. Output is bounded plain… | `gitlab-pr-read.ts`, `pr-watch-tool.ts`, `pr-write.ts` and 1 more |

@@ -131,6 +131,9 @@ In `~/.jig/jig.json`, under `git`. All fields are optional; a company
 plugin can set them for its repositories. `jig-core` reports an unknown or
 invalid field, and the defaults apply instead.
 
+`jig setup git` asks for the `gh` login and one `git.accounts` mapping per set
+of repositories, and `jig setup` offers it when no company plugin fills them in.
+
 | Field | Default | Meaning |
 |---|---|---|
 | `base` | the repository's default branch | The branch new work starts from and pull requests target |

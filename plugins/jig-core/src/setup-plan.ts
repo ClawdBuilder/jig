@@ -150,8 +150,9 @@ export interface SetupPlan {
     notes: string[];
     /** What the company and the plugins say before the questions, from their `info` items. */
     intro: string[];
-    /** Logins the lists name, and the command that performs each: setup shows it and does not check it. */
-    logins: Array<{ label: string; command: string; why?: string }>;
+    /** Logins the lists name, the program each needs and the command that performs it: setup shows it, never runs it,
+     *  and says when the program is not installed. */
+    logins: Array<{ label: string; tool: string; command: string; why?: string }>;
     defaults: ReadonlyMap<string, unknown>;
     checks: ReadonlyMap<string, SectionCheck>;
     /** Proposal IDs the person has declined, and the file where a no is kept. */
