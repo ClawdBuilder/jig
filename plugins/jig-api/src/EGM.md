@@ -10,11 +10,12 @@ The agent fills variables only: it cannot change a saved request's host, method 
 
 ## Interface
 
-- **Entry** (`index.ts`): `jigApi(options?)` returns an `ExtensionFactory`; the default export is `jigApi()`. It registers the `api` section (`API_REPLACE`, `API_METHODS`, a `setup` summary with a pending example, `validateApi`) and the tool declaration inside `withJig`, then `registerJigTool` and `registerRefresh`. `ApiOptions` is re-exported.
+- **Entry** (`index.ts`): `jigApi(options?)` returns an `ExtensionFactory`; the default export is `jigApi()`. It registers the `api` section (`API_REPLACE`, `API_METHODS`, `setup: API_SETUP`, `validateApi`) and the tool declaration inside `withJig`, then `registerJigTool` and `registerRefresh`. `ApiOptions` is re-exported.
 - **Tool** (`tool.ts`): `createTool(options)` returns `{ definition, classify, preview }` (name `api`, `executionMode: "sequential"`). The request's name, or `collection/folder`, or `call`, is the action.
 - **Input** (`params.ts`): `ACTIONS` (one table: `list`, `show`, `run`, `run_folder`, `call`, `postman_environments`), `isAction`, `usage`, `parameters` (one flat object), `parseCall`, `Param`.
 - **Config** (`config.ts`): `API_REPLACE` (`environments.*`, `collections.*`), `validateApi`, `readApi`, `settingsOf` (cached per raw object), `jigEnvironmentOf`, `ApiSettings`, `DEFAULT_TIMEOUT_SEC` 30, `MAX_TIMEOUT_SEC` 120. `reference.ts`: `SECRET_REFERENCE`, `checkReference`.
 - **Model** (`model.ts`): `SavedRequest`, `Body`, `Auth`, `Template`, `Variable`, `Environment`, `Problem`, `Collection`, `CREDENTIAL_HEADERS`, `declaredSecrets`, `pathOf`. No file format appears here.
+- **Setup** (`onboarding.ts`): `API_SETUP`, the plugin's setup questions: one `object` item for a collection (a folder of `.http` files, a Bruno folder or a Postman file; OpenAPI is not offered) and an optional `entry` item for an environment mapping.
 - **Catalog** (`catalog.ts`): `loadCatalog(settings)`. A miss or an ambiguity is an `InputError` that lists the known names.
 - **Planning** (`planning.ts`): `planRequest`, `planCall`, `PlanContext`, `environmentHosts`, `MAX_SAVED_BODY_BYTES` 1 MiB, `MAX_UPLOAD_BYTES` 10 MiB. `resolve.ts`: `createResolver`, `agentValues`, `secretNamesOf`. `optional.ts`: `pruned`. `template.ts`: `partsOf`, `variablesIn`, `generatedKind`, `unsupportedVariable`. `ad-hoc.ts`: `checkUrl`, `checkBody`, `checkHeaders`, `checkTimeout`.
 - **Display** (`show.ts`): `listText`, `showText`, `effectOf`, `refusalOf`. **Refresh** (`refresh.ts`): `registerRefresh`, `refreshCollections`. **State** (`state.ts`): `stateDir`, `apiStateDir`, `makePrivateDir`.

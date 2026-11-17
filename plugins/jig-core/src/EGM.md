@@ -40,7 +40,11 @@ Plugin overview: [jig-core](../EGM.md).
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
 - **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-json.ts`, ...), `secret-status.ts`, `pi-version.ts`,
   `model-auth.ts` (`modelAuthState`, `modelSignInLine`: whether the home has a model provider a person can use, from local files only);
-  `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers,
+  `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
+  (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20
+  questions each, checked when the list or a plugin's `setup` is registered), `setup-ask-object.ts` (`askObject`, `fieldForRefusal`: one named
+  object of a map), `setup-reference-ask.ts` (`chooseReference`, `probeChosen`: where a credential is kept, shared by a single question and a field
+  inside an object),
   `detect.ts` (`DETECTS`: `user`, `git-email`, `gh-account`, `aws-profile`; one fixed command each, 1.5 s, never secret), `plain-label.ts`.
 - **Contract splits.** `contract.ts` stays the one import for plugins and re-exports `contract-onboarding.ts` (the onboarding and sign-in
   method types), `contract-run.ts` (`OutputKeep`, `RunOptions`, `RunResult`), `contract-sandbox.ts` (`SandboxProvider`,
@@ -82,6 +86,14 @@ Plugin overview: [jig-core](../EGM.md).
   ungoverned. `withdrawJig` runs on `session_shutdown`, so a plugin loading into the next runtime waits for the new core.
 - **The factory registers and starts nothing long-lived;** configuration loads at `session_start`. Clean-up of old records,
   spill files and previews at start is best effort and never fails the start.
+- **Setup adds one named object and never edits one.** An `object` item (a connection, a collection, an environment) asks a name,
+  refuses a name already in the map (an empty name leaves a map that has entries as it is), asks the questions of the form that applies
+  (`when` matches the section's merged value, else the form with none; several matching forms ask which kind), and writes the answers as one
+  change at `path.<name>` only when the last answer is accepted. The section's own validator checks the whole object once, and a refusal asks
+  again the field it names, else the whole form (or the name, when it is about the name). A credential inside it goes through the same "where is
+  it kept" flow and is never typed or shown. `repeat` asks for another. An older Jig that does not know the kind refuses the item at
+  registration. The doctor counts an `object` item as missing while its map is empty (`doctor-needs.ts`). Changing or removing an object stays
+  the settings file's job ([Decisions](../../../docs/decisions.md#2026-11-17-setup-adds-one-named-object-of-a-map)).
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless
   `keep` says `tail` for the end or `both` for both ends, and the marker says how many bytes were left out), process group killed on
   timeout and at process exit, a minimal environment (`PATH`, `HOME`, `USER`, `LOGNAME`, locale, `TZ`, `TMPDIR`, XDG folders; git,

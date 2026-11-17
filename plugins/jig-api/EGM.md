@@ -14,7 +14,7 @@ A request is planned, previewed when it writes, and sent through `jig-core` with
 - **Entry:** `index.ts` re-exports the default of `src/index.ts` so Pi labels the extension `jig-api`. The factory is `jigApi(options?)`.
 - **Tool `api`:** actions `list` and `show` (local reads), `run` (read or write by the request's method), `run_folder` (as strict as its strictest request), `call` (an ad-hoc request, off by default, never production) and `postman_environments` (external read). A request's name is its action, so a rule can name one request.
 - **Command:** `/api refresh [collection]`, typed by the person, fetches Postman cloud collections to a local copy.
-- **Config section `api`:** `collections`, `environments`, `secrets`, `reads`, `adHoc`, `timeoutSec` (1 to 120, default 30) and `allowPlainLocal`. The section is registered with `replace` for `environments.*` and `collections.*`, `methods` for its sign-in methods, and a `setup` summary with a pending example for `/jig setup`.
+- **Config section `api`:** `collections`, `environments`, `secrets`, `reads`, `adHoc`, `timeoutSec` (1 to 120, default 30) and `allowPlainLocal`. The section is registered with `replace` for `environments.*` and `collections.*`, `methods` for its sign-in methods, and `setup` questions (`src/onboarding.ts`) for `/jig setup`.
 - **Subfolders:** [src](./src/EGM.md) holds all code; `src/engine` and `src/sources` have their own contracts.
 - **Not code, not linked:** `docs/` (one page per source, parameters, variables, safety, writes, results, auth, configuration, not-verified, code-map), `skills/api`, `test/` (fixtures of an example orders API in every format; `test/it/` against go-httpbin and Keycloak).
 
