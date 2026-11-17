@@ -1,6 +1,7 @@
 // Setup's plugin list: one line per registered plugin section that said what it needs, with its status. Picking a line
 // asks that plugin's questions and comes back here; "Done" saves everything. A plugin with no questions yet says what to
 // read and shows a section to add by hand.
+import type { SectionCheck } from "./config.ts";
 import type { OnboardingSetup } from "./contract-onboarding.ts";
 import type { SetupState } from "./setup-plan.ts";
 import { onboardingOrder } from "./onboarding.ts";
@@ -9,7 +10,12 @@ import { labelOf } from "./setup-fields.ts";
 import { layeredSection } from "./setup-section.ts";
 import { isObject } from "./setup-values.ts";
 
-export type PluginStatus = "set up" | "not set up" | "ready" | "not set up (questions coming)";
+export type PluginStatus =
+    | "set up"
+    | "not set up"
+    | "ready"
+    | "ready (optional settings)"
+    | "not set up (questions coming)";
 
 /** One line of setup's plugin list. */
 export interface PluginLine {
@@ -51,9 +57,41 @@ function configured(state: SetupState, section: string, raw: Record<string, unkn
 /** The status a line shows: a section with questions is set up or not, one waiting for them says so, the rest are ready. */
 export function pluginStatus(state: SetupState, section: string, raw: Record<string, unknown>): PluginStatus {
     const setup = state.sectionSetup?.get(section);
-    if (setup?.items !== undefined) return configured(state, section, raw) ? "set up" : "not set up";
+    if (setup?.items !== undefined) {
+        if (configured(state, section, raw)) return "set up";
+        return optionalSettingsOnly(state, section) ? "ready (optional settings)" : "not set up";
+    }
     if (setup?.pending !== undefined) return "not set up (questions coming)";
     return "ready";
+}
+
+/** Whether every question a plugin asks is optional, so writing no settings at all is an answer. */
+export function onlyOptionalQuestions(setup: OnboardingSetup | undefined): boolean {
+    if (setup?.items === undefined) return false;
+    return setup.items.every(
+        (item) =>
+            item.kind === "info" ||
+            item.kind === "login" ||
+            item.kind === "proposal" ||
+            ("optional" in item && item.optional === true),
+    );
+}
+
+/** Whether a section's own check passes a section with nothing written: the plugin works on its defaults. */
+export function passesWithoutSettings(check: SectionCheck | undefined, empty: unknown): boolean {
+    if (check === undefined) return false;
+    try {
+        return check(empty).length === 0;
+    } catch {
+        return false;
+    }
+}
+
+/** Whether setup and the doctor may leave a plugin alone: all its questions are optional and it works with nothing
+ *  written. Git is the first: it works on its defaults, and an account mapping is the person's choice. */
+export function optionalSettingsOnly(state: SetupState, section: string): boolean {
+    if (!onlyOptionalQuestions(state.sectionSetup?.get(section))) return false;
+    return passesWithoutSettings(state.sectionChecks.get(section), layeredSection(state, section, {}));
 }
 
 /** Every registered section that said what it needs, in the order setup shows them. */

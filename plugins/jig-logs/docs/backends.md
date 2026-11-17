@@ -60,10 +60,10 @@ uses them:
 - **`environment`** fills in the defaults and returns the environment as the search
   reads it. `jigEnvironment` defaults to the environment's name. Add no key the
   settings did not need.
-- **`limits`** says the most hits one request returns and the longest time span one
-  request may cover (`Number.POSITIVE_INFINITY` for none). Buckets are cut to the
-  span. The hit limit is never below the tool's `size` limit, 200: a test fails if
-  it is.
+- **`limits`** says the longest time span one request may cover
+  (`Number.POSITIVE_INFINITY` for none). Buckets are cut to the span. The tool
+  never asks one request for more than its `size` limit, 200 hits (`MAX_SIZE` in
+  `src/params.ts`).
 - **`checkQuery`** is needed only when the language of `query` can reach beyond what
   configuration allows (Loki's can name another stream selector).
   - It throws an `InputError`, a `TypeError`. It is called when the call is

@@ -7,8 +7,10 @@ overview.
 
 - **`status`** covers every repository in the workspace when no `repo` is given
   and Pi did not start inside one.
-- **`commit`:** an amend without paths only rewords. Message rules come from
-  `git.commitMessage` (see [Configuration](configuration.md)).
+- **`commit`:** a protected branch is refused. An amend without paths only
+  rewords. Message rules come from `git.commitMessage` (see
+  [Configuration](configuration.md)).
+- **`merge`:** a protected branch is refused, like `rebase` and `cherry_pick`.
 - **`push`:** the only force is `force_with_lease`, and it is never allowed to a
   protected branch. Tags go through `release`.
 - **`rebase` and `cherry_pick`** were built last, because the sessions never

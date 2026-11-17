@@ -79,6 +79,9 @@ A fixed list, checked by the plugin itself, so a file never runs code. Each is d
 | `advance` | local write | Moves one stage when every exit condition holds, or lists what is missing |
 | `back` | local write | Moves to an earlier stage; always allowed, and nothing recorded is erased |
 
+`status` reads each bound repository's pull request and saves the reading in `workflow.json`, so the gate uses it without
+asking the forge again; it is still a read ([State](docs/state.md)).
+
 ## Commands
 
 | Command | What it does |

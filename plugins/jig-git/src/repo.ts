@@ -350,7 +350,7 @@ export async function baseBranch(repo: Repo, settings: GitSettings, signal?: Abo
     return base;
 }
 
-/** The branches that refuse a direct push, a force push, a rebase and a cherry-pick. */
+/** The branches that refuse a commit, a merge, a direct push, a force push, a rebase and a cherry-pick. */
 async function protectedPatterns(repo: Repo, settings: GitSettings, signal?: AbortSignal): Promise<string[]> {
     if (settings.protected !== undefined) return settings.protected;
     const name = await defaultBranch(repo, signal);

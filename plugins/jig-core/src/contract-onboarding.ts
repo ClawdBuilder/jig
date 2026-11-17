@@ -124,7 +124,7 @@ export type OnboardingItem =
           detect?: DetectName;
           /** Ask for another entry after this one is accepted. */
           repeat?: boolean;
-          /** An empty answer leaves the map unset, so nothing is written for the item. */
+          /** An empty key leaves the map unset, so nothing is written for the item; a `detect` may still fill the value. */
           optional?: boolean;
       } & OnboardingAnswer)
     | {
