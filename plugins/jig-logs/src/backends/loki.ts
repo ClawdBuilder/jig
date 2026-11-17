@@ -146,7 +146,7 @@ export const loki: LogBackend = {
         };
     },
 
-    limits: { maxHits: MAX_ENTRIES, maxWindowMs: MAX_RANGE_MS },
+    limits: { maxWindowMs: MAX_RANGE_MS },
 
     checkQuery(text) {
         checkPipeline(text);
