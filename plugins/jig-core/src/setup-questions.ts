@@ -299,7 +299,7 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
         section: value.section,
         path: value.path,
         label: value.label,
-        question: value.optional === true ? optionalQuestion(value.label) : value.label,
+        question: value.optional === true ? optionalQuestion(value.label, value.placeholder) : value.label,
         ...(value.placeholder === undefined ? {} : { placeholder: value.placeholder }),
         kind: "text",
         ...(value.optional === true ? { optional: true as const } : {}),

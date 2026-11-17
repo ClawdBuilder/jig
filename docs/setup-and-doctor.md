@@ -99,7 +99,7 @@ everything once, with one backup and one confirmation, so a cancel writes nothin
 
 `jig setup <section>` goes straight to that section's questions, without the list. A plugin's own questions come after a
 company's list, and a company default or answer skips the question it already answers. `--yes` asks nothing and sets up
-nothing new.
+nothing new when there is no terminal, so a script can finish; at a terminal setup asks its questions anyway.
 
 It never asks for a password or a token. For a credential it asks **where** it is kept, never what it is: choose
 1Password, the macOS Keychain, pass, an environment variable, a file, or a tool that owns the login. The company's

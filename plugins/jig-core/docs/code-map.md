@@ -122,7 +122,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `onboarding-method-check.ts` | A section's sign-in methods and a company's choice, checked when they register | `onboarding.ts`, `api.ts` |
 | `detect.ts` | The fixed probes a `detect` item may name, and the line setup shows for what one found | `onboarding.ts` (the name check), `setup.ts` |
 | `onboarding-methods.ts` | The method a section value uses: the fields it requires, their paths, the best match | `onboarding-method-check.ts`, `setup-methods-plan.ts` |
-| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-section.ts`, `setup-methods-plan.ts`, `setup-questions.ts`, `setup.ts`, `setup-onboarding.ts` |
+| `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-section.ts`, `setup-methods-plan.ts`, `setup-questions.ts`, `setup.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
 | `cli/main.ts` | The `jig` command's own words: the doctor's exit code and report, setup's bootstrap, company step and exit codes, and the update word | `bin/jig.mjs` |

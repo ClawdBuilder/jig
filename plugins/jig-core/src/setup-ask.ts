@@ -38,6 +38,9 @@ export async function ask(
     if (field.kind === "entry") return askEntry(plan, field, draft, changes, ui, found);
     const detected = found(field);
     const hint = detected ?? field.placeholder ?? (field.current === undefined ? undefined : `Now: ${field.current}`);
+    // An optional question already ends in its own parenthetical, so it gets no second one for the example: the
+    // question carries the example, and Enter either keeps the value or says it is left unset.
+    const typed = field.optional === true ? undefined : hint;
     if (field.kind === "pick") {
         const choices = field.choices ?? [];
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
@@ -58,9 +61,10 @@ export async function ask(
         return "ok";
     }
     for (;;) {
-        ui.notify(`${field.label}: ${field.reason}`, "info");
+        // The prompt already carries the label; the line above it only says why.
+        ui.notify(field.reason, "info");
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const text = await ui.input(field.question, hint);
+        const text = await ui.input(field.question, typed);
         if (text === undefined) return "cancel";
         const answer = text.trim() === "" && detected !== undefined ? detected : text;
         // An optional field: an empty answer leaves it unset, and nothing is written for it.
@@ -220,7 +224,7 @@ async function askReference(
         // The company's suggestion, when it wrote one for this store: a reference shape, never a value.
         const shape = choice.suggested?.[store];
         if (shape !== undefined) {
-            const use = await ui.select(`${storeLabel(store)}: use the suggested place?`, [
+            const use = await ui.select(`Use the suggested place in ${storeLabel(store)}?`, [
                 `Use ${describeReference(shape)}`,
                 "Build it another way",
             ]);

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { buildApi } from "../src/api.ts";
+import type { OnboardingItem } from "../src/contract.ts";
 import { doctorContext } from "../src/doctor-checks.ts";
 import { notSetupLines } from "../src/doctor-needs.ts";
 import { DONE_LINE, LIST_TITLE, pluginLines } from "../src/setup-menu.ts";
@@ -92,8 +93,8 @@ class ScriptedUi implements SetupUi {
         return options.find((one) => one.startsWith(found?.answer ?? "")) ?? options[0];
     }
 
-    async input(title: string): Promise<string | undefined> {
-        this.seen.push(`input: ${title}`);
+    async input(title: string, placeholder?: string): Promise<string | undefined> {
+        this.seen.push(placeholder === undefined ? `input: ${title}` : `input: ${title} (${placeholder})`);
         const index = this.answers.findIndex((one) => one.when.test(title));
         if (index < 0) return undefined;
         const [found] = this.answers.splice(index, 1);
@@ -406,36 +407,83 @@ describe("picking a plugin that is already set up", () => {
     });
 });
 
-describe("an item's credential stores", () => {
-    /** A section whose one question is a credential that names one store, on a machine with others. */
-    function storesState(): ReturnType<typeof createState> {
-        writeFileSync(file, JSON.stringify({ secrets: { commands: { gh: ["gh", "auth", "token"] } } }));
-        const state = createState(fakePi().pi, { env: {} });
-        state.configPath = () => file;
-        const api = buildApi(state);
-        api.config.registerSection("orders", () => [], {
-            setup: {
-                summary: "Read the orders of an account.",
-                items: [
-                    {
-                        kind: "reference",
-                        section: "orders",
-                        path: "auth.token",
-                        label: "The orders token",
-                        stores: ["env"],
-                    },
-                ],
-            },
-        });
-        loadPersonalConfig(state, file);
-        return state;
-    }
+/** A section whose one question is a credential, on a machine with more stores than the question offers. */
+function ordersState(items: readonly OnboardingItem[]): ReturnType<typeof createState> {
+    writeFileSync(file, JSON.stringify({ secrets: { commands: { gh: ["gh", "auth", "token"] } } }));
+    const state = createState(fakePi().pi, { env: {} });
+    state.configPath = () => file;
+    const api = buildApi(state);
+    api.config.registerSection("orders", () => [], {
+        setup: { summary: "Read the orders of an account.", items },
+    });
+    loadPersonalConfig(state, file);
+    return state;
+}
 
+describe("an item's credential stores", () => {
     test("are the only places offered, as a method field's stores are", () => {
-        const questions = sectionQuestions(setupStateFrom(storesState()), "orders", {}, true);
+        const state = ordersState([
+            {
+                kind: "reference",
+                section: "orders",
+                path: "auth.token",
+                label: "The orders token",
+                stores: ["env"],
+            },
+        ]);
+        const questions = sectionQuestions(setupStateFrom(state), "orders", {}, true);
         const field = questions.fields.find((one) => one.path === "auth.token");
         assert.equal(field?.kind, "reference");
         assert.deepEqual(field?.reference?.stores, ["env"], "only the store the question names is offered");
+    });
+});
+
+describe("the words of a question", () => {
+    test("the label is shown once: in the prompt, not in the line above it", async () => {
+        const state = stateWith({});
+        const ui = jiraAnswers();
+        assert.equal(await runSetup(state, ui), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /input: Your Jira address/);
+        assert.doesNotMatch(seen, /notify: Your Jira address: Every request goes to this https address\./);
+        assert.doesNotMatch(seen, /notify: Your Jira email: Jira Cloud signs each request with it\./);
+        assert.match(seen, /notify: Every request goes to this https address\./, "the reason is still said");
+    });
+
+    test("an optional list shows one parenthetical, and its example is inside it", async () => {
+        const state = stateWith({});
+        const ui = jiraAnswers();
+        assert.equal(await runSetup(state, ui), 0, ui.seen.join("\n"));
+        const line = ui.seen.find((one) => one.startsWith("input: Project keys to work in"));
+        assert.ok(line, ui.seen.join("\n"));
+        assert.doesNotMatch(line, /\) \(/, "the optional marker and the example are not two parentheticals");
+        assert.match(line, /\(optional: .*; for example PROJ, OPS\)$/);
+    });
+
+    test("the suggested-place question starts with a capital and names the store in a sentence", async () => {
+        const state = ordersState([
+            {
+                kind: "reference",
+                section: "orders",
+                path: "auth.token",
+                label: "The orders token",
+                stores: ["env"],
+                suggested: { env: "env:ORDERS_TOKEN" },
+            },
+        ]);
+        const ui = new ScriptedUi()
+            .picking(/Where does the orders token live/, "An environment variable")
+            .picking(/use the suggested place/, "Use the variable")
+            .picking(/Not found yet/, "Continue without it")
+            .picking(/Review these changes/, "Save these changes");
+        const code = await runSetup(state, ui, "orders");
+        assert.equal(code, 0, ui.seen.join("\n"));
+        const title = ui.seen.find((one) => one.startsWith("select: ") && one.includes("suggested place"));
+        assert.match(
+            title ?? "",
+            /^select: Use the suggested place in an environment variable\? /,
+            "the store is named in a sentence that starts with a capital",
+        );
     });
 });
 

@@ -108,7 +108,7 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
                     section,
                     path,
                     label: field.label,
-                    question: field.optional === true ? optionalQuestion(field.label) : field.label,
+                    question: field.optional === true ? optionalQuestion(field.label, field.placeholder) : field.label,
                     ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
                     ...(current === undefined ? {} : { current, keep: true as const }),
                     kind: "text",
