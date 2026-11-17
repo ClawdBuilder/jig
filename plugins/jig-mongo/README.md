@@ -75,6 +75,8 @@ Parameters and results: [Results](docs/results.md).
 ## Configure
 
 In `~/.jig/jig.json`, under `mongo`. [Configuration](docs/configuration.md) has every field.
+`jig setup mongo` asks for one connection per environment, directly or through an SSH host, with the password kept
+in a secret store, and `jig setup` offers it when no company plugin fills it in.
 ## Company part (in the company plugin)
 
 - its connections and routes, such as a tunnel through its own jump hosts. Your `mongo` section is laid

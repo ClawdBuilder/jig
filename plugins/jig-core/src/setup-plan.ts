@@ -52,7 +52,42 @@ export interface SetupState {
     companyActive?: boolean;
 }
 
-export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal" | "entry";
+export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal" | "entry" | "object";
+
+/** One question inside a new object: its `path` is relative to the object, and its answer is kept with the others. */
+export interface SetupObjectField {
+    path: string;
+    label: string;
+    question: string;
+    kind: "text" | "pick" | "reference";
+    placeholder?: string;
+    reason: string;
+    /** An empty answer leaves this key out of the object. */
+    optional?: true;
+    /** The answer is a simple list: one entry per line, or separated by commas. */
+    list?: true;
+    /** For a pick: the plain answers. */
+    choices?: readonly string[];
+    /** For a credential: where the person may keep it. */
+    reference?: SetupReferenceChoice;
+}
+
+/** One shape a new object may take. A form with a `when` is asked only while the section's value there matches. */
+export interface SetupObjectForm {
+    label?: string;
+    who?: string;
+    when?: { path: string; equals: string };
+    fields: SetupObjectField[];
+}
+
+/** How one named object is asked: its name, and the forms it may take. */
+export interface SetupObjectSpec {
+    keyLabel: string;
+    keyPlaceholder?: string;
+    forms: SetupObjectForm[];
+    /** Ask for another object after this one is accepted. */
+    repeat?: boolean;
+}
 
 /** One question. `current` is for the placeholder, never a secret and never a raw reference. */
 export interface SetupField {
@@ -87,6 +122,8 @@ export interface SetupField {
         detect?: DetectName;
         repeat?: boolean;
     };
+    /** For an object: the name question and the shapes one object of the map at `path` may take. */
+    object?: SetupObjectSpec;
 }
 
 export interface SetupReferenceChoice {
@@ -174,8 +211,8 @@ export interface SetupChange {
     value: unknown;
     /** A plain phrase for a reference's place, such as "pass entry work/jira-token". Never a reference. */
     note?: string;
-    /** A store to turn on in `secrets.backends`, when the chosen store is not on yet. */
-    enableBackend?: SecretBackend;
+    /** The stores to turn on in `secrets.backends`, when the chosen places are not on yet. */
+    enableBackends?: readonly SecretBackend[];
     /** A map entry's key: set it, rather than the whole value at `path`. */
     key?: string;
     /** Append this value to the list at `path`, rather than replacing it. */

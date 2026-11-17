@@ -108,8 +108,9 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-section.ts` | One section's questions: its items, the validator's fields and its sign-in method | `setup-plan.ts`, `setup.ts` |
 | `setup-questions.ts` | A plugin's `setup` checked at registration, the merged items, one question per path | `api.ts`, `setup-section.ts` |
 | `setup-methods-plan.ts` | A section's sign-in methods as setup offers them, with the company's default prefill | `setup-section.ts` |
-| `setup-answer.ts` | One answer checked by the section's own validator: a field, a map entry, a list | `setup-ask.ts` |
-| `setup-ask.ts` | One question at a time: a refusal that asks again, a credential, a method, an entry | `setup.ts` |
+| `setup-answer.ts` | One answer checked by the section's own validator: a field, a map entry, a list, a new object | `setup-ask.ts`, `setup-ask-object.ts` |
+| `setup-ask.ts` | One question at a time: a refusal that asks again, a credential, a method, an entry, an object | `setup.ts` |
+| `setup-ask-object.ts` | One named object of a map: its name, one form's questions, and a refusal that asks that field again | `setup-ask.ts` |
 | `setup-menu.ts` | Setup's plugin list: one line per plugin with its status, and what to do next | `setup.ts` |
 | `setup-values.ts` | The plain-object helpers setup shares: a dotted path and a safe write | `setup-*.ts` |
 | `setup-method-paths.ts` | A sign-in method's `*` paths: which expanded fields a method allows | `setup-plan.ts` |
@@ -122,8 +123,10 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `onboarding-method-check.ts` | A section's sign-in methods and a company's choice, checked when they register | `onboarding.ts`, `api.ts` |
 | `detect.ts` | The fixed probes a `detect` item may name, and the line setup shows for what one found | `onboarding.ts` (the name check), `setup.ts` |
 | `onboarding-methods.ts` | The method a section value uses: the fields it requires, their paths, the best match | `onboarding-method-check.ts`, `setup-methods-plan.ts` |
+| `onboarding-object-check.ts` | The `object` item's forms, and the questions inside one new object | `onboarding.ts` |
 | `setup-fields.ts` | One question's plain label, kind, reason and example | `setup-section.ts`, `setup-methods-plan.ts`, `setup-questions.ts`, `setup.ts` |
 | `setup-reference.ts` | The stores setup offers, the company's choice, and the reference built from plain parts | `setup.ts`, `setup-plan.ts` |
+| `setup-reference-ask.ts` | Where a credential is kept: the store, its plain parts, and a status that never shows a value | `setup-ask.ts`, `setup-ask-object.ts` |
 | `setup-write.ts` | The plain summary, the exact JSON and the write gate: re-read the target, refuse a changed file, back up, replace atomically | `setup.ts`, `setup-plan.ts` |
 | `cli/main.ts` | The `jig` command's own words: the doctor's exit code and report, setup's bootstrap, company step and exit codes, and the update word | `bin/jig.mjs` |
 | `cli/help.ts` | The routing usage, every command's help, the exit-code line, the stray-word refusal and the nearest-command suggestion, with no Pi import so help stays fast | `bin/jig.mjs`, `cli/main.ts`, `cli/update.ts` |

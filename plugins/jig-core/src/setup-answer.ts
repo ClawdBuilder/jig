@@ -10,9 +10,21 @@ import { setValuePath } from "./setup-write.ts";
 /** What an answer did: a change to write, a plain refusal, or nothing because the current value stays. */
 export type AnswerResult = { change: SetupChange } | { problem: string } | { kept: true };
 
+/** What one new object did: the change to write, or a plain refusal and the field inside the object to ask again. */
+export type ObjectAnswer = { change: SetupChange } | { problem: string; at?: string };
+
 /** The longest one key of a map may be, and the names a map key may never be. */
 const KEY_MAX = 200;
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+/** Why a map's name cannot be used, or undefined: the rule an `entry` and an `object` share. */
+export function keyProblem(key: string, label: string): string | undefined {
+    if (key === "" || key.length > KEY_MAX || /[\u0000-\u001f\u007f]/.test(key)) {
+        return `${label} must be one line of at most ${KEY_MAX} characters.`;
+    }
+    if (UNSAFE_KEYS.has(key)) return "That name cannot be used.";
+    return undefined;
+}
 
 /** One answer as typed: a reference, a number, yes/no, a list, or plain text. */
 export function applyAnswer(
@@ -41,14 +53,19 @@ export function applyAnswer(
         if (answer === undefined) return { problem: `${field.label} must be yes or no.` };
         value = answer;
     } else if (field.list === true) {
-        value = trimmed
-            .split(/[,\n]/)
-            .map((part) => part.trim())
-            .filter((part) => part !== "");
+        value = listValues(trimmed);
     } else {
         value = trimmed;
     }
     return applyValue(plan, draft, field, value);
+}
+
+/** A short list typed on one line: entries separated by commas or new lines, each one trimmed and empty ones left out. */
+export function listValues(text: string): string[] {
+    return text
+        .split(/[,\n]/)
+        .map((part) => part.trim())
+        .filter((part) => part !== "");
 }
 
 /** One already-parsed value, checked and kept only when the section still passes. */
@@ -77,10 +94,8 @@ export function applyEntry(
     value: string,
 ): AnswerResult {
     const cleanKey = key.trim();
-    if (cleanKey === "" || cleanKey.length > KEY_MAX || /[\u0000-\u001f\u007f]/.test(cleanKey)) {
-        return { problem: `${field.entry?.keyLabel ?? "The name"} must be one line of at most ${KEY_MAX} characters.` };
-    }
-    if (UNSAFE_KEYS.has(cleanKey)) return { problem: "That name cannot be used." };
+    const problem = keyProblem(cleanKey, field.entry?.keyLabel ?? "The name");
+    if (problem !== undefined) return { problem };
     if (!safePath(field.path)) return { problem: cannotChange(field) };
     const existing = draft[field.section];
     if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
@@ -92,6 +107,116 @@ export function applyEntry(
     map[cleanKey] = value.trim();
     setValuePath(nextSection, field.path, map);
     return commit(plan, draft, field, nextSection, value.trim(), field.path, cleanKey);
+}
+
+/**
+ * One named object of the map at `path`, from the answers of one form: `values` is dotted paths inside it, so
+ * `{ uri, "via.ssh.host" }` becomes one connection. Setup is add-only, so a name that is already there is refused. The
+ * section's check runs once over the whole object, and a message naming it or a path below it refuses it, naming the
+ * field to ask again.
+ */
+export function applyObject(
+    plan: SetupPlan,
+    draft: Record<string, unknown>,
+    field: SetupField,
+    key: string,
+    values: Readonly<Record<string, unknown>>,
+): ObjectAnswer {
+    const spec = field.object;
+    if (spec === undefined) return { problem: cannotChange(field) };
+    const cleanKey = key.trim();
+    const problem = keyProblem(cleanKey, spec.keyLabel);
+    if (problem !== undefined) return { problem };
+    if (!safePath(field.path)) return { problem: cannotChange(field) };
+    const existing = draft[field.section];
+    if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
+        return { problem: cannotChange(field) };
+    }
+    const nextSection = structuredClone(isObject(existing) ? existing : {});
+    const merged = layered(
+        plan.defaults.get(field.section),
+        nextSection,
+        plan.replace.get(field.section) ?? [],
+        plan.oneOf.get(field.section) ?? [],
+        plan.union.get(field.section) ?? [],
+    );
+    const already = getAt(merged, field.path);
+    if (isObject(already) && Object.hasOwn(already, cleanKey)) {
+        return { problem: `${cleanKey} is already set up here; edit it in your settings file, or use another name.` };
+    }
+    const current = getAt(nextSection, field.path);
+    const map = isObject(current) ? { ...current } : {};
+    const object: Record<string, unknown> = {};
+    for (const [path, value] of Object.entries(values)) setValuePath(object, path, value);
+    map[cleanKey] = object;
+    setValuePath(nextSection, field.path, map);
+
+    const check = plan.checks.get(field.section);
+    let messages: readonly string[];
+    try {
+        messages = check === undefined ? [] : check(mergedSection(plan, field.section, nextSection)).map(String);
+    } catch {
+        return { problem: `The plugin's check could not run for ${field.label}. Try another value.` };
+    }
+    const keyPath = `${field.path}.${cleanKey}`;
+    const refused = messages.find((message) =>
+        messagePaths(message, field.section).some(
+            (path) => path === field.path || path === keyPath || path.startsWith(`${keyPath}.`),
+        ),
+    );
+    if (refused !== undefined) {
+        const path = messagePaths(refused, field.section).find(
+            (one) => one === field.path || one === keyPath || one.startsWith(`${keyPath}.`),
+        );
+        const at = path?.startsWith(`${keyPath}.`) === true ? path.slice(keyPath.length + 1) : undefined;
+        const strip = at === undefined ? field.path : `${keyPath}.${at}`;
+        const text = plainObjectText(refused, field.section, strip);
+        return {
+            problem: at === undefined ? `${field.label} was not added: ${text}` : text,
+            ...(at === undefined ? {} : { at }),
+        };
+    }
+
+    draft[field.section] = nextSection;
+    return {
+        change: {
+            section: field.section,
+            path: field.path,
+            label: field.label,
+            value: object,
+            note: cleanKey,
+            key: cleanKey,
+        },
+    };
+}
+
+/** The merged section a plan would check, from one section of the draft. */
+function mergedSection(plan: SetupPlan, section: string, rawSection: Record<string, unknown>): unknown {
+    return layered(
+        plan.defaults.get(section),
+        rawSection,
+        plan.replace.get(section) ?? [],
+        plan.oneOf.get(section) ?? [],
+        plan.union.get(section) ?? [],
+    );
+}
+
+/** A validator's message without the path it names, for the sentence setup writes around it. Never a value or a
+ *  reference: the message is the plugin's, and a plugin's messages name keys, not values. */
+export function plainObjectText(message: string, section: string, strip: string): string {
+    const key = `${section}.${strip}`;
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let text = message
+        .replace(new RegExp(escaped, "ig"), "")
+        .replace(/[`"'{}]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/^[\s:.]+/, "");
+    if (text === "" || text.includes(`${section}.`) || /^[A-Za-z0-9_]+\.[A-Za-z0-9_]/.test(text)) {
+        text = "did not pass the plugin's check";
+    }
+    const sentence = text.length > 200 ? `${text.slice(0, 197)}...` : text;
+    return /[.?!]$/.test(sentence) ? sentence : `${sentence}.`;
 }
 
 function commit(

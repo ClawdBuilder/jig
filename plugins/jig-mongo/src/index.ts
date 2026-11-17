@@ -4,6 +4,7 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { withJig } from "../../jig-core/src/client.ts";
 import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { MONGO_REPLACE, statusLines, validateMongo } from "./config.ts";
+import { MONGO_SETUP } from "./onboarding.ts";
 import { createTool } from "./tool.ts";
 import type { MongoOptions } from "./tool.ts";
 
@@ -17,22 +18,7 @@ export function jigMongo(options: MongoOptions = {}): ExtensionFactory {
         withJig((api) => {
             api.config.registerSection("mongo", validateMongo, {
                 replace: MONGO_REPLACE,
-                setup: {
-                    summary: "Read and write MongoDB data.",
-                    pending: {
-                        doc: "plugins/jig-mongo/README.md",
-                        example: {
-                            connections: {
-                                staging: {
-                                    uri: "mongodb://db.staging.example.com:27017",
-                                    user: "agent",
-                                    password: "pass:mongo/staging",
-                                    services: { orders: "orders_staging" },
-                                },
-                            },
-                        },
-                    },
-                },
+                setup: MONGO_SETUP,
             });
             api.declareTool({ tool: "mongo", plugin: "jig-mongo", classify: tool.classify, preview: tool.preview });
             // `/jig` says when the index check is off for a production connection: that is the user's choice, and it is shown.

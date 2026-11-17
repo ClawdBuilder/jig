@@ -6,7 +6,7 @@
 import type { DoctorContext, DoctorLine } from "./doctor.ts";
 import { removedAt } from "./section-defaults.ts";
 import { sectionState } from "./section-state.ts";
-import { getPath } from "./setup-values.ts";
+import { getPath, isObject } from "./setup-values.ts";
 import { decisionsFile, proposalId, proposalPresent, readDeclined } from "./setup-proposal.ts";
 import { onlyOptionalQuestions, passesWithoutSettings } from "./setup-menu.ts";
 
@@ -49,6 +49,20 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
     const lines: DoctorLine[] = [];
     for (const [index, item] of entry.items.entries()) {
         if (item.kind === "info" || item.kind === "login" || item.kind === "proposal") continue;
+        if (item.kind === "object") {
+            // A map of objects is there when it has one: an empty one is not an answer.
+            const value = getPath(context.sections.get(item.section), item.path);
+            if (isObject(value) && Object.keys(value).length > 0) continue;
+            lines.push({
+                id: `config.need.${index}`,
+                group: "config",
+                level: "warn",
+                title: `You need: ${item.label}`,
+                detail: item.why ?? `Add ${item.section}.${item.path} to ${settingsShown} by hand.`,
+                fix: "Run jig setup and it asks for this.",
+            });
+            continue;
+        }
         if (item.kind === "text" && item.optional === true) continue;
         if (removedAt(context.personal.removed.get(item.section) ?? [], item.path) !== undefined) continue;
         const store = item.kind === "reference" ? (item.preferredStore ?? entry.preferredStore) : undefined;

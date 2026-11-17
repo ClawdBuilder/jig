@@ -102,6 +102,9 @@ Parameters and their checks: [Parameters](docs/parameters.md).
 
 In `~/.jig/jig.json`, under `api`. An unknown field is an error, and the tool
 then does nothing until the file is fixed (`/jig` lists the problems).
+`jig setup api` asks for one collection at a time — an `.http` folder, Bruno, a
+Postman file or an OpenAPI file — and the environment mappings, and `jig setup`
+offers it when no company plugin fills them in.
 
 ```json
 { "api": { "collections": { "orders": { "http": "~/work/orders-api/http" } }, "environments": { "Staging": "staging" } } }

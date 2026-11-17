@@ -137,12 +137,15 @@ closed instead of running ungoverned.
     own words. `summary` is one line for setup's plugin list and the doctor's
     "not set up" line. `items` are the questions, in the plugin's order: the
     company list's kinds, each naming this section (`entry` asks one key and
-    value of a map, `text.list` a short list). `proposal` is refused for a
-    plugin: that asks before writing a company's value. `pending` is for a
-    plugin that needs settings setup cannot ask for yet, with `doc` (a page in
-    this package) and `example` (a section to add by hand). Setup shows every
-    section that registered a `summary`; an older Jig ignores `setup` and the
-    section still works, so a plugin needs no version pin for it.
+    value of a map, `object` one named object of a map, such as a connection,
+    asked as a name and one of its forms' questions, `text.list` a short list).
+    `proposal` is refused for a plugin: that asks before writing a company's
+    value. `pending` is for a plugin that needs settings setup cannot ask for
+    yet, with `doc` (a page in this package) and `example` (a section to add by
+    hand). Setup shows every section that registered a `summary`; an older Jig
+    ignores `setup` and the section still works, so a plugin needs no version pin
+    for it — one whose items use a kind that Jig does not know is refused at
+    registration instead, as the company list below says.
   - Defaults that are not valid alone, with no section of the user's, leave the
     plugin unconfigured and are shown by `/jig`, not reported as a problem.
 - **`protectedPaths.list()`** gives every protected path with its `kind`
@@ -171,8 +174,9 @@ closed instead of running ungoverned.
 - **`onboarding.register(entry)`** is a company's list of what its people must supply, for `/jig setup` and `/jig doctor`.
   It includes `proposal` items, which setup asks before writing an entry into a person-owned section; an older Jig refuses
   the list rather than ignoring the kind.
-  `preferredStore`, and `items` of kind `text`, `pick`, `reference`, `entry`, `login` or `info`, each naming the section and
-  dotted path an answer goes to; `text` takes `list: true` for a short list, and `entry` asks one key and value of a map.
+  `preferredStore`, and `items` of kind `text`, `pick`, `reference`, `entry`, `object`, `login` or `info`, each naming the
+  section and dotted path an answer goes to; `text` takes `list: true` for a short list, `entry` asks one key and value of
+  a map, and `object` one named object of a map (its `forms` ask the fields inside it).
   Setup asks the items in the company's order, with its labels and hints, and doctor turns the ones
   still missing into "you need" lines. A `text` or `pick` item may name a `detect` probe (`user`, `git-email`, `gh-account`,
   `aws-profile`) for a proposed default; an unknown probe, or one on an optional `text` or `pick` item, is refused at

@@ -76,6 +76,50 @@ export type OnboardingMethodField =
 /** The secret stores a company can prefer. The names are `jig.json`'s. */
 export type OnboardingStore = "pass" | "env" | "keychain" | "op" | "cmd" | "file";
 
+/** One question inside a new object: its path is relative to the object, such as `uri` or `via.ssh.host`. */
+export type OnboardingObjectField =
+    | {
+          kind: "text";
+          path: string;
+          label: string;
+          why?: string;
+          placeholder?: string;
+          optional?: boolean;
+          /** The answer is a simple list, such as environment names: one per line, or separated by commas. */
+          list?: boolean;
+      }
+    | {
+          kind: "pick";
+          path: string;
+          label: string;
+          choices: readonly string[];
+          why?: string;
+      }
+    | {
+          kind: "reference";
+          path: string;
+          label: string;
+          /** The stores to offer; left out, all the stores this machine has. */
+          stores?: readonly OnboardingStore[];
+          /** A reference *shape* per store, never a value. */
+          suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          /** What to tell the person to add it, per store. */
+          addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          why?: string;
+      };
+
+/** One shape a new object may take: the questions whose answers make it, and the words that pick it. */
+export interface OnboardingObjectForm {
+    /** The plain answer to "Which kind of …?", such as "Directly at its address"; needed when there is more than one form. */
+    label?: string;
+    /** One line for the picker, such as "The database this machine can reach". */
+    who?: string;
+    /** Asks this form only while the section's merged value at `path` is `equals`; a form without one is the fallback. */
+    when?: { path: string; equals: string };
+    /** Ask these in order; each answer goes inside the new object at its own path. */
+    fields: readonly OnboardingObjectField[];
+}
+
 /** An onboarding answer's section and dotted path, and the words that ask for it. */
 interface OnboardingAnswer {
     /** The section of `jig.json` the answer goes to, such as `"acme"`. */
@@ -127,6 +171,18 @@ export type OnboardingItem =
           /** An empty key leaves the map unset, so nothing is written for the item; a `detect` may still fill the value. */
           optional?: boolean;
       } & OnboardingAnswer)
+    | ({
+          /** One named object in the map at `path`: the name is asked, then one form's questions, and the answers are one
+           *  object written as `path.<name>`. */
+          kind: "object";
+          /** The question for the object's name. */
+          keyLabel: string;
+          keyPlaceholder?: string;
+          /** The shapes one object may take; the first is offered first, and a form without `when` is the fallback. */
+          forms: readonly OnboardingObjectForm[];
+          /** Ask for another object after this one is accepted. */
+          repeat?: boolean;
+      } & OnboardingAnswer)
     | {
           kind: "login";
           /** The program that owns the login, such as `"gh"`. */
@@ -165,7 +221,8 @@ export interface OnboardingSetup {
     /** One line for setup's list and the doctor's line: what the plugin does for the person. */
     summary: string;
     /** The questions, in the plugin's order. Each answer goes to this plugin's section. Left out when it asks nothing.
-     *  A plugin asks for the entries of its own maps with `entry`; `proposal` is only for a company's list. */
+     *  A plugin asks for the entries of its own maps with `entry` and for one named object of a map with `object`;
+     *  `proposal` is only for a company's list. */
     items?: readonly OnboardingItem[];
     /** Set when the plugin needs configuration that setup cannot ask for yet: what to read, and a section to add by
      *  hand. A plugin with `items` does not need it. */

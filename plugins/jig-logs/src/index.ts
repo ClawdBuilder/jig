@@ -4,6 +4,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { withJig } from "../../jig-core/src/client.ts";
 import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { validateLogsSection } from "./config.ts";
+import { LOGS_SETUP } from "./onboarding.ts";
 import { createLogsTool } from "./tool.ts";
 
 const tool = createLogsTool();
@@ -30,11 +31,13 @@ export const LOGS_METHODS = [
     {
         id: "sign-in-service",
         label: "Company sign-in service",
+        companyOnly: true,
         fields: [{ kind: "text", path: "backend.auth.signIn", label: "The sign-in service name" }],
     },
     {
         id: "transport",
         label: "Company transport",
+        companyOnly: true,
         fields: [{ kind: "text", path: "backend.transport", label: "The transport name" }],
     },
 ] as const;
@@ -48,16 +51,7 @@ export default function (pi: ExtensionAPI) {
             replace: ["backend.auth"],
             oneOf: [["backend.auth", "backend.transport"]],
             methods: LOGS_METHODS,
-            setup: {
-                summary: "Search logs by phrase or query.",
-                pending: {
-                    doc: "plugins/jig-logs/README.md",
-                    example: {
-                        backend: { url: "https://logs.example.com:9200", auth: { apiKey: "pass:logs/api-key" } },
-                        environments: { staging: { index: "app-logs-*" } },
-                    },
-                },
-            },
+            setup: LOGS_SETUP,
         });
     });
 }

@@ -3,6 +3,7 @@
 // back to the section validators, which is less pretty but never blocked.
 import { checkDetect } from "./detect.ts";
 import { checkMethodChoice, checkOnboardingMethods } from "./onboarding-method-check.ts";
+import { checkObjectForms } from "./onboarding-object-check.ts";
 import { checkProposal } from "./setup-proposal.ts";
 import type {
     OnboardingEntry,
@@ -170,6 +171,19 @@ export function checkOnboarding(
             items.push(item as unknown as OnboardingItem);
             continue;
         }
+        if (check("object", [...shared, "keyLabel", "keyPlaceholder", "forms", "repeat"])) {
+            if (!SECTION.test(String(item.section))) errors.push(`${at}.section: the section's name`);
+            if (!PATH.test(String(item.path))) errors.push(`${at}.path: the section's map, such as connections`);
+            if (!oneLine(item.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
+            optionalLine(item.why, `${at}.why`, WHY_MAX, errors);
+            if (!oneLine(item.keyLabel, LABEL_MAX)) errors.push(`${at}.keyLabel: needed, one line`);
+            optionalLine(item.keyPlaceholder, `${at}.keyPlaceholder`, LABEL_MAX, errors);
+            if (item.repeat !== undefined && typeof item.repeat !== "boolean")
+                errors.push(`${at}.repeat: true or false`);
+            checkObjectForms(item.forms, `${at}.forms`, errors);
+            items.push(item as unknown as OnboardingItem);
+            continue;
+        }
         if (check("login", ["tool", "status", "login", "label", "why"])) {
             if (!oneLine(item.tool, 60)) errors.push(`${at}.tool: needed, a program name`);
             if (
@@ -191,7 +205,7 @@ export function checkOnboarding(
             items.push(item as unknown as OnboardingItem);
             continue;
         }
-        errors.push(`${at}.kind: must be text, pick, reference, entry, proposal, login or info`);
+        errors.push(`${at}.kind: must be text, pick, reference, entry, object, proposal, login or info`);
     }
     const methods: Record<string, OnboardingMethodChoice> = {};
     if (entry.methods !== undefined) {

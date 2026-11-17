@@ -4,6 +4,7 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { withJig } from "../../jig-core/src/client.ts";
 import { registerJigTool } from "../../jig-core/src/kit/tools.ts";
 import { API_REPLACE, validateApi } from "./config.ts";
+import { API_SETUP } from "./onboarding.ts";
 import { registerRefresh } from "./refresh.ts";
 import { createTool } from "./tool.ts";
 import type { ApiOptions } from "./tool.ts";
@@ -14,6 +15,7 @@ export const API_METHODS = [
     {
         id: "environment-sign-in",
         label: "Company sign-in service for an environment",
+        companyOnly: true,
         fields: [
             { kind: "text", path: "environments.*.environment", label: "The Jig environment name" },
             { kind: "text", path: "environments.*.signIn", label: "The sign-in service name" },
@@ -22,6 +24,7 @@ export const API_METHODS = [
     {
         id: "environment-transport",
         label: "Company transport for an environment",
+        companyOnly: true,
         fields: [
             { kind: "text", path: "environments.*.environment", label: "The Jig environment name" },
             { kind: "text", path: "environments.*.transport", label: "The transport name" },
@@ -37,16 +40,7 @@ export function jigApi(options: ApiOptions = {}): ExtensionFactory {
             api.config.registerSection("api", validateApi, {
                 replace: API_REPLACE,
                 methods: API_METHODS,
-                setup: {
-                    summary: "Run saved HTTP requests from collections.",
-                    pending: {
-                        doc: "plugins/jig-api/README.md",
-                        example: {
-                            collections: { orders: { http: "~/work/orders-api/http" } },
-                            environments: { Staging: "staging" },
-                        },
-                    },
-                },
+                setup: API_SETUP,
             });
 
             api.declareTool({ tool: "api", plugin: "jig-api", classify: tool.classify, preview: tool.preview });

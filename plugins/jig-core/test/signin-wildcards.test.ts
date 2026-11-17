@@ -132,7 +132,9 @@ test("wildcard current: the ops and api methods the configured names use are mar
         environments: { staging: { environment: "staging", signIn: "acme-sso" } },
     };
     writeFileSync(file, JSON.stringify({ api }));
-    const apiPlan = buildSetupPlan(state("api", new Map([["api", API_METHODS]])));
+    // api's two methods name a company sign-in service or transport, so they are offered only with a company.
+    const apiState = { ...state("api", new Map([["api", API_METHODS]])), companyActive: true };
+    const apiPlan = buildSetupPlan(apiState);
     assert.ok("plan" in apiPlan, JSON.stringify(apiPlan));
     assert.equal(
         apiPlan.plan.sections

@@ -558,7 +558,7 @@ describe("the write gate", () => {
         const referenceChange = changes.at(-1);
         assert.ok(referenceChange);
         referenceChange.note = "read from environment variable JIRA_TOKEN";
-        referenceChange.enableBackend = "env";
+        referenceChange.enableBackends = ["env"];
         const summary = summaryLines(plan, changes).join("\n");
         assert.match(summary, /Turn on an environment variable as a place Jig reads from/);
         assert.ok(!summary.includes("env:"));
@@ -568,7 +568,7 @@ describe("the write gate", () => {
         assert.ok(badField);
         const badAnswer = applyAnswer(plan, badDraft, badField, "8080");
         assert.ok("change" in badAnswer);
-        badAnswer.change.enableBackend = "op";
+        badAnswer.change.enableBackends = ["op"];
         assert.throws(
             () => writeSetup(plan, [badAnswer.change], new Date("2026-11-04T17:00:00.000Z")),
             (error: unknown) => error instanceof SetupRefused && /turned that store off/.test(error.message),

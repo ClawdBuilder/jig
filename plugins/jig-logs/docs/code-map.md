@@ -16,6 +16,7 @@ Read it with the code open. Back to the [jig-logs overview](../README.md).
 | `config.ts` | The `logs` section of jig.json: where the search backend is, how to sign in… | `backends/backend.ts`, `backends/elasticsearch.ts`, `backends/index.ts` and 8 more |
 | `failure.ts` | Why one request did not give a usable answer, and what to do about it. A… | `backends/backend.ts`, `backends/elasticsearch.ts`, `backends/loki.ts` and 3 more |
 | `filter.ts` | The `filter` of an environment: fields of its documents (Elasticsearch) or… | `backends/elasticsearch.ts`, `backends/logql.ts`, `backends/loki.ts` |
+| `onboarding.ts` | What a log search needs from a person: the backend, its sign-in, and one environment at a time | `index.ts` |
 | `index.ts` | jig-logs: log search for the agent. One tool, `logs`, that reads the logs of… || Pi |
 | `line.ts` | One fetched hit as a line: its time and its message on one line, shortened… | `params.ts`, `summary.ts` |
 | `params.ts` | What the `logs` tool accepts: the schema the model sees, the usage line that… | `tool.ts` |

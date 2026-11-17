@@ -96,6 +96,9 @@ not configured instead of running half set up.
 | `consoleProxy` | Optional. A Dashboards/Kibana console proxy path |
 | `timeoutSeconds` | One request's timeout, a whole number from 5 to 120 seconds. Default `30` |
 
+`jig setup logs` asks for the backend, its address and sign-in, and one environment at a time, with an index or a
+Loki selector; `jig setup` offers it when no company plugin fills it in.
+
 `consoleProxy` is a path on the backend's origin: `/_dashboards/api/console/proxy` for OpenSearch Dashboards, or
 `/api/console/proxy` for Kibana. A password, key or token in `auth` is a secret reference such as
 `pass:logs/api-key` (see [Secrets](../../docs/secrets.md)), never the secret. A

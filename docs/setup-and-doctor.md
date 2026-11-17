@@ -100,8 +100,10 @@ status and a one-sentence summary. The status is `set up` (its settings pass its
 to ask), `not set up (questions coming)` (it needs settings setup cannot ask for yet: it says which page to read and shows a
 section to add by hand), `ready (optional settings)` (every question is optional and the plugin works with nothing written;
 pick it to answer them), or `ready` (nothing to ask; Jig's defaults apply). Pick a plugin and setup asks its questions,
-including how you sign in; it comes back to the list afterwards, and a plugin you set up shows `set up`. **Done** writes
-everything once, with one backup and one confirmation, so a cancel writes nothing.
+including how you sign in; it comes back to the list afterwards, and a plugin you set up shows `set up`. A plugin that adds
+one entry of a map, such as a database connection for each environment, asks for the name first, says what is already
+there, and can be left as it is. **Done** writes everything once, with one backup and one confirmation, so a cancel writes
+nothing.
 
 `jig setup <section>` goes straight to that section's questions, without the list. A plugin's own questions come after a
 company's list, and a company default or answer skips the question it already answers. `--yes` asks nothing and sets up

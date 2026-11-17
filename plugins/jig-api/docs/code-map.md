@@ -13,6 +13,7 @@ fails when a file of `src/` is missing here or a file listed here is gone, so th
 
 | File | What it does | Called by |
 |---|---|---|
+| `onboarding.ts` | What a collection needs from a person: its name, one source's path, and the environment mappings | `index.ts` |
 | `index.ts` | The factory: registers the `api` section, the tool's declaration, the tool and `/api refresh` | Pi, which loads it |
 
 ### The tool and its commands

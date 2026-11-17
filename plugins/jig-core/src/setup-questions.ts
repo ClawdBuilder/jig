@@ -1,11 +1,18 @@
 // A plugin's own setup questions: the `setup` option of `registerSection`, checked once when the section is registered,
 // then read by setup (to ask) and by the doctor (to say a section is not set up). A plugin's items use the company list's
 // kinds, except `proposal`: a proposal names a value a company already knows, and a plugin asks for its own maps with
-// `entry`. This file also merges a company's items with a plugin's, one field per path, and builds the questions.
-import type { OnboardingEntry, OnboardingItem, OnboardingSetup, OnboardingStore } from "./contract-onboarding.ts";
+// `entry`, and one named object of a map with `object`. This file also merges a company's items with a plugin's, one
+// field per path, and builds the questions.
+import type {
+    OnboardingEntry,
+    OnboardingItem,
+    OnboardingObjectField,
+    OnboardingSetup,
+    OnboardingStore,
+} from "./contract-onboarding.ts";
 import { checkOnboarding, onboardingItemAt } from "./onboarding.ts";
 import { oneLine } from "./onboarding-common.ts";
-import type { SetupField, SetupReferenceChoice, SetupState } from "./setup-plan.ts";
+import type { SetupField, SetupObjectField, SetupReferenceChoice, SetupState } from "./setup-plan.ts";
 import { getPath, isObject, safePath } from "./setup-values.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { optionalQuestion, referenceQuestion } from "./setup-fields.ts";
@@ -136,10 +143,14 @@ export function questionItems(
     return out;
 }
 
-/** Whether a question names this path or one above or below it: such a field is asked by the question, never as text. */
+/** Whether a question names this path or one above or below it: such a field is asked by the question, never as text.
+ *  An object asks for the map itself and one new name at a time, so it never stands for the paths below it: an existing
+ *  object's own fields are still repaired by the validator's question. */
 export function coversPath(items: readonly QuestionItem[], path: string): boolean {
     return items.some(
-        ({ item }) => item.path === path || item.path.startsWith(`${path}.`) || path.startsWith(`${item.path}.`),
+        ({ item }) =>
+            item.kind !== "object" &&
+            (item.path === path || item.path.startsWith(`${path}.`) || path.startsWith(`${item.path}.`)),
     );
 }
 
@@ -155,7 +166,8 @@ export function itemAtPath(items: readonly QuestionItem[], path: string): Questi
 export function withItemWords(state: SetupState, field: SetupField, item: QuestionItem): SetupField {
     const value = item.item;
     const reason = value.why ?? field.reason;
-    if (value.kind === "entry") return field;
+    // An entry and an object ask for a map itself; a validator field for that path is not given their words.
+    if (value.kind === "entry" || value.kind === "object") return field;
     const credential = value.kind === "reference";
     if (field.kind !== "reference" && !credential) {
         if (value.kind === "pick") {
@@ -182,7 +194,7 @@ export function withItemWords(state: SetupState, field: SetupField, item: Questi
     const reference =
         field.reference ??
         referenceChoice(state, field.current, getPath(state.defaults.get(field.section), field.path));
-    offerStores(reference, credential ? value : undefined, item);
+    offerStores(reference, credential ? value : undefined, item.preferredStore);
     return {
         ...field,
         label: value.label,
@@ -196,13 +208,20 @@ export function withItemWords(state: SetupState, field: SetupField, item: Questi
 /** Narrows a credential choice to the stores the question offers, with the company's or the item's place first. */
 function offerStores(
     reference: SetupReferenceChoice,
-    value: Extract<OnboardingItem, { kind: "reference" }> | undefined,
-    item: QuestionItem,
+    value:
+        | {
+              stores?: readonly OnboardingStore[];
+              preferredStore?: OnboardingStore;
+              suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
+              addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          }
+        | undefined,
+    entryPreferred?: OnboardingStore,
 ): void {
     if (value?.stores !== undefined) {
         reference.stores = value.stores.filter((store) => reference.stores.includes(store));
     }
-    const preferred = value?.preferredStore ?? (value === undefined ? undefined : item.preferredStore);
+    const preferred = value?.preferredStore ?? entryPreferred;
     if (preferred !== undefined && reference.stores.includes(preferred)) {
         reference.preferred = preferred;
         reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
@@ -234,8 +253,9 @@ export function answerPresent(
     const removed = removedPaths(state.defaults.get(section), rawSection);
     if (removedAt(removed, item.item.path) !== undefined) return true;
     const value = getPathOf(mergedSection(state, section, raw), item.item.path);
-    // An entry asks for one more entry of a map: an empty map is missing, a full one is not asked for again.
-    if (item.item.kind === "entry") return isObject(value) && Object.keys(value).length > 0;
+    // An entry or an object asks for one more of a map: an empty map is missing, a full one is not asked for again.
+    if (item.item.kind === "entry" || item.item.kind === "object")
+        return isObject(value) && Object.keys(value).length > 0;
     return value !== undefined;
 }
 
@@ -254,7 +274,7 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
     const reason = value.why ?? "The plugin's list says this is needed.";
     if (value.kind === "reference") {
         const reference = referenceChoice(state, undefined, undefined);
-        offerStores(reference, value, item);
+        offerStores(reference, value, item.preferredStore);
         return {
             section: value.section,
             path: value.path,
@@ -295,6 +315,27 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
             },
         };
     }
+    if (value.kind === "object") {
+        return {
+            section: value.section,
+            path: value.path,
+            label: value.label,
+            question: value.label,
+            kind: "object",
+            reason,
+            object: {
+                keyLabel: value.keyLabel,
+                ...(value.keyPlaceholder === undefined ? {} : { keyPlaceholder: value.keyPlaceholder }),
+                forms: value.forms.map((form) => ({
+                    ...(form.label === undefined ? {} : { label: form.label }),
+                    ...(form.who === undefined ? {} : { who: form.who }),
+                    ...(form.when === undefined ? {} : { when: { ...form.when } }),
+                    fields: form.fields.map((field) => objectField(state, field, item.preferredStore)),
+                })),
+                ...(value.repeat === true ? { repeat: true } : {}),
+            },
+        };
+    }
     return {
         section: value.section,
         path: value.path,
@@ -308,8 +349,50 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
     };
 }
 
-/** The fields of one section's questions whose answers are not set yet. `requested` asks an entry item even when its
- *  map has entries: the person named the section to add one. A path in `asked` already has the validator's field. */
+/** One question inside a new object, with the words this section's list gave it (a company's preferred store included). */
+function objectField(
+    state: SetupState,
+    field: OnboardingObjectField,
+    preferredStore: OnboardingStore | undefined,
+): SetupObjectField {
+    const reason = field.why ?? "The plugin's list says this field is needed.";
+    if (field.kind === "reference") {
+        const reference = referenceChoice(state, undefined, undefined);
+        offerStores(reference, field, preferredStore);
+        return {
+            path: field.path,
+            label: field.label,
+            question: referenceQuestion(field.label),
+            kind: "reference",
+            reason: field.why ?? "Jig reads the value from there when a tool needs it.",
+            reference,
+        };
+    }
+    if (field.kind === "pick") {
+        return {
+            path: field.path,
+            label: field.label,
+            question: field.label,
+            kind: "pick",
+            choices: [...field.choices],
+            reason,
+        };
+    }
+    return {
+        path: field.path,
+        label: field.label,
+        question: field.optional === true ? optionalQuestion(field.label, field.placeholder) : field.label,
+        kind: "text",
+        ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
+        ...(field.optional === true ? { optional: true as const } : {}),
+        ...(field.list === true ? { list: true as const } : {}),
+        reason,
+    };
+}
+
+/** The fields of one section's questions whose answers are not set yet. `requested` asks an entry or an object item even
+ *  when its map has entries: the person named the section to add one. A path in `asked` already has the validator's
+ *  field. */
 export function questionFields(
     state: SetupState,
     items: readonly QuestionItem[],
@@ -321,7 +404,8 @@ export function questionFields(
     for (const item of items) {
         if (asked.has(item.item.path)) continue;
         const present = answerPresent(state, item.item.section, item, raw);
-        if (present && !(requested && item.item.kind === "entry")) continue;
+        const again = requested && (item.item.kind === "entry" || item.item.kind === "object");
+        if (present && !again) continue;
         out.push(questionField(state, item));
     }
     return out;
