@@ -1,7 +1,7 @@
 // The background update notice: once a day, only to the person, silent offline or when updates.check is false, with the
 // company's cap and a stronger line when the running version is deprecated.
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -70,6 +70,29 @@ describe("the updates section", () => {
         writeFileSync(file, JSON.stringify({ updates: { check: true } }));
         const person = loadConfigFile(file, new Map([["updates", validateUpdatesSection]]), layers);
         assert.deepEqual(readUpdates(person.sections.get("updates")), { check: true });
+    });
+});
+
+describe("the cache file", () => {
+    const mode = (file: string): number => statSync(file).mode & 0o777;
+
+    test("is written private, and a loose folder and file are tightened", async () => {
+        chmodSync(dir, 0o755);
+        const file = path.join(dir, "update-check.json");
+        writeFileSync(file, JSON.stringify({ schema: 1, checkedAt: 0 }), { mode: 0o644 });
+        chmodSync(file, 0o644);
+        await checkUpdateAtStart(state(), () => {}, { fetchJson: async () => registry });
+        assert.equal(mode(dir), 0o700, "the folder is private");
+        assert.equal(mode(file), 0o600, "an existing file is tightened on the next write");
+    });
+
+    test("creates a missing state folder private", async () => {
+        const fresh = path.join(dir, "fresh-state");
+        await checkUpdateAtStart(state({ check: true }, { JIG_STATE_DIR: fresh }), () => {}, {
+            fetchJson: async () => registry,
+        });
+        assert.equal(mode(fresh), 0o700, "the folder is created private");
+        assert.equal(mode(path.join(fresh, "update-check.json")), 0o600);
     });
 });
 

@@ -11,16 +11,21 @@ export type DetectName = (typeof DETECTS)[number];
 export type ProbeRun = (program: string, args: readonly string[], env: NodeJS.ProcessEnv) => string | undefined;
 
 /**
- * Refuses a `detect` name outside the fixed list, and a `detect` on an optional item: a found value would make the
- * item's "press Enter to leave it unset" untrue.
+ * Refuses a `detect` name outside the fixed list, and a `detect` on an optional answer: a found value would make the
+ * item's "press Enter to leave it unset" untrue. An `entry` is the exception: its optional answer is the key, and a probe
+ * fills the value, so an empty key still leaves the map unset.
  */
-export function checkDetect(item: { detect?: unknown; optional?: unknown }, at: string, errors: string[]): void {
+export function checkDetect(
+    item: { kind?: unknown; detect?: unknown; optional?: unknown },
+    at: string,
+    errors: string[],
+): void {
     if (item.detect === undefined) return;
     if (!(DETECTS as readonly unknown[]).includes(item.detect)) {
         errors.push(`${at}.detect: must be one of ${DETECTS.join(", ")}`);
         return;
     }
-    if (item.optional === true) errors.push(`${at}.detect: cannot be used with optional`);
+    if (item.optional === true && item.kind !== "entry") errors.push(`${at}.detect: cannot be used with optional`);
 }
 
 /** Runs one fixed command without a shell and returns its trimmed stdout, or undefined when it fails or finds nothing. */
