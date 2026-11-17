@@ -3,7 +3,6 @@
 import { fork } from "node:child_process";
 import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { fileURLToPath } from "node:url";
 import type { DoctorContext, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { findOnPath, sectionTexts } from "./doctor-secrets.ts";
 import { run as runProgram } from "./exec.ts";
@@ -349,11 +348,9 @@ async function sandboxHostChecks(context: DoctorContext, options: DoctorOptions)
         }
     };
     const lines: DoctorLine[] = [];
-    {
-        const script =
-            options.brokerScript ??
-            fileURLToPath(new URL("../../../plugins/jig-sandbox/broker/broker.mjs", import.meta.url));
-        const problem = await brokerStart(script);
+    const brokerScript = options.brokerScript ?? context.sandbox?.brokerScript;
+    if (brokerScript !== undefined) {
+        const problem = await brokerStart(brokerScript);
         lines.push(
             problem === undefined
                 ? {
