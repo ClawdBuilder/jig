@@ -118,7 +118,8 @@
         "docs/**",
         "README.md",
         "CHANGELOG.md",
-        "LICENSE"
+        "LICENSE",
+        "!**/EGM.md"
     ],
     "overrides": {
         "zod": "4.6.7"
