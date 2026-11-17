@@ -154,7 +154,8 @@ reads where the catalog says. It was `jig-git`'s `github` kind.
    so `platform/payments/orders-api` matches only that project.
    A newer push to the same branch replaces the watch of the older commit.
    Or the agent calls `ci watch`.
-2. **Its finish line is explicit, never "all checks".**
+2. **Its finish line is explicit: `required` by default, which judges the checks the entry names, or every reported
+   check when it names none.**
 3. **It polls every 30 seconds (`ops.watch.pollSeconds`).** GitHub's polls carry
    ETags, so an unchanged answer (`304`) does not count against the rate limit, and
    the watch follows `X-Poll-Interval`.

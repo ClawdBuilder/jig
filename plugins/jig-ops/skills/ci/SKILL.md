@@ -15,7 +15,7 @@ A call without `environment` is about the service's own CI, the one that builds 
 
 A push and a new pull request each start a background watch on the CI of the pushed commit, when the repository belongs to a service in the catalog. It reports once: when the required checks pass, or at the first failure with the failing checks, their links and the lines around the error in the log. The message starts your next turn. Do not call `ci status` in a loop.
 
-Start a watch yourself with `ci watch` when the finish line is something else. Name it, never "all checks":
+Start a watch yourself with `ci watch` when the finish line is something else. Name it: the default `required` judges every check when the entry names none, so name what you are waiting for.
 - `check` for one job or stage (the one that builds the image), `run_id` for one run, pipeline or build (on Concourse a watch follows one build to its end, and there is no other finish line);
 - GitHub only: `finish: approved` or `merged` for a pull request, `finish: comment` for a bot comment matching `pattern`, `finish: tag` or `release` for a new one matching `pattern`.
 

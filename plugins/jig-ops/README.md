@@ -51,7 +51,7 @@ All fields (and how CI watches poll): [The catalog](docs/catalog.md).
 | Action | Kind | What it does |
 |---|---|---|
 | `pods` | read | A service's pods: ready, status, restarts, age, version |
-| `rollout` | read | The workload and a verdict: `Running`, `Still rolling`, `Failing`; `waitFor` waits for a version |
+| `rollout` | read | The verdict: `Running`, `Still rolling`, `Failing`, `No pods`; `waitFor` waits for a version |
 | `logs` | read | The last lines of one pod's log, or of its previous run |
 | `events` | read | Recent events about the service's objects, such as failed scheduling |
 | `health` | read | A `GET` on the health address, or curl in a pod where the catalog says so; never a production pod |
@@ -115,7 +115,8 @@ and in that environment: reads are reads there, a `trigger` is a write there, an
 - **Credentials stay with you.** `gh`, `kubectl` and `helm` use their own sign-in. A
   GitLab, Jenkins or Concourse token is a secret reference, a sign-in service or a transport. Jig never
   signs in: when Concourse refuses the login, the message says how you renew it.
-- **A watch has an explicit finish line,** never "all checks"; one message wakes the agent.
+- **A watch has an explicit finish line:** `required` by default, which judges the checks the entry names, or every
+  reported check when it names none. One message wakes the agent.
 
 ## Events
 
