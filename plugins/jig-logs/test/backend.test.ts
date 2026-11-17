@@ -10,7 +10,6 @@ import type { LogBackend } from "../src/backends/index.ts";
 import { elasticsearch } from "../src/backends/elasticsearch.ts";
 import type { Backend } from "../src/config.ts";
 import { transient } from "../src/failure.ts";
-import { MAX_SIZE } from "../src/params.ts";
 import type { LogQuery } from "../src/query.ts";
 import { runSearch } from "../src/search.ts";
 import { HOUR_MS, MAX_RANGE_MS, planBuckets } from "../src/time.ts";
@@ -57,11 +56,9 @@ test("each backend is listed under its own type, and the environments it makes l
     }
 });
 
-test("the limits are real numbers, and never below what the tool asks of a backend", () => {
+test("each backend's window limit is a real span, or none", () => {
     for (const backend of registered) {
-        const { maxHits, maxWindowMs } = backend.limits;
-        assert.ok(Number.isInteger(maxHits) && maxHits >= MAX_SIZE, `${backend.type}: it must serve a full size`);
-        assert.ok(maxWindowMs > 0, `${backend.type}: a window of no length`);
+        assert.ok(backend.limits.maxWindowMs > 0, `${backend.type}: a window of no length`);
     }
 });
 
@@ -170,7 +167,7 @@ test("type-erasable TypeScript only, in the folder too", () => {
  */
 const hourly: LogBackend = {
     ...elasticsearch,
-    limits: { maxHits: 10_000, maxWindowMs: HOUR_MS },
+    limits: { maxWindowMs: HOUR_MS },
     classify: (status) => (status === 418 ? transient("upstream_unavailable") : undefined),
 };
 

@@ -283,17 +283,19 @@ api.onboarding?.register({
   `gh-account` or `aws-profile`. Setup runs that fixed jig-core probe once, briefly, and shows
   `Found on this machine: <value>`; Enter accepts it, and the section's validator still checks it. No plugin code runs
   and no secret is read. A `pick` offers the found value first, only when it is one of `choices`. A failed probe is no
-  default, `detect` cannot pair with `optional`, `--yes` runs no probe, and an older Jig refuses the list as an unknown
-  field.
+  default, `detect` cannot pair with an optional `text` or `pick` item, `--yes` runs no probe, and an older Jig refuses
+  the list as an unknown field.
 - **`info` comes before the questions and `pick` offers your plain choices.** Items are asked in your order, and the sections you
   name come first; the rest of the settings keep their own order.
 - **A plugin asks for its own section too.** `registerSection(name, validate, { setup })` takes a `summary` and `items`: the
-  same kinds, each naming that section. Setup's plugin list shows every section that registered one, and the doctor says a
-  plugin with questions is not set up. Your list comes first: your words, and a default of yours skips the same question.
+  same kinds, each naming that section. Setup's plugin list shows every section that registered one, and the doctor names a
+  plugin with questions that is not set up, unless all of them are optional and its section works with nothing written.
+  Your list comes first: your words, and a default of yours skips the same question.
 - **`text.list` asks for a short list and `entry` for one map entry.** A `text` item with `list: true` takes one entry per
   line or separated by commas, such as project keys. An `entry` item asks one key and one value of an ordered map (such as
-  `git.accounts`), `detect` may propose the value, and `repeat` asks for another entry. A plugin cannot use `proposal`; a
-  company can. An older Jig refuses a list with these kinds, as it does with `proposal`.
+  `git.accounts`), `detect` may propose the value, `optional` leaves the map unset when its key is empty, and `repeat` asks
+  for another entry. A plugin cannot use `proposal`; a company can. An older Jig refuses a list with these kinds, as it
+  does with `proposal`.
 - **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never
   registers a profile applies always, as with every other seam.
 - **Keep every label and hint plain.** They are what a person reads on their first day: say where a thing lives and why it is

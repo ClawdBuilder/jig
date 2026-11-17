@@ -72,9 +72,10 @@ Nothing is blocked. 1 warning is worth a look.
 Jig reads one file, `~/.jig/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
 covers the questions, confirmation and backup.
 
-Jig loads no company plugin here, so nothing fills the file in for you: `jig setup` shows what it can ask, and
-this page writes the `git` section by hand to show the file's shape. It names the branch new work starts from
-and the branches the tools will not change directly:
+Jig loads no company plugin here, so `jig setup` asks git's own questions: pick **Git** in the list, or run
+`jig setup git`, and answer the `gh` login and which account to use for a set of repositories. The rest of the
+section is written by hand; this page shows the file's shape, with the branch new work starts from and the branches
+the tools will not change directly:
 
 ```json
 {
