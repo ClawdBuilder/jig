@@ -5,8 +5,8 @@
 import type { OnboardingEntry, OnboardingItem, OnboardingSetup, OnboardingStore } from "./contract-onboarding.ts";
 import { checkOnboarding, onboardingItemAt } from "./onboarding.ts";
 import { oneLine } from "./onboarding-common.ts";
-import type { SetupField, SetupState } from "./setup-plan.ts";
-import { isObject } from "./setup-values.ts";
+import type { SetupField, SetupReferenceChoice, SetupState } from "./setup-plan.ts";
+import { getPath, isObject } from "./setup-values.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { optionalQuestion, referenceQuestion } from "./setup-fields.ts";
 import { referenceChoice } from "./setup-reference.ts";
@@ -138,6 +138,74 @@ export function coversPath(items: readonly QuestionItem[], path: string): boolea
     return items.some(
         ({ item }) => item.path === path || item.path.startsWith(`${path}.`) || path.startsWith(`${item.path}.`),
     );
+}
+
+/** The question that asks for exactly this path, so a validator's field can use its words. */
+export function itemAtPath(items: readonly QuestionItem[], path: string): QuestionItem | undefined {
+    return items.find(({ item }) => item.path === path);
+}
+
+/** A validator's field for a path a question also names: the field keeps the validator's kind and secret
+ *  classification, and the question gives it the company's or plugin's words. A value that is there but wrong is
+ *  therefore asked again in the same words; an answer the question says is a credential is still asked as where it is
+ *  kept, never as a value. */
+export function withItemWords(state: SetupState, field: SetupField, item: QuestionItem): SetupField {
+    const value = item.item;
+    const reason = value.why ?? field.reason;
+    if (value.kind === "entry") return field;
+    const credential = value.kind === "reference";
+    if (field.kind !== "reference" && !credential) {
+        if (value.kind === "pick") {
+            return {
+                ...field,
+                label: value.label,
+                question: value.label,
+                kind: "pick",
+                choices: [...value.choices],
+                placeholder: undefined,
+                reason,
+            };
+        }
+        const placeholder = value.placeholder ?? (field.kind === "text" ? field.placeholder : undefined);
+        return {
+            ...field,
+            label: value.label,
+            question: value.label,
+            ...(placeholder === undefined ? {} : { placeholder }),
+            ...(value.list === true ? { list: true as const } : {}),
+            reason,
+        };
+    }
+    const reference =
+        field.reference ??
+        referenceChoice(state, field.current, getPath(state.defaults.get(field.section), field.path));
+    offerStores(reference, credential ? value : undefined, item);
+    return {
+        ...field,
+        label: value.label,
+        question: referenceQuestion(value.label),
+        kind: "reference",
+        reference,
+        reason,
+    };
+}
+
+/** Narrows a credential choice to the stores the question offers, with the company's or the item's place first. */
+function offerStores(
+    reference: SetupReferenceChoice,
+    value: Extract<OnboardingItem, { kind: "reference" }> | undefined,
+    item: QuestionItem,
+): void {
+    if (value?.stores !== undefined) {
+        reference.stores = value.stores.filter((store) => reference.stores.includes(store));
+    }
+    const preferred = value?.preferredStore ?? (value === undefined ? undefined : item.preferredStore);
+    if (preferred !== undefined && reference.stores.includes(preferred)) {
+        reference.preferred = preferred;
+        reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
+    }
+    if (value?.suggested !== undefined) reference.suggested = value.suggested;
+    if (value?.addHints !== undefined) reference.addHints = value.addHints;
 }
 
 /** The merged section value: the company's defaults under the person's own. */

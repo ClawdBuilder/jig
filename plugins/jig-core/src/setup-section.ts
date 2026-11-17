@@ -7,7 +7,15 @@ import { referenceChoice } from "./setup-reference.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { messagePaths } from "./setup-answer.ts";
 import { setupMethods } from "./setup-methods-plan.ts";
-import { coversPath, methodPaths, questionFields, questionItems } from "./setup-questions.ts";
+import {
+    answerPresent,
+    coversPath,
+    itemAtPath,
+    methodPaths,
+    questionFields,
+    questionItems,
+    withItemWords,
+} from "./setup-questions.ts";
 import { getPath, isObject, parentIsObject, safePath } from "./setup-values.ts";
 
 /** One section's questions, with its sign-in methods, or no question and no method when it needs neither. */
@@ -113,7 +121,7 @@ export function sectionQuestions(
     const merged = layeredSection(state, section, rawSection);
     const items = questionItems(state.onboarding, state.sectionSetup?.get(section)?.items, section);
     const { methods, askMethod } = setupMethods(state, section, merged, requested);
-    const covered = [...items.map((one) => one.item.path), ...methodPaths(methods)];
+    const methodCovered = methodPaths(methods);
 
     if (rawValue !== undefined && !isObject(rawValue)) {
         notes.push(`${labelOf(section)} is not in a shape setup can change here. /jig doctor names the problem.`);
@@ -126,11 +134,17 @@ export function sectionQuestions(
             continue;
         }
         for (const path of paths) {
-            if (coversPath(items, path) || coveredBy(covered, path)) continue;
+            if (coveredBy(methodCovered, path)) continue;
+            const item = itemAtPath(items, path);
+            // A question asks for this path when the value is missing; when it is present but the validator still
+            // names it, the validator's field asks again, in the question's words.
+            if (item === undefined ? coversPath(items, path) : !answerPresent(state, section, item, raw)) continue;
             const built = validatorField(state, section, path, message, merged, rawSection);
             if ("note" in built) {
                 if (built.note !== "") notes.push(built.note);
-            } else required.push({ field: built, order: 10_000 });
+                continue;
+            }
+            required.push({ field: item === undefined ? built : withItemWords(state, built, item), order: 10_000 });
         }
     }
 

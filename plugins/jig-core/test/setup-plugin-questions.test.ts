@@ -9,6 +9,8 @@ import { buildApi } from "../src/api.ts";
 import { doctorContext } from "../src/doctor-checks.ts";
 import { notSetupLines } from "../src/doctor-needs.ts";
 import { DONE_LINE, LIST_TITLE, pluginLines } from "../src/setup-menu.ts";
+import { checkOnboarding } from "../src/onboarding.ts";
+import { buildSetupPlan } from "../src/setup-plan.ts";
 import { loadPersonalConfig, createState } from "../src/state.ts";
 import { sectionQuestions } from "../src/setup-section.ts";
 import { runSetup, setupStateFrom } from "../src/setup.ts";
@@ -146,6 +148,52 @@ describe("the regression: a validator field a sign-in method covers", () => {
             'a text box cannot satisfy "must be an object", so the person would retry for ever',
         );
         assert.match(seen.join("\n"), /input: Your Jira address/);
+    });
+});
+
+describe("a value that is there but wrong", () => {
+    /** A Jira whose address its own check refuses: setup has to ask for it again, not treat it as answered. */
+    const invalid = {
+        jira: {
+            site: "http://not-https.example",
+            auth: { email: "jane@example.test", token: "env:JIRA_API_TOKEN" },
+        },
+    };
+
+    test("is asked again in the plugin's words, and the answer is written", async () => {
+        const state = stateWith(invalid);
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://example.atlassian.net")
+            .reading(/Project keys to work in/, "")
+            .picking(/Review these changes/, "Save these changes");
+        const code = await runSetup(state, ui);
+        assert.equal(code, 0, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /input: Your Jira address/, "the address is a question, not an answered item");
+        const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, any>;
+        assert.equal(written.jira.site, "https://example.atlassian.net");
+    });
+
+    test("is asked again in a company's words when its list names the path", () => {
+        const state = stateWith(invalid);
+        state.onboarding = checkOnboarding({
+            items: [
+                {
+                    kind: "text",
+                    section: "jira",
+                    path: "site",
+                    label: "Your team's Jira address",
+                    why: "Your team writes its tickets there.",
+                },
+            ],
+        });
+        const built = buildSetupPlan(setupStateFrom(state));
+        assert.ok("plan" in built);
+        const field = built.plan.sections
+            .find((section) => section.name === "jira")
+            ?.fields.find((one) => one.path === "site");
+        assert.equal(field?.label, "Your team's Jira address");
+        assert.equal(field?.question, "Your team's Jira address");
+        assert.equal(field?.reason, "Your team writes its tickets there.");
     });
 });
 
