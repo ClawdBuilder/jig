@@ -4,9 +4,7 @@
 // client.ts. They never import jig-core's modules: Pi gives each installed package its own module root, so a
 // company plugin cannot share jig-core's module instances (Pi's docs/packages.md, "Declare dependencies").
 
-import type { DetectName } from "./detect.ts";
-import type { ProposalItem } from "./setup-proposal.ts";
-// A company can propose an entry for one of the person's own sections; setup asks before writing it.
+import type { OnboardingEntry, OnboardingMethod, OnboardingSetup } from "./contract-onboarding.ts";
 
 /** Where a call acts. `local`, `external` and `production` are built in. A company plugin adds its test
  *  environments (such as `staging`) through `config.addEnvironments`, and a tool may name a target in its own
@@ -629,6 +627,9 @@ export interface JigApi {
                 first?: readonly string[];
                 /** The section's sign-in methods. Declared with the section, so ownership is structural. */
                 methods?: readonly OnboardingMethod[];
+                /** What the section needs from a person, in the plugin's words: setup asks it, and doctor says the
+                 *  section is not set up. Declared with the section, like its methods. */
+                setup?: OnboardingSetup;
             },
         ): void;
         /** A company plugin's defaults for a plugin's section, such as its log backend or its service catalog. Your own
@@ -745,129 +746,6 @@ export interface ProfileRegistration {
     onChange?(active: boolean): void;
 }
 
-/** What a company's people must supply, in the order setup asks (`onboarding.register`). */
-export interface OnboardingEntry {
-    /** The company's preferred secret store for its references, such as `"op"` or `"pass"`. */
-    preferredStore?: OnboardingStore;
-    /** Ask these in this order. Each names where the answer goes, or says something before the questions. */
-    items: readonly OnboardingItem[];
-    /** Which registered method is the company's default, which to hide, and any company-only fixed method. */
-    methods?: Readonly<Record<string, OnboardingMethodChoice>>;
-}
-
-/** The company's choice among the methods a plugin registered for one section. It may only name ids the plugin owns. */
-export interface OnboardingMethodChoice {
-    /** The id of the method setup offers first. */
-    default?: string;
-    /** Ids setup does not offer. A user may still write one by hand; doctor warns, never refuses. */
-    hide?: readonly string[];
-    /** Company-only methods whose fields are all fixed values, for its own transport or sign-in service. */
-    add?: readonly OnboardingMethod[];
-}
-
-/** One sign-in method a plugin's section accepts. The shape is inferred from the fields; no id is written to jig.json. */
-export interface OnboardingMethod {
-    /** A stable id, such as `cloud-basic` or `transport`. */
-    id: string;
-    /** The plain answer to “How do you sign in?”. */
-    label: string;
-    /** One line for the picker, such as “Jira Cloud” or “Data Center”. */
-    who?: string;
-    /** The fields this method writes, relative to the section. A `*` segment stands for one dynamic name. */
-    fields: readonly OnboardingMethodField[];
-    /** A path relative to the object a `*` matched that must already exist; `ci` for a service's CI methods. */
-    requires?: string;
-}
-
-/** One field of an `OnboardingMethod`. A plugin method has no `value`; a company-only method fixes every field. */
-export type OnboardingMethodField =
-    | {
-          kind: "text";
-          /** A dotted path inside the section; `*` stands for one dynamic name. */
-          path: string;
-          label: string;
-          why?: string;
-          placeholder?: string;
-          optional?: boolean;
-          /** A fixed answer, for a company-only method. */
-          value?: string;
-      }
-    | {
-          kind: "pick";
-          path: string;
-          label: string;
-          choices: readonly string[];
-          why?: string;
-          /** A fixed answer, for a company-only method. */
-          value?: string;
-      }
-    | {
-          kind: "reference";
-          path: string;
-          label: string;
-          stores?: readonly OnboardingStore[];
-          preferredStore?: OnboardingStore;
-          suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
-          addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
-          why?: string;
-      };
-
-/** The secret stores a company can prefer. The names are `jig.json`'s. */
-export type OnboardingStore = "pass" | "env" | "keychain" | "op" | "cmd" | "file";
-
-/** An onboarding answer's section and dotted path, and the words that ask for it. */
-interface OnboardingAnswer {
-    /** The section of `jig.json` the answer goes to, such as `"acme"`. */
-    section: string;
-    /** A dotted path inside it, such as `"bastion.user"`. */
-    path: string;
-    label: string;
-    why?: string;
-}
-
-/** One step of a company's onboarding list; a `text` or `pick` step may name a `detect` probe. */
-export type OnboardingItem =
-    | ({
-          kind: "text";
-          placeholder?: string;
-          optional?: boolean;
-          detect?: DetectName;
-      } & OnboardingAnswer)
-    | ({
-          kind: "pick";
-          choices: readonly string[];
-          detect?: DetectName;
-      } & OnboardingAnswer)
-    | ({
-          kind: "reference";
-          /** The stores to offer; left out, all the stores this machine has. */
-          stores?: readonly OnboardingStore[];
-          /** The store marked as the company's choice; overrides the entry's `preferredStore`. */
-          preferredStore?: OnboardingStore;
-          /** A reference *shape* per store, never a value: `{ "pass": "acme/sso-token" }`. */
-          suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
-          /** What to tell the person to add it, per store: `{ "pass": "pass insert acme/sso-token" }`. */
-          addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
-      } & OnboardingAnswer)
-    | {
-          kind: "login";
-          /** The program that owns the login, such as `"gh"`. */
-          tool: string;
-          /** The command that asks whether it is logged in; the answer's exit code is the check. */
-          status: readonly string[];
-          /** The command the person runs to log in. */
-          login: string;
-          label: string;
-          why?: string;
-      }
-    | {
-          kind: "info";
-          label: string;
-          detail?: string;
-          url?: string;
-      }
-    | ProposalItem;
-
 /** Which company is active and why (`profiles.active`, `/profile`). */
 export interface ProfileSelection {
     /** `session`: `/profile <name>`; `explicit`: `profile` in `jig.json`; `folder` and `remote`: `auto` matched; `sole`: no
@@ -932,5 +810,14 @@ export interface WatchDoneEvent {
 import type { RunOptions, RunResult } from "./contract-run.ts";
 import type { StartWatch, WatchInfo, WatchKind, WatchResult } from "./contract-watch.ts";
 
+export type {
+    OnboardingEntry,
+    OnboardingItem,
+    OnboardingMethod,
+    OnboardingMethodChoice,
+    OnboardingMethodField,
+    OnboardingSetup,
+    OnboardingStore,
+} from "./contract-onboarding.ts";
 export type { OutputKeep, RunOptions, RunResult } from "./contract-run.ts";
 export type { PollOutcome, StartWatch, WatchInfo, WatchKind, WatchResult, WatchUpdate } from "./contract-watch.ts";

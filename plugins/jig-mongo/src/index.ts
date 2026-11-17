@@ -15,7 +15,25 @@ export function jigMongo(options: MongoOptions = {}): ExtensionFactory {
         const tool = createTool(options);
         // jig-core may load after this plugin; withJig waits for it.
         withJig((api) => {
-            api.config.registerSection("mongo", validateMongo, { replace: MONGO_REPLACE });
+            api.config.registerSection("mongo", validateMongo, {
+                replace: MONGO_REPLACE,
+                setup: {
+                    summary: "Read and write MongoDB data.",
+                    pending: {
+                        doc: "plugins/jig-mongo/README.md",
+                        example: {
+                            connections: {
+                                staging: {
+                                    uri: "mongodb://db.staging.example.com:27017",
+                                    user: "agent",
+                                    password: "pass:mongo/staging",
+                                    services: { orders: "orders_staging" },
+                                },
+                            },
+                        },
+                    },
+                },
+            });
             api.declareTool({ tool: "mongo", plugin: "jig-mongo", classify: tool.classify, preview: tool.preview });
             // `/jig` says when the index check is off for a production connection: that is the user's choice, and it is shown.
             api.status?.register("jig-mongo", statusLines);

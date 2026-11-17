@@ -31,7 +31,11 @@ export function lens(options: LensOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const env = options.env ?? process.env;
         const find = options.find ?? ((names) => findProgram(names, env));
-        withJig((api) => api.config.registerSection("lens", validateLens));
+        withJig((api) =>
+            api.config.registerSection("lens", validateLens, {
+                setup: { summary: "Usage and cost per model and session, in a local viewer." },
+            }),
+        );
         registerLens(pi, {
             env,
             now: options.now ?? (() => new Date()),

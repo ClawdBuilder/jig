@@ -34,7 +34,20 @@ export function jigApi(options: ApiOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
         const tool = createTool(options);
         withJig((api) => {
-            api.config.registerSection("api", validateApi, { replace: API_REPLACE, methods: API_METHODS });
+            api.config.registerSection("api", validateApi, {
+                replace: API_REPLACE,
+                methods: API_METHODS,
+                setup: {
+                    summary: "Run saved HTTP requests from collections.",
+                    pending: {
+                        doc: "plugins/jig-api/README.md",
+                        example: {
+                            collections: { orders: { http: "~/work/orders-api/http" } },
+                            environments: { Staging: "staging" },
+                        },
+                    },
+                },
+            });
 
             api.declareTool({ tool: "api", plugin: "jig-api", classify: tool.classify, preview: tool.preview });
         });

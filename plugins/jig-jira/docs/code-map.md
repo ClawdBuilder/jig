@@ -17,6 +17,7 @@ Read it with the code open. Back to the [jig-jira overview](../README.md).
 | `format.ts` | What the model reads: Jira's answers as compact plain text. One line per… | `plan-issue.ts`, `reads.ts` |
 | `http.ts` | Talking to Jira: one HTTP request with the sign-in, a timeout, and errors… | `api.ts`, `commented.ts`, `create-meta.ts` and 5 more |
 | `index.ts` | Pi entry point of jig-jira. The factory only registers: the `jira` section… || Pi |
+| `onboarding.ts` | What a Jira needs from a person when no company fills it in: the address and keys | `index.ts` |
 | `jql.ts` | Reading and building JQL text: what a query says that its writer may not… | `commented.ts`, `reads.ts` |
 | `page.ts` | The markup for the page the user opens with `o` on the review screen: the… | `shown.ts` |
 | `params.ts` | The parameters of the `jira` tool. One flat object, because several model… | `classify.ts`, `commented.ts`, `plan.ts` and 4 more |

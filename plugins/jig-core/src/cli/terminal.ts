@@ -18,8 +18,9 @@ export function terminalUi(): TerminalScreen {
     const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
         const hint = placeholder === undefined ? "" : ` (${placeholder})`;
         try {
-            const answer = (await rl.question(`${title}${hint}: `)).trim();
-            return answer === "" && placeholder !== undefined ? placeholder : answer;
+            // An empty answer is the empty answer: the placeholder is an example, not a default. setup.ts knows which
+            // values it found on the machine and offers those itself.
+            return (await rl.question(`${title}${hint}: `)).trim();
         } catch {
             // Ctrl+C, or the input closed: the only way an answer is missing.
             return undefined;
@@ -36,6 +37,11 @@ export function terminalUi(): TerminalScreen {
                 if (Number.isInteger(number) && number >= 1 && number <= options.length) return options[number - 1];
                 const exact = options.find((option) => option.toLowerCase() === answer.toLowerCase());
                 if (exact !== undefined) return exact;
+                // The first word, when one choice has it: the list of plugins is too long to retype.
+                const word = answer.toLowerCase().split(/[\s:]/)[0] ?? "";
+                const starts =
+                    word === "" ? [] : options.filter((option) => option.toLowerCase().split(/[\s:]/)[0] === word);
+                if (starts.length === 1) return starts[0];
                 say(`Type a number from 1 to ${options.length}, or the first word of a choice.`);
             }
         },

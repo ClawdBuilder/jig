@@ -92,9 +92,10 @@ function isPrimitive(value: unknown): value is string | number | boolean {
     return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
 }
 
-/** The question for an optional field: an empty answer leaves it unset. */
-export function optionalQuestion(label: string): string {
-    return `${label} (optional: press Enter to leave it unset)`;
+/** The question for an optional field: an empty answer leaves it unset. The example joins the same parenthetical, so a
+ *  terminal does not print a second one after the question. */
+export function optionalQuestion(label: string, example?: string): string {
+    return `${label} (optional: press Enter to leave it unset${example === undefined ? "" : `; for example ${example}`})`;
 }
 
 /** The question for a credential, built from the company's label without doubling its article. */

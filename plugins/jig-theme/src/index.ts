@@ -50,7 +50,11 @@ export function theme(options: ThemeOptions = {}): ExtensionFactory {
         const env = options.env ?? process.env;
         const agentDir = options.agentDir ?? (() => getAgentDir());
         const settings = options.settings ?? (() => settingsFrom(themeSection()));
-        withJig((api) => api.config.registerSection("theme", validateTheme));
+        withJig((api) =>
+            api.config.registerSection("theme", validateTheme, {
+                setup: { summary: "Palettes, a footer and colours." },
+            }),
+        );
         const session = new Session(pi, env);
 
         // Other plugins add footer parts on the event bus. This is listened to from the start, so a part sent before this

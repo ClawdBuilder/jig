@@ -9,7 +9,9 @@ import { declaration } from "./tool.ts";
 
 export default function (pi: ExtensionAPI) {
     withJig((api) => {
-        api.config.registerSection("memory", validateMemory);
+        api.config.registerSection("memory", validateMemory, {
+            setup: { summary: "Ticket folders, cards and recall." },
+        });
         api.declareTool(declaration);
     });
     registerTicketMemory(pi);

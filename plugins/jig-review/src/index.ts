@@ -45,7 +45,9 @@ export default function (pi: ExtensionAPI) {
     // jig-core may load after this plugin; withJig waits for it.
     withJig((api) => {
         for (const declaration of DECLARATIONS) api.declareTool(declaration);
-        api.config.registerSection("review", validateReviewSection);
+        api.config.registerSection("review", validateReviewSection, {
+            setup: { summary: "An interactive code review in a local page." },
+        });
         registerReviewGate(coordinator, api);
     });
 }

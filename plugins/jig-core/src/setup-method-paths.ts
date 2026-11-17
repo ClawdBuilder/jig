@@ -2,7 +2,7 @@
 // when its final object exists or the method declares a `requires` that does. Pure path work, kept out of setup-plan.ts
 // so its length stays where the ratchet holds it.
 import type { OnboardingMethod } from "./contract.ts";
-import { getPath, isObject, safeSegment } from "./setup-plan.ts";
+import { getPath, isObject, safeSegment } from "./setup-values.ts";
 
 /** Expands one `*` path segment against the configured objects: `services.*.ci.auth` -> each service name.
  *  Only object parents are expanded; a string mapping and a dotted key are left for a person to name. */

@@ -17,6 +17,7 @@ import type {
     EnvironmentKind,
     OnboardingEntry,
     OnboardingMethod,
+    OnboardingSetup,
     Preview,
     SandboxProvider,
     ToolDeclaration,
@@ -127,6 +128,8 @@ export interface JigState {
     onboarding: OnboardingEntry | undefined;
     /** Sign-in methods plugin sections declare, by section; setup asks among them and infers the one in use. */
     onboardingMethods: Map<string, readonly OnboardingMethod[]>;
+    /** What each plugin section said it needs, by section: setup's list, its questions, and the doctor's line. */
+    sectionSetup: Map<string, OnboardingSetup>;
 
     /** What company plugins added, as policy and secrets read it: `globalCompany` and the active company's additions. */
     company: CompanyAdditions;
@@ -265,6 +268,7 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         company: emptyAdditions(),
         onboarding: undefined,
         onboardingMethods: new Map(),
+        sectionSetup: new Map(),
 
         globalCompany: emptyAdditions(),
         companies: new Map(),

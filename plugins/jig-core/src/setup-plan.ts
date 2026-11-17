@@ -1,34 +1,21 @@
-// What `/jig setup` still needs, from the states `/jig` already knows, the plugin validators and the company defaults.
-//
-// It reads the person's file once, works out which fields a validator names and asks about one field at a time. A
-// credential is asked for as WHERE it is kept, never as a value. Nothing here writes or talks to Pi.
+// What setup still needs, from the states Jig already knows, the plugin validators, the plugin's own questions and the
+// company's defaults. It reads the person's file once and works out one question per missing field. A credential is asked
+// for as WHERE it is kept, never as a value. Nothing here writes or talks to Pi.
 import { lstatSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { LoadedConfig, SecretBackend, SectionCheck } from "./config.ts";
-import type { OnboardingEntry, OnboardingItem, OnboardingMethod } from "./contract.ts";
-import type { ProposalItem } from "./setup-proposal.ts";
+import type { DetectName } from "./detect.ts";
+import type { OnboardingEntry, OnboardingMethod, OnboardingSetup } from "./contract-onboarding.ts";
+import type { ProposalItem } from "./contract-onboarding.ts";
 import { decisionsFile, proposalFields, readDeclined } from "./setup-proposal.ts";
-import { inferredMethod, requiredPaths } from "./onboarding-methods.ts";
+import type { SectionQuestions } from "./setup-section.ts";
+import { sectionQuestions } from "./setup-section.ts";
+import { introOf, loginsOf } from "./setup-questions.ts";
 import { onboardingOrder } from "./onboarding.ts";
-import {
-    fieldKind,
-    fieldLabel,
-    isSecret,
-    labelOf,
-    optionalQuestion,
-    placeholderFor,
-    reasonFor,
-    referenceQuestion,
-} from "./setup-fields.ts";
-import { applyOnboarding } from "./setup-onboarding.ts";
-import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
-import { layered, removedAt, removedPaths } from "./section-defaults.ts";
-import { setValuePath } from "./setup-write.ts";
 import { shorten } from "./secret-status.ts";
 import { sectionState } from "./section-state.ts";
-import { parseSecretReference } from "./secrets.ts";
-import { referenceChoice } from "./setup-reference.ts";
+import { isObject } from "./setup-values.ts";
 
 /** The part of jig-core the plan reads. `JigState` fits it once the defaults are gathered; a test can build one. */
 export interface SetupState {
@@ -57,11 +44,15 @@ export interface SetupState {
     onboarding?: OnboardingEntry;
     /** A section the person asked to change even when it is valid; `jig setup <section>` sets it. */
     requestedSection?: string;
-    /** The sign-in methods plugins registered for their sections. */
+    /** The sign-in methods plugin sections registered. */
     onboardingMethods?: ReadonlyMap<string, readonly OnboardingMethod[]>;
+    /** What each plugin section said it needs, by section. */
+    sectionSetup?: ReadonlyMap<string, OnboardingSetup>;
+    /** True while a company plugin is active: a method a company makes usable is offered only then. */
+    companyActive?: boolean;
 }
 
-export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal";
+export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal" | "entry";
 
 /** One question. `current` is for the placeholder, never a secret and never a raw reference. */
 export interface SetupField {
@@ -83,13 +74,28 @@ export interface SetupField {
     fixed?: string;
     /** The company marks it optional: an empty answer leaves it unset, and the doctor does not ask for it. */
     optional?: true;
+    /** The answer is a simple list: one entry per line, or separated by commas. */
+    list?: true;
+    /** An empty answer keeps this value: it is set and passes, and setup only asks again so it can change. */
+    keep?: true;
+    /** For an entry: the two questions of one key and value of the map at `path`. */
+    entry?: {
+        keyLabel: string;
+        keyPlaceholder?: string;
+        valueLabel: string;
+        valuePlaceholder?: string;
+        detect?: DetectName;
+        repeat?: boolean;
+    };
 }
 
 export interface SetupReferenceChoice {
-    /** The stores to offer, the company's choice first. */
+    /** The stores to offer, the company's or the current place first. */
     stores: SecretBackend[];
-    /** The store marked "(company default)", when the company named one. */
+    /** The store marked "(company default)", when a company gave a default reference. */
     preferred?: SecretBackend;
+    /** The store the current reference uses, marked "(current)". */
+    current?: SecretBackend;
     /** The stores that are already on; a choice outside this adds one to `secrets.backends`. */
     enabled: SecretBackend[];
     /** The stores the person turned off; they are not offered, and setup says so. */
@@ -105,8 +111,10 @@ export interface SetupMethod {
     id: string;
     label: string;
     who?: string;
-    /** The company's choice, or the first visible method. */
+    /** The company's choice, or the first visible method: the one setup offers first. */
     default: boolean;
+    /** True when the company's onboarding entry named this method as its default. */
+    companyDefault?: true;
     /** The method the section's current values select, by required path set. */
     current?: boolean;
     fields: SetupField[];
@@ -120,6 +128,8 @@ export interface SetupSection {
     fields: SetupField[];
     /** The sign-in methods this section's plugin declared; setup asks the question before these fields. */
     methods?: SetupMethod[];
+    /** True when setup asks which method the person signs in with. */
+    askMethod: boolean;
     /** Things setup cannot ask for here, such as a credential or a value that is a list. */
     notes: string[];
 }
@@ -138,9 +148,9 @@ export interface SetupPlan {
     sections: SetupSection[];
     /** File-level notes, when there is nothing to ask but something to say. */
     notes: string[];
-    /** What the company says before the questions, from its `info` items. */
+    /** What the company and the plugins say before the questions, from their `info` items. */
     intro: string[];
-    /** Logins the company names, and the command that performs each: setup shows it and does not check it. */
+    /** Logins the lists name, and the command that performs each: setup shows it and does not check it. */
     logins: Array<{ label: string; command: string; why?: string }>;
     defaults: ReadonlyMap<string, unknown>;
     checks: ReadonlyMap<string, SectionCheck>;
@@ -153,99 +163,6 @@ export interface SetupPlan {
 }
 
 export type SetupPlanResult = { plan: SetupPlan } | { problem: string };
-
-/** Adds a field for each onboarding item whose value is not set yet and which the validators did not name.
- *  Proposals are asked here too: a yes writes an entry, a no is kept in the onboarding decisions file.
- *  The person's own list stays authoritative; setup never edits it without that answer. */
-function addOnboardingFields(
-    entry: OnboardingEntry,
-    state: SetupState,
-    raw: Record<string, unknown>,
-    candidates: Array<{ section: SetupSection; order: number }>,
-): void {
-    const byName = new Map(candidates.map((candidate) => [candidate.section.name, candidate]));
-    for (const [index, item] of entry.items.entries()) {
-        if (item.kind === "info" || item.kind === "login" || item.kind === "proposal") continue;
-        if (!state.sectionChecks.has(item.section)) continue;
-        if (!safePath(item.path) || !PATH_SHAPE.test(item.path)) continue;
-        const rawValue = raw[item.section];
-        const rawSection = isObject(rawValue) ? rawValue : {};
-        const defaults = state.defaults.get(item.section);
-        // A `null` of yours left the entry out: it is not missing, and setup must not ask for it again.
-        if (removedAt(removedPaths(defaults, rawSection), item.path) !== undefined) continue;
-        if (!parentIsObject(rawSection, item.path)) continue;
-        let candidate = byName.get(item.section);
-        if (candidate === undefined) {
-            candidate = {
-                section: { name: item.section, label: labelOf(item.section), fields: [], notes: [] },
-                order: 10_000 + index,
-            };
-            byName.set(item.section, candidate);
-            candidates.push(candidate);
-        }
-        if (candidate.section.fields.some((field) => field.path === item.path)) continue;
-        const merged = layered(
-            defaults,
-            rawSection,
-            state.replace.get(item.section) ?? [],
-            state.oneOf.get(item.section) ?? [],
-            state.union.get(item.section) ?? [],
-        );
-        if (getPath(merged, item.path) !== undefined) continue;
-        candidate.section.fields.push(onboardingField(entry, state, item));
-    }
-}
-
-const PATH_SHAPE = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
-
-/** The plain question for one onboarding item whose value is not set. */
-function onboardingField(
-    entry: OnboardingEntry,
-    state: SetupState,
-    item: Exclude<OnboardingItem, { kind: "info" } | { kind: "login" } | { kind: "proposal" }>,
-): SetupField {
-    const reason = item.why ?? "The company's list says its tools need it.";
-    if (item.kind === "reference") {
-        const reference = referenceChoice(state, undefined, undefined);
-        const preferred = item.preferredStore ?? entry.preferredStore;
-        if (preferred !== undefined && reference.stores.includes(preferred)) {
-            reference.preferred = preferred;
-            reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
-        }
-        if (item.suggested !== undefined) reference.suggested = item.suggested;
-        if (item.addHints !== undefined) reference.addHints = item.addHints;
-        return {
-            section: item.section,
-            path: item.path,
-            label: item.label,
-            question: referenceQuestion(item.label),
-            kind: "reference",
-            reason,
-            reference,
-        };
-    }
-    if (item.kind === "pick") {
-        return {
-            section: item.section,
-            path: item.path,
-            label: item.label,
-            question: item.label,
-            kind: "pick",
-            choices: [...item.choices],
-            reason,
-        };
-    }
-    return {
-        section: item.section,
-        path: item.path,
-        label: item.label,
-        question: item.optional === true ? optionalQuestion(item.label) : item.label,
-        ...(item.placeholder === undefined ? {} : { placeholder: item.placeholder }),
-        kind: "text",
-        ...(item.optional === true ? { optional: true as const } : {}),
-        reason,
-    };
-}
 
 /** A change the person accepted: one field, its plain label, and what was there before. */
 export interface SetupChange {
@@ -264,124 +181,14 @@ export interface SetupChange {
     append?: boolean;
 }
 
-/** A dynamic name that is safe to put in a dotted path. */
-export function safeSegment(name: string): boolean {
-    return /^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(name) && !["__proto__", "constructor", "prototype"].includes(name);
+/** Whether the company's list names any answer in this section, so setup asks its questions first. */
+function companyNames(entry: OnboardingEntry | undefined, section: string): boolean {
+    return (entry?.items ?? []).some(
+        (item) => item.kind !== "info" && item.kind !== "login" && item.kind !== "proposal" && item.section === section,
+    );
 }
 
-/** The methods of one section, with the company's hide/default overlay, and each field as a setup question. */
-function setupMethods(state: SetupState, section: string, merged: unknown): SetupMethod[] {
-    const registered = state.onboardingMethods?.get(section) ?? [];
-    const choice = state.onboarding?.methods?.[section];
-    const hidden = new Set(choice?.hide ?? []);
-    const prefill = new Map<string, Map<string, string>>();
-    const added: OnboardingMethod[] = [];
-    for (const method of choice?.add ?? []) {
-        const target = registered.find((one) => requiredPaths(one) === requiredPaths(method));
-        if (target !== undefined && target.id === method.id) {
-            const values = new Map<string, string>();
-            for (const field of method.fields) {
-                if (field.kind !== "reference" && field.value !== undefined) values.set(field.path, field.value);
-            }
-            prefill.set(method.id, values);
-            continue;
-        }
-        added.push(method);
-    }
-    const all = [...registered, ...added];
-    const visible = all.filter((method) => !hidden.has(method.id));
-    if (visible.length === 0) return [];
-    const chosen = choice?.default ?? visible[0]?.id;
-    const current = inferredMethod(visible, merged)?.id;
-    return visible.map((method) => {
-        const fields: SetupField[] = [];
-        const notes: string[] = [];
-        const fixed = prefill.get(method.id);
-        for (const field of method.fields) {
-            const paths = expandMethodPath(field.path, merged).filter((path) =>
-                methodPathAllowed(field.path, path, method, merged),
-            );
-            if (paths.length === 0) notes.push(`No match for ${field.path}; name it first.`);
-            for (const path of paths) {
-                const at = getPath(merged, path);
-                const current =
-                    typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
-                const value = fixed?.get(field.path) ?? (field.kind === "reference" ? undefined : field.value);
-                if (value !== undefined) {
-                    fields.push({
-                        section,
-                        path,
-                        label: field.label,
-                        question: field.label,
-                        kind: "text",
-                        ...(current === undefined ? {} : { current }),
-                        fixed: value,
-                        reason: field.why ?? "The company's sign-in choice sets this.",
-                    });
-                    continue;
-                }
-                if (field.kind === "reference") {
-                    const reference = referenceChoice(state, current, getPath(state.defaults.get(section), path));
-                    if (field.stores !== undefined) {
-                        reference.stores = field.stores.filter((store) => reference.stores.includes(store));
-                    }
-                    const preferred = field.preferredStore ?? state.onboarding?.preferredStore;
-                    if (preferred !== undefined && reference.stores.includes(preferred)) {
-                        reference.preferred = preferred;
-                        reference.stores = [preferred, ...reference.stores.filter((store) => store !== preferred)];
-                    }
-                    if (field.suggested !== undefined) reference.suggested = field.suggested;
-                    if (field.addHints !== undefined) reference.addHints = field.addHints;
-                    fields.push({
-                        section,
-                        path,
-                        label: field.label,
-                        question: referenceQuestion(field.label),
-                        kind: "reference",
-                        reason: field.why ?? "Jig reads the value from there when a tool needs it.",
-                        reference,
-                    });
-                    continue;
-                }
-                if (field.kind === "pick") {
-                    fields.push({
-                        section,
-                        path,
-                        label: field.label,
-                        question: field.label,
-                        kind: "pick",
-                        choices: [...field.choices],
-                        ...(current === undefined ? {} : { current }),
-                        reason: field.why ?? "The plugin's list says the choices.",
-                    });
-                    continue;
-                }
-                fields.push({
-                    section,
-                    path,
-                    label: field.label,
-                    question: field.optional === true ? optionalQuestion(field.label) : field.label,
-                    ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
-                    ...(current === undefined ? {} : { current }),
-                    kind: "text",
-                    ...(field.optional === true ? { optional: true as const } : {}),
-                    reason: field.why ?? "The plugin's list says this field is needed.",
-                });
-            }
-        }
-        return {
-            id: method.id,
-            label: method.label,
-            ...(method.who === undefined ? {} : { who: method.who }),
-            default: method.id === chosen,
-            ...(current === undefined ? {} : { current: method.id === current }),
-            fields,
-            ...(notes.length === 0 ? {} : { notes }),
-        };
-    });
-}
-
-/** The plan: read the file, then ask only about the fields a validator names. */
+/** The plan: read the file, then build one question per field that is missing for each section in play. */
 export function buildSetupPlan(state: SetupState): SetupPlanResult {
     if (state.configPath === "") {
         return { problem: "Pi has not told Jig where its settings are. Restart Pi, then run /jig setup again." };
@@ -462,136 +269,49 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
     let order = 0;
     for (const name of state.sectionChecks.keys()) {
         order++;
-        const section = sectionState(state.personal, name);
-        if ((section === "loaded" || section === "not set") && state.requestedSection !== name) continue;
-        const priority = section === "company defaults incomplete" ? 0 : 1;
-        const messages =
-            section === "company defaults incomplete"
-                ? [...(state.personal.incomplete.get(name) ?? [])]
-                : state.personal.problems.filter((problem) => problem.key === name).map((problem) => problem.message);
-        if (messages.length === 0 && state.requestedSection !== name) continue;
-
-        const notes: string[] = [];
-        const rawValue = raw[name];
-        if (rawValue !== undefined && !isObject(rawValue)) {
-            notes.push(`${labelOf(name)} is not in a shape setup can change here. /jig doctor names the problem.`);
-            candidates.push({
-                section: { name, label: labelOf(name), fields: [], notes },
-                priority,
-                order,
-            });
-            continue;
-        }
-        const rawSection = isObject(rawValue) ? rawValue : {};
-        const defaults = state.defaults.get(name);
-        const merged = layered(
-            defaults,
-            rawSection,
-            state.replace.get(name) ?? [],
-            state.oneOf.get(name) ?? [],
-            state.union.get(name) ?? [],
-        );
-        const paths = new Map<string, string>();
-        for (const message of messages) {
-            const found = messagePaths(message, name);
-            if (found.length === 0) {
-                notes.push("This part needs a change that setup cannot ask for here.");
-                continue;
-            }
-            for (const path of found) if (!paths.has(path)) paths.set(path, message);
-        }
-
-        const fields: SetupField[] = [];
-        for (const [path, message] of paths) {
-            if (removedAt(removedPaths(defaults, rawSection), path) !== undefined) continue;
-            if (!safePath(path)) {
-                notes.push(`${labelOf(name)} needs a change that setup cannot ask for here.`);
-                continue;
-            }
-            const label = fieldLabel(name, path);
-            const last = path.split(".").at(-1) ?? path;
-            if (!parentIsObject(rawSection, path)) {
-                notes.push(`${label} sits under a value setup cannot change here. /jig doctor names the problem.`);
-                continue;
-            }
-            const current = getPath(merged, path);
-            const defaultValue = getPath(defaults, path);
-            if (current !== undefined && (typeof current === "object" || Array.isArray(current))) {
-                notes.push(`${label} holds more than one value, so setup leaves it for later.`);
-                continue;
-            }
-            if (isSecret(last, current, defaultValue, message)) {
-                const reference = referenceChoice(state, current, defaultValue);
-                if (reference.stores.length === 0) {
-                    notes.push(
-                        `${label}: no secret store is available. Turn one on in your settings, then run /jig setup again.`,
-                    );
-                    continue;
-                }
-                fields.push({
-                    section: name,
-                    path,
-                    label,
-                    question: `Where do you keep the ${label}?`,
-                    reason: "Jig reads the value from there when a tool needs it.",
-                    kind: "reference",
-                    reference,
-                });
-                continue;
-            }
-            const kind = fieldKind(current, message, last);
-            const placeholder = placeholderFor(kind, current, last);
-            fields.push({
-                section: name,
-                path,
-                label,
-                question: label,
-                ...(placeholder === undefined ? {} : { placeholder }),
-                kind,
-                ...(isPrimitive(current) ? { current } : {}),
-                reason: reasonFor(message),
-            });
-        }
-
-        const methods = setupMethods(state, name, merged);
-        if (fields.length > 0 || notes.length > 0 || methods.length > 0) {
-            candidates.push({
-                section: { name, label: labelOf(name), fields, ...(methods.length === 0 ? {} : { methods }), notes },
-                priority,
-                order,
-            });
-        }
+        const now = sectionState(state.personal, name);
+        const requested = state.requestedSection === name;
+        // A section nobody needs to change waits, and a section that is not set is offered in setup's plugin list; a
+        // company's list may still name an answer in either, and then setup asks for it.
+        if (!requested && !companyNames(state.onboarding, name) && (now === "loaded" || now === "not set")) continue;
+        const questions: SectionQuestions = sectionQuestions(state, name, raw, requested);
+        if (questions.fields.length === 0 && questions.notes.length === 0 && !questions.askMethod) continue;
+        candidates.push({
+            section: {
+                name,
+                label: questions.label,
+                fields: questions.fields,
+                ...(questions.methods === undefined ? {} : { methods: questions.methods }),
+                askMethod: questions.askMethod,
+                notes: questions.notes,
+            },
+            priority: now === "company defaults incomplete" ? 0 : 1,
+            order,
+        });
     }
 
+    // A company's proposals ask before writing an entry into a section the person owns.
     const entry = state.onboarding;
     const decisions = decisionsFile(state.configPath);
     const declined = readDeclined(decisions);
-    const intro: string[] = [];
-    const logins: Array<{ label: string; command: string; why?: string }> = [];
     if (entry !== undefined) {
-        for (const item of entry.items) {
-            if (item.kind === "info") {
-                intro.push([item.label, item.detail, item.url].filter((part) => part !== undefined).join(" — "));
-            } else if (item.kind === "login") {
-                logins.push({
-                    label: item.label,
-                    command: item.login,
-                    ...(item.why === undefined ? {} : { why: item.why }),
-                });
-            }
-        }
-        addOnboardingFields(entry, state, raw, candidates);
         for (const proposal of proposalFields(entry, state, raw, declined)) {
             const existing = candidates.find((candidate) => candidate.section.name === proposal.section.name);
             if (existing === undefined) candidates.push({ ...proposal, priority: 0 });
             else existing.section.fields.push(...proposal.section.fields);
         }
-        applyOnboarding(entry, candidates);
-        const order = onboardingOrder(entry);
+    }
+
+    // The sections the person is being asked about, in the company's order first, then as the plugins are registered.
+    const lists = candidates.map((candidate) => state.sectionSetup?.get(candidate.section.name)?.items ?? []);
+    const intro = introOf(entry, lists);
+    const logins = loginsOf(entry, lists);
+    if (entry !== undefined) {
+        const positions = onboardingOrder(entry);
         candidates.sort(
             (left, right) =>
-                (order.get(left.section.name) ?? Number.MAX_SAFE_INTEGER) -
-                    (order.get(right.section.name) ?? Number.MAX_SAFE_INTEGER) ||
+                (positions.get(left.section.name) ?? Number.MAX_SAFE_INTEGER) -
+                    (positions.get(right.section.name) ?? Number.MAX_SAFE_INTEGER) ||
                 left.priority - right.priority ||
                 left.order - right.order,
         );
@@ -620,134 +340,4 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
             union: state.union,
         },
     };
-}
-
-/** Checks one answer with the plugin's own validator, layered over the defaults, and keeps it only if this field passes. */
-export function applyAnswer(
-    plan: SetupPlan,
-    draft: Record<string, unknown>,
-    field: SetupField,
-    text: string,
-): { change: SetupChange } | { problem: string } {
-    const trimmed = text.trim();
-    if (trimmed === "") return { problem: `Please enter a value for ${field.label}.` };
-
-    let value: unknown;
-    if (field.kind === "reference") {
-        if (parseSecretReference(trimmed) === undefined) {
-            return { problem: "That is not a place Jig can read a value from." };
-        }
-        value = trimmed;
-    } else if (field.kind === "number") {
-        const number = Number(trimmed);
-        if (!Number.isFinite(number)) return { problem: `${field.label} must be a number.` };
-        value = number;
-    } else if (field.kind === "boolean") {
-        const answer = /^(y|yes|true|1)$/i.test(trimmed) ? true : /^(n|no|false|0)$/i.test(trimmed) ? false : undefined;
-        if (answer === undefined) return { problem: `${field.label} must be yes or no.` };
-        value = answer;
-    } else {
-        value = trimmed;
-    }
-
-    const existing = draft[field.section];
-    if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
-        return { problem: `${field.label} cannot be changed here. /jig doctor names the problem.` };
-    }
-    const nextSection = structuredClone(isObject(existing) ? existing : {});
-    setValuePath(nextSection, field.path, value);
-    const check = plan.checks.get(field.section);
-    let messages: readonly string[];
-    try {
-        const merged = layered(
-            plan.defaults.get(field.section),
-            nextSection,
-            plan.replace.get(field.section) ?? [],
-            plan.oneOf.get(field.section) ?? [],
-            plan.union.get(field.section) ?? [],
-        );
-        messages = check === undefined ? [] : check(merged).map(String);
-    } catch {
-        return { problem: `The plugin's check could not run for ${field.label}. Try another value.` };
-    }
-    const rejected = messages.filter((message) => messagePaths(message, field.section).includes(field.path));
-    if (rejected.length > 0) return { problem: plainProblem(field, rejected[0] ?? "") };
-
-    draft[field.section] = nextSection;
-    const oldValue = getPath(plan.raw[field.section], field.path);
-    return {
-        change: {
-            section: field.section,
-            path: field.path,
-            label: field.label,
-            ...(oldValue === undefined ? {} : { oldValue }),
-            value,
-        },
-    };
-}
-
-/** The fields a validator names, such as `acme.bastion.user` in "acme.bastion.user is required". */
-export function messagePaths(message: string, section: string): string[] {
-    const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(`(?:^|[^A-Za-z0-9_.-])${escaped}\\.([A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*)`, "g");
-    const found: string[] = [];
-    for (const match of message.matchAll(pattern)) {
-        const path = match[1];
-        if (path !== undefined && !found.includes(path)) found.push(path);
-    }
-    return found;
-}
-
-/** A path setup may write: plain dotted names, no array index and no prototype key. */
-export function safePath(path: string): boolean {
-    return path !== "" && !unsafePath(path) && path.split(".").every((part) => /^[A-Za-z_][A-Za-z0-9_-]*$/.test(part));
-}
-
-function unsafePath(path: string): boolean {
-    return path
-        .split(".")
-        .some((part) => part === "" || /^\d+$/.test(part) || ["__proto__", "constructor", "prototype"].includes(part));
-}
-
-function plainProblem(field: SetupField, message: string): string {
-    const key = `${field.section}.${field.path}`;
-    let text = message
-        .replace(new RegExp(`${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:?`, "ig"), "")
-        .replace(/[`"'{}]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    if (text === "" || text.includes(`${field.section}.`) || /\b[A-Za-z0-9_]+\.[A-Za-z0-9_]/.test(text)) {
-        text = "did not pass the plugin's check";
-    }
-    const sentence = `${field.label} ${text}`.replace(/[.?!]?$/, ".");
-    return sentence.length > 240 ? `${sentence.slice(0, 237)}...` : sentence;
-}
-
-export function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isPrimitive(value: unknown): value is string | number | boolean {
-    return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
-}
-
-/** Whether every existing parent of `path` is an object, so setting the field cannot replace a scalar. */
-function parentIsObject(value: unknown, path: string): boolean {
-    if (value === undefined) return true;
-    let at: unknown = value;
-    for (const part of path.split(".").slice(0, -1)) {
-        if (!isObject(at)) return false;
-        at = at[part];
-        if (at === undefined) return true;
-    }
-    return true;
-}
-
-export function getPath(value: unknown, path: string): unknown {
-    let at = value;
-    for (const part of path.split(".")) {
-        if (!isObject(at)) return undefined;
-        at = at[part];
-    }
-    return at;
 }

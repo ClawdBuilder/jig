@@ -19,8 +19,10 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
-import type { OnboardingEntry } from "../src/contract.ts";
-import { applyAnswer, buildSetupPlan, messagePaths, safePath } from "../src/setup-plan.ts";
+import type { OnboardingEntry, OnboardingItem } from "../src/contract.ts";
+import { buildSetupPlan } from "../src/setup-plan.ts";
+import { applyAnswer, applyEntry, applyValue, messagePaths } from "../src/setup-answer.ts";
+import { safePath } from "../src/setup-values.ts";
 import { buildReference } from "../src/setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "../src/setup-write.ts";
 import type { SetupPlan, SetupState } from "../src/setup-plan.ts";
@@ -293,6 +295,102 @@ describe("the plan", () => {
     });
 });
 
+/** A state whose one section, `service`, has a validator and one question for the path both name. */
+function questionState(config: unknown, items: readonly OnboardingItem[], check: SectionCheck): SetupState {
+    writeFileSync(file, JSON.stringify(config));
+    const sectionChecks = new Map<string, SectionCheck>([["service", check]]);
+    return {
+        personal: loadConfigFile(file, sectionChecks, {
+            defaults: new Map(),
+            replace: new Map(),
+            oneOf: new Map(),
+            union: new Map(),
+        }),
+        sectionChecks,
+        defaults: new Map(),
+        replace: new Map(),
+        oneOf: new Map(),
+        union: new Map(),
+        configPath: file,
+        env: {},
+        platform: "linux",
+        pathLookup: () => "/usr/bin/program",
+        enabledBackends: ["pass"],
+        disabledBackends: [],
+        companyBackends: [],
+        commands: {},
+        sectionSetup: new Map([["service", { summary: "Read a service.", items }]]),
+    };
+}
+
+describe("a validator's field and a question for the same path", () => {
+    test("the validator's number kind wins, so a whole number is accepted", () => {
+        const built = buildSetupPlan(
+            questionState(
+                { service: {} },
+                [
+                    {
+                        kind: "text",
+                        section: "service",
+                        path: "port",
+                        label: "Which port?",
+                        why: "The service listens there.",
+                    },
+                ],
+                (raw) =>
+                    typeof (raw as { port?: unknown })?.port === "number" ? [] : ["service.port must be a number"],
+            ),
+        );
+        assert.ok("plan" in built, "the plan is built");
+        const section = built.plan.sections.find((one) => one.name === "service");
+        assert.deepEqual(
+            section?.fields.map((field) => field.path),
+            ["port"],
+            "the question is asked once, not as an item field as well",
+        );
+        const field = section?.fields[0];
+        assert.equal(field?.kind, "number");
+        assert.equal(field?.label, "Which port?");
+        assert.equal(field?.reason, "The service listens there.");
+        const draft = structuredClone(built.plan.raw);
+        assert.ok(field);
+        const answer = applyAnswer(built.plan, draft, field, "8080");
+        assert.ok("change" in answer, JSON.stringify(answer));
+        assert.equal(answer.change.value, 8080);
+    });
+
+    test("the validator's credential field wins over a text question on a token path", () => {
+        const built = buildSetupPlan(
+            questionState(
+                { service: { auth: {} } },
+                [
+                    {
+                        kind: "text",
+                        section: "service",
+                        path: "auth.token",
+                        label: "The service token",
+                        why: "Every call needs it.",
+                    },
+                ],
+                (raw) => {
+                    const token = (raw as { auth?: { token?: unknown } }).auth?.token;
+                    return typeof token === "string" && /^[A-Za-z]+:\S+$/.test(token)
+                        ? []
+                        : ["service.auth.token must be a secret reference, such as pass:work/token"];
+                },
+            ),
+        );
+        assert.ok("plan" in built, "the plan is built");
+        const field = built.plan.sections
+            .find((one) => one.name === "service")
+            ?.fields.find((one) => one.path === "auth.token");
+        assert.equal(field?.kind, "reference", "a credential path is asked as where it is kept, not as text");
+        assert.equal(field?.question, "Where does the service token live?");
+        assert.equal(field?.label, "The service token");
+        assert.ok(field?.reference?.stores.includes("pass"));
+    });
+});
+
 describe("one answer", () => {
     test("rejects a value the plugin's check names, in plain words, and keeps the draft", () => {
         const plan = build();
@@ -329,6 +427,33 @@ describe("one answer", () => {
         assert.ok(lens);
         assert.match((applyAnswer(plan, draft, lens, "  ") as { problem: string }).problem, /Please enter a value/);
         assert.match((applyAnswer(plan, draft, lens, "many") as { problem: string }).problem, /must be a number/);
+    });
+
+    test("refuses a path setup must not write, and never pollutes Object.prototype", () => {
+        const plan = build();
+        const draft = structuredClone(plan.raw);
+        const unsafe = {
+            section: "acme",
+            path: "__proto__.polluted",
+            label: "A value",
+            question: "A value",
+            kind: "text" as const,
+            reason: "Test.",
+        };
+        const field = applyValue(plan, draft, unsafe, "yes");
+        assert.ok("problem" in field, JSON.stringify(field));
+        assert.equal(({} as Record<string, unknown>).polluted, undefined, "Object.prototype is untouched");
+        assert.equal(Object.hasOwn(draft, "acme"), false, "nothing was kept in the draft");
+        const entry = applyEntry(
+            plan,
+            draft,
+            { ...unsafe, kind: "entry", entry: { keyLabel: "A name", valueLabel: "A value" } },
+            "a",
+            "b",
+        );
+        assert.ok("problem" in entry, JSON.stringify(entry));
+        assert.equal(({} as Record<string, unknown>).polluted, undefined);
+        assert.equal(Object.hasOwn(draft, "acme"), false);
     });
 });
 
@@ -452,7 +577,8 @@ describe("the write gate", () => {
         const result = writeSetup(plan, changes, new Date("2026-11-04T17:00:00.000Z"));
         assert.ok(result.backup);
         const after = JSON.parse(readFileSync(file, "utf8"));
-        assert.deepEqual(after.secrets.backends, ["env"]);
+        // `pass` is the built-in default when no list is written; turning `env` on adds to it, never replaces it.
+        assert.deepEqual(after.secrets.backends, ["pass", "env"]);
         assert.deepEqual(after.secrets.disabledBackends, ["op"]);
     });
 

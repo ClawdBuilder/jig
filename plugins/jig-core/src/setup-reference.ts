@@ -47,14 +47,17 @@ export function referenceChoice(state: SetupState, current: unknown, defaultValu
     const available = applicable.filter((store) => !disabled.includes(store));
     const fromDefault = typeof defaultValue === "string" ? parseSecretReference(defaultValue)?.backend : undefined;
     const fromCurrent = typeof current === "string" ? parseSecretReference(current)?.backend : undefined;
-    const preferred = [fromDefault, fromCurrent, ...state.companyBackends].find(
+    // The company's default is marked as its own; the place the value already uses is only marked "(current)".
+    const preferred = [fromDefault, ...state.companyBackends].find(
         (store): store is SecretBackend => store !== undefined && available.includes(store),
     );
-    const stores =
-        preferred === undefined ? available : [preferred, ...available.filter((store) => store !== preferred)];
+    const now = fromCurrent !== undefined && available.includes(fromCurrent) ? fromCurrent : undefined;
+    const first = [preferred, now].filter((store): store is SecretBackend => store !== undefined);
+    const stores = [...new Set([...first, ...available])];
     return {
         stores,
         ...(preferred === undefined ? {} : { preferred }),
+        ...(now === undefined ? {} : { current: now }),
         enabled: state.enabledBackends.filter((store) => stores.includes(store)),
         disabled,
         commands: state.commands,

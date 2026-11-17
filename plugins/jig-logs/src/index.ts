@@ -48,6 +48,16 @@ export default function (pi: ExtensionAPI) {
             replace: ["backend.auth"],
             oneOf: [["backend.auth", "backend.transport"]],
             methods: LOGS_METHODS,
+            setup: {
+                summary: "Search logs by phrase or query.",
+                pending: {
+                    doc: "plugins/jig-logs/README.md",
+                    example: {
+                        backend: { url: "https://logs.example.com:9200", auth: { apiKey: "pass:logs/api-key" } },
+                        environments: { staging: { index: "app-logs-*" } },
+                    },
+                },
+            },
         });
     });
 }

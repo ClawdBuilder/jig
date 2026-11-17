@@ -95,15 +95,27 @@ remote patterns, repositories matching them. The last writes `when.remotes`. Tha
 and `profile` entries a newcomer cannot be expected to know. Then setup asks one question at a time about the parts a
 company plugin or a validator says are incomplete or wrong.
 
+**The plugin list.** After those questions, setup shows every plugin that said what it needs, one line each: its name, its
+status and a one-sentence summary. The status is `set up` (its settings pass its own check), `not set up` (it has questions
+to ask), `not set up (questions coming)` (it needs settings setup cannot ask for yet: it says which page to read and shows a
+section to add by hand), or `ready` (nothing to ask; Jig's defaults apply). Pick a plugin and setup asks its questions,
+including how you sign in; it comes back to the list afterwards, and a plugin you set up shows `set up`. **Done** writes
+everything once, with one backup and one confirmation, so a cancel writes nothing.
+
+`jig setup <section>` goes straight to that section's questions, without the list. A plugin's own questions come after a
+company's list, and a company default or answer skips the question it already answers. `--yes` asks nothing and sets up
+nothing new when there is no terminal, so a script can finish; at a terminal setup asks its questions anyway.
+
 It never asks for a password or a token. For a credential it asks **where** it is kept, never what it is: choose
 1Password, the macOS Keychain, pass, an environment variable, a file, or a tool that owns the login. The company's
-choice comes first and is marked. Then setup asks the plain parts, such as the vault, item and field, and builds the
-reference itself; you never type `op://` or `pass:`.
+choice comes first and is marked, and so is the place you already use. Then setup asks the plain parts, such as the
+vault, item and field, and builds the reference itself; you never type `op://` or `pass:`.
 
 After each credential it says **Found**, **Missing**, **Locked** or **Not checked**, never a value. A missing one
 comes with the store's own command to add it, and **Check again**. A file is the weakest choice: it is plain text
 on disk, and setup warns before using one. If the store was off, setup turns it on as a place Jig reads from; it
-never changes the stores you turned off.
+never changes the stores you turned off. A plugin or company list may add its own hint, such as `pass insert work/jira-pat`;
+setup shows it and never runs it.
 
 Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
 Nothing is written until you confirm. It keeps a backup next to the file and says to start Pi again, or run `/reload`
@@ -242,6 +254,8 @@ tool's own status. A field's value is never read to check it.
   Check again. Run it in your own terminal; Jig never asks for the value.
 - **A section that is not loaded.** The message names the key. A company's defaults can wait for the part only you
   know, such as your login on a bastion host.
+- **A plugin that is not set up.** The doctor's line says `not set up:` with what the plugin does and
+  `Run jig setup <section>.` Nothing is wrong until its tools need it; setup's plugin list asks the questions.
 - **A login tool that is not signed in.** The fix is its own command, such as `gh auth login`.
 - **A program that is missing.** The fix is the install command. Jig installs nothing.
 

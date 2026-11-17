@@ -209,7 +209,10 @@ export function sandbox(options: SandboxOptions = {}): ExtensionFactory {
         withJig((api) => {
             // A company's list and a teammate's add up: their own removal names extend the company's rather than replacing
             // them, so a teammate cannot silently drop a credential name the company relies on.
-            api.config.registerSection("sandbox", validateSandbox, { union: ["env.remove"] });
+            api.config.registerSection("sandbox", validateSandbox, {
+                union: ["env.remove"],
+                setup: { summary: "Run bash in a sandbox, with network and file rules." },
+            });
             api.sandbox.register(provider);
             api.declareTool(bashDeclaration({ folder: () => sessionFolder, home: homeOf }));
             for (const declaration of backgroundDeclarations()) api.declareTool(declaration);

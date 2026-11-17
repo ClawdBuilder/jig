@@ -3,23 +3,13 @@
 // the list afterwards; this file never writes a section without that answer.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { OnboardingEntry, OnboardingItem } from "./contract.ts";
+import type { OnboardingEntry, OnboardingItem, ProposalItem } from "./contract-onboarding.ts";
 import type { SetupField, SetupPlan, SetupSection, SetupState, SetupChange } from "./setup-plan.ts";
 import { parsePassBinding } from "./config.ts";
 import { layered } from "./section-defaults.ts";
 import { parseStartChecks } from "./start-checks.ts";
 import { validateAccounts } from "./kit/accounts.ts";
 import { setValuePath } from "./setup-write.ts";
-
-export interface ProposalItem {
-    kind: "proposal";
-    section: string;
-    path?: string;
-    key?: string;
-    value: unknown;
-    label: string;
-    why?: string;
-}
 
 const PATH = /^[A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)*$/;
 const SECTIONS = new Set(["startChecks", "git", "secrets"]);
@@ -157,6 +147,7 @@ export function proposalFields(
                     name: item.section,
                     label: item.section === "startChecks" ? "Start checks" : item.section,
                     fields: [],
+                    askMethod: false,
                     notes: [],
                 },
                 order: 10_000 + index,

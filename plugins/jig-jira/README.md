@@ -88,6 +88,8 @@ The rules, limits and failures are in [Commented by](docs/commented.md).
 
 In `~/.jig/jig.json`, under `jira`. An unknown field is an error, and the
 tool then does nothing until the file is fixed (`/jig` lists the problems).
+`jig setup jira` asks for the address, the sign-in form and the project keys,
+and `jig setup` offers it when no company plugin fills them in.
 
 | Field | Default | Meaning |
 |---|---|---|

@@ -2,7 +2,14 @@
 // wrong in plain words and gives one thing to do about it. The checks themselves are in doctor-checks.ts and
 // doctor-secrets.ts; this file only runs them, counts them and lays the report out.
 import type { CompanyAdditions, LoadedConfig, SectionCheck } from "./config.ts";
-import type { OnboardingEntry, ProtectedPathInfo, RunOptions, RunResult, SandboxProvider } from "./contract.ts";
+import type {
+    OnboardingEntry,
+    OnboardingSetup,
+    ProtectedPathInfo,
+    RunOptions,
+    RunResult,
+    SandboxProvider,
+} from "./contract.ts";
 import { DOCTOR_CHECKS } from "./doctor-checks.ts";
 import { errorMessage } from "./errors.ts";
 import { jigPackage, piVersion } from "./pi-version.ts";
@@ -68,6 +75,8 @@ export interface DoctorContext {
     commands: Readonly<Record<string, readonly string[]>>;
     /** The active company's onboarding list: what its people must supply, in its words. */
     onboarding?: OnboardingEntry;
+    /** What each plugin section said it needs, by section: setup's list and the line for a section not set up. */
+    sectionSetup?: ReadonlyMap<string, OnboardingSetup>;
     /** True in the `jig` command: there is no Pi session here, so a sandbox that has not started is not a failure. */
     standalone?: boolean;
     /** In the `jig` command: whether Pi's settings name the Jig package, and the version of the copy Pi loads. */
