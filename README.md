@@ -26,7 +26,7 @@ terminal.
 `jig` is Pi for `~/.jig` (or `JIG_HOME`); see [Setup and doctor](docs/setup-and-doctor.md) and [Your first hour](docs/first-hour.md).
 
 ```text
-Jig doctor · 12 ok · 1 warning · 0 failures · 7 skipped
+Jig doctor · 12 ok · 1 warning · 0 failures · 11 skipped
 ```
 
 ## How it works

@@ -6,6 +6,37 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 A change a user would notice is one file in [`changelog.d/`](changelog.d/): its `### Added`, `### Changed`, `### Fixed` or `### Removed` heading and its line. The release folds them here.
 
+## [0.5.8] - 2026-11-18
+
+`jig setup` now shows one list of every plugin and asks each plugin's own questions, so Jira, git, mongo, logs and api are set up without a company plugin; it also keeps a `jig` command that runs another home, and the drift review's fixes make the docs and the code agree.
+
+### Added
+
+- `jig setup` lists every plugin with its status and asks a plugin's own questions: Jira's address, sign-in and project keys without a company plugin. `jig setup jira` asks them directly.
+- `jig setup` asks git's own questions: the `gh` login, and one `git.accounts` mapping per set of repositories, with the `gh` account the machine is signed in to as a proposal. A plugin whose questions are all optional, and whose section works with nothing written, shows as `ready (optional settings)` instead of `not set up`; git is the first, so it runs on its defaults without a nag and the doctor stays quiet until a mapping is wanted.
+- `jig setup` asks logs, api and mongo their own questions, so a person with no company plugin can configure them: a Mongo connection per environment, directly or through an SSH host, with the password kept in a secret store; a log backend, its sign-in, and one environment at a time with an Elasticsearch index or a Loki selector; and an API collection (an `.http` folder, Bruno or a Postman file) with its environment mappings. A new `object` item adds one named entry of a map at a time: it asks the name, says what is already set up, refuses a name that is there, and never edits or removes one — that is the file's job.
+- A plugin can ask its own setup questions: `registerSection`'s `setup` option takes a `summary` and `items` of the kinds a company's onboarding uses, with `entry` (one key and value of a map), `object` (one named object of a map, asked as its form's questions) and `text` with `list: true` added. A method only a company can make usable names `companyOnly: true`. An older Jig ignores `setup`, and refuses a company list that uses a new kind.
+- A sandbox provider can name its `brokerScript`: `jig doctor` starts that broker instead of assuming where the sandbox plugin keeps it, and checks no broker for a sandbox that names none.
+
+### Changed
+
+- `git commit` and `git merge` refuse a protected branch, as `git rebase`, `git cherry_pick` and `git push` already did; `git.protected` names those branches, and `[]` turns it off.
+- `jig doctor` names a plugin whose setup questions are not answered as `not set up: <what it does> Run jig setup <plugin>.`; a plugin whose questions are all optional and whose section works with nothing written is not named.
+
+### Fixed
+
+- `api list` and `api show` call a request in `api.reads` a read only outside production, the same rule the call itself uses; showing one in production said "reads" for a call that will ask.
+- `jig auth --help` shows the home's `auth.json` as `~/.jig/auth.json`, not the full path.
+- A logs search that cannot reach the backend says what to check, in the same words for every network failure; it never repeats the error from below, which can name a host.
+- `jig-memory` shows one line and carries on when the notes folder cannot be read at session start or after a compaction, instead of throwing inside Pi.
+- A subagent child or `pi -p` no longer removes or abandons a pending code review in its folder; only an interactive session tidies them.
+- `jig setup` keeps a `jig` command that already runs another Jig home, says which home that is and how to reach the new one, instead of switching the command to the home being set up.
+- The daily update check writes `update-check.json` with mode 0600 in the private state folder, and replaces an older looser file, instead of taking the umask's modes.
+- `jig-api` no longer changes the mode of Jig's state folder; it keeps its own `api/` folder private.
+- Every response of the review page's server carries the security headers, including a refusal made before a route (a wrong `Host`, secret, cookie or `Origin`) and the cookie redirect. The event stream keeps `Cache-Control: no-cache, no-transform`, because a stream is never stored.
+- A review that receives comments or a new iteration after its approval drops its approval fields (`approval`, `approvedAt` and the rest); a record has them only while its status is `approved`.
+- The `jig` commands that load plugins without Pi (`jig doctor`, `jig setup`) find the agent folder by the same rule a session uses: `PI_CODING_AGENT_DIR` is not trimmed, and a leading `~` expands to the home.
+
 ## [0.5.7] - 2026-11-17
 
 Setup does more for you (defaults found on the machine, a company's proposals and repositories), a tool can require an ask that nothing lowers, and macOS is supported by CI.
