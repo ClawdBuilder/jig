@@ -16,6 +16,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
 - **The floor in [Permissions](docs/permissions.md) is not configurable.** Do not add settings that lower it.
 - **A plugin gets its credential through `jig-core`.** Sign-in stays with the tool that owns it; `jig-core` reads the
   reference and attaches it, so the plugin never sees the value ([Credential sources](plugins/jig-core/docs/sign-in-and-transports.md)).
+  A library that must hold the secret in-process, such as a database driver or an SSH tunnel, gets it from the resolver
+  for that connection only and never returns, logs or records it ([the exception](docs/decisions.md#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)).
 - **Approvals happen inside the waiting tool call.** Never add a web endpoint that approves, except `jig-review`'s page,
   which approves only with a WebAuthn passkey signature the agent cannot make, or marks "approved in page" and waits for
   a `y` in Pi ([Approvals](docs/approvals.md)). Never add a second one, and never let that endpoint approve on a secret or
