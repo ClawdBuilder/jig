@@ -175,8 +175,9 @@ closed instead of running ungoverned.
   dotted path an answer goes to; `text` takes `list: true` for a short list, and `entry` asks one key and value of a map.
   Setup asks the items in the company's order, with its labels and hints, and doctor turns the ones
   still missing into "you need" lines. A `text` or `pick` item may name a `detect` probe (`user`, `git-email`, `gh-account`,
-  `aws-profile`) for a proposed default; an unknown probe, or one on an `optional` item, is refused at registration, and an
-  older Jig refuses the list rather than ignoring it.
+  `aws-profile`) for a proposed default; an unknown probe, or one on an optional `text` or `pick` item, is refused at
+  registration (an `entry`'s optional key may stay empty, so a probe may fill its value), and an older Jig refuses the list
+  rather than ignoring it.
   It is optional: without it, setup uses the section validators. A test can stand in
   without it, so it is optional in the type. See [Company plugins](../../../docs/company-plugin.md#9-onboarding-what-your-people-must-supply).
 - **`profiles.register(name, options)`** is how a company plugin says it is one, and returns a view of the API for it. What it gives

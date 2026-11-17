@@ -27,10 +27,13 @@ SameSite is `Lax` and not `Strict` because `Strict` is not sent on the redirect 
 link from outside the browser.
 
 Every response carries `Content-Security-Policy: default-src 'self'; …; frame-ancestors 'none'`,
-`X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Cache-Control: no-store`.
+`X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Cache-Control: no-store`. The event stream is the
+one exception to that last header: it carries `no-cache, no-transform` instead, because a stream is never stored and must
+not be buffered or transformed on the way.
 
-The page loads only its own files and may talk only to its own server. Responses that a handler builds itself (a file, the
-event stream) get the headers too.
+The page loads only its own files and may talk only to its own server. The headers are added as the response leaves the
+server, so the refusals made before a route (a wrong `Host`, a wrong secret, a missing cookie, a foreign `Origin`), the
+cookie redirect, error replies and responses a handler builds itself (a file, the event stream) carry them too.
 
 ## The link
 

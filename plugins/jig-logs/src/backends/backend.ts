@@ -29,8 +29,6 @@ export interface Wire {
 
 /** What the store itself limits. These are the stores' defaults; an operator may have set them lower. */
 export interface Limits {
-    /** The most hits one request may ask for. The tool's own `size` limit never goes above it. */
-    maxHits: number;
     /** The longest time span one request may cover. A longer bucket is cut to it. */
     maxWindowMs: number;
 }
