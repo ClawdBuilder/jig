@@ -49,6 +49,10 @@ home, runs `pi install npm:@clawdbuilder/jig@<version>` with the home as Pi's ag
 command to `~/.local/bin` (or `--bin <folder>`). It never overwrites a file there that is not Jig's, and says whether
 the folder is on your PATH with the line to add when it is not. Setup never edits your shell files.
 
+A `jig` command that already runs another home is kept: setup names the home it runs and the two ways to reach this one,
+`JIG_HOME=<new home> jig …`, or a second command with `--bin <folder>`. In a terminal it offers to replace the command,
+and the answer is no unless you say yes; `--yes` never replaces it.
+
 Every `jig` command runs with the home as `PI_CODING_AGENT_DIR` and ignores an outer one. A `jig` started from
 anywhere else — a global npm copy, a checkout, `npx` — hands over to the Jig installed in the home, so the command and
 the plugins are one version. When the home has no Jig, only `setup`, `help` and `--version` run; the others say
@@ -74,13 +78,14 @@ jig setup [section] [--bin <folder>] [--source <source>] [--from <folder>] [--ye
 On a machine with no home, setup does the install above, then asks its questions. `--bin` names where the `jig`
 command goes, and `--from` names an older Jig folder to offer settings from. `--source` is for the tests: a packed copy
 to install instead of the published package. A file at the `jig` command's path that is not Jig's is left alone, and setup stops and says so.
+A `jig` command that runs a different home is left alone too, and setup says which home it runs.
 
 **Migration.** When `~/.pi/jig-agent/jig.json` exists, or `--from` names a folder with one, setup offers to copy
 `jig.json` into the home. `auth.json` and `sessions/` are separate offers with their own yes, because they hold your
 sign-ins and history. Nothing is moved or deleted: the old folder stays as it was.
 
-**Running it again** does the questions only, and repairs a missing `jig` command. **Uninstalling** is deleting the
-home and the `jig` command.
+**Running it again** does the questions only, and repairs a `jig` command that is missing, or that an older setup wrote
+for this home. **Uninstalling** is deleting the home and the `jig` command.
 
 The questions need a terminal: their company, profile and credential choices have no safe headless default. With
 `--yes` setup takes the safe answers and skips them, so a script can finish. Without a terminal and without `--yes` it
