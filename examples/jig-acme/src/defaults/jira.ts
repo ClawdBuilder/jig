@@ -7,8 +7,8 @@
 // jig.json. A company with a sign-in service or a transport writes `{ "signIn": "..." }` or `{ "transport": "..." }` here instead.
 //
 // `projects` lists the keys this company works in: a search with no JQL looks in them, and `create` refuses any other project.
-// The same key is in the ticket pattern (memory.ts), the branch rules (git.ts) and the overlay skill (skills/acme-jira). A user who
-// works in more projects writes their own list, which replaces this one.
+// The same key is in the ticket pattern (memory.ts) and the branch rules (git.ts); the company-only skill is
+// skills/acme-releases (see index.ts). A user who works in more projects writes their own list, which replaces this one.
 export const jiraDefaults = {
     site: "https://acme.atlassian.net",
     auth: { email: "agent@acme.example", token: "pass:acme/jira-token" },
