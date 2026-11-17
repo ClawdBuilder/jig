@@ -312,15 +312,17 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
 }
 
 /** The fields of one section's questions whose answers are not set yet. `requested` asks an entry item even when its
- *  map has entries: the person named the section to add one. */
+ *  map has entries: the person named the section to add one. A path in `asked` already has the validator's field. */
 export function questionFields(
     state: SetupState,
     items: readonly QuestionItem[],
     raw: Record<string, unknown>,
     requested = false,
+    asked: ReadonlySet<string> = new Set(),
 ): SetupField[] {
     const out: SetupField[] = [];
     for (const item of items) {
+        if (asked.has(item.item.path)) continue;
         const present = answerPresent(state, item.item.section, item, raw);
         if (present && !(requested && item.item.kind === "entry")) continue;
         out.push(questionField(state, item));

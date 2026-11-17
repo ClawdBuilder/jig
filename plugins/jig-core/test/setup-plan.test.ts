@@ -19,7 +19,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
-import type { OnboardingEntry } from "../src/contract.ts";
+import type { OnboardingEntry, OnboardingItem } from "../src/contract.ts";
 import { buildSetupPlan } from "../src/setup-plan.ts";
 import { applyAnswer, messagePaths } from "../src/setup-answer.ts";
 import { safePath } from "../src/setup-values.ts";
@@ -292,6 +292,102 @@ describe("the plan", () => {
         assert.equal(plan.exists, false);
         assert.equal(plan.before, "");
         assert.ok(plan.sections.length > 0);
+    });
+});
+
+/** A state whose one section, `service`, has a validator and one question for the path both name. */
+function questionState(config: unknown, items: readonly OnboardingItem[], check: SectionCheck): SetupState {
+    writeFileSync(file, JSON.stringify(config));
+    const sectionChecks = new Map<string, SectionCheck>([["service", check]]);
+    return {
+        personal: loadConfigFile(file, sectionChecks, {
+            defaults: new Map(),
+            replace: new Map(),
+            oneOf: new Map(),
+            union: new Map(),
+        }),
+        sectionChecks,
+        defaults: new Map(),
+        replace: new Map(),
+        oneOf: new Map(),
+        union: new Map(),
+        configPath: file,
+        env: {},
+        platform: "linux",
+        pathLookup: () => "/usr/bin/program",
+        enabledBackends: ["pass"],
+        disabledBackends: [],
+        companyBackends: [],
+        commands: {},
+        sectionSetup: new Map([["service", { summary: "Read a service.", items }]]),
+    };
+}
+
+describe("a validator's field and a question for the same path", () => {
+    test("the validator's number kind wins, so a whole number is accepted", () => {
+        const built = buildSetupPlan(
+            questionState(
+                { service: {} },
+                [
+                    {
+                        kind: "text",
+                        section: "service",
+                        path: "port",
+                        label: "Which port?",
+                        why: "The service listens there.",
+                    },
+                ],
+                (raw) =>
+                    typeof (raw as { port?: unknown })?.port === "number" ? [] : ["service.port must be a number"],
+            ),
+        );
+        assert.ok("plan" in built, "the plan is built");
+        const section = built.plan.sections.find((one) => one.name === "service");
+        assert.deepEqual(
+            section?.fields.map((field) => field.path),
+            ["port"],
+            "the question is asked once, not as an item field as well",
+        );
+        const field = section?.fields[0];
+        assert.equal(field?.kind, "number");
+        assert.equal(field?.label, "Which port?");
+        assert.equal(field?.reason, "The service listens there.");
+        const draft = structuredClone(built.plan.raw);
+        assert.ok(field);
+        const answer = applyAnswer(built.plan, draft, field, "8080");
+        assert.ok("change" in answer, JSON.stringify(answer));
+        assert.equal(answer.change.value, 8080);
+    });
+
+    test("the validator's credential field wins over a text question on a token path", () => {
+        const built = buildSetupPlan(
+            questionState(
+                { service: { auth: {} } },
+                [
+                    {
+                        kind: "text",
+                        section: "service",
+                        path: "auth.token",
+                        label: "The service token",
+                        why: "Every call needs it.",
+                    },
+                ],
+                (raw) => {
+                    const token = (raw as { auth?: { token?: unknown } }).auth?.token;
+                    return typeof token === "string" && /^[A-Za-z]+:\S+$/.test(token)
+                        ? []
+                        : ["service.auth.token must be a secret reference, such as pass:work/token"];
+                },
+            ),
+        );
+        assert.ok("plan" in built, "the plan is built");
+        const field = built.plan.sections
+            .find((one) => one.name === "service")
+            ?.fields.find((one) => one.path === "auth.token");
+        assert.equal(field?.kind, "reference", "a credential path is asked as where it is kept, not as text");
+        assert.equal(field?.question, "Where does the service token live?");
+        assert.equal(field?.label, "The service token");
+        assert.ok(field?.reference?.stores.includes("pass"));
     });
 });
 

@@ -1,5 +1,6 @@
 // The questions of one section: what the plugin asks for it, what its validator names, and the sign-in method it uses,
-// in the order setup asks them. One field per path, and a path a method or a question covers is never asked as raw text.
+// in the order setup asks them. One field per path: a sign-in method's field wins, and a validator's field and a
+// question for the same path become one, in the question's words and the validator's kind.
 import type { SetupField, SetupMethod, SetupState } from "./setup-plan.ts";
 import { sectionState } from "./section-state.ts";
 import { fieldKind, fieldLabel, isSecret, labelOf, placeholderFor, reasonFor } from "./setup-fields.ts";
@@ -8,7 +9,6 @@ import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { messagePaths } from "./setup-answer.ts";
 import { setupMethods } from "./setup-methods-plan.ts";
 import {
-    answerPresent,
     coversPath,
     itemAtPath,
     methodPaths,
@@ -122,11 +122,14 @@ export function sectionQuestions(
     const items = questionItems(state.onboarding, state.sectionSetup?.get(section)?.items, section);
     const { methods, askMethod } = setupMethods(state, section, merged, requested);
     const methodCovered = methodPaths(methods);
+    const itemOrder = new Map(items.map((one, index) => [one.item.path, index]));
 
     if (rawValue !== undefined && !isObject(rawValue)) {
         notes.push(`${labelOf(section)} is not in a shape setup can change here. /jig doctor names the problem.`);
     }
     const required: Array<{ field: SetupField; order: number }> = [];
+    const askedByValidator = new Set<string>();
+    const validatorPaths = new Set<string>();
     for (const message of sectionMessages(state, section)) {
         const paths = messagePaths(message, section);
         if (paths.length === 0) {
@@ -134,21 +137,32 @@ export function sectionQuestions(
             continue;
         }
         for (const path of paths) {
+            if (validatorPaths.has(path)) continue;
+            validatorPaths.add(path);
             if (coveredBy(methodCovered, path)) continue;
             const item = itemAtPath(items, path);
-            // A question asks for this path when the value is missing; when it is present but the validator still
-            // names it, the validator's field asks again, in the question's words.
-            if (item === undefined ? coversPath(items, path) : !answerPresent(state, section, item, raw)) continue;
+            // An entry asks for the map itself; a validator field cannot add one more entry to it.
+            if (item?.item.kind === "entry") continue;
+            // Another question above or below this path asks for it; an exact one gets the validator's field, with
+            // its words, because the validator's kind and secret classification must not be replaced by the item's.
+            if (item === undefined && coversPath(items, path)) continue;
             const built = validatorField(state, section, path, message, merged, rawSection);
             if ("note" in built) {
                 if (built.note !== "") notes.push(built.note);
                 continue;
             }
-            required.push({ field: item === undefined ? built : withItemWords(state, built, item), order: 10_000 });
+            if (item !== undefined) askedByValidator.add(path);
+            required.push({
+                field: item === undefined ? built : withItemWords(state, built, item),
+                order: item === undefined ? 10_000 : (itemOrder.get(path) ?? 10_000),
+            });
         }
     }
 
-    const itemFields = questionFields(state, items, raw, requested).map((field, order) => ({ field, order }));
+    const itemFields = questionFields(state, items, raw, requested, askedByValidator).map((field) => ({
+        field,
+        order: itemOrder.get(field.path) ?? 10_000,
+    }));
     const fields = [...itemFields, ...required]
         .sort((left, right) => {
             const optional = (one: { field: SetupField }): number => (one.field.optional === true ? 1 : 0);
