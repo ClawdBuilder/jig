@@ -341,16 +341,21 @@ export function introOf(entry: OnboardingEntry | undefined, lists: readonly (rea
     return out;
 }
 
-/** The logins the lists name, each once, with the command that performs it. */
+/** The logins the lists name, each once, with the program to have and the command that performs it. */
 export function loginsOf(
     entry: OnboardingEntry | undefined,
     lists: readonly (readonly OnboardingItem[])[],
-): Array<{ label: string; command: string; why?: string }> {
-    const out: Array<{ label: string; command: string; why?: string }> = [];
+): Array<{ label: string; tool: string; command: string; why?: string }> {
+    const out: Array<{ label: string; tool: string; command: string; why?: string }> = [];
     for (const item of [...(entry?.items ?? []), ...lists.flat()]) {
         if (item.kind !== "login") continue;
         if (out.some((one) => one.command === item.login)) continue;
-        out.push({ label: item.label, command: item.login, ...(item.why === undefined ? {} : { why: item.why }) });
+        out.push({
+            label: item.label,
+            tool: item.tool,
+            command: item.login,
+            ...(item.why === undefined ? {} : { why: item.why }),
+        });
     }
     return out;
 }

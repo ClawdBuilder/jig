@@ -62,7 +62,7 @@ test("an unknown probe is refused when the company registers", () => {
     assert.throws(() => checkOnboarding({ items: [pick] }), /detect: must be one of/);
 });
 
-test("a probe and an optional answer do not combine", () => {
+test("a probe and an optional answer do not combine, except an entry's optional key", () => {
     const item = {
         kind: "text",
         section: "acme",
@@ -82,6 +82,20 @@ test("a probe and an optional answer do not combine", () => {
     };
     const checked = checkOnboarding({ items: [pick] });
     assert.equal(checked.items[0]?.kind, "pick");
+    // An entry's optional answer is the key: Enter on an empty key leaves the map unset, and the probe only fills
+    // the value, so the two are not in conflict.
+    const entry = {
+        kind: "entry",
+        section: "git",
+        path: "accounts",
+        label: "Which account for a set of repositories?",
+        keyLabel: "Which repositories?",
+        valueLabel: "Which account?",
+        optional: true,
+        detect: "gh-account",
+    };
+    const entryChecked = checkOnboarding({ items: [entry] });
+    assert.equal(entryChecked.items[0]?.kind, "entry");
 });
 
 test("the found line says it is a proposal", () => {

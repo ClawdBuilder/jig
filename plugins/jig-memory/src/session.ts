@@ -38,11 +38,11 @@ import { loadNoteIndex } from "./notes-index.ts";
 import { CheckError, openChecks, openChecksText } from "./checks.ts";
 import { folderOf, recallOf, ticketRegex } from "./config.ts";
 import type { MemorySettings, RecallSettings } from "./config.ts";
-import { emptyFilesText, findEmptyFiles } from "./empty-files.ts";
 import { indexCount, isFileTool, saveEvidence } from "./evidence.ts";
 import { hasNoNotes, readMaterial } from "./material.ts";
 import { notesMessage, REMIND_AFTER, reminderText } from "./message.ts";
 import { localDate, nowBlock } from "./notes.ts";
+import { note, reason, warnEmptyFiles } from "./notices.ts";
 import { buildQuery, formatRecall, notesText, recall, recallMessage } from "./recall.ts";
 import { ensureTicket, isSafeKey, mentionedTickets, settleNotes, ticketPaths } from "./store.ts";
 import { finishPasted, TOOL_NAME, ticketTool } from "./tool.ts";
@@ -117,11 +117,6 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
     const recalled = new Set<string>();
     const activatedBy = new Map<string, string>();
 
-    const note = (ctx: ExtensionContext, text: string, level: "info" | "warning" = "info") => {
-        if (ctx.hasUI) ctx.ui.notify(text, level);
-    };
-    const reason = (error: unknown) => (error instanceof Error ? error.message : String(error)).split("\n")[0] ?? "";
-
     /** The open checks, worded for the agent, or undefined when none is open or checks.json cannot be read (said once). */
     const checksText = (mem: Memory, ctx: ExtensionContext, key: string): string | undefined => {
         try {
@@ -147,29 +142,6 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             checks: checksText(mem, ctx, key),
         });
         pi.sendMessage({ customType: NOTES_MESSAGE, content, display: true, details: { key } }, { triggerTurn: false });
-    };
-
-    /** Empty files in the ticket folder, which a crash or an unfinished write may have left: the agent and the user are told.
-     *  Nothing is repaired. */
-    const warnEmptyFiles = (mem: Memory, ctx: ExtensionContext, key: string) => {
-        try {
-            const now = new Date();
-            const found = findEmptyFiles(ticketPaths(mem.folder, key).dir, now);
-            const text = emptyFilesText(key, found, now);
-            if (text === undefined) return;
-            pi.sendMessage(
-                {
-                    customType: EMPTY_FILES_MESSAGE,
-                    content: text,
-                    display: false,
-                    details: { key, files: found.shown.map((entry) => entry.file), total: found.total },
-                },
-                { triggerTurn: false },
-            );
-            note(ctx, text, "warning");
-        } catch (error) {
-            note(ctx, `Could not look for empty files in ${key}: ${reason(error)}`, "warning");
-        }
     };
 
     /** Recall for a ticket that just became active: the cards of related tickets, as one message when any pass. */
@@ -228,7 +200,7 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
             pi.appendEntry(TICKET_ENTRY, { key });
             activatedBy.set(key, text);
             sendNotes(mem, ctx, key, ACTIVE, notes);
-            warnEmptyFiles(mem, ctx, key);
+            warnEmptyFiles(pi, ctx, mem.folder, key);
             if (isNew && mem.recall.enabled && !recalled.has(key)) {
                 recalled.add(key);
                 sendRecall(mem, ctx, key, text);
@@ -368,12 +340,17 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         recalled.clear();
         activatedBy.clear();
         if (active !== undefined) {
-            // Only a restored ticket is told: jig-core starts without one, and another extension may have set its own.
-            jig().setTicket(active);
-            ensureTicket(mem.folder, active);
-            nowSeen = nowBlock(settleNotes(mem.folder, active, new Date()));
-            note(ctx, `Ticket ${active} restored from this session.`);
-            warnEmptyFiles(mem, ctx, active);
+            try {
+                // Only a restored ticket is told: jig-core starts without one, and another extension may have set its own.
+                jig().setTicket(active);
+                ensureTicket(mem.folder, active);
+                nowSeen = nowBlock(settleNotes(mem.folder, active, new Date()));
+                note(ctx, `Ticket ${active} restored from this session.`);
+                warnEmptyFiles(pi, ctx, mem.folder, active);
+            } catch (error) {
+                // A read-only or removed folder must not fail Pi's session start: say it and go on without the notes.
+                note(ctx, `Could not restore ticket ${active}: ${reason(error)}`, "warning");
+            }
         }
     });
 
@@ -381,9 +358,13 @@ export function registerTicketMemory(pi: ExtensionAPI): void {
         const key = active;
         if (memory === undefined || key === undefined) return;
         // The compaction may have folded the activation message away, and the notes may have changed since it.
-        const notes = settleNotes(memory.folder, key, new Date());
-        nowSeen = nowBlock(notes);
-        sendNotes(memory, ctx, key, COMPACTED, notes);
+        try {
+            const notes = settleNotes(memory.folder, key, new Date());
+            nowSeen = nowBlock(notes);
+            sendNotes(memory, ctx, key, COMPACTED, notes);
+        } catch (error) {
+            note(ctx, `Could not send the notes for ${key} after compaction: ${reason(error)}`, "warning");
+        }
     });
 
     // A prompt from the user while checks are open carries their list, so a promise made earlier is in front of the agent

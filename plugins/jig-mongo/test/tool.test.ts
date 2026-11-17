@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { driverError } from "./support/fake-backend.ts";
 import { ok, setupHarness } from "./support/harness.ts";
-import type { Harness } from "./support/harness.ts";
+import type { CallResult, Harness } from "./support/harness.ts";
 import { InputError } from "../src/values.ts";
 import { PRODUCTION_PASSWORD, STAGING_PASSWORD } from "./support/section.ts";
 
@@ -52,6 +52,28 @@ describe("a read in a test environment", () => {
         assert.equal(h.connects.length, 1);
         assert.deepEqual(h.jig.resolved, ["pass:mongo/staging"]);
         for (const text of texts) assert.ok(!text.includes(STAGING_PASSWORD.value));
+    });
+
+    test("the password goes to the driver alone: no text, preview, detail or fact speaks it", async () => {
+        const shown: string[] = [];
+        const keep = (result: CallResult) => {
+            shown.push(
+                result.text,
+                result.error?.message ?? "",
+                JSON.stringify(result.details ?? {}),
+                JSON.stringify(result.preview ?? {}),
+                JSON.stringify(factsOf(result.id)),
+            );
+        };
+        keep(await h.call(find("staging")));
+        keep(await h.call({ action: "insert", environment: "staging", ...target, documents: [{ n: 1 }] }));
+        h.backend.answers.find = () => {
+            throw driverError("MongoServerError", "Authentication failed.", { code: 18 });
+        };
+        keep(await h.call(find("staging")));
+        for (const text of shown) assert.ok(!text.includes(STAGING_PASSWORD.value), text);
+        assert.equal(h.connects[0]?.password, STAGING_PASSWORD.value, "the driver gets it, and only the driver");
+        assert.ok(!(h.connects[0]?.uri ?? "").includes(STAGING_PASSWORD.value), "the address holds no credential");
     });
 
     test("the time limit of the call goes to the database, and the result has details and no documents in them", async () => {

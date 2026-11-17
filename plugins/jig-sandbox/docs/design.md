@@ -225,8 +225,9 @@ What the runtime cannot prevent, `jig-sandbox` undoes and reports:
 
 Watched repositories are the working folder's, the repository around it, and those one
 and two levels below it. Each removal is one line to the agent and a notice to you, and
-what was taken away is moved to `<agent folder>/jig-sandbox/removed`, not deleted. The audit
-also runs for a command that was aborted or timed out.
+what was taken away is moved to `<agent folder>/jig-sandbox/removed`. When it cannot be
+moved there — another file system, a full disk — it is deleted instead, because what was
+planted must not stay. The audit also runs for a command that was aborted or timed out.
 
 ## Explaining a block
 

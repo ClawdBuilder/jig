@@ -86,8 +86,11 @@ waiting call.
 - **`workflow`:** from the ticket's `workflow.json` (`jig-workflow`). `stages` are `{ id, goal? }` in order; `problem` says when
   the workflow file is missing. `prs` are its readings, one per repository: `{ repo, branch?, number?, state?, draft?, url?,
   checks?: { pass, fail, pending, total }, at?, error? }`.
-- **`outputs`:** absolute paths of successful `edit` and `write` calls; `action` is `created` for a `write` to a new file,
-  else `edited`. `repo` is the absolute root of the git working tree that holds the path (the nearest folder above it with a
+- **`outputs`:** absolute paths of successful `edit` and `write` calls, and of the active ticket's user-facing files:
+  `notes.md`, plans and other `.md`, `.txt` and `.json` reports at the top level, and files under subfolders (`evidence/` of
+  any type, others as reports) down to two levels — never `ticket.json`, `workflow.json`, `history/` or the tool outputs Jig
+  saves to `evidence/` by itself. `action` is `created` for a `write` to a new file, else `edited`; a ticket file is always
+  `edited`. `repo` is the absolute root of the git working tree that holds the path (the nearest folder above it with a
   `.git` folder, or a `.git` file as a worktree has), or `null` for a file outside any repository, such as a ticket's notes.
   It is found by looking at the file system, never by running git. The 50-entry cap applies to each kind, so edits in
   repositories cannot push ticket files out. A file written by an older version has no `repo`; read that as unknown.
