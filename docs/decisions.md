@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-17: setup adds one named object of a map](#2026-11-17-setup-adds-one-named-object-of-a-map)
 - [2026-11-17: a library that must hold a credential gets it from the resolver](#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)
 - [2026-11-16: the 500-line check is a ratchet](#2026-11-16-the-500-line-check-is-a-ratchet)
 - [2026-11-16: the 0.4.x action aliases are gone](#2026-11-16-the-04x-action-aliases-are-gone)
@@ -75,6 +76,21 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-17: setup adds one named object of a map
+
+**Decision.** A plugin, or a company's list, may add one named object to a map with an item of kind `object`: it names the
+map (`path`), asks the name (`keyLabel`), then one of its `forms` — a list of `text`, `pick` and `reference` questions whose
+paths are inside the new object, with the same words as a sign-in method's fields — and writes the answers as one value
+under `path.<name>`. A form with a `when` is asked only while the section's merged value at that path matches; a form
+without one is the fallback. `repeat` asks for another, and the section's own check runs once over the whole object, so a
+refusal can name the field to ask again. Setup is add-only: a name already in the map is refused, and an existing entry is
+edited in `jig.json`, or left out of a company's defaults with a `null`.
+
+**Why:** the maps logs, api and mongo need — an environment's address, a collection's source, a connection — hold objects,
+which `entry`'s one string value cannot write, and a sign-in method's `*` paths expand over names that already exist, so a
+method can edit a connection but never create one. One kind keeps one checker for both company lists and plugin setups; an
+older Jig refuses the item at registration rather than ignoring it, the same rule `detect` and `proposal` already follow.
 
 ## 2026-11-17: a library that must hold a credential gets it from the resolver
 

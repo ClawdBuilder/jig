@@ -19,6 +19,7 @@ Read it with the code open. Back to the [jig-mongo overview](../README.md).
 | `explain.ts` | The plan of a query, in a few lines: which index, how many documents were… | `reads.ts` |
 | `expr.ts` | Aggregation expressions and the check every field reference goes through. A… | `filter.ts`, `pipeline.ts`, `reads.ts` and 1 more |
 | `filter.ts` | A filter in the query language: `find`'s filter, `$match`, a `$lookup` that… | `pipeline.ts`, `reads.ts`, `write-check.ts` |
+| `onboarding.ts` | What a connection needs from a person: the environment, the address or route, and the password | `index.ts` |
 | `index.ts` | Pi entry point of jig-mongo. The factory only registers: the `mongo` section… || Pi |
 | `params.ts` | The parameters of the `mongo` tool. One flat object, because several model… | `plan.ts`, `reads.ts`, `session.ts` and 2 more |
 | `pipeline.ts` | An aggregation pipeline, walked in full before anything runs. Every… | `plan.ts`, `reads.ts`, `write-check.ts` and 1 more |

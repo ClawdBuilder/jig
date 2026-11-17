@@ -148,6 +148,45 @@ describe("/jig doctor checks", () => {
         assert.ok(!titles.includes("You need: The production host"), text(report));
     });
 
+    test("a company's object you left out with a null is not a 'you need' line", async () => {
+        const onboarding: OnboardingEntry = {
+            items: [
+                {
+                    kind: "object",
+                    section: "acme",
+                    path: "connections",
+                    label: "A database connection",
+                    keyLabel: "Which environment?",
+                    forms: [{ fields: [{ kind: "text", path: "uri", label: "Where is the database?" }] }],
+                },
+                {
+                    kind: "object",
+                    section: "acme",
+                    path: "tunnels",
+                    label: "A tunnel",
+                    keyLabel: "Which name?",
+                    forms: [{ fields: [{ kind: "text", path: "host", label: "Which host?" }] }],
+                },
+            ],
+        };
+        const report = await runDoctor(
+            context({
+                checks: [["acme", () => []]],
+                overrides: {
+                    personal: loaded({
+                        sections: new Map([["acme", {}]]),
+                        removed: new Map([["acme", ["connections"]]]),
+                    }),
+                    onboarding,
+                },
+            }),
+            options(),
+        );
+        const titles = report.lines.map((line) => line.title);
+        assert.ok(titles.includes("You need: A tunnel"), text(report));
+        assert.ok(!titles.includes("You need: A database connection"), text(report));
+    });
+
     test("a loaded section says which company entries you left out with a null", async () => {
         const report = await runDoctor(
             context({

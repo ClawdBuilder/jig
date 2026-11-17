@@ -15,9 +15,7 @@ export function summaryLines(plan: SetupPlan, changes: readonly SetupChange[]): 
                 change.oldValue === undefined ? "new" : "changed"
             })`,
     );
-    const enabling = [
-        ...new Set(changes.flatMap((change) => (change.enableBackend === undefined ? [] : [change.enableBackend]))),
-    ];
+    const enabling = [...new Set(changes.flatMap((change) => change.enableBackends ?? []))];
     const backendLines = enabling.map((store) => `Turn on ${BACKEND_LABEL[store]} as a place Jig reads from.`);
     return [...plan.notes, ...lines, ...backendLines, ...plan.sections.flatMap((section) => section.notes)];
 }
@@ -128,9 +126,7 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
 
     const after = structuredClone(plan.raw);
     for (const change of changes) applyChange(after, change);
-    const enabling = [
-        ...new Set(changes.flatMap((change) => (change.enableBackend === undefined ? [] : [change.enableBackend]))),
-    ];
+    const enabling = [...new Set(changes.flatMap((change) => change.enableBackends ?? []))];
     if (enabling.length > 0) {
         if (after.secrets !== undefined && !isObject(after.secrets)) {
             throw new SetupRefused("Your settings have a secrets section setup cannot change. /jig doctor names it.");

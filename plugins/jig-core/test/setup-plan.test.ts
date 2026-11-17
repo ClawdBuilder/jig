@@ -21,7 +21,7 @@ import { loadConfigFile } from "../src/config.ts";
 import type { SectionCheck } from "../src/config.ts";
 import type { OnboardingEntry, OnboardingItem } from "../src/contract.ts";
 import { buildSetupPlan } from "../src/setup-plan.ts";
-import { applyAnswer, applyEntry, applyValue, messagePaths } from "../src/setup-answer.ts";
+import { applyAnswer, applyEntry, applyValue, messageNames, messagePaths } from "../src/setup-answer.ts";
 import { safePath } from "../src/setup-values.ts";
 import { buildReference } from "../src/setup-reference.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "../src/setup-write.ts";
@@ -558,7 +558,7 @@ describe("the write gate", () => {
         const referenceChange = changes.at(-1);
         assert.ok(referenceChange);
         referenceChange.note = "read from environment variable JIRA_TOKEN";
-        referenceChange.enableBackend = "env";
+        referenceChange.enableBackends = ["env"];
         const summary = summaryLines(plan, changes).join("\n");
         assert.match(summary, /Turn on an environment variable as a place Jig reads from/);
         assert.ok(!summary.includes("env:"));
@@ -568,7 +568,7 @@ describe("the write gate", () => {
         assert.ok(badField);
         const badAnswer = applyAnswer(plan, badDraft, badField, "8080");
         assert.ok("change" in badAnswer);
-        badAnswer.change.enableBackend = "op";
+        badAnswer.change.enableBackends = ["op"];
         assert.throws(
             () => writeSetup(plan, [badAnswer.change], new Date("2026-11-04T17:00:00.000Z")),
             (error: unknown) => error instanceof SetupRefused && /turned that store off/.test(error.message),
@@ -688,6 +688,11 @@ describe("path helpers", () => {
         assert.deepEqual(messagePaths("acme.bastion.user is required", "acme"), ["bastion.user"]);
         assert.deepEqual(messagePaths("acme.sso.token: must be a secret reference", "acme"), ["sso.token"]);
         assert.deepEqual(messagePaths("acme: must be an object", "acme"), []);
+        // The whole path, never a path below it and never a sibling key that starts with it.
+        assert.equal(messageNames("acme.bastion.user is required", "acme", "bastion.user"), true);
+        assert.equal(messageNames("acme.bastion.user.name is required", "acme", "bastion.user"), false);
+        assert.equal(messageNames("api.environments.Staging: must be one", "api", "environments.Staging"), true);
+        assert.equal(messageNames("api.environments.Staging.Prod: must be one", "api", "environments.Staging"), false);
         assert.equal(safePath("bastion.user"), true);
         assert.equal(safePath("services.0.host"), false);
         assert.equal(safePath("__proto__.x"), false);

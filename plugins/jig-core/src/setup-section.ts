@@ -141,8 +141,8 @@ export function sectionQuestions(
             validatorPaths.add(path);
             if (coveredBy(methodCovered, path)) continue;
             const item = itemAtPath(items, path);
-            // An entry asks for the map itself; a validator field cannot add one more entry to it.
-            if (item?.item.kind === "entry") continue;
+            // An entry or an object asks for the map itself; a validator field cannot add one more to it.
+            if (item?.item.kind === "entry" || item?.item.kind === "object") continue;
             // Another question above or below this path asks for it; an exact one gets the validator's field, with
             // its words, because the validator's kind and secret classification must not be replaced by the item's.
             if (item === undefined && coversPath(items, path)) continue;

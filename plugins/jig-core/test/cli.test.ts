@@ -149,21 +149,26 @@ function runSetup(
     expectations: Array<{ when: string; answer: string }>,
     cwd = work,
     extraEnv: Record<string, string | undefined> = {},
+    args: readonly string[] = [],
 ) {
-    const child = spawnTest("script", ptyArgv([process.execPath, BIN, "setup"]), {
+    const child = spawnTest("script", ptyArgv([process.execPath, BIN, "setup", ...args]), {
         cwd,
         env: env(extraEnv),
     });
     let stdout = "";
     let stderr = "";
     let index = 0;
+    // The prompt just answered ends before this: a marker printed earlier never answers a later question.
+    let cursor = 0;
     return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
         const next = (): void => {
             const expectationsAt = expectations[index];
-            if (expectationsAt !== undefined && stdout.includes(expectationsAt.when)) {
-                index++;
-                setTimeout(() => child.stdin.write(`${expectationsAt.answer}\n`), 20);
-            }
+            if (expectationsAt === undefined) return;
+            const found = stdout.indexOf(expectationsAt.when, cursor);
+            if (found < 0) return;
+            index++;
+            cursor = found + expectationsAt.when.length;
+            setTimeout(() => child.stdin.write(`${expectationsAt.answer}\n`), 20);
         };
         child.stdout.on("data", (chunk: Buffer) => {
             stdout += chunk.toString();
@@ -793,6 +798,122 @@ describe("jig setup", () => {
         assert.equal(written.profiles["fixture-co"].plugin, "fixture-co");
         assert.equal(written.fixture.login, "jdoe");
         assert.match(result.stdout, /Start Pi again, or run \/reload in it, to apply\./);
+    });
+
+    test("picking Mongo asks for one connection and writes it", { timeout: 90_000, skip: ptySkip }, async () => {
+        settingsWith();
+        const result = await runSetup([
+            { when: "which plugin do you want to set up?", answer: "mongo" },
+            { when: "Which environment is this connection for?", answer: "staging" },
+            { when: "Which kind of mongo connection?", answer: "directly" },
+            { when: "Where is the database?", answer: "mongodb://db.staging.example.com:27017" },
+            { when: "Which database user?", answer: "agent" },
+            { when: "Where does the database password live?", answer: "an" },
+            { when: "Which environment variable?", answer: "MONGO_STAGING_PASSWORD" },
+            { when: "Not found yet", answer: "continue" },
+            { when: "Add another Mongo connection?", answer: "n" },
+            // The second time the list is shown, after the connection is set up.
+            { when: "which plugin do you want to set up?", answer: "done" },
+            { when: "Review these changes", answer: "1" },
+            { when: "Save these changes?", answer: "y" },
+        ]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.deepEqual(written.mongo.connections, {
+            staging: {
+                uri: "mongodb://db.staging.example.com:27017",
+                user: "agent",
+                password: "env:MONGO_STAGING_PASSWORD",
+            },
+        });
+        assert.match(
+            result.stdout.replace(/\r/g, ""),
+            /Mongo connection: staging \(not found yet\) \(new\)/,
+            "the summary says the credential is not there yet",
+        );
+    });
+
+    test("jig setup mongo adds a second connection through an SSH host", {
+        timeout: 90_000,
+        skip: ptySkip,
+    }, async () => {
+        settingsWith();
+        writeFileSync(
+            path.join(agent, "jig.json"),
+            JSON.stringify({
+                mongo: {
+                    connections: {
+                        staging: {
+                            uri: "mongodb://db.staging.example.com:27017",
+                            user: "agent",
+                            password: "env:MONGO_STAGING_PASSWORD",
+                        },
+                    },
+                },
+            }),
+        );
+        const result = await runSetup(
+            [
+                { when: "Which environment is this connection for?", answer: "production" },
+                { when: "Which kind of mongo connection?", answer: "through" },
+                { when: "Where is the database, on the far side?", answer: "mongodb://db.internal:27017" },
+                { when: "Which database user?", answer: "agent-readonly" },
+                { when: "Where does the database password live?", answer: "an" },
+                { when: "Which environment variable?", answer: "MONGO_PROD_PASSWORD" },
+                { when: "Not found yet", answer: "continue" },
+                { when: "Which SSH host should Jig go through?", answer: "bastion.example.com" },
+                { when: "Which user on that SSH host?", answer: "agent" },
+                { when: "Where does the SSH key live?", answer: "a" },
+                { when: "Use a file?", answer: "y" },
+                { when: "Which file?", answer: "~/.config/jig/bastion-key" },
+                { when: "Not found yet", answer: "continue" },
+                { when: "Add another Mongo connection?", answer: "n" },
+                { when: "Review these changes", answer: "1" },
+                { when: "Save these changes?", answer: "y" },
+            ],
+            work,
+            {},
+            ["mongo"],
+        );
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const shown = result.stdout.replace(/\r/g, "");
+        assert.match(shown, /Already set up: staging\./);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.deepEqual(Object.keys(written.mongo.connections), ["staging", "production"]);
+        assert.deepEqual(written.mongo.connections.production.via, {
+            ssh: { host: "bastion.example.com", user: "agent", key: "file:~/.config/jig/bastion-key" },
+        });
+    });
+
+    test("Logs with a Loki backend asks for a selector, not which kind of environment", {
+        timeout: 90_000,
+        skip: ptySkip,
+    }, async () => {
+        settingsWith();
+        const result = await runSetup(
+            [
+                { when: "Log backend:", answer: "loki" },
+                { when: "Backend address", answer: "https://logs.example.com:3100" },
+                { when: "Which environment?", answer: "staging" },
+                { when: "The streams to search", answer: '{app="orders-api", env="staging"}' },
+                { when: "Add another Log environment?", answer: "n" },
+                { when: "How do you sign in to Logs?", answer: "service" },
+                { when: "Where does the log service token live?", answer: "an" },
+                { when: "Which environment variable?", answer: "LOGS_TOKEN" },
+                { when: "Not found yet", answer: "continue" },
+                { when: "Review these changes", answer: "1" },
+                { when: "Save these changes?", answer: "y" },
+            ],
+            work,
+            {},
+            ["logs"],
+        );
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const shown = result.stdout.replace(/\r/g, "");
+        assert.doesNotMatch(shown, /Which kind of log environment/);
+        const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
+        assert.deepEqual(written.logs.environments, { staging: { selector: '{app="orders-api", env="staging"}' } });
+        assert.equal(written.logs.backend.type, "loki");
     });
 });
 
