@@ -6,8 +6,9 @@ The fields of the `git` section of `jig.json`, in detail. The table is in the
 - **`base`:** the branch new work starts from and pull requests target. The
   default is the repository's default branch.
 - **`protected`:** a list where `*` matches any characters. A protected branch
-  refuses a direct push, a force push, a rebase, a cherry-pick, and being
-  created or deleted by these tools. Setting it replaces the default.
+  refuses a commit, a merge, a direct push, a force push, a rebase, a
+  cherry-pick, and being created or deleted by these tools. Setting it replaces
+  the default.
 - **`commitMessage`, `branchName` and `prTitle`:** regular expressions. A commit
   message is tested whole, so anchor it with `^`.
   - **`prTitle`** is the same rule for a pull request's title. `pr create` and
