@@ -130,14 +130,10 @@ function describe(error: unknown): unknown {
         );
     }
     if (CONNECTION_LOST.has(error.code)) return new RequestError("connection_lost");
-    if (error.code === "network_error") {
-        const cause = error.cause;
-        // fetch reports every network problem as a TypeError; anything else is not the network's doing.
-        if (cause instanceof TypeError && (cause.message === "fetch failed" || cause.message === "terminated")) {
-            return new Error("cannot reach the backend: check backend.url, the network and the certificate");
-        }
-        return cause ?? error;
-    }
+    // Every network failure gets the same words, whichever error fetch reported: the tool says what to check and never
+    // repeats an error text from below, which can name a host, an address or a certificate detail.
+    if (error.code === "network_error")
+        return new Error("cannot reach the backend: check backend.url, the network and the certificate");
     // A code that is a system or a certificate code means the backend could not be reached; the others (a credential
     // that could not be read, a transport that failed) carry their own words.
     if (/^[A-Z][A-Z0-9_]+$/.test(error.code)) {
