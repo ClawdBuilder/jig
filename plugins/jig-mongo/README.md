@@ -67,6 +67,10 @@ Parameters and results: [Results](docs/results.md).
 - **Server-side JavaScript is refused** (`$where`, `$function`, `$accumulator`), unless you allow it for a test environment.
 - **Production is read-only and masked,** whatever the configuration says: `jig-core`'s floor denies a production write, and the
   tool refuses it again when it plans the call. `jig-core` masks every production result.
+- **The password is held only for the connection.** `jig-core` resolves the reference, and `jig-mongo` hands the value to
+  the MongoDB driver, which needs it in memory to sign in; it is never returned, logged or recorded. This is the one
+  exception to a plugin never seeing a credential ([Credentials](../../docs/secrets.md),
+  [Decisions](../../docs/decisions.md#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)).
 
 ## Configure
 

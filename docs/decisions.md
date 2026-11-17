@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-17: a library that must hold a credential gets it from the resolver](#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)
 - [2026-11-16: the 500-line check is a ratchet](#2026-11-16-the-500-line-check-is-a-ratchet)
 - [2026-11-16: the 0.4.x action aliases are gone](#2026-11-16-the-04x-action-aliases-are-gone)
 - [2026-11-12: `jig update` moves the home's packages, never the Pi binary](#2026-11-12-jig-update-moves-the-homes-packages-never-the-pi-binary)
@@ -74,6 +75,24 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-17: a library that must hold a credential gets it from the resolver
+
+**Decision.** [AGENTS.md](../AGENTS.md)'s rule stands: `jig-core` reads a credential and attaches it, so a plugin never
+sees the value. There is one exception. A client library that must hold the secret in-process to use it — the MongoDB
+driver, an SSH tunnel — asks `jig-core`'s resolver (`jig().secrets.resolve`), uses the value only for that connection, and
+never returns, logs or records it. `jig-mongo` is the case: the driver connects with a user and a password, and an SSH
+route's key is written to a 0600 file for `ssh`. The value lives in the library's memory for the connection's lifetime
+and nowhere else.
+
+**Why.** The alternative is a proxy that terminates the protocol's sign-in, which is a second server to run and to trust,
+for one connection. The resolver is `jig-core`'s own path to the store, so the reference stays the only thing in
+`jig.json` and the plugin still never reads the store. The risk the rule guards against — a value copied into a prompt,
+a result, a record or a command line — is unchanged, and can be checked by searching what the call produced.
+
+**The cost.** The rule is no longer absolute, so a reviewer must read the exception: the plugin names it in its README, as
+[`jig-mongo`'s](../plugins/jig-mongo/README.md) does, and the value reaches no string that leaves the call. A plugin that
+can pass a reference to `jig-core` still does, and only a protocol that cannot attach a credential takes this path.
 
 ## 2026-11-16: the 500-line check is a ratchet
 
