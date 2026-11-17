@@ -43,7 +43,8 @@ export function unreleased(changelog) {
 }
 
 /** The body's `### ` sections, gathered into one of each: Added, Changed, Fixed and Removed first, then any other in its own
- *  place. A heading that appears twice keeps its entries in the order they were written, one blank line between the two blocks. */
+ *  place. A heading that appears twice keeps its entries in the order they were written, and the bullets of every fragment
+ *  under a heading are one tight list, as the earlier sections are: no blank line between two `- ` lines. */
 export function gather(body) {
     const sections = new Map();
     let current;
@@ -65,7 +66,7 @@ export function gather(body) {
                 .get(name)
                 .map(tidy)
                 .filter((block) => block.length > 0)
-                .flatMap((block, index) => (index === 0 ? block : ["", ...block])),
+                .flatMap((block, index) => (index === 0 || (block[0] ?? "").startsWith("- ") ? block : ["", ...block])),
         }))
         .filter((section) => section.lines.length > 0);
 }
@@ -76,15 +77,23 @@ function rank(name) {
 }
 
 /** The lines without the blank ones at either end, and with no two blank lines in a row: a changelog has one blank line
- *  between paragraphs, and a blank line inside a fenced block is kept. */
+ *  between paragraphs, and a blank line inside a fenced block is kept. A blank line before a `- ` line is dropped, so the
+ *  bullets of a fragment are a tight list; one before an indented line, a paragraph or a fence stays, so a bullet's own
+ *  paragraphs and blocks keep their separation. */
 function tidy(lines) {
     const kept = [];
     let fence;
+    let blank = false;
     for (const line of lines) {
         const mark = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
         if (fence === undefined) {
+            if (line.trim() === "") {
+                blank = kept.length > 0;
+                continue;
+            }
+            if (blank && !line.startsWith("- ")) kept.push("");
+            blank = false;
             if (mark !== undefined) fence = mark;
-            if (line.trim() === "" && (kept.length === 0 || (kept.at(-1) ?? "").trim() === "")) continue;
         } else if (mark !== undefined && mark[0] === fence[0] && mark.length >= fence.length) {
             fence = undefined;
         }
