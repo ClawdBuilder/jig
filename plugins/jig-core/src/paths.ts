@@ -39,7 +39,7 @@ export function configFile(agentDir: string): string {
 }
 
 /** Creates a folder with mode 0700 and tightens it when it already existed. */
-function makePrivate(dir: string): string {
+export function privateFolder(dir: string): string {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     chmodSync(dir, 0o700);
     return dir;
@@ -47,8 +47,8 @@ function makePrivate(dir: string): string {
 
 /** The state folder, or a folder below it, created private. Each level below the state folder is tightened too. */
 export function privateDir(...parts: string[]): string {
-    let dir = makePrivate(stateDir());
-    for (const part of parts) dir = makePrivate(join(dir, part));
+    let dir = privateFolder(stateDir());
+    for (const part of parts) dir = privateFolder(join(dir, part));
     return dir;
 }
 
