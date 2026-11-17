@@ -1,12 +1,12 @@
 // The update notice inside Pi: a background check at most once a day, silent when offline or when the person (or a company
 // default) turned it off. It tells the person only, through the screen; the model's context is never touched.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { companyRanges } from "./update-company.ts";
 import { compareVersions, currentPiRequirement, jigPackage, piVersion } from "./pi-version.ts";
 import { readPackages } from "./cli/packages.ts";
-import { stateDir } from "./paths.ts";
+import { privateFolder, replacePrivateFile, stateDir } from "./paths.ts";
 import { registryFor, registryUrl } from "./registry.ts";
 import type { JigState } from "./state.ts";
 import { selectTarget } from "./update-versions.ts";
@@ -47,8 +47,9 @@ function readCache(file: string): Cache {
 
 function writeCache(file: string, cache: Cache): void {
     try {
-        mkdirSync(path.dirname(file), { recursive: true });
-        writeFileSync(file, JSON.stringify(cache));
+        // The state folder's rule: folders 0700 and files 0600, and an older loose one is tightened.
+        privateFolder(path.dirname(file));
+        replacePrivateFile(file, JSON.stringify(cache));
     } catch {
         // A notice must never affect the session; the next start tries again.
     }

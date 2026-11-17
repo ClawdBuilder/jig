@@ -54,7 +54,7 @@ describe("list", () => {
 
     test("says whether a request reads or writes: by its method, or because the configuration says so", async () => {
         const text = ok(await h.call({ action: "list", collection: "acme" }));
-        assert.match(text, /Orders\/Search orders {2}POST .*\[reads; needs text\]/);
+        assert.match(text, /Orders\/Search orders {2}POST .*\[reads outside production; needs text\]/);
         assert.match(text, /Orders\/Cancel order {2}DELETE .*\[writes; needs orderId\]/);
         h.configure(acmeSection(h, { reads: [] }));
         assert.match(
@@ -149,6 +149,17 @@ describe("show", () => {
         assert.match(text, /^ {4}"customerId": "\{\{customerId\}\}",$/m);
         assert.ok(lines.includes("Docs: Creates an order for a customer."));
         assert.ok(lines.includes("From: acme-orders.postman_collection.json: Orders/Create order"));
+    });
+
+    test("an api.reads name is a read outside production, and a write in it", async () => {
+        const staging = ok(await h.call({ action: "show", request: "Search orders", ...acme }));
+        assert.ok(staging.split("\n").includes("Effect: reads"), "Staging is not production");
+        const production = ok(
+            await h.call({ action: "show", request: "Search orders", collection: "acme", environment: "Production" }),
+        );
+        assert.ok(production.split("\n").includes("Effect: writes"), "a production write must not look like a read");
+        const anywhere = ok(await h.call({ action: "show", request: "Search orders", collection: "acme" }));
+        assert.ok(anywhere.split("\n").includes("Effect: reads outside production"), "no environment named");
     });
 
     test("says where each variable gets its value in an environment, and what it still needs", async () => {

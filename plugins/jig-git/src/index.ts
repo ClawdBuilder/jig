@@ -8,6 +8,7 @@ import { validateGitSection } from "./config.ts";
 import { setAnnouncer } from "./events.ts";
 import { createFetchGuard } from "./fetch-guard.ts";
 import { gitTool } from "./git.ts";
+import { GIT_SETUP } from "./onboarding.ts";
 import { runsLaterGate } from "./runs-later-gate.ts";
 import { prTool } from "./pr.ts";
 import { registerCommentWatch } from "./pr-watch.ts";
@@ -31,7 +32,7 @@ export default function (pi: ExtensionAPI) {
         for (const tool of tools) api.declareTool(tool.declaration);
         api.config.registerSection("git", validateGitSection, {
             first: ["accounts"],
-            setup: { summary: "Work with git, pull requests and releases." },
+            setup: GIT_SETUP,
         });
         api.gates.register(fetchGuard.gate);
         api.gates.register(runsLaterGate);

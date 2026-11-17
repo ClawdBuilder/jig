@@ -112,6 +112,10 @@ export async function planMerge(
     const repo = await resolveRepo(params.repo, call.signal);
     const { signal } = call;
     const current = await requireBranch(repo.root, repo.name, "merging", signal);
+    if (await isProtected(repo, current, call.settings, signal))
+        throw new RefusedError(
+            `refusing to merge into protected branch ${current}; git.protected decides, and [] turns it off`,
+        );
     if (params.branch !== undefined && params.base !== undefined)
         throw new Error("git merge takes branch or base: not both");
     const other = params.branch === undefined ? undefined : checkBranch(params.branch);

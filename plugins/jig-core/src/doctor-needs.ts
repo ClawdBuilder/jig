@@ -1,12 +1,14 @@
 // The doctor's "You need:" lines: the fields a company's onboarding list says its tools need, and the settings do not
 // hold. A missing section is named once; a loaded section that lacks a required field is named field by field, in the
 // item's own words, so a tool refusing at run time is not the first word about it. Optional items are never named: that
-// is what makes them optional. Nor is a field the person left out with a `null`: they removed it on purpose.
+// is what makes them optional. Nor is a field the person left out with a `null`: they removed it on purpose. Nor is a
+// plugin whose questions are all optional and whose section works with nothing written: it runs on its defaults.
 import type { DoctorContext, DoctorLine } from "./doctor.ts";
 import { removedAt } from "./section-defaults.ts";
 import { sectionState } from "./section-state.ts";
 import { getPath } from "./setup-values.ts";
 import { decisionsFile, proposalId, proposalPresent, readDeclined } from "./setup-proposal.ts";
+import { onlyOptionalQuestions, passesWithoutSettings } from "./setup-menu.ts";
 
 /** The doctor's lines for sections that are not set up: a skip each for a plugin that can be asked, and one compact
  *  "Not set" line for the rest. */
@@ -20,6 +22,8 @@ export function notSetupLines(context: DoctorContext, sections: readonly string[
             rest.push(section);
             continue;
         }
+        // Every question optional and nothing written is a valid setup: say nothing rather than nag.
+        if (onlyOptionalQuestions(setup) && passesWithoutSettings(context.sectionChecks.get(section), {})) continue;
         lines.push({
             id: `config.section.${section}`,
             group: "config",

@@ -52,10 +52,10 @@ created, `jig-git:pushed` reaches `jig-ops` on Pi's event bus ([Events](docs/eve
 | `clone` | local write | `owner/name` into a new folder of the workspace, over SSH only |
 | `branch` | local write | Create from the fetched base, switch, or delete a merged branch |
 | `worktree` | read; adding and removing are local writes | List, add or remove worktrees |
-| `commit` | local write | Exact paths and a message; amend only while no remote has the commit |
+| `commit` | local write | Exact paths and a message; amend only while unpushed; a protected branch is refused |
 | `stash` | local write | Push, list, pop, drop |
 | `sync` | local write | Fast-forward from the upstream |
-| `merge` | local write | Merge the base or another branch; a conflict aborts cleanly |
+| `merge` | local write | Merge the base or another branch; a conflict aborts cleanly; a protected branch is refused |
 | `rebase`, `cherry_pick` | local write | A conflict aborts cleanly; a protected branch is refused |
 | `restore` | local write, asks | Discard changes in the listed paths; it destroys uncommitted work, so it asks |
 | `push` | external write, asks | A branch, with the commits in the preview; never a force to a protected branch |
@@ -130,6 +130,9 @@ The notes on single actions are in [Actions](docs/actions.md).
 In `~/.jig/jig.json`, under `git`. All fields are optional; a company
 plugin can set them for its repositories. `jig-core` reports an unknown or
 invalid field, and the defaults apply instead.
+
+`jig setup git` asks for the `gh` login and one `git.accounts` mapping per set
+of repositories, and `jig setup` offers it when no company plugin fills them in.
 
 | Field | Default | Meaning |
 |---|---|---|
