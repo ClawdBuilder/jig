@@ -1,6 +1,7 @@
 // The first `jig setup` on a machine with no home: check Pi, make the home, install Jig into it, write the `jig` shim, say
 // whether that folder is on PATH, and offer to copy the old Jig folder's settings. It moves and deletes nothing: the old
-// folder stays where it is, and a file in the shim's place that is not Jig's is left alone.
+// folder stays where it is, and a file in the shim's place that is not Jig's is left alone. So is a `jig` that already
+// runs another home: that is somebody's command, and switching it would hide the home it was set up for.
 import { spawn } from "node:child_process";
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -88,6 +89,59 @@ export function isShim(file: string): boolean {
     } catch {
         return false;
     }
+}
+
+/** What an existing `jig` runs: the program, and the home that program uses when `JIG_HOME` is unset. */
+export interface ShimTarget {
+    /** The `bin/jig.mjs` the shim starts. */
+    command: string;
+    /** The home it runs by default: the fallback the shim records, or `~/.jig` for the folder form, whose program reads the home. */
+    home: string;
+    /** The folder the shim names, when it names a program rather than a home. */
+    folder?: string;
+}
+
+/** The shim's `home` line: the fallback is escaped, so an unescaped `"` can only be the one that closes it. */
+const FOLDED_HOME = /^home="\$\{JIG_HOME:-((?:\\["\\$`]|[^"])*)\}"$/m;
+/** The shim's one command line for a folder Pi lists: a shell-quoted word, then the arguments. */
+const FIXED_COMMAND = /^exec node '(.*)' "\$@"$/m;
+
+/**
+ * What a `jig` shim runs, read from the lines it wrote: the home its fallback names, and the program it starts. Undefined
+ * when the text is not a shim this writes.
+ */
+export function shimTarget(text: string, personHome: string): ShimTarget | undefined {
+    if (!text.includes(SHIM_MARKER)) return undefined;
+    const folded = FOLDED_HOME.exec(text);
+    if (folded !== null) {
+        const written = (folded[1] as string).replace(/\\(["\\$`])/g, "$1");
+        const home = written === `$HOME/${HOME_FOLDER}` ? path.join(personHome, HOME_FOLDER) : written;
+        return { command: path.join(homeNpmFolder(home), "bin", "jig.mjs"), home };
+    }
+    const fixed = FIXED_COMMAND.exec(text);
+    if (fixed !== null) {
+        const command = (fixed[1] as string).replaceAll(`'\\''`, `'`);
+        // A listed folder is a program, not a home: it reads JIG_HOME, else ~/.jig, when it runs.
+        return { command, home: path.join(personHome, HOME_FOLDER), folder: path.dirname(path.dirname(command)) };
+    }
+    return undefined;
+}
+
+/** Whether an existing shim already runs this home's Jig, by the home it records or the program it names. */
+function runsHome(target: ShimTarget, home: string, command: string | undefined): boolean {
+    if (command !== undefined && path.resolve(target.command) === path.resolve(command)) return true;
+    return path.resolve(target.home) === path.resolve(home);
+}
+
+/** What an existing `jig` runs, in one phrase for the person. */
+function shimRuns(target: ShimTarget): string {
+    return target.folder === undefined ? `runs the Jig home at ${target.home}` : `runs the Jig in ${target.folder}`;
+}
+
+/** The line for a `jig` that runs another home: which one, and the two ways to reach this home instead. */
+function keptShimMessage(shim: string, target: ShimTarget, home: string): string {
+    const named = home.replace(/(["\\$`])/g, "\\$1");
+    return `The jig command at ${shim} ${shimRuns(target)}, so it was left alone. To use this home through it, run JIG_HOME="${named}" jig …; for a second command, run jig setup --bin <folder>.`;
 }
 
 function onPath(binDir: string, env: NodeJS.ProcessEnv): boolean {
@@ -215,9 +269,11 @@ export async function bootstrap(options: BootstrapOptions): Promise<BootstrapRes
         result.installed = source;
     }
     result.version = homeVersion(home);
-    const binDir = options.binDir ?? path.join(personHome(env), ".local", "bin");
+    const person = personHome(env);
+    const binDir = options.binDir ?? path.join(person, ".local", "bin");
     const shim = path.join(binDir, SHIM_NAME);
-    const expected = shimText(home, personHome(env), homeCommand(home));
+    const command = homeCommand(home);
+    const expected = shimText(home, person, command);
     if (existsSync(shim) && !isShim(shim)) {
         result.problems.push(
             `There is a file at ${shim} that is not the Jig command, so it was left alone. Move it, or run jig setup --bin <folder>.`,
@@ -225,7 +281,29 @@ export async function bootstrap(options: BootstrapOptions): Promise<BootstrapRes
         return result;
     }
     mkdirSync(binDir, { recursive: true });
-    if (!existsSync(shim) || readFileSync(shim, "utf8") !== expected) {
+    const current = existsSync(shim) ? readFileSync(shim, "utf8") : undefined;
+    const target = current === undefined ? undefined : shimTarget(current, person);
+    let writing = current === undefined;
+    if (current !== undefined && current !== expected) {
+        if (target === undefined) {
+            options.ui.notify(
+                `The jig command at ${shim} is not one this version of jig setup understands, so it was left alone. Move it, or run jig setup --bin <folder>.`,
+                "warning",
+            );
+        } else if (runsHome(target, home, command)) {
+            // The same home, in an older shim: this is today's repair, and what makes `jig` point at the home again.
+            writing = true;
+        } else {
+            const said = keptShimMessage(shim, target, home);
+            // Another home's command is the person's own until they say otherwise, and `--yes` never replaces it.
+            if (options.migrate === "ask" && (await options.ui.confirm(`Replace the jig command at ${shim}?`, said))) {
+                writing = true;
+            } else {
+                options.ui.notify(said, "warning");
+            }
+        }
+    }
+    if (writing) {
         writeFileSync(shim, expected, { mode: 0o755 });
         chmodSync(shim, 0o755);
         options.ui.notify(`Wrote the jig command to ${shim}.`, "info");

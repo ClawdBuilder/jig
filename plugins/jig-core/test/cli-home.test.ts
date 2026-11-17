@@ -572,6 +572,84 @@ describe("jig setup", () => {
         assert.match(result.stdout, /that is not the Jig command, so it was left alone/);
     });
 
+    /** A second Jig home with a copy of this checkout, as `pi install` leaves one; no real Pi or npm is needed. */
+    function secondHome(name: string): string {
+        const other = path.join(root, name);
+        const folder = path.join(other, "npm", "node_modules", "@clawdbuilder", "jig");
+        mkdirSync(path.dirname(folder), { recursive: true });
+        symlinkSync(ROOT, folder, "dir");
+        return other;
+    }
+
+    test("a jig command for this home written the old way is repaired", async () => {
+        installedHome();
+        const shim = path.join(home, ".local", "bin", "jig");
+        mkdirSync(path.dirname(shim), { recursive: true });
+        // An older setup wrote the home as its own path, and the folder form's shorter comment line.
+        writeFileSync(
+            shim,
+            `#!/bin/sh\n# jig-shim: written by jig setup\nhome="\${JIG_HOME:-${jig}}"\nexec node "$home/npm/node_modules/@clawdbuilder/jig/bin/jig.mjs" "$@"\n`,
+            { mode: 0o755 },
+        );
+        const result = await run(["setup", "--yes"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const text = readFileSync(shim, "utf8");
+        assert.match(text, /home="\$\{JIG_HOME:-\$HOME\/\.jig\}"/, "the same home, written as $HOME/.jig");
+        assert.match(text, /safe to delete\. JIG_HOME moves the home\./);
+        assert.match(result.stdout, /Wrote the jig command to /);
+    });
+
+    test("a jig command for another home is kept, and setup says which home it runs", async () => {
+        installedHome();
+        const first = await run(["setup", "--yes"]);
+        assert.equal(first.code, 0, first.stdout + first.stderr);
+        const shim = path.join(home, ".local", "bin", "jig");
+        const before = readFileSync(shim, "utf8");
+        const other = secondHome("other-home");
+        const result = await run(["setup"], { env: { JIG_HOME: other } });
+        // The home is ready: only the terminal's questions are missing, as on a script.
+        assert.equal(result.code, 2, result.stdout + result.stderr);
+        assert.equal(readFileSync(shim, "utf8"), before, "the jig command was left as it was");
+        assert.ok(
+            result.stdout.includes(`runs the Jig home at ${jig}, so it was left alone`),
+            `which home the existing jig runs: ${result.stdout}`,
+        );
+        assert.ok(result.stdout.includes(`JIG_HOME="${other}" jig`), `how to reach the new home: ${result.stdout}`);
+        assert.match(result.stdout, /jig setup --bin <folder>/);
+    });
+
+    test("--yes keeps a jig command for another home too", async () => {
+        installedHome();
+        const first = await run(["setup", "--yes"]);
+        assert.equal(first.code, 0, first.stdout + first.stderr);
+        const shim = path.join(home, ".local", "bin", "jig");
+        const before = readFileSync(shim, "utf8");
+        const other = secondHome("other-home");
+        const result = await run(["setup", "--yes"], { env: { JIG_HOME: other } });
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.equal(readFileSync(shim, "utf8"), before, "--yes never replaces another home's jig command");
+        assert.ok(result.stdout.includes(`runs the Jig home at ${jig}, so it was left alone`), result.stdout);
+        assert.equal(result.stdout.includes("Wrote the jig command"), false, "no command was written");
+    });
+
+    test("--bin writes the command to another folder and leaves the first one", async () => {
+        installedHome();
+        const first = await run(["setup", "--yes"]);
+        assert.equal(first.code, 0, first.stdout + first.stderr);
+        const shim = path.join(home, ".local", "bin", "jig");
+        const before = readFileSync(shim, "utf8");
+        const other = secondHome("other-home");
+        const second = path.join(root, "second-bin");
+        const result = await run(["setup", "--yes", "--bin", second], { env: { JIG_HOME: other } });
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.ok(existsSync(path.join(second, "jig")), "the command is written in the named folder");
+        assert.ok(
+            readFileSync(path.join(second, "jig"), "utf8").includes(`home="\${JIG_HOME:-${other}}"`),
+            "the second command runs the second home",
+        );
+        assert.equal(readFileSync(shim, "utf8"), before, "the first command is left alone");
+    });
+
     test("running it again does the questions only, and repairs a missing jig command", async () => {
         installedHome();
         const result = await run(["setup", "--yes"]);
