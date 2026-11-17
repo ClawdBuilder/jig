@@ -288,8 +288,9 @@ api.onboarding?.register({
 - **`info` comes before the questions and `pick` offers your plain choices.** Items are asked in your order, and the sections you
   name come first; the rest of the settings keep their own order.
 - **A plugin asks for its own section too.** `registerSection(name, validate, { setup })` takes a `summary` and `items`: the
-  same kinds, each naming that section. Setup's plugin list shows every section that registered one, and the doctor says a
-  plugin with questions is not set up. Your list comes first: your words, and a default of yours skips the same question.
+  same kinds, each naming that section. Setup's plugin list shows every section that registered one, and the doctor names a
+  plugin with questions that is not set up, unless all of them are optional and its section works with nothing written.
+  Your list comes first: your words, and a default of yours skips the same question.
 - **`text.list` asks for a short list and `entry` for one map entry.** A `text` item with `list: true` takes one entry per
   line or separated by commas, such as project keys. An `entry` item asks one key and one value of an ordered map (such as
   `git.accounts`), `detect` may propose the value, `optional` leaves the map unset when its key is empty, and `repeat` asks

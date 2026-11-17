@@ -392,13 +392,14 @@ describe("an entry of a map", () => {
 });
 
 describe("git's setup", () => {
-    test("without accounts it is not set up, and one mapping is the only question", () => {
+    test("without accounts it is ready (optional settings), and one mapping is the only question", () => {
         const state = gitState();
         const lines = pluginLines(setupStateFrom(state), {});
         assert.deepEqual(
             lines.map((line) => [line.label, line.status]),
-            [["Git", "not set up"]],
+            [["Git", "ready (optional settings)"]],
         );
+        assert.match(lines[0]?.text ?? "", /^Git\s+ready \(optional settings\)\s+Work with git/);
         const questions = sectionQuestions(setupStateFrom(state), "git", {}, true);
         assert.deepEqual(
             questions.fields.map((field) => field.path),
@@ -412,6 +413,17 @@ describe("git's setup", () => {
         assert.equal(field?.entry?.valueLabel, "Which gh account?");
         assert.equal(field?.entry?.detect, "gh-account");
         assert.equal(field?.entry?.repeat, true);
+    });
+
+    test("jira, whose questions are required, is still not set up", () => {
+        const lines = pluginLines(setupStateFrom(stateWith({})), {});
+        assert.equal(lines.find((line) => line.label === "Jira")?.status, "not set up");
+    });
+
+    test("the doctor gives it no not-set-up line", () => {
+        const lines: Array<{ title: string; detail: string }> = [];
+        notSetupLines(doctorContext(gitState()), ["git"], lines as never);
+        assert.deepEqual(lines, [], "nothing to fix: git runs on its defaults until a mapping is wanted");
     });
 
     test("with accounts it is set up, and setup asks nothing for it", () => {
