@@ -161,7 +161,7 @@ async function askEntry(
         }
         if ("change" in result) changes.push(result.change);
         if (entry.repeat !== true) return "ok";
-        const again = await ui.confirm("Add another entry?", `Another key and value in ${field.label}.`);
+        const again = await ui.confirm("Add another entry?", "One more key and value, written the same way.");
         if (!again) return "ok";
     }
 }

@@ -98,7 +98,8 @@ company plugin or a validator says are incomplete or wrong.
 **The plugin list.** After those questions, setup shows every plugin that said what it needs, one line each: its name, its
 status and a one-sentence summary. The status is `set up` (its settings pass its own check), `not set up` (it has questions
 to ask), `not set up (questions coming)` (it needs settings setup cannot ask for yet: it says which page to read and shows a
-section to add by hand), or `ready` (nothing to ask; Jig's defaults apply). Pick a plugin and setup asks its questions,
+section to add by hand), `ready (optional settings)` (every question is optional and the plugin works with nothing written;
+pick it to answer them), or `ready` (nothing to ask; Jig's defaults apply). Pick a plugin and setup asks its questions,
 including how you sign in; it comes back to the list afterwards, and a plugin you set up shows `set up`. **Done** writes
 everything once, with one backup and one confirmation, so a cancel writes nothing.
 
@@ -255,7 +256,8 @@ tool's own status. A field's value is never read to check it.
 - **A section that is not loaded.** The message names the key. A company's defaults can wait for the part only you
   know, such as your login on a bastion host.
 - **A plugin that is not set up.** The doctor's line says `not set up:` with what the plugin does and
-  `Run jig setup <section>.` Nothing is wrong until its tools need it; setup's plugin list asks the questions.
+  `Run jig setup <section>.` Nothing is wrong until its tools need it; setup's plugin list asks the questions. A plugin
+  whose questions are all optional, and whose section works with nothing written, gets no line: it runs on its defaults.
 - **A login tool that is not signed in.** The fix is its own command, such as `gh auth login`.
 - **A program that is missing.** The fix is the install command. Jig installs nothing.
 

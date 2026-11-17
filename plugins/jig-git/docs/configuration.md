@@ -34,7 +34,7 @@ The fields of the `git` section of `jig.json`, in detail. The table is in the
   one call; they never run `gh auth switch`, never store the token, and register it for redaction. No match means today's
   behaviour: the active `gh` account. An account whose token cannot be read, or a gh too old for `--user`, is a one-line error
   that says which account and what to do. Your entries merge with a company's by pattern; your account name wins for the same
-  pattern.
+  pattern. `jig setup git` asks for one mapping per set of repositories and offers the account `gh auth status` finds.
 - **`forges`:** an object of host names. It names the hosts that `ssh -G` cannot explain and that are not `github.com` or `gitlab.com`,
   such as a self-hosted GitLab. Each entry is a forge, `"github"` or `"gitlab"`, as in `{ "gitlab.example.com": "gitlab" }`, or an
   object `{ "forge": "github", "host": "ghe.example.com" }`. Host names are compared without regard to case, and carry no port. An

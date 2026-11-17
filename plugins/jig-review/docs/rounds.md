@@ -35,6 +35,9 @@ One JSON file per review, in `<agent folder>/jig-review/workspaces/<name>-<hash>
 | `approval` | `{ method: "passkey" \| "page-and-pi", at, fingerprint? }`, present exactly when approved |
 | `approvedHeads` | the full commit of each reviewed repository, only when the approved diff was still the current one |
 
+Commenting on an approved review opens it again (`awaiting-agent`), and the approval fields go with the status: the
+record never keeps an approval that no longer holds.
+
 A **branch** review vouches for commits: the diff you approved is hashed against the current one, and
 only if they match does the record hold `approvedHeads`.
 
