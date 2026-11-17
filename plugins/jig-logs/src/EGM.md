@@ -10,7 +10,8 @@ The `logs` tool: one read-only search of an Elasticsearch, OpenSearch or Loki ba
 
 ## Interface
 
-- **Entry** (`index.ts`): the default export registers `tool.definition` with `registerJigTool`, then inside `withJig` declares the tool and registers the `logs` config section with `replace: ["backend.auth"]`, `oneOf: [["backend.auth", "backend.transport"]]`, `methods: LOGS_METHODS` and a `setup` summary with a pending example.
+- **Entry** (`index.ts`): the default export registers `tool.definition` with `registerJigTool`, then inside `withJig` declares the tool and registers the `logs` config section with `replace: ["backend.auth"]`, `oneOf: [["backend.auth", "backend.transport"]]`, `methods: LOGS_METHODS` and `setup: LOGS_SETUP`.
+- **Setup** (`onboarding.ts`): `LOGS_SETUP`, the plugin's setup questions: a `pick` for `backend.type`, a `text` for `backend.url`, and an `object` item for an environment (an Elasticsearch `index`, the fallback form, or, when the backend is Loki, a stream `selector`).
 - **Tool** (`tool.ts`): `createLogsTool(deps?)` returns `{ definition, declaration }`; `LogsDeps` is `now` and `timeoutMs`. `declaration.classify` returns `{ environment: target.jigEnvironment, effect: "read" }`.
 - **Input** (`params.ts`): `logsParameters` (`additionalProperties: false`), `checkParams`, `resolveQuery`, `resolveView`, `USAGE`, `DEFAULT_WINDOW` (`2h`), `DEFAULT_SIZE` 50, `MAX_SIZE` 200, `MAX_PHRASE_CHARS` 512, `MAX_QUERY_CHARS` 2000, `MAX_TERMS` 5, `MAX_TERM_CHARS` 200. `LogQuery` is in `query.ts`.
 - **Config** (`config.ts`): `validateLogsSection`, `settingsFrom` (pure), `logsSettings`, `requireSettings`, `targetFor`; types `LogsSettings`, `Target`, `ElasticTarget`, `LokiTarget`, `Backend`, `Auth` (basic, apiKey, bearer, signIn), `BackendType`. `filter.ts`: `checkFilter`, `isList`.

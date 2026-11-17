@@ -5,6 +5,10 @@ the one company plugin in this repository, and its tests run with `npm test`.
 
 - **Read first:** [Architecture](docs/architecture.md), [Permissions](docs/permissions.md) and the
   [Glossary](docs/glossary.md).
+- **`EGM.md` is for agents, `README.md` for people.** Every plugin has an `EGM.md`, and most source folders do too: its
+  interface, invariants, side effects and verification command. Start at the root [EGM.md](EGM.md), open the one nearest the code
+  you change, and read the folder's `README.md` for the specification. No test compares an `EGM.md` with the code, so when you
+  change a folder's interface, invariants or side effects, change its `EGM.md` in the same commit.
 - **Generic only.** Nothing company-specific goes here: no company names, internal system names, environment names or
   hostnames. Those belong in a private company plugin; [Writing a company plugin](docs/company-plugin.md) shows how.
   Examples use `staging`, `orders-api`, `PROJ-123`, `api.staging.example.com` and GitHub Actions.
