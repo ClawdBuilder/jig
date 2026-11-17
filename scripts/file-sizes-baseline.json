@@ -4,7 +4,7 @@
     "plugins/jig-api/src/sources/http-file.ts": 568,
     "plugins/jig-core/src/api.ts": 507,
     "plugins/jig-core/src/config.ts": 957,
-    "plugins/jig-core/src/contract.ts": 823,
+    "plugins/jig-core/src/contract.ts": 777,
     "plugins/jig-core/src/doctor-checks.ts": 565,
     "plugins/jig-core/src/exec.ts": 536,
     "plugins/jig-core/src/kit/http.ts": 667,
