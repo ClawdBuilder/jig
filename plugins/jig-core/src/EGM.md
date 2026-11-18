@@ -96,7 +96,7 @@ Plugin overview: [jig-core](../EGM.md).
   registration. The doctor counts an `object` item as missing while its map is empty (`doctor-needs.ts`). Changing or removing an object stays
   the settings file's job ([Decisions](../../../docs/decisions.md#2026-11-17-setup-adds-one-named-object-of-a-map)). An empty `path` makes the
   section itself the map (`transports`), a form's `fixed` values are written without a question (`kind: "relay"`), and `optional` lets an empty name
-  leave the map unset. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` is offered only while a
+  leave the map unset. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is offered only while a
   transport exists (the person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run)
   ([Decisions](../../../docs/decisions.md#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)).
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless

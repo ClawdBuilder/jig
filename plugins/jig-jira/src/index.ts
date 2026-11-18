@@ -91,6 +91,15 @@ export const JIRA_METHODS = [
                 label: "Relay or transport for Jira requests",
                 why: "Jig sends each request to it by name, and it signs in; no Jira token is kept.",
             },
+            {
+                kind: "number",
+                path: "timeoutSeconds",
+                label: "Jira request time limit (seconds)",
+                optional: true,
+                question:
+                    "How long may a Jira request take, in seconds? (optional: Enter keeps 30; a browser relay may need up to 120 right after you sign in)",
+                why: "A request that takes longer is stopped. The limit is 5 to 120 seconds.",
+            },
         ],
     },
 ] as const;

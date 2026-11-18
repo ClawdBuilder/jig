@@ -49,9 +49,9 @@ export async function chooseReference(
         ...(keep ? ["Keep the current place"] : []),
         ...choice.stores.map(
             (store) =>
-                `${storeChoiceLabel(store)}${choice.preferred === store ? " (company default)" : ""}${
-                    choice.current === store ? " (current)" : ""
-                }`,
+                `${store === "file" && choice.fileExpected === true ? "A file" : storeChoiceLabel(store)}${
+                    choice.preferred === store ? " (company default)" : ""
+                }${choice.current === store ? " (current)" : ""}`,
         ),
     ];
 
@@ -65,7 +65,7 @@ export async function chooseReference(
         const store = choice.stores[labels.indexOf(picked) - (keep ? 1 : 0)];
         if (store === undefined) continue;
 
-        if (store === "file") {
+        if (store === "file" && choice.fileExpected !== true) {
             const ok = await ui.confirm(
                 "Use a file?",
                 "A file is plain text on disk. A password store or 1Password is safer.",

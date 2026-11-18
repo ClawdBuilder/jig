@@ -137,6 +137,10 @@ closed instead of running ungoverned.
     setup offers it while a transport exists (the person's `transports`, a
     company's defaults, one a company plugin registered, or one answered earlier
     in the same run), asks which as a pick of those names, and writes the name.
+    Its first field is that name, a required `text` one; later fields must be
+    optional, such as a `number` field for a time limit (a method field may be
+    `text`, `number`, `pick` or `reference`, and a `text` or `number` field may
+    carry a `question`, the whole prompt, when its label reads badly as one).
   - `{ setup }` declares what the section needs from a person, in the plugin's
     own words. `summary` is one line for setup's plugin list and the doctor's
     "not set up" line. `items` are the questions, in the plugin's order: the

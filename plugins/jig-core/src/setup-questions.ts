@@ -215,12 +215,19 @@ function offerStores(
               preferredStore?: OnboardingStore;
               suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
               addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+              fileExpected?: boolean;
           }
         | undefined,
     entryPreferred?: OnboardingStore,
 ): void {
     if (value?.stores !== undefined) {
         reference.stores = value.stores.filter((store) => reference.stores.includes(store));
+    }
+    // The program that makes the credential writes it to a file: the file comes first, and a company's own choice still
+    // goes before it.
+    if (value?.fileExpected === true && reference.stores.includes("file")) {
+        reference.fileExpected = true;
+        reference.stores = ["file", ...reference.stores.filter((store) => store !== "file")];
     }
     const preferred = value?.preferredStore ?? entryPreferred;
     if (preferred !== undefined && reference.stores.includes(preferred)) {

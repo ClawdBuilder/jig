@@ -298,7 +298,9 @@ api.onboarding?.register({
   then one of its `forms` (each a list of `text`, `pick` and `reference` questions with paths inside the new object), and
   `repeat` asks for another. Setup is add-only: a name already in the map is refused, and an existing entry is edited in
   `jig.json`, or left out of a company's defaults with a `null`. An empty `path` makes the section itself the map, a form's
-  `fixed` values are written without a question, and `optional` lets an empty name leave the map unset. A plugin cannot use `proposal`; a company can. An older Jig
+  `fixed` values are written without a question, and `optional` lets an empty name leave the map unset. A `reference` question may say
+  `fileExpected: true` when the program that makes the credential writes it to a file: setup then lists the file store first,
+  as "A file", and does not ask the weak-choice question. A plugin cannot use `proposal`; a company can. An older Jig
   refuses a list with these kinds, as it does with `proposal`.
 - **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never
   registers a profile applies always, as with every other seam.

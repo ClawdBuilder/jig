@@ -185,6 +185,32 @@ describe("a session relay in setup", () => {
         assert.doesNotMatch(readFileSync(file, "utf8"), new RegExp(TOKEN_LINE));
     });
 
+    test("a file is the first choice for the token, as `A file`, and asks no warning", async () => {
+        const state = stateWith();
+        const ui = relayAnswers(new ScriptedUi(), "orders-relay", relayUrl);
+        assert.equal(await runSetup(state, ui, "transports"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /select: Where does the relay's token live\? \[A file \| /);
+        assert.doesNotMatch(seen, /not recommended/);
+        assert.doesNotMatch(seen, /confirm: Use a file\?/);
+        assert.equal(written().transports["orders-relay"].token, `file:${tokenFile}`);
+    });
+
+    test("another credential keeps the weak-choice label and its question", async () => {
+        const state = stateWith();
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Personal access token")
+            .picking(/Where does the Jira personal access token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /A file \(not recommended\)/);
+        assert.match(seen, /confirm: Use a file\?/);
+    });
+
     test("the health check is one GET without the token, and nothing else is sent", async () => {
         const state = stateWith();
         const ui = relayAnswers(new ScriptedUi(), "orders-relay", relayUrl);
@@ -333,8 +359,11 @@ describe("Jira and logs through a session relay", () => {
             (method) => method.id === "transport",
         );
         assert.deepEqual(
-            jira?.fields.map((field) => [field.path, field.kind, field.choices]),
-            [["auth.transport", "pick", ["orders-relay"]]],
+            jira?.fields.map((field) => [field.path, field.kind, field.choices, field.optional]),
+            [
+                ["auth.transport", "pick", ["orders-relay"], undefined],
+                ["timeoutSeconds", "number", undefined, true],
+            ],
         );
         assert.match(jira?.label ?? "", /Through a session relay or transport/);
         assert.deepEqual(methodIds(state, "logs", relays), ["basic", "api-key", "token", "transport"]);
@@ -407,6 +436,7 @@ describe("Jira and logs through a session relay", () => {
             .reading(/Project keys to work in/, "")
             .picking(/How do you sign in to Jira/, "Through a session relay")
             .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may a Jira request take/, "")
             .picking(/Review these changes/, "Save these changes");
         assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
         assert.deepEqual(written().jira, { site: "https://jira.example.com", auth: { transport: "orders-relay" } });
@@ -414,6 +444,53 @@ describe("Jira and logs through a session relay", () => {
             ui.seen.join("\n"),
             /select: How do you sign in to Jira\? \[.*Through a session relay or transport/,
         );
+        assert.match(ui.seen.join("\n"), /Jira request time limit \(seconds\) left unset \(optional\)\./);
+    });
+
+    test("Jira asks one optional time limit right after the relay pick, and writes it as a number", async () => {
+        const state = stateWith(relays);
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may a Jira request take/, "200")
+            .reading(/How long may a Jira request take/, "soon")
+            .reading(/How long may a Jira request take/, "120")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.deepEqual(written().jira, {
+            site: "https://jira.example.com",
+            auth: { transport: "orders-relay" },
+            timeoutSeconds: 120,
+        });
+        const seen = ui.seen.join("\n");
+        assert.match(
+            seen,
+            /input: How long may a Jira request take, in seconds\? \(optional: Enter keeps 30; a browser relay may need up to 120 right after you sign in\)$/m,
+        );
+        assert.ok(
+            seen.indexOf("select: Relay or transport for Jira requests") < seen.indexOf("input: How long may a Jira"),
+            "the time limit comes right after the relay pick",
+        );
+        assert.match(seen, /Jira request time limit \(seconds\) must be a whole number of seconds from 5 to 120\./);
+        assert.match(seen, /Jira request time limit \(seconds\) must be a number\./);
+        assert.match(seen, /Jira request time limit \(seconds\): 120 \(new\)/);
+    });
+
+    test("Jira asks no time limit for the other ways to sign in", async () => {
+        const state = stateWith(relays);
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Personal access token")
+            .picking(/Where does the Jira personal access token live/, "An environment variable")
+            .reading(/Which environment variable/, "JIRA_PAT")
+            .picking(/Not found yet/, "Continue without it")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.doesNotMatch(ui.seen.join("\n"), /How long may a Jira request take/);
+        assert.equal(written().jira.timeoutSeconds, undefined);
     });
 
     test("logs writes logs.backend.transport from the pick", async () => {
@@ -426,6 +503,7 @@ describe("Jira and logs through a session relay", () => {
             .reading(/The index or pattern to search/, "app-logs-*")
             .picking(/How do you sign in to Logs/, "Through a session relay")
             .picking(/Relay or transport for log searches/, "orders-relay")
+            .reading(/How long may a log request take/, "")
             .picking(/Review these changes/, "Save these changes");
         assert.equal(await runSetup(state, ui, "logs"), 0, ui.seen.join("\n"));
         assert.deepEqual(written().logs.backend, {
@@ -433,6 +511,32 @@ describe("Jira and logs through a session relay", () => {
             url: "https://logs.example.com:9200",
             transport: "orders-relay",
         });
+        assert.equal(written().logs.timeoutSeconds, undefined, "left unset, so the default 30 applies");
+    });
+
+    test("logs asks one optional time limit right after the relay pick, and writes it as a number", async () => {
+        const state = stateWith(relays);
+        const ui = new ScriptedUi(["Done"], [false, true])
+            .picking(/Log backend/, "elasticsearch")
+            .reading(/Backend address/, "https://logs.example.com:9200")
+            .reading(/Which environment\?/, "staging")
+            .reading(/The index or pattern to search/, "app-logs-*")
+            .picking(/How do you sign in to Logs/, "Through a session relay")
+            .picking(/Relay or transport for log searches/, "orders-relay")
+            .reading(/How long may a log request take/, "4")
+            .reading(/How long may a log request take/, "90")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "logs"), 0, ui.seen.join("\n"));
+        assert.equal(written().logs.timeoutSeconds, 90);
+        const seen = ui.seen.join("\n");
+        assert.match(
+            seen,
+            /input: How long may a log request take, in seconds\? \(optional: Enter keeps 30; a browser relay may need up to 120 right after you sign in\)$/m,
+        );
+        assert.match(seen, /Log request time limit \(seconds\) must be a whole number of seconds from 5 to 120\./);
+        assert.ok(
+            seen.indexOf("select: Relay or transport for log searches") < seen.indexOf("input: How long may a log"),
+        );
     });
 
     test("a relay answered earlier in the same run makes Jira offer it, and one run writes both", async () => {
@@ -441,7 +545,8 @@ describe("Jira and logs through a session relay", () => {
             .reading(/Your Jira address/, "https://jira.example.com")
             .reading(/Project keys to work in/, "")
             .picking(/How do you sign in to Jira/, "Through a session relay")
-            .picking(/Relay or transport for Jira requests/, "orders-relay");
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may a Jira request take/, "");
         assert.equal(await runSetup(state, ui), 0, ui.seen.join("\n"));
         const saved = written();
         assert.deepEqual(saved.transports, {
@@ -466,6 +571,57 @@ describe("Jira and logs through a session relay", () => {
 });
 
 describe("what registration accepts for it", () => {
+    test("a number field is a plugin method's, never a company's fixed one, and fileExpected is true or false", () => {
+        const api = buildApi(createState(fakePi().pi, { env: {} }));
+        const method = (fields: unknown[]) => [
+            { id: "transport", label: "Through a transport", viaTransport: true, fields },
+        ];
+        const name = { kind: "text", path: "auth.transport", label: "Which" };
+        assert.doesNotThrow(() =>
+            api.config.registerSection("jira", validateJira, {
+                methods: method([
+                    name,
+                    { kind: "number", path: "timeoutSeconds", label: "Seconds", optional: true },
+                ]) as never,
+            }),
+        );
+        assert.throws(
+            () =>
+                buildApi(createState(fakePi().pi, { env: {} })).config.registerSection("jira", validateJira, {
+                    methods: method([name, { kind: "number", path: "timeoutSeconds", label: "Seconds" }]) as never,
+                }),
+            /every field after the transport's name must be optional/,
+        );
+        assert.throws(
+            () =>
+                checkOnboarding({
+                    items: [],
+                    methods: {
+                        jira: {
+                            add: [
+                                {
+                                    id: "x",
+                                    label: "X",
+                                    fields: [{ kind: "number", path: "a", label: "A", value: "1" }],
+                                },
+                            ],
+                        },
+                    },
+                }),
+            /fixes text, not a number/,
+        );
+        const object = (fileExpected: unknown) => ({
+            kind: "object",
+            section: "orders",
+            path: "relays",
+            label: "Relay",
+            keyLabel: "Which?",
+            forms: [{ fields: [{ kind: "reference", path: "token", label: "Token", fileExpected }] }],
+        });
+        assert.doesNotThrow(() => checkOnboarding({ items: [object(true)] }));
+        assert.throws(() => checkOnboarding({ items: [object("yes")] }), /fileExpected: true or false/);
+    });
+
     test("a method that goes through a transport has exactly one required text field", () => {
         const api = buildApi(createState(fakePi().pi, { env: {} }));
         const bad = [

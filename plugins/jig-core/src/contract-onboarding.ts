@@ -38,9 +38,10 @@ export interface OnboardingMethod {
     /** True for a method only a company plugin makes usable, such as its sign-in service or transport: setup offers it
      *  only while a company is active, and a company's `add` still prefills it. */
     companyOnly?: boolean;
-    /** True for a method that sends the tool's requests through a transport, whose name is its one required `text` field:
-     *  setup offers it while a transport exists (the person's `transports`, a company's defaults, one a company plugin
-     *  registered, or one answered earlier in the same run), asks which as a pick of those names, and writes the name. */
+    /** True for a method that sends the tool's requests through a transport, whose name is its first field, a required
+     *  `text` one (any field after it is optional): setup offers it while a transport exists (the person's `transports`, a
+     *  company's defaults, one a company plugin registered, or one answered earlier in the same run), asks which as a pick
+     *  of those names, and writes the name. */
     viaTransport?: boolean;
 }
 
@@ -54,8 +55,23 @@ export type OnboardingMethodField =
           why?: string;
           placeholder?: string;
           optional?: boolean;
+          /** The whole prompt, when the label reads badly as a question; the label still names the answer in the summary.
+           *  An optional field's prompt then carries its own "(optional: ...)" note. */
+          question?: string;
           /** A fixed answer, for a company-only method. */
           value?: string;
+      }
+    | {
+          /** A whole number, such as a time limit in seconds; the section's own check says the range. Never fixed by a
+           *  company. */
+          kind: "number";
+          path: string;
+          label: string;
+          why?: string;
+          placeholder?: string;
+          optional?: boolean;
+          /** The whole prompt, as for `text`. */
+          question?: string;
       }
     | {
           kind: "pick";
@@ -109,6 +125,9 @@ export type OnboardingObjectField =
           suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
           /** What to tell the person to add it, per store. */
           addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          /** True when the program that makes this credential writes it to a file, so a file is the normal answer: it is
+           *  offered first, as "A file", without the weak-choice label or the "Use a file?" question. */
+          fileExpected?: boolean;
           why?: string;
       };
 

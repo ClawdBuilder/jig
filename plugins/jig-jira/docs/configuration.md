@@ -93,6 +93,6 @@ The fields of the `jira` section of `jig.json`, in detail. Back to the overview.
 | `{ "email": "...", "token": "<secret reference>" }` | Basic authentication with an API token | Jira Cloud |
 | `{ "token": "<secret reference>" }` | A personal access token, sent as a Bearer token | Jira Data Center |
 | `{ "signIn": "<service name>" }` | The headers of a company sign-in service, asked for on every request | A company's single sign-on |
-| `{ "transport": "<name>" }` | A company transport: every request goes through it, and the tool holds no token | A company that reaches Jira only through a local sign-in proxy |
+| `{ "transport": "<name>" }` | A transport, a company's or a relay under `transports`: every request goes through it, no token kept | Jira reached only through a sign-in proxy or a session relay |
 | `{ "oauth": "cmd:<name>", "cloudId": "<id>" }` | An OAuth access token printed by a declared command, sent as Bearer; `cloudId` selects the Cloud API address | Cloud 3LO ([guide](oauth.md)) |
 | `{ "oauth": "cmd:<name>" }` | The same Bearer token, sent to the site URL | Data Center OAuth ([guide](oauth.md)) |

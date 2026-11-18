@@ -33,7 +33,8 @@ export function setupMethods(
         if (target !== undefined && target.id === method.id) {
             const values = new Map<string, string>();
             for (const field of method.fields) {
-                if (field.kind !== "reference" && field.value !== undefined) values.set(field.path, field.value);
+                if (field.kind !== "reference" && field.kind !== "number" && field.value !== undefined)
+                    values.set(field.path, field.value);
             }
             prefill.set(method.id, values);
             continue;
@@ -64,7 +65,9 @@ export function setupMethods(
                 const at = getPath(merged, path);
                 const current =
                     typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
-                const value = fixed?.get(field.path) ?? (field.kind === "reference" ? undefined : field.value);
+                const value =
+                    fixed?.get(field.path) ??
+                    (field.kind === "reference" || field.kind === "number" ? undefined : field.value);
                 if (value !== undefined) {
                     fields.push({
                         section,
@@ -102,7 +105,7 @@ export function setupMethods(
                     });
                     continue;
                 }
-                if (method.viaTransport === true && field.kind === "text") {
+                if (method.viaTransport === true && field.kind === "text" && field === method.fields[0]) {
                     // Which transport: a pick of the names that exist, never a name typed.
                     fields.push({
                         section,
@@ -133,10 +136,12 @@ export function setupMethods(
                     section,
                     path,
                     label: field.label,
-                    question: field.optional === true ? optionalQuestion(field.label, field.placeholder) : field.label,
+                    question:
+                        field.question ??
+                        (field.optional === true ? optionalQuestion(field.label, field.placeholder) : field.label),
                     ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
                     ...(current === undefined ? {} : { current, keep: true as const }),
-                    kind: "text",
+                    kind: field.kind,
                     ...(field.optional === true ? { optional: true as const } : {}),
                     reason: field.why ?? "The plugin's list says this field is needed.",
                 });

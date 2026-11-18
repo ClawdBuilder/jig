@@ -14,7 +14,7 @@ const MAX_FIELDS = 20;
 const FIELDS: Readonly<Record<OnboardingObjectField["kind"], readonly string[]>> = {
     text: ["kind", "path", "label", "why", "placeholder", "optional", "list"],
     pick: ["kind", "path", "label", "why", "choices"],
-    reference: ["kind", "path", "label", "why", "stores", "suggested", "addHints"],
+    reference: ["kind", "path", "label", "why", "stores", "suggested", "addHints", "fileExpected"],
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -77,6 +77,8 @@ function checkReference(field: Record<string, unknown>, at: string, errors: stri
             }
         }
     }
+    if (field.fileExpected !== undefined && typeof field.fileExpected !== "boolean")
+        errors.push(`${at}.fileExpected: true or false`);
     for (const name of ["suggested", "addHints"] as const) {
         const value = field[name];
         if (value === undefined) continue;

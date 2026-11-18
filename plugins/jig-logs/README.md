@@ -10,7 +10,7 @@ then one line per hit.
 
 ![How a jig-logs search runs: the search splits the window into buckets, the adapter builds one request per bucket, jig-core sends it with the credential, and the hit lines come back cut and, in production, masked](../../docs/img/logs-search.svg)
 
-*How a search runs. The search splits the window into buckets and the adapter builds one request for each. `jig-core` sends it with the credential, or a company transport does, and the hit lines come back cut and, in production, masked.*
+*How a search runs. The search splits the window into buckets and the adapter builds one request for each. `jig-core` sends it with the credential, or a transport does, and the hit lines come back cut and, in production, masked.*
 
 ## Backends
 

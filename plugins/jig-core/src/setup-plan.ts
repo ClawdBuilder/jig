@@ -146,6 +146,8 @@ export interface SetupReferenceChoice {
     suggested?: Readonly<Partial<Record<SecretBackend, string>>>;
     /** What the company says to do to add it, per store. */
     addHints?: Readonly<Partial<Record<SecretBackend, string>>>;
+    /** A file is the normal place for this credential: it is offered first, as "A file", and no warning is asked. */
+    fileExpected?: true;
 }
 
 export interface SetupMethod {

@@ -96,6 +96,12 @@ so a relay can be set up before the tools that use it. Setup asks no `services` 
 service named like the tool (`jira`, `logs`), and a map that lists only one of them would make the other refuse, so a relay
 that names its services differently is written by hand.
 
+A method field may be a `number` (a company never fixes one), and a `text` or `number` field may carry a `question`, the whole
+prompt. Through a relay, Jira and logs ask one optional time limit (`jira.timeoutSeconds`, `logs.timeoutSeconds`, 5 to 120, default
+30) right after the transport pick, because a browser relay can be slow on the first request after a sign-in. A `reference` field
+of an `object` may say `fileExpected: true`: the relay writes its own token file, so the file store is listed first, as "A file",
+without the weak-choice label or the "Use a file?" question. Every other credential keeps both.
+
 ## 2026-11-17: setup adds one named object of a map
 
 **Decision.** A plugin, or a company's list, may add one named object to a map with an item of kind `object`: it names the
