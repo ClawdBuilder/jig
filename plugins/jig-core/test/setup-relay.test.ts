@@ -1082,6 +1082,24 @@ describe("review of the relay setup: the time limit's question", () => {
     });
 });
 
+describe("review of the relay setup: what a form's fixed values may overlap", () => {
+    const object = (fixed: unknown, path: string) => ({
+        kind: "object",
+        section: "orders",
+        path: "relays",
+        label: "Relay",
+        keyLabel: "Which?",
+        forms: [{ fixed, fields: [{ kind: "text", path, label: "Value" }] }],
+    });
+
+    test("a fixed path above or below a question's path is refused, as an equal one is", () => {
+        assert.throws(() => checkOnboarding({ items: [object({ a: "x" }, "a.b")] }), /overlaps/);
+        assert.throws(() => checkOnboarding({ items: [object({ "a.b": "x" }, "a")] }), /overlaps/);
+        assert.throws(() => checkOnboarding({ items: [object({ a: "x", "a.b": "y" }, "c")] }), /overlaps/);
+        assert.doesNotThrow(() => checkOnboarding({ items: [object({ kind: "x", "a.b": "y" }, "a.c")] }));
+    });
+});
+
 describe("review of the relay setup: the look at the relay", () => {
     /** A relay that answers `/v1/health` with whatever `reply` says, for one test. */
     async function answering(

@@ -129,19 +129,34 @@ function checkFields(raw: unknown, at: string, errors: string[]): void {
     }
 }
 
-/** The values a form writes without asking: plain scalars by path inside the object, none of them also a question. */
+/** Whether one dotted path is the other or lies inside it: writing one would replace or lose the other. */
+function overlaps(left: string, right: string): boolean {
+    return left === right || left.startsWith(`${right}.`) || right.startsWith(`${left}.`);
+}
+
+/** The values a form writes without asking: plain scalars by path inside the object, none of them also a question, and
+ *  none inside or above a question's path or another fixed value (the answer or the other value would replace it). */
 function checkFixed(raw: unknown, fields: unknown, at: string, errors: string[]): void {
     if (raw === undefined) return;
     if (!isObject(raw)) {
         errors.push(`${at}: must be an object of paths and plain values`);
         return;
     }
-    const asked = new Set(
-        Array.isArray(fields) ? fields.map((field) => (isObject(field) ? String(field.path) : "")) : [],
-    );
+    const asked = Array.isArray(fields) ? fields.map((field) => (isObject(field) ? String(field.path) : "")) : [];
+    const fixed = Object.keys(raw);
     for (const [path, value] of Object.entries(raw)) {
         if (!safePath(path)) errors.push(`${at}.${path}: a dotted path inside the new object, such as kind`);
-        else if (asked.has(path)) errors.push(`${at}.${path}: is also asked, so it cannot be fixed`);
+        else if (asked.includes(path)) errors.push(`${at}.${path}: is also asked, so it cannot be fixed`);
+        else {
+            const question = asked.find((one) => one !== "" && overlaps(path, one));
+            const inside = fixed.find((one) => one !== path && path.startsWith(`${one}.`));
+            if (question !== undefined)
+                errors.push(`${at}.${path}: overlaps the question ${JSON.stringify(question)}, so it cannot be fixed`);
+            else if (inside !== undefined)
+                errors.push(
+                    `${at}.${path}: overlaps the fixed value ${JSON.stringify(inside)}; one would replace the other`,
+                );
+        }
         if (typeof value === "string" ? !oneLine(value, LABEL_MAX) : !["number", "boolean"].includes(typeof value))
             errors.push(`${at}.${path}: one line of text, a number or true/false`);
     }
