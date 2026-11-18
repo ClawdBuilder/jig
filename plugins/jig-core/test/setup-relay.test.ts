@@ -11,8 +11,10 @@ import path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import { buildApi } from "../src/api.ts";
 import { checkOnboarding } from "../src/onboarding.ts";
+import { applyObject } from "../src/setup-answer.ts";
 import { DONE_LINE, LIST_TITLE, pluginLines } from "../src/setup-menu.ts";
 import { buildSetupPlan } from "../src/setup-plan.ts";
+import { checkRelay } from "../src/setup-relay-check.ts";
 import { sectionQuestions } from "../src/setup-section.ts";
 import { runSetup, setupStateFrom } from "../src/setup.ts";
 import type { SetupUi } from "../src/setup.ts";
@@ -294,7 +296,7 @@ describe("a session relay in setup", () => {
         const url = `http://127.0.0.1:${(odd.address() as AddressInfo).port}`;
         try {
             const ui = relayAnswers(new ScriptedUi(), "orders-relay", url).picking(
-                /Relay not answering/,
+                /Relay speaks another protocol/,
                 "Continue without it",
             );
             assert.equal(await runSetup(stateWith(), ui, "transports"), 0, ui.seen.join("\n"));
@@ -654,6 +656,223 @@ describe("what registration accepts for it", () => {
         assert.throws(
             () => checkOnboarding({ items: [{ kind: "text", section: "orders", path: "", label: "Name" }] }),
             /path/,
+        );
+    });
+});
+
+describe("review of the relay setup: what a name and an address may be", () => {
+    /** An `orders` section whose map is `relays`, and whose check names a key as the validator does, with its text. */
+    function ordersState(
+        check: (raw: unknown) => readonly string[] = (raw) => {
+            const relays = (raw as { relays?: Record<string, { url?: string }> }).relays ?? {};
+            return Object.entries(relays)
+                .filter(([, relay]) => !String(relay.url).startsWith("https://"))
+                .map(([name]) => `orders.relays.${name}.url: must start with https://`);
+        },
+    ): ReturnType<typeof createState> {
+        const state = stateWith();
+        buildApi(state).config.registerSection("orders", check, {
+            setup: {
+                summary: "Order relays.",
+                items: [
+                    {
+                        kind: "object",
+                        section: "orders",
+                        path: "relays",
+                        label: "Order relay",
+                        keyLabel: "Which relay?",
+                        forms: [{ fields: [{ kind: "text", path: "url", label: "Its address" }] }],
+                    },
+                ],
+            },
+        });
+        loadPersonalConfig(state, file);
+        return state;
+    }
+
+    /** The object question of one section's plan, for a test that answers without a screen. */
+    function objectField(state: ReturnType<typeof createState>, section: string) {
+        const built = buildSetupPlan({ ...setupStateFrom(state), requestedSection: section });
+        assert.ok("plan" in built, JSON.stringify(built));
+        const field = built.plan.sections.find((one) => one.name === section)?.fields.find((one) => one.object);
+        assert.ok(field !== undefined);
+        return { plan: built.plan, field };
+    }
+
+    test("a name with a space, a slash, a non-ASCII letter or more than 40 characters is refused at the prompt", async () => {
+        const state = stateWith();
+        const ui = new ScriptedUi();
+        for (const name of ["my relay", "a/b", "café", "x".repeat(41)]) ui.reading(/What do you call this relay/, name);
+        relayAnswers(ui, "orders-relay", relayUrl);
+        assert.equal(await runSetup(state, ui, "transports"), 0, ui.seen.join("\n"));
+        const refusals = ui.seen.filter((line) => /may use only letters, digits, "-" and "_"/.test(line));
+        assert.equal(refusals.length, 4, ui.seen.join("\n"));
+        assert.match(refusals[0] ?? "", /up to 40 characters/);
+        assert.deepEqual(Object.keys(written().transports), ["orders-relay"]);
+        assert.equal(requests.length, 1, "only the good relay was asked");
+    });
+
+    test("the answer is refused for such a name too, where an answer is applied, with a non-loopback http address", () => {
+        const { plan, field } = objectField(stateWith(), "transports");
+        const asked = { kind: "relay", url: "http://relay.example.com:8700" };
+        const refused = applyObject(plan, structuredClone(plan.raw), field, "my relay", asked);
+        assert.ok("problem" in refused, JSON.stringify(refused));
+        assert.match(refused.problem, /letters, digits/);
+        const plain = applyObject(plan, structuredClone(plan.raw), field, "orders-relay", asked);
+        assert.ok("problem" in plain && plain.at === "url", JSON.stringify(plain));
+    });
+
+    test("an address with a user name and a password is refused before anything is shown or sent", async () => {
+        const { plan, field } = objectField(stateWith(), "transports");
+        const secret = ["alice", "hunter2"].join(":");
+        const asked = { kind: "relay", url: `http://${secret}@127.0.0.1:8700/some/path?x=1` };
+        const refused = applyObject(plan, structuredClone(plan.raw), field, "orders-relay", asked);
+        assert.ok("problem" in refused && refused.at === "url", JSON.stringify(refused));
+        assert.doesNotMatch(refused.problem, /hunter2|alice/);
+        // Setup's own look at the relay refuses it as well: nothing is sent, and the address is never echoed.
+        const state = stateWith();
+        const sent: string[] = [];
+        state.http = {
+            request: async (request: { url: string }) => {
+                sent.push(request.url);
+                throw new Error("down");
+            },
+        } as never;
+        const ui = new ScriptedUi().picking(/Relay not answering/, "Continue without it");
+        const outcome = await checkRelay(state, ui, asked.url);
+        assert.equal(outcome, "refused");
+        assert.deepEqual(sent, []);
+        assert.doesNotMatch(ui.seen.join("\n"), /hunter2|alice/);
+    });
+
+    test("a key a validator's message names with a space is still matched, so the object is refused", async () => {
+        const state = ordersState();
+        const ui = new ScriptedUi()
+            .reading(/Which relay\?/, "my relay")
+            .reading(/Its address/, "http://relay.example.com")
+            .reading(/Its address/, "https://relay.example.com")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "orders"), 0, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /must start with https/);
+        assert.equal(written().orders.relays["my relay"].url, "https://relay.example.com");
+    });
+
+    test("a message about the object that names no field of it refuses the whole object, never accepts it", () => {
+        const state = ordersState((raw) =>
+            Object.hasOwn((raw as { relays?: object }).relays ?? {}, "my relay")
+                ? ["orders.relays.my relay: is not allowed"]
+                : [],
+        );
+        const { plan, field } = objectField(state, "orders");
+        const refused = applyObject(plan, structuredClone(plan.raw), field, "my relay", {
+            url: "https://x.example.com",
+        });
+        assert.ok("problem" in refused, JSON.stringify(refused));
+        assert.equal("at" in refused, false);
+    });
+});
+
+describe("review of the relay setup: a name a company's code registered", () => {
+    test("a relay named like a transport a company plugin registered is refused at the prompt", async () => {
+        const state = stateWith();
+        state.transports.register("corp-proxy", { request: async () => ({ status: 200, headers: {}, body: "" }) });
+        const ui = new ScriptedUi()
+            .reading(/What do you call this relay/, "corp-proxy")
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, relayUrl)
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "transports"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /Already set up: corp-proxy\./);
+        assert.match(seen, /corp-proxy is a company's transport; choose another name\./);
+        assert.deepEqual(Object.keys(written().transports), ["orders-relay"]);
+    });
+});
+
+describe("review of the relay setup: the look at the relay", () => {
+    /** A relay that answers `/v1/health` with whatever `reply` says, for one test. */
+    async function answering(
+        reply: (response: import("node:http").ServerResponse) => void,
+        run: (url: string) => Promise<void>,
+    ): Promise<void> {
+        const server = createServer((_request, response) => reply(response));
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+        try {
+            await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
+        } finally {
+            server.close();
+        }
+    }
+
+    test("says it is checking before it waits, and caps a long list of services", async () => {
+        const services = Object.fromEntries(Array.from({ length: 3000 }, (_, index) => [`service-${index}`, true]));
+        await answering(
+            (response) => {
+                response.setHeader("content-type", "application/json");
+                response.end(JSON.stringify({ ok: true, protocol: 1, service: "orders", services }));
+            },
+            async (url) => {
+                const ui = relayAnswers(new ScriptedUi(), "orders-relay", url);
+                assert.equal(await runSetup(stateWith(), ui, "transports"), 0);
+                const lines = ui.seen.filter((line) => line.startsWith("notify: Found:"));
+                assert.equal(lines.length, 1);
+                assert.ok((lines[0] ?? "").length < 500, `${(lines[0] ?? "").length} characters`);
+                assert.match(lines[0] ?? "", /and 2990 more/);
+                assert.ok(
+                    ui.seen.findIndex((line) => /Checking the relay/.test(line)) <
+                        ui.seen.findIndex((line) => line.startsWith("notify: Found:")),
+                );
+            },
+        );
+    });
+
+    test("a right-to-left override in a service's name is not printed", async () => {
+        await answering(
+            (response) => {
+                response.setHeader("content-type", "application/json");
+                response.end(
+                    JSON.stringify({ ok: true, protocol: 1, service: "orders‮gnp", services: { "jira‮": true } }),
+                );
+            },
+            async (url) => {
+                const ui = relayAnswers(new ScriptedUi(), "orders-relay", url);
+                await runSetup(stateWith(), ui, "transports");
+                assert.doesNotMatch(ui.seen.join("\n"), /‮/);
+            },
+        );
+    });
+
+    test("a relay that answered with another protocol, or with a refusal, is not called silent", async () => {
+        await answering(
+            (response) => {
+                response.statusCode = 401;
+                response.setHeader("content-type", "application/json");
+                response.end(JSON.stringify({ message: "token required" }));
+            },
+            async (url) => {
+                const ui = relayAnswers(new ScriptedUi(), "orders-relay", url).picking(/Relay/, "Continue without it");
+                await runSetup(stateWith(), ui, "transports");
+                const seen = ui.seen.join("\n");
+                assert.doesNotMatch(seen, /Relay not answering|Start it/);
+                assert.match(seen, /answered at .*token required/);
+            },
+        );
+        await answering(
+            (response) => {
+                response.statusCode = 302;
+                response.setHeader("location", "http://127.0.0.1:1/login");
+                response.setHeader("content-type", "text/html");
+                response.end("<html></html>");
+            },
+            async (url) => {
+                const ui = relayAnswers(new ScriptedUi(), "orders-relay", url).picking(/Relay/, "Continue without it");
+                await runSetup(stateWith(), ui, "transports");
+                const seen = ui.seen.join("\n");
+                assert.match(seen, /HTTP 302/);
+                assert.equal(seen.split(url).length - 1, 1, "the address is said once");
+            },
         );
     });
 });

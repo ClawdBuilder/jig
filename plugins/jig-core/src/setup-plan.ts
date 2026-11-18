@@ -204,6 +204,8 @@ export interface SetupPlan {
     replace: ReadonlyMap<string, readonly string[]>;
     oneOf: ReadonlyMap<string, readonly (readonly string[])[]>;
     union: ReadonlyMap<string, readonly string[]>;
+    /** The transports a company plugin registered in code: a relay setup adds may not take one of these names. */
+    pluginTransports: readonly string[];
 }
 
 export type SetupPlanResult = { plan: SetupPlan } | { problem: string };
@@ -382,6 +384,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
             replace: state.replace,
             oneOf: state.oneOf,
             union: state.union,
+            pluginTransports: state.pluginTransports ?? [],
         },
     };
 }
