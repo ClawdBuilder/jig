@@ -6,6 +6,7 @@ import { inferredMethod, requiredPaths } from "./onboarding-methods.ts";
 import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
 import { referenceChoice } from "./setup-reference.ts";
 import { optionalQuestion, referenceQuestion } from "./setup-fields.ts";
+import { ownedPaths } from "./setup-method-switch.ts";
 import { getPath } from "./setup-values.ts";
 
 /** The methods of one section as setup asks them, and whether the "How do you sign in?" question is needed. */
@@ -155,6 +156,7 @@ export function setupMethods(
             ...(choice?.default === method.id ? { companyDefault: true as const } : {}),
             ...(current === undefined ? {} : { current: method.id === current.id }),
             fields,
+            owns: ownedPaths(fields),
             ...(notes.length === 0 ? {} : { notes }),
         };
     });

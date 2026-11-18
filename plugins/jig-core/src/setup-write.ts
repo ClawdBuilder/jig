@@ -7,13 +7,15 @@ import type { SecretBackend } from "./config.ts";
 import type { SetupChange, SetupPlan } from "./setup-plan.ts";
 import { parseSecretReference } from "./secrets.ts";
 
-/** One plain line per change, then the notes setup could not act on. No JSON and no reference syntax. */
+/** One plain line per change, then the notes setup could not act on. No JSON and no reference syntax. A removal says so
+ *  and never what was there. */
 export function summaryLines(plan: SetupPlan, changes: readonly SetupChange[]): string[] {
-    const lines = changes.map(
-        (change) =>
-            `${change.label}: ${change.note ?? displayValue(change.value)} (${
-                change.oldValue === undefined ? "new" : "changed"
-            })`,
+    const lines = changes.map((change) =>
+        change.remove === true
+            ? `${change.label}: removed (the sign-in you chose does not use it)`
+            : `${change.label}: ${change.note ?? displayValue(change.value)} (${
+                  change.oldValue === undefined ? "new" : "changed"
+              })`,
     );
     const enabling = [...new Set(changes.flatMap((change) => change.enableBackends ?? []))];
     const backendLines = enabling.map((store) => `Turn on ${BACKEND_LABEL[store]} as a place Jig reads from.`);
@@ -29,11 +31,18 @@ const BACKEND_LABEL: Record<SecretBackend, string> = {
     cmd: "a tool that owns the login",
 };
 
-/** The JSON of exactly the changed fields, for the "Show the exact change" choice and nowhere else. */
+/** The JSON of exactly the changed fields, for the "Show the exact change" choice and nowhere else; what is removed is
+ *  listed after it, by path. */
 export function exactChangeLines(changes: readonly SetupChange[]): string[] {
     const grouped: Record<string, unknown> = {};
-    for (const change of changes) applyChange(grouped, change);
-    return JSON.stringify(grouped, null, 4).split("\n");
+    for (const change of changes) if (change.remove !== true) applyChange(grouped, change);
+    const removed = changes
+        .filter((change) => change.remove === true)
+        .map((change) => `${change.section}.${change.path}`);
+    return [
+        ...JSON.stringify(grouped, null, 4).split("\n"),
+        ...(removed.length === 0 ? [] : ["", `Removed: ${removed.join(", ")}`]),
+    ];
 }
 
 function getAt(object: Record<string, unknown>, dotted: string): unknown {
@@ -45,9 +54,13 @@ function getAt(object: Record<string, unknown>, dotted: string): unknown {
     return current;
 }
 
-/** Applies one accepted change: a map key, a list append, or a whole value. */
+/** Applies one accepted change: a removal, a map key, a list append, or a whole value. */
 function applyChange(document: Record<string, unknown>, change: SetupChange): void {
     const candidate = document[change.section];
+    if (change.remove === true) {
+        if (isObject(candidate)) removeValuePath(candidate, change.path);
+        return;
+    }
     const section: Record<string, unknown> = isObject(candidate) ? candidate : {};
     if (change.append === true) {
         const current = change.path === "" ? section : getAt(section, change.path);
@@ -191,6 +204,22 @@ export function setValuePath(target: Record<string, unknown>, path: string, valu
         at = at[part] as Record<string, unknown>;
     }
     at[parts.at(-1) ?? path] = value;
+}
+
+/** Takes a dotted path out of a JSON object, and the objects above it that this leaves empty (not the object itself). */
+export function removeValuePath(target: Record<string, unknown>, path: string): void {
+    const parts = path.split(".");
+    const chain: Array<Record<string, unknown>> = [target];
+    for (const part of parts.slice(0, -1)) {
+        const next = chain.at(-1)?.[part];
+        if (!isObject(next)) return;
+        chain.push(next);
+    }
+    delete chain.at(-1)?.[parts.at(-1) ?? path];
+    for (let index = chain.length - 1; index > 0; index--) {
+        if (Object.keys(chain[index] ?? {}).length > 0) return;
+        delete chain[index - 1]?.[parts[index - 1] ?? ""];
+    }
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

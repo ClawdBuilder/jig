@@ -5,6 +5,7 @@
 import { detectedLine } from "./detect.ts";
 import { applyAnswer, applyEntry, applyValue } from "./setup-answer.ts";
 import { askObject } from "./setup-ask-object.ts";
+import { beginSwitch, endSwitch } from "./setup-method-switch.ts";
 import { askProposal } from "./setup-proposal.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
 import type { SetupChange, SetupField, SetupMethod, SetupPlan, SetupSection } from "./setup-plan.ts";
@@ -104,6 +105,7 @@ export async function askMethods(
     if (picked === undefined) return "cancel";
     const method = ordered[labels.indexOf(picked)];
     if (method === undefined) return "cancel";
+    const mark = beginSwitch(plan, section.name, draft, changes);
     for (const field of method.fields) {
         if (field.fixed !== undefined) {
             const at = getPath(draft[field.section], field.path);
@@ -116,6 +118,7 @@ export async function askMethods(
         }
         if ((await ask(state, plan, field, draft, changes, ui, found)) === "cancel") return "cancel";
     }
+    endSwitch(plan, section, method, mark, draft, changes, ui);
     return "ok";
 }
 

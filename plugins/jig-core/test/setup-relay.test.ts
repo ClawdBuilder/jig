@@ -23,6 +23,8 @@ import { validateJira } from "../../jig-jira/src/config.ts";
 import { JIRA_METHODS } from "../../jig-jira/src/index.ts";
 import { JIRA_SETUP } from "../../jig-jira/src/onboarding.ts";
 import { validateLogsSection } from "../../jig-logs/src/config.ts";
+import { OPS_REPLACE, validateOps } from "../../jig-ops/src/catalog.ts";
+import { OPS_METHODS } from "../../jig-ops/src/index.ts";
 import { LOGS_METHODS } from "../../jig-logs/src/index.ts";
 import { LOGS_SETUP } from "../../jig-logs/src/onboarding.ts";
 import { fakePi } from "./support/fake-pi.ts";
@@ -788,6 +790,145 @@ describe("review of the relay setup: a name a company's code registered", () => 
         assert.match(seen, /Already set up: corp-proxy\./);
         assert.match(seen, /corp-proxy is a company's transport; choose another name\./);
         assert.deepEqual(Object.keys(written().transports), ["orders-relay"]);
+    });
+});
+
+describe("review of the relay setup: signing in another way takes the old way's fields out", () => {
+    const relays = { transports: { "orders-relay": { kind: "relay", url: "http://127.0.0.1:8700" } } };
+    const jira = (auth: unknown) => ({ site: "https://jira.example.com", auth });
+
+    test("Jira: from an email and a token to the relay, the email and the token are removed", async () => {
+        const state = stateWith({ ...relays, jira: jira({ email: "me@example.com", token: "env:JIRA_TOKEN" }) });
+        const ui = new ScriptedUi()
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.deepEqual(written().jira, jira({ transport: "orders-relay" }));
+        assert.deepEqual(validateJira(written().jira), []);
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /Your Jira email: removed/);
+        assert.match(seen, /The Jira API token: removed/);
+        assert.doesNotMatch(seen, /me@example\.com|JIRA_TOKEN/, "a removal never shows the value");
+    });
+
+    test("the exact change lists what is removed, by path and never by value", async () => {
+        const state = stateWith({ ...relays, jira: jira({ email: "me@example.com", token: "env:JIRA_TOKEN" }) });
+        const ui = new ScriptedUi()
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may/, "")
+            .picking(/Review these changes/, "Show the exact change");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /Removed: jira\.auth\.email, jira\.auth\.token/);
+        assert.doesNotMatch(seen, /me@example\.com|JIRA_TOKEN/);
+    });
+
+    test("Jira: from a personal access token to a token command, the token is removed", async () => {
+        const state = stateWith({ jira: jira({ token: "env:JIRA_TOKEN" }) });
+        const ui = new ScriptedUi()
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Token command")
+            .picking(/Where does the OAuth token command live/, "An environment variable")
+            .reading(/Which environment variable/, "JIRA_OAUTH")
+            .picking(/Use the suggested place/, "Build it another way")
+            .picking(/Not found yet/, "Continue without it")
+            .reading(/Cloud site id/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.deepEqual(written().jira, jira({ oauth: "env:JIRA_OAUTH" }), ui.seen.join("\n"));
+        assert.deepEqual(validateJira(written().jira), []);
+    });
+
+    test("Jira: a setting beside the sign-in, the time limit, stays when the way to sign in changes", async () => {
+        const state = stateWith({
+            ...relays,
+            jira: { ...jira({ transport: "orders-relay" }), timeoutSeconds: 90 },
+        });
+        const ui = new ScriptedUi()
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Personal access token")
+            .picking(/Where does the Jira personal access token live/, "An environment variable")
+            .reading(/Which environment variable/, "JIRA_PAT")
+            .picking(/Use the suggested place/, "Build it another way")
+            .picking(/Not found yet/, "Continue without it")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.deepEqual(written().jira, { ...jira({ token: "env:JIRA_PAT" }), timeoutSeconds: 90 });
+    });
+
+    test("logs: from a user name and a password to the relay, the old auth is removed", async () => {
+        const state = stateWith({
+            ...relays,
+            logs: {
+                backend: {
+                    type: "elasticsearch",
+                    url: "https://logs.example.com:9200",
+                    auth: { username: "reader", password: "env:LOGS_PASSWORD" },
+                },
+                environments: { staging: { index: "app-logs-*" } },
+            },
+        });
+        const ui = new ScriptedUi()
+            .reading(/Which environment\?/, "")
+            .picking(/How do you sign in to Logs/, "Through a session relay")
+            .picking(/Relay or transport for log searches/, "orders-relay")
+            .reading(/How long may/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "logs"), 0, ui.seen.join("\n"));
+        assert.deepEqual(written().logs.backend, {
+            type: "elasticsearch",
+            url: "https://logs.example.com:9200",
+            transport: "orders-relay",
+        });
+        assert.deepEqual(validateLogsSection(written().logs), []);
+    });
+
+    test("ops, whose methods name a service with a `*`: the replaced fields go from the services the method is asked for", async () => {
+        const state = stateWith();
+        buildApi(state).config.registerSection("ops", validateOps, {
+            replace: OPS_REPLACE,
+            methods: OPS_METHODS,
+            setup: { summary: "Ops." },
+        });
+        const gitlab = { system: "gitlab", url: "https://gitlab.example.com", project: "acme/orders" };
+        const config = {
+            ops: {
+                services: {
+                    web: {
+                        ci: { ...gitlab, auth: { user: "ci-bot", token: "env:CI_TOKEN" } },
+                        environments: { staging: { health: "https://example.test/health" } },
+                    },
+                },
+            },
+        };
+        writeFileSync(file, JSON.stringify(config));
+        loadPersonalConfig(state, file);
+        const ui = new ScriptedUi()
+            .picking(/How do you sign in to Ops/, "CI token")
+            .picking(/Where does the CI token live/, "Keep the current place")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "ops"), 0, ui.seen.join("\n"));
+        assert.deepEqual(written().ops.services.web.ci.auth, { token: "env:CI_TOKEN" }, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /The CI user name: removed/);
+    });
+
+    test("a way to sign in setup does not know about is not removed, and the section is refused in the validator's words", async () => {
+        const state = stateWith({ ...relays, jira: jira({ signIn: "corp-sso" }) });
+        const ui = new ScriptedUi()
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may/, "");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /use exactly one of signIn, transport, or token/);
+        assert.match(seen, /Nothing was written\./);
+        assert.deepEqual(written().jira, jira({ signIn: "corp-sso" }));
     });
 });
 

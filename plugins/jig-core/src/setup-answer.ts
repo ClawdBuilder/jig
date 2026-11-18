@@ -219,7 +219,7 @@ function aboutObject(message: string, section: string, keyPath: string): { at?: 
 }
 
 /** The merged section a plan would check, from one section of the draft. */
-function mergedSection(plan: SetupPlan, section: string, rawSection: Record<string, unknown>): unknown {
+export function mergedSection(plan: SetupPlan, section: string, rawSection: Record<string, unknown>): unknown {
     return layered(
         plan.defaults.get(section),
         rawSection,

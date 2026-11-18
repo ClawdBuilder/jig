@@ -161,6 +161,10 @@ export interface SetupMethod {
     /** The method the section's current values select, by required path set. */
     current?: boolean;
     fields: SetupField[];
+    /** The paths this method owns in the section: its required fields, and its optional ones beside them in the same
+     *  object (`auth.cloudId` beside `auth.oauth`). Choosing another method removes them; a setting elsewhere, such as
+     *  `timeoutSeconds`, is no method's. */
+    owns: string[];
     /** Why a wildcard produced no fields, when the plan cannot ask for a name yet. */
     notes?: string[];
 }
@@ -225,6 +229,9 @@ export interface SetupChange {
     key?: string;
     /** Append this value to the list at `path`, rather than replacing it. */
     append?: boolean;
+    /** Take the value at `path` out of the section (and any object it leaves empty); `value` is then not used. A sign-in
+     *  method replaces the fields of the one it replaces. */
+    remove?: true;
 }
 
 /** Whether the company's list names any answer in this section, so setup asks its questions first. */
