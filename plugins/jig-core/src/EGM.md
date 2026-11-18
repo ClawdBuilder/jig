@@ -44,7 +44,7 @@ Plugin overview: [jig-core](../EGM.md).
   (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20
   questions each, checked when the list or a plugin's `setup` is registered), `setup-ask-object.ts` (`askObject`, `fieldForRefusal`: one named
   object of a map), `setup-transports.ts` (`TRANSPORTS_SETUP`, `withTransports`, `transportNames`: the questions for jig-core's own `transports` section, which setup
-  lists with the plugins' sections), `setup-relay-check.ts` (`checkRelay`: one `GET /v1/health`, never with the token), `setup-reference-ask.ts` (`chooseReference`, `probeChosen`: where a credential is kept, shared by a single question and a field
+  lists with the plugins' sections), `setup-relay-check.ts` (`checkRelay`: one `GET /v1/health`, never with the token), `setup-method-switch.ts` (`endSwitch`: what a chosen method takes out), `setup-reference-ask.ts` (`chooseReference`, `probeChosen`: where a credential is kept, shared by a single question and a field
   inside an object),
   `detect.ts` (`DETECTS`: `user`, `git-email`, `gh-account`, `aws-profile`; one fixed command each, 1.5 s, never secret), `plain-label.ts`.
 - **Contract splits.** `contract.ts` stays the one import for plugins and re-exports `contract-onboarding.ts` (the onboarding and sign-in
@@ -95,8 +95,12 @@ Plugin overview: [jig-core](../EGM.md).
   it kept" flow and is never typed or shown. `repeat` asks for another. An older Jig that does not know the kind refuses the item at
   registration. The doctor counts an `object` item as missing while its map is empty (`doctor-needs.ts`). Changing or removing an object stays
   the settings file's job ([Decisions](../../../docs/decisions.md#2026-11-17-setup-adds-one-named-object-of-a-map)). An empty `path` makes the
-  section itself the map (`transports`), a form's `fixed` values are written without a question (`kind: "relay"`), and `optional` lets an empty name
-  leave the map unset. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is offered only while a
+  section itself the map (`transports`), a form's `fixed` values are written without a question (`kind: "relay"`; a fixed path may not overlap a question's or another's), and `optional` lets an empty name
+  leave the map unset. An object is found in a validator's messages by its key as text (`aboutObject`), never by a path read from the message, and a relay's name is 1 to 40
+  letters, digits, `-` or `_` and not a transport a company plugin registered (`objectNameProblem`). When a sign-in method is chosen, the paths the other methods own (their
+  required fields and the optional ones beside them, `SetupMethod.owns`) are removed as `remove` changes, and a check message that was not there before the pick reverts it; a validator's
+  field is dropped for a method only while "How do you sign in?" is asked, and only for the paths the method owns. A `reference` with `fileExpected` is listed first as "A file", skips the
+  "Use a file?" warning, and asks one line to turn the file store on when it is not on. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is offered only while a
   transport exists (the person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run)
   ([Decisions](../../../docs/decisions.md#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)).
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless

@@ -15,7 +15,7 @@ export const TRANSPORTS_SETUP: OnboardingSetup = {
         {
             kind: "info",
             label: "A session relay",
-            detail: "It is a program that keeps your sign-in, such as a browser extension's local host. Jig sends the request to it and holds no Jira token.",
+            detail: "a program that keeps your sign-in, such as a browser extension's local host. Jig sends the request to it and holds no Jira token.",
         },
         {
             kind: "object",

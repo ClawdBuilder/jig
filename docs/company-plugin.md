@@ -300,8 +300,9 @@ api.onboarding?.register({
   `jig.json`, or left out of a company's defaults with a `null`. An empty `path` makes the section itself the map, a form's
   `fixed` values are written without a question, and `optional` lets an empty name leave the map unset. A `reference` question may say
   `fileExpected: true` when the program that makes the credential writes it to a file: setup then lists the file store first,
-  as "A file", and does not ask the weak-choice question. A plugin cannot use `proposal`; a company can. An older Jig
-  refuses a list with these kinds, as it does with `proposal`.
+  as "A file", and does not ask the weak-choice question; when files are not a place Jig reads from yet, one line asks to turn
+  them on instead. A form's `fixed` path may not lie inside or above a question's path or another fixed value's. A plugin cannot use `proposal`; a company can. An older Jig
+  refuses a list with these kinds, as it does with `proposal`, and refuses a method with `viaTransport`, a `number` field, or a `question` or `default` on one.
 - **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never
   registers a profile applies always, as with every other seam.
 - **Keep every label and hint plain.** They are what a person reads on their first day: say where a thing lives and why it is

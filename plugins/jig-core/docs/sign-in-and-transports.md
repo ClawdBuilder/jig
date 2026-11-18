@@ -281,16 +281,17 @@ configured in `jig.json`, so no plugin code is needed for that route:
 }
 ```
 
-Run `jig setup transports` to add one without writing the file: it asks a name, the
-address and where the token is kept (a relay usually writes it to a file), then looks
+Run `jig setup transports` to add one without writing the file: it asks a name (letters,
+digits, `-` and `_`, up to 40), the address and where the token is kept (a relay usually writes it to a file), then looks
 once at `GET /v1/health`, which the protocol allows without the token, and says what
 it found. The token's place is asked like any other, with a file first and no
-warning: a relay writes its own token file. After that, `jig setup jira` and
+warning, since a relay writes its own token file; when files are not a place Jig reads
+from yet, one line asks to turn them on. After that, `jig setup jira` and
 `jig setup logs` offer "Through a session relay or transport", a pick of the names
 that exist, and write `jira.auth.transport` or `logs.backend.transport`. Each then
 asks one optional time limit for a request (`jira.timeoutSeconds`,
 `logs.timeoutSeconds`: 5 to 120, default 30), because a browser relay can be slow
-right after you sign in. Setup writes no `services` map, so Jig asks for the
+right after you sign in; a Jira search has its own limit, `searchTimeoutSeconds`. Setup writes no `services` map, so Jig asks for the
 service named like the tool (`jira`, `logs`); a relay that names its services
 differently needs the map above, written by hand.
 

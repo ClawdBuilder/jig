@@ -168,11 +168,6 @@ async function pluginMenu(
 ): Promise<"ok" | "cancel"> {
     for (;;) {
         const lines = pluginLines(planState, draft);
-        if (lines.length === 0) {
-            if (plan.sections.length === 0)
-                ui.notify("Nothing needs you right now. jig doctor has the full check.", "info");
-            return "ok";
-        }
         const options = [...lines.map((line) => line.text), DONE_LINE];
         const choice = await ui.select(LIST_TITLE, options);
         if (choice === undefined) return "cancel";

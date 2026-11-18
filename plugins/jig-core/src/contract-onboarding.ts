@@ -128,8 +128,11 @@ export type OnboardingObjectField =
           suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
           /** What to tell the person to add it, per store. */
           addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
-          /** True when the program that makes this credential writes it to a file, so a file is the normal answer: it is
-           *  offered first, as "A file", without the weak-choice label or the "Use a file?" question. */
+          /** True when the program that makes this credential writes it to a file, so a file is the normal answer. It changes
+           *  three things and nothing else: the file store is listed first (after a company's preferred store), as "A file"
+           *  and without "(not recommended)"; the "Use a file?" warning is not asked; and when files are not a place Jig
+           *  reads from yet, one line asks "Turn on files as a place Jig reads from?" instead, a no going back to the
+           *  choices. It adds no store to `stores` and leaves the rules for a file's path to the check of the place. */
           fileExpected?: boolean;
           why?: string;
       };

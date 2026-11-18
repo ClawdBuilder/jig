@@ -106,12 +106,16 @@ there, and can be left as it is. **Done** writes everything once, with one backu
 nothing.
 
 **A session relay.** The first line of the list, `Transports`, adds a [relay](relay-protocol.md): a program that holds your session
-for Jira or logs, such as a browser extension's local host. Setup asks its name, its address (plain `http` only for
+for Jira or logs, such as a browser extension's local host. Setup asks its name (letters, digits, `-` and `_`, up to 40, and never the name of a transport a company plugin registered), its address (plain `http` only for
 `127.0.0.1`, `localhost` or `[::1]`) and where its token is kept, a file being the usual place, listed first. Then it asks the relay once
 whether it is running with `GET /v1/health`, which needs no token, and says what it found; it never sends or reads the token.
 `jig doctor` checks the same health, the protocol and the token later, without `--network`. Once a relay exists in your file, a
 company's defaults or earlier in the same run, Jira and logs offer "Through a session relay or transport" among their sign-in
 methods, and ask one optional time limit for a request (5 to 120 seconds); with no transport, they do not offer it. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
+
+The time-limit question says what Enter keeps: the value in your file, or the default while it is unset. It is for most requests; a Jira search has its own limit, `searchTimeoutSeconds` (60 seconds), which setup does not ask.
+
+**Signing in another way.** Choosing a sign-in method removes the fields of the methods it replaces (an email and a token when you pick a relay), and keeps a setting that belongs to no method, such as a time limit. Setup then runs the plugin's own check on the result. If it still fails, setup leaves that sign-in as it was and says the check's words.
 
 `jig setup <section>` goes straight to that section's questions, without the list. A plugin's own questions come after a
 company's list, and a company default or answer skips the question it already answers. `--yes` asks nothing and sets up
@@ -124,7 +128,7 @@ vault, item and field, and builds the reference itself; you never type `op://` o
 
 After each credential it says **Found**, **Missing**, **Locked** or **Not checked**, never a value. A missing one
 comes with the store's own command to add it, and **Check again**. A file is the weakest choice: it is plain text
-on disk, and setup warns before using one, except for a relay's token, which the relay writes to a file itself. If the store was off, setup turns it on as a place Jig reads from; it
+on disk, and setup warns before using one, except for a relay's token, which the relay writes to a file itself: that one lists "A file" first and asks one line to turn files on when they are not a place Jig reads from yet. If the store was off, setup turns it on as a place Jig reads from; it
 never changes the stores you turned off. A plugin or company list may add its own hint, such as `pass insert work/jira-pat`;
 setup shows it and never runs it.
 

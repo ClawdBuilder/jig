@@ -43,6 +43,11 @@ export function notSetupLines(context: DoctorContext, sections: readonly string[
     }
 }
 
+/** A section and a path inside it as one dotted name; an empty path (the section is the map) is the section alone. */
+function dotted(section: string, path: string): string {
+    return path === "" ? section : `${section}.${path}`;
+}
+
 export function onboardingLines(context: DoctorContext, settingsShown: string): DoctorLine[] {
     const entry = context.onboarding;
     if (entry === undefined) return [];
@@ -62,7 +67,7 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
                 title: `You need: ${item.label}`,
                 detail:
                     item.why ??
-                    `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
+                    `Add ${dotted(item.section, item.path)} to ${settingsShown}, or run jig setup and it asks for it.`,
                 fix: "Run jig setup and it asks for this.",
             });
             continue;
