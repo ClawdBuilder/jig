@@ -113,6 +113,8 @@ export interface SetupField {
     fixed?: string;
     /** The company marks it optional: an empty answer leaves it unset, and the doctor does not ask for it. */
     optional?: true;
+    /** For a number: the value that applies while it is unset, said in the question's "Enter keeps" note. */
+    default?: number;
     /** The answer is a simple list: one entry per line, or separated by commas. */
     list?: true;
     /** An empty answer keeps this value: it is set and passes, and setup only asks again so it can change. */

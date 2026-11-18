@@ -51,9 +51,9 @@ export const LOGS_METHODS = [
                 path: "timeoutSeconds",
                 label: "Log request time limit (seconds)",
                 optional: true,
-                question:
-                    "How long may a log request take, in seconds? (optional: Enter keeps 30; a browser relay may need up to 120 right after you sign in)",
-                why: "A request that takes longer is stopped. The limit is 5 to 120 seconds.",
+                default: 30,
+                question: "How long may a log request take, in seconds?",
+                why: "A request that takes longer is stopped (5 to 120 seconds); a browser relay may need up to 120 right after you sign in.",
             },
         ],
     },

@@ -137,13 +137,17 @@ export function setupMethods(
                     section,
                     path,
                     label: field.label,
+                    // An optional number's note ("Enter keeps N") is built when it is asked, from what is set by then.
                     question:
                         field.question ??
-                        (field.optional === true ? optionalQuestion(field.label, field.placeholder) : field.label),
+                        (field.optional === true && field.kind !== "number"
+                            ? optionalQuestion(field.label, field.placeholder)
+                            : field.label),
                     ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
                     ...(current === undefined ? {} : { current, keep: true as const }),
                     kind: field.kind,
                     ...(field.optional === true ? { optional: true as const } : {}),
+                    ...(field.kind === "number" && field.default !== undefined ? { default: field.default } : {}),
                     reason: field.why ?? "The plugin's list says this field is needed.",
                 });
             }

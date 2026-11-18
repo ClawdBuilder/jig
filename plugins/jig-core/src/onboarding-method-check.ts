@@ -43,7 +43,7 @@ function checkMethodField(
             : kind === "pick"
               ? ["kind", "path", "label", "choices", "why", "value"]
               : kind === "number"
-                ? ["kind", "path", "label", "why", "placeholder", "optional", "question"]
+                ? ["kind", "path", "label", "why", "placeholder", "optional", "question", "default"]
                 : ["kind", "path", "label", "why", "placeholder", "optional", "question", "value"];
     for (const key of Object.keys(field)) {
         if (!allowed.includes(key)) errors.push(unknownField(at, key, allowed));
@@ -62,6 +62,9 @@ function checkMethodField(
         optionalLine(field.question, `${at}.question`, WHY_MAX, errors);
         if (field.optional !== undefined && typeof field.optional !== "boolean")
             errors.push(`${at}.optional: true or false`);
+    }
+    if (kind === "number" && field.default !== undefined && !Number.isFinite(field.default)) {
+        errors.push(`${at}.default: a number, the value that applies while the setting is unset`);
     }
     if (kind === "pick") {
         if (!Array.isArray(field.choices) || field.choices.length === 0 || field.choices.length > 100) {

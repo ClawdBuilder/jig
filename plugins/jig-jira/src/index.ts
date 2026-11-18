@@ -96,9 +96,9 @@ export const JIRA_METHODS = [
                 path: "timeoutSeconds",
                 label: "Jira request time limit (seconds)",
                 optional: true,
-                question:
-                    "How long may a Jira request take, in seconds? (optional: Enter keeps 30; a browser relay may need up to 120 right after you sign in)",
-                why: "A request that takes longer is stopped. The limit is 5 to 120 seconds.",
+                default: 30,
+                question: "How long may most Jira requests take, in seconds?",
+                why: "A request that takes longer is stopped (5 to 120 seconds); a browser relay may need up to 120 right after you sign in. A search has its own limit, searchTimeoutSeconds in your settings (60 seconds unless you set it), which this does not change.",
             },
         ],
     },

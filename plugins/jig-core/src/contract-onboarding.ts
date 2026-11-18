@@ -70,8 +70,11 @@ export type OnboardingMethodField =
           why?: string;
           placeholder?: string;
           optional?: boolean;
-          /** The whole prompt, as for `text`. */
+          /** The question's words. An optional number's question is not a whole prompt: setup adds "(optional: Enter keeps
+           *  N)", with the value in the settings now for N, or `default` while it is unset. */
           question?: string;
+          /** The value that applies while the setting is unset (the section's own default), for that note. */
+          default?: number;
       }
     | {
           kind: "pick";
