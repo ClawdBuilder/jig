@@ -1100,6 +1100,26 @@ describe("review of the relay setup: what a form's fixed values may overlap", ()
     });
 });
 
+describe("review of the relay setup: turning the file store on for a relay's token", () => {
+    test("asks one line before the file store is turned on, and goes back to the choices on a no", async () => {
+        const ui = new ScriptedUi(["Done"], [false, true]);
+        relayAnswers(ui, "orders-relay", relayUrl);
+        assert.equal(await runSetup(stateWith(), ui, "transports"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /confirm: Turn on files as a place Jig reads from\?/);
+        assert.doesNotMatch(seen, /not recommended|Use a file\?/);
+        assert.match(seen, /Turn on a file as a place Jig reads from\./);
+        assert.deepEqual(written().secrets.backends, ["pass", "file"]);
+    });
+
+    test("asks nothing when the file store is already on", async () => {
+        const ui = relayAnswers(new ScriptedUi(), "orders-relay", relayUrl);
+        const state = stateWith({ secrets: { backends: ["pass", "file"] } });
+        assert.equal(await runSetup(state, ui, "transports"), 0, ui.seen.join("\n"));
+        assert.doesNotMatch(ui.seen.join("\n"), /confirm: Turn on files|confirm: Use a file/);
+    });
+});
+
 describe("review of the relay setup: the look at the relay", () => {
     /** A relay that answers `/v1/health` with whatever `reply` says, for one test. */
     async function answering(

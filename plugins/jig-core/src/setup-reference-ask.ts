@@ -71,6 +71,14 @@ export async function chooseReference(
                 "A file is plain text on disk. A password store or 1Password is safer.",
             );
             if (!ok) continue;
+        } else if (store === "file" && !choice.enabled.includes("file")) {
+            // The program that makes this credential writes it to a file, so there is no weak-choice question. Turning files
+            // on is still the person's yes: once on, every credential may use a file, not only this one.
+            const ok = await ui.confirm(
+                "Turn on files as a place Jig reads from?",
+                "This credential is kept in a file, so Jig has to read files. Once they are on, any credential in your settings may be kept in one, not only this.",
+            );
+            if (!ok) continue;
         }
 
         // What the company says to do to add it, shown before the parts are asked, never run.
