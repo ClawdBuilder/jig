@@ -171,15 +171,19 @@ export function checkOnboarding(
             items.push(item as unknown as OnboardingItem);
             continue;
         }
-        if (check("object", [...shared, "keyLabel", "keyPlaceholder", "forms", "repeat"])) {
+        if (check("object", [...shared, "keyLabel", "keyPlaceholder", "forms", "repeat", "optional"])) {
             if (!SECTION.test(String(item.section))) errors.push(`${at}.section: the section's name`);
-            if (!PATH.test(String(item.path))) errors.push(`${at}.path: the section's map, such as connections`);
+            // An empty path means the section itself is the map, as in `transports`.
+            if (item.path !== "" && !PATH.test(String(item.path)))
+                errors.push(`${at}.path: the section's map, such as connections, or empty when the section is the map`);
             if (!oneLine(item.label, LABEL_MAX)) errors.push(`${at}.label: needed, one line`);
             optionalLine(item.why, `${at}.why`, WHY_MAX, errors);
             if (!oneLine(item.keyLabel, LABEL_MAX)) errors.push(`${at}.keyLabel: needed, one line`);
             optionalLine(item.keyPlaceholder, `${at}.keyPlaceholder`, LABEL_MAX, errors);
-            if (item.repeat !== undefined && typeof item.repeat !== "boolean")
-                errors.push(`${at}.repeat: true or false`);
+            for (const name of ["repeat", "optional"] as const) {
+                if (item[name] !== undefined && typeof item[name] !== "boolean")
+                    errors.push(`${at}.${name}: true or false`);
+            }
             checkObjectForms(item.forms, `${at}.forms`, errors);
             items.push(item as unknown as OnboardingItem);
             continue;

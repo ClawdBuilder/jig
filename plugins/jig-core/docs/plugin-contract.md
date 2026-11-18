@@ -132,7 +132,23 @@ closed instead of running ungoverned.
     method as a prefill. No method id is written; setup infers the method from
     the required paths. A method a company makes usable, such as its sign-in
     service, names `companyOnly: true`, and is offered only while a company is
-    active.
+    active. A method that sends the requests through a transport names
+    `viaTransport: true` with one required `text` field, the transport's name:
+    setup offers it while a transport exists (the person's `transports`, a
+    company's defaults, one a company plugin registered, or one answered earlier
+    in the same run), asks which as a pick of those names, and writes the name.
+    Its first field is that name, a required `text` one; later fields must be
+    optional, such as a `number` field for a time limit (a method field may be
+    `text`, `number`, `pick` or `reference`). A `text` field may carry a
+    `question`, the whole prompt, when its label reads badly as one. A `number`
+    field's `question` is the sentence only: when the field is optional, setup adds
+    "(optional: Enter keeps N)", N being the value in the settings now, or its
+    `default` (the section's own default) while it is unset. When a method is
+    chosen, setup removes the fields the other methods own: their required
+    fields, and their optional ones in the same object (`auth.cloudId` beside
+    `auth.oauth`); a setting elsewhere, such as `timeoutSeconds`, belongs to no
+    method. Then it runs the section's check, and a message that was not there
+    before the pick reverts the pick.
   - `{ setup }` declares what the section needs from a person, in the plugin's
     own words. `summary` is one line for setup's plugin list and the doctor's
     "not set up" line. `items` are the questions, in the plugin's order: the

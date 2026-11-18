@@ -36,9 +36,26 @@ export const LOGS_METHODS = [
     },
     {
         id: "transport",
-        label: "Company transport",
-        companyOnly: true,
-        fields: [{ kind: "text", path: "backend.transport", label: "The transport name" }],
+        label: "Through a session relay or transport",
+        who: "it holds your session, so Jig holds no log credential",
+        viaTransport: true,
+        fields: [
+            {
+                kind: "text",
+                path: "backend.transport",
+                label: "Relay or transport for log searches",
+                why: "Jig sends each request to it by name, and it signs in; no log credential is kept.",
+            },
+            {
+                kind: "number",
+                path: "timeoutSeconds",
+                label: "Log request time limit (seconds)",
+                optional: true,
+                default: 30,
+                question: "How long may a log request take, in seconds?",
+                why: "A request that takes longer is stopped (5 to 120 seconds); a browser relay may need up to 120 right after you sign in.",
+            },
+        ],
     },
 ] as const;
 

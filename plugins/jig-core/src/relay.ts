@@ -17,6 +17,22 @@ const ANSWER_FACTOR = 6;
 const CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
 const HEADERS = new Set(["accept", "content-type"]);
 
+/** A relay's health answer that arrived but cannot be used: too large, not JSON, or a refusal. The message is the one
+ *  the doctor shows; `reason`, `status` and `detail` let setup say what happened in its own words. */
+export class RelayAnswerError extends Error {
+    readonly reason: "too-large" | "not-json" | "refused";
+    readonly status: number;
+    /** What the relay said about a refusal, when it said something. */
+    readonly detail: string | undefined;
+
+    constructor(reason: RelayAnswerError["reason"], status: number, message: string, detail?: string) {
+        super(message);
+        this.reason = reason;
+        this.status = status;
+        this.detail = detail;
+    }
+}
+
 /** The jig-core HTTP client the relay uses; looked up at call time so a reload sees the current one. */
 export interface RelayHttp {
     request(request: HttpRequest, signal?: AbortSignal): Promise<HttpResponse>;
@@ -278,21 +294,27 @@ export async function relayHealth(
         }
         throw error;
     }
-    if (reply.truncated) throw new Error("the relay's health answer is too large");
+    if (reply.truncated)
+        throw new RelayAnswerError("too-large", reply.status, "the relay's health answer is too large");
     let body: Record<string, unknown>;
     try {
         body = JSON.parse(reply.body) as Record<string, unknown>;
     } catch {
-        throw new Error(`the relay at ${config.url} did not answer with JSON`);
+        throw new RelayAnswerError("not-json", reply.status, `the relay at ${config.url} did not answer with JSON`);
     }
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
-        throw new Error(`the relay at ${config.url} did not answer with JSON`);
+        throw new RelayAnswerError("not-json", reply.status, `the relay at ${config.url} did not answer with JSON`);
     }
     const protocol = typeof body.protocol === "number" ? body.protocol : 0;
     const service = typeof body.service === "string" ? body.service : "";
     if (reply.status !== 200) {
         const message = typeof body.message === "string" ? body.message : `HTTP ${reply.status}`;
-        throw new Error(`the relay refused health: ${message}`);
+        throw new RelayAnswerError(
+            "refused",
+            reply.status,
+            `the relay refused health: ${message}`,
+            typeof body.message === "string" ? body.message : undefined,
+        );
     }
     return {
         protocol,

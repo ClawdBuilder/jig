@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-19: a person sets up a session relay and signs in through it](#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)
 - [2026-11-17: setup adds one named object of a map](#2026-11-17-setup-adds-one-named-object-of-a-map)
 - [2026-11-17: a library that must hold a credential gets it from the resolver](#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)
 - [2026-11-16: the 500-line check is a ratchet](#2026-11-16-the-500-line-check-is-a-ratchet)
@@ -76,6 +77,49 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-19: a person sets up a session relay and signs in through it
+
+**Decision.** `jig setup` asks for a relay under jig-core's own `transports` section, and Jira and logs offer "Through a
+session relay or transport" to a person with no company plugin whenever a transport exists. The relay is one `object` item
+with three additions to the kind: an empty `path` means the section itself is the map, a form's `fixed` values (`kind:
+"relay"`) are written without a question, and `optional` lets an empty name leave the map unset. A method that goes through a
+transport names `viaTransport: true` instead of `companyOnly: true`: setup offers it while a transport exists (the person's
+file, a company's defaults, one a company plugin registered, or one answered earlier in the same run), as a pick of those
+names, and not at all when there is none. A company's own sign-in service stays `companyOnly`. After the answers, setup looks
+once at the relay with `GET /v1/health`, which needs no token, and never sends or reads the token; `jig doctor` already checks
+the health, the protocol and the token.
+
+**Why:** the relay and the sign-in through it were configurable by hand, but setup never asked for a relay and offered the
+transport method only to a company, so a person on their own was never led there. `Transports` comes first in the plugin list
+so a relay can be set up before the tools that use it. Setup asks no `services` map: with none, Jig asks the relay for the
+service named like the tool (`jira`, `logs`), and a map that lists only one of them would make the other refuse, so a relay
+that names its services differently is written by hand.
+
+A method field may be a `number` (a company never fixes one), and a `text` field may carry a `question`, the whole prompt. A
+`number` field's `question` is the sentence only, and an optional one carries a `default`: setup adds "(optional: Enter keeps N)",
+N being the value in the settings now or the default while it is unset. Through a relay, Jira and logs ask one optional time limit
+(`jira.timeoutSeconds`, `logs.timeoutSeconds`, 5 to 120, default 30) right after the transport pick, because a browser relay can be
+slow on the first request after a sign-in. Jira's words say that a search has its own limit, `searchTimeoutSeconds`; it is
+mentioned, not asked, to keep the relay setup short.
+
+A `reference` field of an `object` may say `fileExpected: true`: the relay writes its own token file. It changes three things: the
+file store is listed first (after a company's preferred store), as "A file" and without "(not recommended)"; the "Use a file?"
+warning is not asked; and, when files are not a place Jig reads from yet, one line asks "Turn on files as a place Jig reads from?"
+in its place, because turning the store on lets every credential use a file and that stays the person's yes. Every other
+credential keeps the label and the warning. A form's `fixed` path may not lie inside or above a question's path, or another fixed
+value's, because the answer or the other value would replace it.
+
+The relay's name is a plain identifier, 1 to 40 letters, digits, `-` or `_`, and never the name of a transport a company plugin
+registered in code. A name with a space or a non-ASCII letter once escaped the check of the whole entry, because a message
+naming it could not be read as a path; an object is now found in a check's messages by its key as text, and an address is
+checked against the section's own rule before it is shown or sent.
+
+**Choosing a sign-in method** removes the fields the other methods own, and runs the plugin's check on the result. A method owns
+its required fields and its optional ones in the same object (`auth.cloudId` beside `auth.oauth`); a setting elsewhere, such as
+`timeoutSeconds`, belongs to no method and stays. A check message that was not there before the pick reverts the pick and is
+said in the check's words, so setup never saves a section its plugin refuses. A method setup does not offer (a company's
+sign-in service, with no company) is not removed and is caught by that check.
 
 ## 2026-11-17: setup adds one named object of a map
 

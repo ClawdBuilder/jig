@@ -50,6 +50,8 @@ export interface SetupState {
     sectionSetup?: ReadonlyMap<string, OnboardingSetup>;
     /** True while a company plugin is active: a method a company makes usable is offered only then. */
     companyActive?: boolean;
+    /** The transports a company plugin registered in code, which a method that goes through a transport may offer. */
+    pluginTransports?: readonly string[];
 }
 
 export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal" | "entry" | "object";
@@ -77,6 +79,8 @@ export interface SetupObjectForm {
     label?: string;
     who?: string;
     when?: { path: string; equals: string };
+    /** Written into every object of this form without asking, by path inside the object. */
+    fixed?: Readonly<Record<string, string | number | boolean>>;
     fields: SetupObjectField[];
 }
 
@@ -109,6 +113,8 @@ export interface SetupField {
     fixed?: string;
     /** The company marks it optional: an empty answer leaves it unset, and the doctor does not ask for it. */
     optional?: true;
+    /** For a number: the value that applies while it is unset, said in the question's "Enter keeps" note. */
+    default?: number;
     /** The answer is a simple list: one entry per line, or separated by commas. */
     list?: true;
     /** An empty answer keeps this value: it is set and passes, and setup only asks again so it can change. */
@@ -142,6 +148,8 @@ export interface SetupReferenceChoice {
     suggested?: Readonly<Partial<Record<SecretBackend, string>>>;
     /** What the company says to do to add it, per store. */
     addHints?: Readonly<Partial<Record<SecretBackend, string>>>;
+    /** A file is the normal place for this credential: it is offered first, as "A file", and no warning is asked. */
+    fileExpected?: true;
 }
 
 export interface SetupMethod {
@@ -155,6 +163,10 @@ export interface SetupMethod {
     /** The method the section's current values select, by required path set. */
     current?: boolean;
     fields: SetupField[];
+    /** The paths this method owns in the section: its required fields, and its optional ones beside them in the same
+     *  object (`auth.cloudId` beside `auth.oauth`). Choosing another method removes them; a setting elsewhere, such as
+     *  `timeoutSeconds`, is no method's. */
+    owns: string[];
     /** Why a wildcard produced no fields, when the plan cannot ask for a name yet. */
     notes?: string[];
 }
@@ -198,6 +210,8 @@ export interface SetupPlan {
     replace: ReadonlyMap<string, readonly string[]>;
     oneOf: ReadonlyMap<string, readonly (readonly string[])[]>;
     union: ReadonlyMap<string, readonly string[]>;
+    /** The transports a company plugin registered in code: a relay setup adds may not take one of these names. */
+    pluginTransports: readonly string[];
 }
 
 export type SetupPlanResult = { plan: SetupPlan } | { problem: string };
@@ -217,6 +231,9 @@ export interface SetupChange {
     key?: string;
     /** Append this value to the list at `path`, rather than replacing it. */
     append?: boolean;
+    /** Take the value at `path` out of the section (and any object it leaves empty); `value` is then not used. A sign-in
+     *  method replaces the fields of the one it replaces. */
+    remove?: true;
 }
 
 /** Whether the company's list names any answer in this section, so setup asks its questions first. */
@@ -376,6 +393,7 @@ export function buildSetupPlan(state: SetupState): SetupPlanResult {
             replace: state.replace,
             oneOf: state.oneOf,
             union: state.union,
+            pluginTransports: state.pluginTransports ?? [],
         },
     };
 }

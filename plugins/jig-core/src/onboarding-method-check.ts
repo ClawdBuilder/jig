@@ -33,8 +33,8 @@ function checkMethodField(
     }
     const field = raw as Record<string, unknown>;
     const kind = field.kind;
-    if (kind !== "text" && kind !== "pick" && kind !== "reference") {
-        errors.push(`${at}.kind: must be text, pick or reference`);
+    if (kind !== "text" && kind !== "number" && kind !== "pick" && kind !== "reference") {
+        errors.push(`${at}.kind: must be text, number, pick or reference`);
         return undefined;
     }
     const allowed =
@@ -42,7 +42,9 @@ function checkMethodField(
             ? ["kind", "path", "label", "stores", "preferredStore", "suggested", "addHints", "why"]
             : kind === "pick"
               ? ["kind", "path", "label", "choices", "why", "value"]
-              : ["kind", "path", "label", "why", "placeholder", "optional", "value"];
+              : kind === "number"
+                ? ["kind", "path", "label", "why", "placeholder", "optional", "question", "default"]
+                : ["kind", "path", "label", "why", "placeholder", "optional", "question", "value"];
     for (const key of Object.keys(field)) {
         if (!allowed.includes(key)) errors.push(unknownField(at, key, allowed));
     }
@@ -54,10 +56,15 @@ function checkMethodField(
         errors.push(`${at}.value: a company-only method fixes every field in one line of at most 64 characters`);
     }
     if (!company && field.value !== undefined) errors.push(`${at}.value: only a company-only method may fix a field`);
-    if (kind === "text") {
+    if (kind === "number" && company) errors.push(`${at}.kind: a company-only method fixes text, not a number`);
+    if (kind === "text" || kind === "number") {
         optionalLine(field.placeholder, `${at}.placeholder`, LABEL_MAX, errors);
+        optionalLine(field.question, `${at}.question`, WHY_MAX, errors);
         if (field.optional !== undefined && typeof field.optional !== "boolean")
             errors.push(`${at}.optional: true or false`);
+    }
+    if (kind === "number" && field.default !== undefined && !Number.isFinite(field.default)) {
+        errors.push(`${at}.default: a number, the value that applies while the setting is unset`);
     }
     if (kind === "pick") {
         if (!Array.isArray(field.choices) || field.choices.length === 0 || field.choices.length > 100) {
@@ -107,6 +114,23 @@ function checkMethodField(
     return field as unknown as OnboardingMethodField;
 }
 
+/** A method that goes through a transport: a flag, a required text field first that holds the transport's name, and only
+ *  optional fields after it. */
+function checkViaTransport(
+    flag: unknown,
+    fields: readonly OnboardingMethodField[],
+    at: string,
+    errors: string[],
+): void {
+    if (flag === undefined) return;
+    if (typeof flag !== "boolean") errors.push(`${at}: true or false`);
+    const [first, ...rest] = fields;
+    if (flag === true && (first?.kind !== "text" || first.optional === true))
+        errors.push(`${at}: needs a required text field first, the transport's name`);
+    if (flag === true && rest.some((field) => !((field.kind === "text" || field.kind === "number") && field.optional)))
+        errors.push(`${at}: every field after the transport's name must be optional`);
+}
+
 /** Throws when a plugin's methods for one section are not a list setup can use. */
 export function checkOnboardingMethods(section: string, raw: unknown): readonly OnboardingMethod[] {
     if (!SECTION.test(section)) throw new TypeError(`onboarding methods: ${JSON.stringify(section)} is not a section`);
@@ -124,7 +148,7 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
             continue;
         }
         const method = value as Record<string, unknown>;
-        const keys = ["id", "label", "who", "fields", "requires", "companyOnly"];
+        const keys = ["id", "label", "who", "fields", "requires", "companyOnly", "viaTransport"];
         for (const key of Object.keys(method)) {
             if (!keys.includes(key)) errors.push(unknownField(at, key, keys));
         }
@@ -156,8 +180,10 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
             ...(typeof method.who === "string" ? { who: method.who } : {}),
             ...(typeof method.requires === "string" ? { requires: method.requires } : {}),
             ...(method.companyOnly === true ? { companyOnly: true as const } : {}),
+            ...(method.viaTransport === true ? { viaTransport: true as const } : {}),
             fields,
         };
+        checkViaTransport(method.viaTransport, fields, `${at}.viaTransport`, errors);
         if (requiredFields(complete as OnboardingMethod).length === 0)
             errors.push(`${at}.fields: at least one field is required`);
         const paths = requiredPaths(complete as OnboardingMethod);

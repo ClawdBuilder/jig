@@ -5,11 +5,13 @@
 import { detectedLine } from "./detect.ts";
 import { applyAnswer, applyEntry, applyValue } from "./setup-answer.ts";
 import { askObject } from "./setup-ask-object.ts";
+import { beginSwitch, endSwitch } from "./setup-method-switch.ts";
 import { askProposal } from "./setup-proposal.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
 import type { SetupChange, SetupField, SetupMethod, SetupPlan, SetupSection } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
 import type { JigState } from "./state.ts";
+import { optionalNumberQuestion } from "./setup-fields.ts";
 import { getPath } from "./setup-values.ts";
 
 /** The line for one sign-in method: its plain label, whose it is, and whether it is the one in use. */
@@ -61,7 +63,7 @@ export async function ask(
         // The prompt already carries the label; the line above it only says why.
         ui.notify(field.reason, "info");
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const text = await ui.input(field.question, typed);
+        const text = await ui.input(questionOf(field, draft), typed);
         if (text === undefined) return "cancel";
         const answer = text.trim() === "" && detected !== undefined ? detected : text;
         // An optional field: an empty answer leaves it unset, and nothing is written for it.
@@ -80,6 +82,21 @@ export async function ask(
         }
         ui.notify(result.problem, "warning");
     }
+}
+
+/** The words of one text or number question. An optional number says what Enter keeps: the value set now (an answer of this
+ *  run included), or the default while it is unset. */
+function questionOf(field: SetupField, draft: Record<string, unknown>): string {
+    if (field.kind !== "number" || field.optional !== true) return field.question;
+    const own = getPath(draft[field.section], field.path);
+    const now = typeof own === "number" || typeof own === "string" ? own : field.current;
+    const keeps =
+        now !== undefined
+            ? { value: now as string | number, unset: false }
+            : field.default === undefined
+              ? undefined
+              : { value: field.default, unset: true };
+    return optionalNumberQuestion(field.question, keeps, field.placeholder);
 }
 
 /** The sign-in question of one section, then that method's fields; a fixed value is shown and written, never asked. */
@@ -104,6 +121,7 @@ export async function askMethods(
     if (picked === undefined) return "cancel";
     const method = ordered[labels.indexOf(picked)];
     if (method === undefined) return "cancel";
+    const mark = beginSwitch(plan, section.name, draft, changes);
     for (const field of method.fields) {
         if (field.fixed !== undefined) {
             const at = getPath(draft[field.section], field.path);
@@ -116,6 +134,7 @@ export async function askMethods(
         }
         if ((await ask(state, plan, field, draft, changes, ui, found)) === "cancel") return "cancel";
     }
+    endSwitch(plan, section, method, mark, draft, changes, ui);
     return "ok";
 }
 

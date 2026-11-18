@@ -111,6 +111,9 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `setup-answer.ts` | One answer checked by the section's own validator: a field, a map entry, a list, a new object | `setup-ask.ts`, `setup-ask-object.ts` |
 | `setup-ask.ts` | One question at a time: a refusal that asks again, a credential, a method, an entry, an object | `setup.ts` |
 | `setup-ask-object.ts` | One named object of a map: its name, one form's questions, and a refusal that asks that field again | `setup-ask.ts` |
+| `setup-transports.ts` | The `transports` section's questions (one relay), and the transport names that exist | `setup.ts`, `setup-section.ts` |
+| `setup-relay-check.ts` | One look at a new relay's health, without its token: found, or not answering | `setup-ask-object.ts` |
+| `setup-method-switch.ts` | What a chosen sign-in method takes out, and the check before the choice is kept | `setup-ask.ts`, `setup-methods-plan.ts` |
 | `setup-menu.ts` | Setup's plugin list: one line per plugin with its status, and what to do next | `setup.ts` |
 | `setup-values.ts` | The plain-object helpers setup shares: a dotted path and a safe write | `setup-*.ts` |
 | `setup-method-paths.ts` | A sign-in method's `*` paths: which expanded fields a method allows | `setup-plan.ts` |

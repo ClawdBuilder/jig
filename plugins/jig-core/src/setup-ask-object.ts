@@ -5,15 +5,20 @@ import type { SetupChange, SetupField, SetupObjectField, SetupObjectForm, SetupP
 import type { SetupUi } from "./setup.ts";
 import type { JigState } from "./state.ts";
 import type { SecretBackend } from "./config.ts";
-import { applyObject, keyProblem, listValues } from "./setup-answer.ts";
+import { applyObject, listValues, objectNameProblem } from "./setup-answer.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
+import { checkRelay } from "./setup-relay-check.ts";
+import { TRANSPORTS_SECTION } from "./transports-section.ts";
 import { layered } from "./section-defaults.ts";
+import { optionalQuestion } from "./setup-fields.ts";
 import { getPath, isObject } from "./setup-values.ts";
 
-/** The names in the map this item adds to, from the person's answers over the company's defaults. */
+/** The names in the map this item adds to, from the person's answers over the company's defaults. The transports a
+ *  company plugin registered in code are there too: the name of one is not free. */
 function objectNames(plan: SetupPlan, field: SetupField, draft: Record<string, unknown>): string[] {
     const value = getPath(mergedSection(plan, field.section, draft), field.path);
-    return isObject(value) ? Object.keys(value) : [];
+    const names = isObject(value) ? Object.keys(value) : [];
+    return field.section === TRANSPORTS_SECTION ? [...new Set([...names, ...plan.pluginTransports])] : names;
 }
 
 function mergedSection(plan: SetupPlan, section: string, draft: Record<string, unknown>): unknown {
@@ -82,7 +87,7 @@ export async function askObject(
         return "ok";
     }
     for (;;) {
-        const name = await askName(ui, field, names);
+        const name = await askName(plan, ui, field, names);
         if (name === "cancel") return "cancel";
         if (name === "stop") return "ok";
         const outcome = await addObject(state, plan, field, draft, changes, ui, name);
@@ -120,6 +125,13 @@ async function addObject(
         if (answer === "cancel") return "cancel";
         if (answer === "retry") return "retry";
         if (answer === "form") continue;
+        // A session relay is asked once whether it is running; its token is never sent or read here.
+        if (field.section === TRANSPORTS_SECTION) {
+            const url = (answer.change.value as { url?: unknown }).url;
+            const looked = typeof url === "string" ? await checkRelay(state, ui, url) : "ok";
+            if (looked === "cancel") return "cancel";
+            if (looked === "refused") return "retry";
+        }
         changes.push(answer.change);
         return "added";
     }
@@ -127,22 +139,31 @@ async function addObject(
 
 /** The name of the new object: one line, a safe key, and one that is not already there. A map already set up can be left
  *  as it is, because this question only ever adds one more. */
-async function askName(ui: SetupUi, field: SetupField, names: readonly string[]): Promise<string | "stop" | "cancel"> {
+async function askName(
+    plan: SetupPlan,
+    ui: SetupUi,
+    field: SetupField,
+    names: readonly string[],
+): Promise<string | "stop" | "cancel"> {
     const spec = field.object;
     if (spec === undefined) return "cancel";
     for (;;) {
-        const text = await ui.input(spec.keyLabel, spec.keyPlaceholder);
+        // An optional object says so in its question, and puts its example there, as an optional text question does.
+        const text =
+            field.optional === true
+                ? await ui.input(optionalQuestion(spec.keyLabel, spec.keyPlaceholder))
+                : await ui.input(spec.keyLabel, spec.keyPlaceholder);
         if (text === undefined) return "cancel";
         const name = text.trim();
         if (name === "") {
-            if (names.length > 0) {
-                ui.notify(`${field.label} left as it is.`, "info");
+            if (names.length > 0 || field.optional === true) {
+                ui.notify(`${field.label} left ${names.length > 0 ? "as it is" : "unset (optional)"}.`, "info");
                 return "stop";
             }
             ui.notify(`Please enter a value for ${spec.keyLabel}`, "warning");
             continue;
         }
-        const problem = keyProblem(name);
+        const problem = objectNameProblem(plan, field, name);
         if (problem !== undefined) {
             ui.notify(problem, "warning");
             continue;
@@ -226,7 +247,7 @@ async function fillForm(
                 asking++;
             }
         }
-        const result = applyObject(plan, draft, field, name, Object.fromEntries(values));
+        const result = applyObject(plan, draft, field, name, { ...form.fixed, ...Object.fromEntries(values) });
         if ("change" in result) {
             if (enable.size > 0) result.change.enableBackends = [...new Set(enable.values())];
             if (missing.size > 0) result.change.note = `${result.change.note ?? ""} (not found yet)`;

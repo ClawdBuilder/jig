@@ -33,8 +33,10 @@ application/json` when it has a body.
 
 ## Through a transport
 
-A company plugin registers a transport with `jig-core`: code that carries the
-request, for example through a local sign-in proxy that holds the session.
+A transport carries the request instead of the network, for example through a local
+sign-in proxy that holds the session. A company plugin registers one with `jig-core`
+as code, and a relay you set up with `jig setup transports` is one too; either is
+named in `backend.transport`.
 
 Every request goes to `jig().transports.request(name, { system: "logs", method,
 url, headers, body })`, with the same headers as a direct request. No

@@ -49,9 +49,9 @@ export async function chooseReference(
         ...(keep ? ["Keep the current place"] : []),
         ...choice.stores.map(
             (store) =>
-                `${storeChoiceLabel(store)}${choice.preferred === store ? " (company default)" : ""}${
-                    choice.current === store ? " (current)" : ""
-                }`,
+                `${store === "file" && choice.fileExpected === true ? "A file" : storeChoiceLabel(store)}${
+                    choice.preferred === store ? " (company default)" : ""
+                }${choice.current === store ? " (current)" : ""}`,
         ),
     ];
 
@@ -65,10 +65,18 @@ export async function chooseReference(
         const store = choice.stores[labels.indexOf(picked) - (keep ? 1 : 0)];
         if (store === undefined) continue;
 
-        if (store === "file") {
+        if (store === "file" && choice.fileExpected !== true) {
             const ok = await ui.confirm(
                 "Use a file?",
                 "A file is plain text on disk. A password store or 1Password is safer.",
+            );
+            if (!ok) continue;
+        } else if (store === "file" && !choice.enabled.includes("file")) {
+            // The program that makes this credential writes it to a file, so there is no weak-choice question. Turning files
+            // on is still the person's yes: once on, every credential may use a file, not only this one.
+            const ok = await ui.confirm(
+                "Turn on files as a place Jig reads from?",
+                "This credential is kept in a file, so Jig has to read files. Once they are on, any credential in your settings may be kept in one, not only this.",
             );
             if (!ok) continue;
         }

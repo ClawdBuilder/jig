@@ -175,7 +175,8 @@ describe("/jig", () => {
                         ? "Answer these"
                         : options.includes("Save these changes")
                           ? "Save these changes"
-                          : options[0],
+                          : // The plugin list always holds jig-core's session relay, so it is finished with "Done".
+                            (options.find((option) => option.startsWith("Done")) ?? options[0]),
                 input: () => "orders-api",
                 confirm: () => true,
             },

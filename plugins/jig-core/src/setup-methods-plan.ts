@@ -6,6 +6,7 @@ import { inferredMethod, requiredPaths } from "./onboarding-methods.ts";
 import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
 import { referenceChoice } from "./setup-reference.ts";
 import { optionalQuestion, referenceQuestion } from "./setup-fields.ts";
+import { ownedPaths } from "./setup-method-switch.ts";
 import { getPath } from "./setup-values.ts";
 
 /** The methods of one section as setup asks them, and whether the "How do you sign in?" question is needed. */
@@ -15,7 +16,14 @@ export interface MethodPlan {
     askMethod: boolean;
 }
 
-export function setupMethods(state: SetupState, section: string, merged: unknown, requested = false): MethodPlan {
+/** `transports` are the names a method that goes through a transport may offer: it is offered only while there is one. */
+export function setupMethods(
+    state: SetupState,
+    section: string,
+    merged: unknown,
+    requested = false,
+    transports: readonly string[] = [],
+): MethodPlan {
     const registered = state.onboardingMethods?.get(section) ?? [];
     const choice = state.onboarding?.methods?.[section];
     const hidden = new Set(choice?.hide ?? []);
@@ -26,7 +34,8 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
         if (target !== undefined && target.id === method.id) {
             const values = new Map<string, string>();
             for (const field of method.fields) {
-                if (field.kind !== "reference" && field.value !== undefined) values.set(field.path, field.value);
+                if (field.kind !== "reference" && field.kind !== "number" && field.value !== undefined)
+                    values.set(field.path, field.value);
             }
             prefill.set(method.id, values);
             continue;
@@ -34,8 +43,12 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
         added.push(method);
     }
     const all = [...registered, ...added];
+    // A method that goes through a transport is offered while one exists, or while a company fixes which one.
     const visible = all.filter(
-        (method) => !hidden.has(method.id) && (method.companyOnly !== true || state.companyActive === true),
+        (method) =>
+            !hidden.has(method.id) &&
+            (method.companyOnly !== true || state.companyActive === true) &&
+            (method.viaTransport !== true || transports.length > 0 || prefill.has(method.id)),
     );
     if (visible.length === 0) return { methods: [], askMethod: false };
     const chosen = choice?.default ?? visible[0]?.id;
@@ -53,7 +66,9 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
                 const at = getPath(merged, path);
                 const current =
                     typeof at === "string" || typeof at === "number" || typeof at === "boolean" ? at : undefined;
-                const value = fixed?.get(field.path) ?? (field.kind === "reference" ? undefined : field.value);
+                const value =
+                    fixed?.get(field.path) ??
+                    (field.kind === "reference" || field.kind === "number" ? undefined : field.value);
                 if (value !== undefined) {
                     fields.push({
                         section,
@@ -91,6 +106,20 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
                     });
                     continue;
                 }
+                if (method.viaTransport === true && field.kind === "text" && field === method.fields[0]) {
+                    // Which transport: a pick of the names that exist, never a name typed.
+                    fields.push({
+                        section,
+                        path,
+                        label: field.label,
+                        question: field.label,
+                        kind: "pick",
+                        choices: [...transports],
+                        ...(current === undefined ? {} : { current, keep: true as const }),
+                        reason: field.why ?? "Jig sends the requests through the transport you pick.",
+                    });
+                    continue;
+                }
                 if (field.kind === "pick") {
                     fields.push({
                         section,
@@ -108,11 +137,17 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
                     section,
                     path,
                     label: field.label,
-                    question: field.optional === true ? optionalQuestion(field.label, field.placeholder) : field.label,
+                    // An optional number's note ("Enter keeps N") is built when it is asked, from what is set by then.
+                    question:
+                        field.question ??
+                        (field.optional === true && field.kind !== "number"
+                            ? optionalQuestion(field.label, field.placeholder)
+                            : field.label),
                     ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
                     ...(current === undefined ? {} : { current, keep: true as const }),
-                    kind: "text",
+                    kind: field.kind,
                     ...(field.optional === true ? { optional: true as const } : {}),
+                    ...(field.kind === "number" && field.default !== undefined ? { default: field.default } : {}),
                     reason: field.why ?? "The plugin's list says this field is needed.",
                 });
             }
@@ -125,6 +160,7 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
             ...(choice?.default === method.id ? { companyDefault: true as const } : {}),
             ...(current === undefined ? {} : { current: method.id === current.id }),
             fields,
+            owns: ownedPaths(fields),
             ...(notes.length === 0 ? {} : { notes }),
         };
     });

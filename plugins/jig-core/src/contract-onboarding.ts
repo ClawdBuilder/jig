@@ -38,6 +38,11 @@ export interface OnboardingMethod {
     /** True for a method only a company plugin makes usable, such as its sign-in service or transport: setup offers it
      *  only while a company is active, and a company's `add` still prefills it. */
     companyOnly?: boolean;
+    /** True for a method that sends the tool's requests through a transport, whose name is its first field, a required
+     *  `text` one (any field after it is optional): setup offers it while a transport exists (the person's `transports`, a
+     *  company's defaults, one a company plugin registered, or one answered earlier in the same run), asks which as a pick
+     *  of those names, and writes the name. */
+    viaTransport?: boolean;
 }
 
 /** One field of an `OnboardingMethod`. A plugin method has no `value`; a company-only method fixes every field. */
@@ -50,8 +55,26 @@ export type OnboardingMethodField =
           why?: string;
           placeholder?: string;
           optional?: boolean;
+          /** The whole prompt, when the label reads badly as a question; the label still names the answer in the summary.
+           *  An optional field's prompt then carries its own "(optional: ...)" note. */
+          question?: string;
           /** A fixed answer, for a company-only method. */
           value?: string;
+      }
+    | {
+          /** A whole number, such as a time limit in seconds; the section's own check says the range. Never fixed by a
+           *  company. */
+          kind: "number";
+          path: string;
+          label: string;
+          why?: string;
+          placeholder?: string;
+          optional?: boolean;
+          /** The question's words. An optional number's question is not a whole prompt: setup adds "(optional: Enter keeps
+           *  N)", with the value in the settings now for N, or `default` while it is unset. */
+          question?: string;
+          /** The value that applies while the setting is unset (the section's own default), for that note. */
+          default?: number;
       }
     | {
           kind: "pick";
@@ -105,6 +128,12 @@ export type OnboardingObjectField =
           suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
           /** What to tell the person to add it, per store. */
           addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+          /** True when the program that makes this credential writes it to a file, so a file is the normal answer. It changes
+           *  three things and nothing else: the file store is listed first (after a company's preferred store), as "A file"
+           *  and without "(not recommended)"; the "Use a file?" warning is not asked; and when files are not a place Jig
+           *  reads from yet, one line asks "Turn on files as a place Jig reads from?" instead, a no going back to the
+           *  choices. It adds no store to `stores` and leaves the rules for a file's path to the check of the place. */
+          fileExpected?: boolean;
           why?: string;
       };
 
@@ -116,6 +145,8 @@ export interface OnboardingObjectForm {
     who?: string;
     /** Asks this form only while the section's merged value at `path` is `equals`; a form without one is the fallback. */
     when?: { path: string; equals: string };
+    /** Values written into every object of this form without asking, by path inside the object, such as `kind`. */
+    fixed?: Readonly<Record<string, string | number | boolean>>;
     /** Ask these in order; each answer goes inside the new object at its own path. */
     fields: readonly OnboardingObjectField[];
 }
@@ -173,7 +204,7 @@ export type OnboardingItem =
       } & OnboardingAnswer)
     | ({
           /** One named object in the map at `path`: the name is asked, then one form's questions, and the answers are one
-           *  object written as `path.<name>`. */
+           *  object written as `path.<name>`. An empty `path` means the section itself is the map, as `transports` is. */
           kind: "object";
           /** The question for the object's name. */
           keyLabel: string;
@@ -182,6 +213,8 @@ export type OnboardingItem =
           forms: readonly OnboardingObjectForm[];
           /** Ask for another object after this one is accepted. */
           repeat?: boolean;
+          /** An empty name leaves the map as it is even when it has no object yet, so nothing is written. */
+          optional?: boolean;
       } & OnboardingAnswer)
     | {
           kind: "login";

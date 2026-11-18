@@ -218,12 +218,16 @@ describe("the plugin list", () => {
         assert.deepEqual(
             lines.map((line) => [line.label, line.status]),
             [
+                ["Transports", "ready (optional settings)"],
                 ["Jira", "not set up"],
                 ["Mongo", "not set up (questions coming)"],
                 ["Sandbox", "ready"],
             ],
         );
-        assert.match(lines[0]?.text ?? "", /^Jira\s+not set up\s+Read, search and comment on issues in your Jira\.$/);
+        assert.match(
+            lines.find((line) => line.label === "Jira")?.text ?? "",
+            /^Jira\s+not set up\s+Read, search and comment on issues in your Jira\.$/,
+        );
     });
 
     test("says set up once the section passes its own check", () => {
@@ -397,9 +401,15 @@ describe("git's setup", () => {
         const lines = pluginLines(setupStateFrom(state), {});
         assert.deepEqual(
             lines.map((line) => [line.label, line.status]),
-            [["Git", "ready (optional settings)"]],
+            [
+                ["Transports", "ready (optional settings)"],
+                ["Git", "ready (optional settings)"],
+            ],
         );
-        assert.match(lines[0]?.text ?? "", /^Git\s+ready \(optional settings\)\s+Work with git/);
+        assert.match(
+            lines.find((line) => line.label === "Git")?.text ?? "",
+            /^Git\s+ready \(optional settings\)\s+Work with git/,
+        );
         const questions = sectionQuestions(setupStateFrom(state), "git", {}, true);
         assert.deepEqual(
             questions.fields.map((field) => field.path),
@@ -431,7 +441,10 @@ describe("git's setup", () => {
         const lines = pluginLines(setupStateFrom(state), {});
         assert.deepEqual(
             lines.map((line) => [line.label, line.status]),
-            [["Git", "set up"]],
+            [
+                ["Transports", "ready (optional settings)"],
+                ["Git", "set up"],
+            ],
         );
         const built = buildSetupPlan(setupStateFrom(state));
         assert.ok("plan" in built);
@@ -634,7 +647,8 @@ describe("a plugin's sign-in methods", () => {
         const withCompany = sectionQuestions(setupStateFrom(state), "jira", {}, true);
         assert.deepEqual(
             withCompany.methods?.map((method) => method.id),
-            ["cloud-basic", "data-center-pat", "oauth", "sign-in-service", "transport"],
+            ["cloud-basic", "data-center-pat", "oauth", "sign-in-service"],
+            "its transport method needs a transport that exists, which a company's own presence does not give",
         );
     });
 });

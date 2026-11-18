@@ -8,6 +8,7 @@ import { referenceChoice } from "./setup-reference.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { messagePaths } from "./setup-answer.ts";
 import { setupMethods } from "./setup-methods-plan.ts";
+import { transportNames } from "./setup-transports.ts";
 import {
     coversPath,
     itemAtPath,
@@ -120,8 +121,10 @@ export function sectionQuestions(
     const rawSection = isObject(rawValue) ? rawValue : {};
     const merged = layeredSection(state, section, rawSection);
     const items = questionItems(state.onboarding, state.sectionSetup?.get(section)?.items, section);
-    const { methods, askMethod } = setupMethods(state, section, merged, requested);
-    const methodCovered = methodPaths(methods);
+    const { methods, askMethod } = setupMethods(state, section, merged, requested, transportNames(state, raw));
+    // A method covers a validator's field only while its question is asked in this run, and only for the paths that make a
+    // sign-in; a wrong value anywhere else is still the validator's question.
+    const methodCovered = askMethod ? methodPaths(methods) : [];
     const itemOrder = new Map(items.map((one, index) => [one.item.path, index]));
 
     if (rawValue !== undefined && !isObject(rawValue)) {

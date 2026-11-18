@@ -187,6 +187,31 @@ describe("/jig doctor checks", () => {
         assert.ok(!titles.includes("You need: A database connection"), text(report));
     });
 
+    test("a company's object whose map is the whole section names the section, with no trailing dot", async () => {
+        const onboarding: OnboardingEntry = {
+            items: [
+                {
+                    kind: "object",
+                    section: "acme",
+                    path: "",
+                    label: "A relay",
+                    keyLabel: "Which relay?",
+                    forms: [{ fields: [{ kind: "text", path: "url", label: "Where is it?" }] }],
+                },
+            ],
+        };
+        const report = await runDoctor(
+            context({
+                checks: [["acme", () => []]],
+                overrides: { personal: loaded({ sections: new Map([["acme", {}]]) }), onboarding },
+            }),
+            options(),
+        );
+        const line = report.lines.find((entry) => entry.title === "You need: A relay");
+        assert.ok(line, text(report));
+        assert.match(line.detail ?? "", /^Add acme to /);
+    });
+
     test("a loaded section says which company entries you left out with a null", async () => {
         const report = await runDoctor(
             context({

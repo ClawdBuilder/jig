@@ -19,7 +19,7 @@ the other type is an error that names it and the type it belongs to, such as
 | `backend.type` | `elasticsearch` | `elasticsearch` (also OpenSearch) or `loki` |
 | `backend.url` | required | Where the backend is, without the index or `/loki/api/v1` |
 | `backend.auth` | required with a direct `url` | A user name and password, an `apiKey`, a `token`, or a `signIn` service |
-| `backend.transport` | none | In place of `auth`: the name of a company transport |
+| `backend.transport` | none | In place of `auth`: the name of a transport, a company's or a relay under `transports` |
 | `backend.tenant` | none | Loki only: the tenant, sent as the header `X-Scope-OrgID` |
 
 - **`backend.type`:** a section without a type is Elasticsearch, so a file written
@@ -31,7 +31,8 @@ the other type is an error that names it and the type it belongs to, such as
   password, key or token is always a secret reference, such as `pass:logs/api-key`
   or `env:LOGS_KEY` (see [Secrets](../../../docs/secrets.md)), never the secret.
 - **`backend.transport`:** a transport that a company plugin registered with
-  `jig-core`. It carries each request and signs it in.
+  `jig-core`, or a relay you configured under `transports` (`jig setup transports`
+  adds one). It carries each request and signs it in.
 - **`backend.tenant`:** visible characters without spaces, up to 300.
 ## An environment
 
@@ -130,7 +131,7 @@ One environment that keeps the hits of either of two namespaces (Loki's version 
 }
 ```
 
-A company transport in place of `auth`:
+A transport, a company's or a relay, in place of `auth`:
 
 ```json
 { "logs": { "backend": { "transport": "corp", "url": "https://logs.example.com" }, "environments": { "staging": { "index": "app-logs-*" } } } }

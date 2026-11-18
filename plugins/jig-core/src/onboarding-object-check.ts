@@ -14,7 +14,7 @@ const MAX_FIELDS = 20;
 const FIELDS: Readonly<Record<OnboardingObjectField["kind"], readonly string[]>> = {
     text: ["kind", "path", "label", "why", "placeholder", "optional", "list"],
     pick: ["kind", "path", "label", "why", "choices"],
-    reference: ["kind", "path", "label", "why", "stores", "suggested", "addHints"],
+    reference: ["kind", "path", "label", "why", "stores", "suggested", "addHints", "fileExpected"],
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -77,6 +77,8 @@ function checkReference(field: Record<string, unknown>, at: string, errors: stri
             }
         }
     }
+    if (field.fileExpected !== undefined && typeof field.fileExpected !== "boolean")
+        errors.push(`${at}.fileExpected: true or false`);
     for (const name of ["suggested", "addHints"] as const) {
         const value = field[name];
         if (value === undefined) continue;
@@ -127,6 +129,39 @@ function checkFields(raw: unknown, at: string, errors: string[]): void {
     }
 }
 
+/** Whether one dotted path is the other or lies inside it: writing one would replace or lose the other. */
+function overlaps(left: string, right: string): boolean {
+    return left === right || left.startsWith(`${right}.`) || right.startsWith(`${left}.`);
+}
+
+/** The values a form writes without asking: plain scalars by path inside the object, none of them also a question, and
+ *  none inside or above a question's path or another fixed value (the answer or the other value would replace it). */
+function checkFixed(raw: unknown, fields: unknown, at: string, errors: string[]): void {
+    if (raw === undefined) return;
+    if (!isObject(raw)) {
+        errors.push(`${at}: must be an object of paths and plain values`);
+        return;
+    }
+    const asked = Array.isArray(fields) ? fields.map((field) => (isObject(field) ? String(field.path) : "")) : [];
+    const fixed = Object.keys(raw);
+    for (const [path, value] of Object.entries(raw)) {
+        if (!safePath(path)) errors.push(`${at}.${path}: a dotted path inside the new object, such as kind`);
+        else if (asked.includes(path)) errors.push(`${at}.${path}: is also asked, so it cannot be fixed`);
+        else {
+            const question = asked.find((one) => one !== "" && overlaps(path, one));
+            const inside = fixed.find((one) => one !== path && path.startsWith(`${one}.`));
+            if (question !== undefined)
+                errors.push(`${at}.${path}: overlaps the question ${JSON.stringify(question)}, so it cannot be fixed`);
+            else if (inside !== undefined)
+                errors.push(
+                    `${at}.${path}: overlaps the fixed value ${JSON.stringify(inside)}; one would replace the other`,
+                );
+        }
+        if (typeof value === "string" ? !oneLine(value, LABEL_MAX) : !["number", "boolean"].includes(typeof value))
+            errors.push(`${at}.${path}: one line of text, a number or true/false`);
+    }
+}
+
 /** One form of an object: its label, its optional line, its `when` and its questions. */
 function checkForm(raw: unknown, at: string, many: boolean, errors: string[]): void {
     if (!isObject(raw)) {
@@ -135,8 +170,8 @@ function checkForm(raw: unknown, at: string, many: boolean, errors: string[]): v
     }
     const form = raw as Record<string, unknown>;
     for (const key of Object.keys(form)) {
-        if (!["label", "who", "when", "fields"].includes(key))
-            errors.push(unknownField(at, key, ["label", "who", "when", "fields"]));
+        if (!["label", "who", "when", "fixed", "fields"].includes(key))
+            errors.push(unknownField(at, key, ["label", "who", "when", "fixed", "fields"]));
     }
     // A single form never asks which kind it is, so only a choice among several needs a label.
     if (many) {
@@ -145,6 +180,7 @@ function checkForm(raw: unknown, at: string, many: boolean, errors: string[]): v
     } else optionalLine(form.label, `${at}.label`, LABEL_MAX, errors);
     optionalLine(form.who, `${at}.who`, LABEL_MAX, errors);
     checkWhen(form.when, `${at}.when`, errors);
+    checkFixed(form.fixed, form.fields, `${at}.fixed`, errors);
     checkFields(form.fields, `${at}.fields`, errors);
 }
 

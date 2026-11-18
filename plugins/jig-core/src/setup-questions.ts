@@ -54,7 +54,8 @@ export function checkSetup(section: string, raw: unknown): OnboardingSetup {
                 fail(section, `${at}: a plugin cannot propose an entry; ask for it with an "entry" item`);
             }
             if (item.kind === "info" || item.kind === "login") continue;
-            if (!safePath(item.path)) {
+            // An object may name the section itself as its map, with an empty path.
+            if (!(item.kind === "object" && item.path === "") && !safePath(item.path)) {
                 fail(section, `${at}.path: a dotted path of plain names setup can write, such as bastion.user`);
             }
             if (item.section !== section) {
@@ -214,12 +215,19 @@ function offerStores(
               preferredStore?: OnboardingStore;
               suggested?: Readonly<Partial<Record<OnboardingStore, string>>>;
               addHints?: Readonly<Partial<Record<OnboardingStore, string>>>;
+              fileExpected?: boolean;
           }
         | undefined,
     entryPreferred?: OnboardingStore,
 ): void {
     if (value?.stores !== undefined) {
         reference.stores = value.stores.filter((store) => reference.stores.includes(store));
+    }
+    // The program that makes the credential writes it to a file: the file comes first, and a company's own choice still
+    // goes before it.
+    if (value?.fileExpected === true && reference.stores.includes("file")) {
+        reference.fileExpected = true;
+        reference.stores = ["file", ...reference.stores.filter((store) => store !== "file")];
     }
     const preferred = value?.preferredStore ?? entryPreferred;
     if (preferred !== undefined && reference.stores.includes(preferred)) {
@@ -252,20 +260,11 @@ export function answerPresent(
     const rawSection = isObject(raw[section]) ? raw[section] : {};
     const removed = removedPaths(state.defaults.get(section), rawSection);
     if (removedAt(removed, item.item.path) !== undefined) return true;
-    const value = getPathOf(mergedSection(state, section, raw), item.item.path);
+    const value = getPath(mergedSection(state, section, raw), item.item.path);
     // An entry or an object asks for one more of a map: an empty map is missing, a full one is not asked for again.
     if (item.item.kind === "entry" || item.item.kind === "object")
         return isObject(value) && Object.keys(value).length > 0;
     return value !== undefined;
-}
-
-function getPathOf(value: unknown, path: string): unknown {
-    let at: unknown = value;
-    for (const part of path.split(".")) {
-        if (!isObject(at)) return undefined;
-        at = at[part];
-    }
-    return at;
 }
 
 /** The plain question for one item whose answer is not set yet. */
@@ -323,6 +322,7 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
             question: value.label,
             kind: "object",
             reason,
+            ...(value.optional === true ? { optional: true as const } : {}),
             object: {
                 keyLabel: value.keyLabel,
                 ...(value.keyPlaceholder === undefined ? {} : { keyPlaceholder: value.keyPlaceholder }),
@@ -330,6 +330,7 @@ export function questionField(state: SetupState, item: QuestionItem): SetupField
                     ...(form.label === undefined ? {} : { label: form.label }),
                     ...(form.who === undefined ? {} : { who: form.who }),
                     ...(form.when === undefined ? {} : { when: { ...form.when } }),
+                    ...(form.fixed === undefined ? {} : { fixed: { ...form.fixed } }),
                     fields: form.fields.map((field) => objectField(state, field, item.preferredStore)),
                 })),
                 ...(value.repeat === true ? { repeat: true } : {}),
@@ -444,7 +445,8 @@ export function loginsOf(
     return out;
 }
 
-/** A method's field paths, for dropping a validator field a method already asks for. */
-export function methodPaths(methods: readonly { fields: readonly { path: string }[] }[] | undefined): string[] {
-    return (methods ?? []).flatMap((method) => method.fields.map((field) => field.path));
+/** The paths the sign-in methods own (see `ownedPaths`), for dropping a validator field a method asks for. A plain setting
+ *  that a method happens to ask, such as `timeoutSeconds`, is not one: the validator's question stays for it. */
+export function methodPaths(methods: readonly { owns: readonly string[] }[] | undefined): string[] {
+    return (methods ?? []).flatMap((method) => method.owns);
 }

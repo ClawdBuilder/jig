@@ -10,7 +10,7 @@ then one line per hit.
 
 ![How a jig-logs search runs: the search splits the window into buckets, the adapter builds one request per bucket, jig-core sends it with the credential, and the hit lines come back cut and, in production, masked](../../docs/img/logs-search.svg)
 
-*How a search runs. The search splits the window into buckets and the adapter builds one request for each. `jig-core` sends it with the credential, or a company transport does, and the hit lines come back cut and, in production, masked.*
+*How a search runs. The search splits the window into buckets and the adapter builds one request for each. `jig-core` sends it with the credential, or a transport does, and the hit lines come back cut and, in production, masked.*
 
 ## Backends
 
@@ -119,7 +119,8 @@ limits, and has an example for each type.
   request and signs it in, so `backend` holds `{ "transport": "<name>", "url" }`
   in place of `auth`, and its `url` may be `http://`. A relay configured under
   `transports` is named the same way; see the
-  [relay protocol](../../docs/relay-protocol.md).
+  [relay protocol](../../docs/relay-protocol.md). A person with no company plugin sets
+  a relay up with `jig setup transports`, and `jig setup logs` then offers to search through it.
 
 ## Later
 

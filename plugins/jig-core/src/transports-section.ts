@@ -25,6 +25,9 @@ const RESERVED_FIELDS = new Set([
 ]);
 const ENTRY_FIELDS = new Set(["kind", "url", "token", "client", "services", "fields"]);
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+/** What setup lets a person call a new relay: a plain identifier. The section itself accepts more (a company's
+ *  defaults, an older file), but a name setup writes is one that every message and path can carry. */
+const RELAY_NAME = /^[A-Za-z0-9_-]{1,40}$/;
 
 /** One configured relay, as the section holds it. `token` is absent when a company default leaves it to the person. */
 export interface RelayTransportConfig {
@@ -40,8 +43,15 @@ function hostOf(url: URL): string {
     return url.hostname.toLowerCase();
 }
 
+/** Why a name setup is about to write cannot be used, or undefined. */
+export function relayNameProblem(name: string): string | undefined {
+    return RELAY_NAME.test(name)
+        ? undefined
+        : `A relay's name may use only letters, digits, "-" and "_", up to 40 characters.`;
+}
+
 /** Why an address is not usable, or undefined. A plain-http address is only for this machine. */
-function urlProblem(value: unknown): string | undefined {
+export function urlProblem(value: unknown): string | undefined {
     if (typeof value !== "string" || value === "")
         return "must be the relay's address, such as https://relay.example.com";
     let url: URL;

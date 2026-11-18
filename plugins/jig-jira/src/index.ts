@@ -81,9 +81,26 @@ export const JIRA_METHODS = [
     },
     {
         id: "transport",
-        label: "Company transport",
-        companyOnly: true,
-        fields: [{ kind: "text", path: "auth.transport", label: "The transport name" }],
+        label: "Through a session relay or transport",
+        who: "it holds your session, so Jig holds no Jira token",
+        viaTransport: true,
+        fields: [
+            {
+                kind: "text",
+                path: "auth.transport",
+                label: "Relay or transport for Jira requests",
+                why: "Jig sends each request to it by name, and it signs in; no Jira token is kept.",
+            },
+            {
+                kind: "number",
+                path: "timeoutSeconds",
+                label: "Jira request time limit (seconds)",
+                optional: true,
+                default: 30,
+                question: "How long may most Jira requests take, in seconds?",
+                why: "A request that takes longer is stopped (5 to 120 seconds); a browser relay may need up to 120 right after you sign in. A search has its own limit, searchTimeoutSeconds in your settings (60 seconds unless you set it), which this does not change.",
+            },
+        ],
     },
 ] as const;
 

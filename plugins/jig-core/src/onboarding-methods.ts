@@ -2,10 +2,12 @@
 // method whose paths the value matches. onboarding.ts checks a list; setup-plan.ts asks the questions for the method.
 import type { OnboardingMethod, OnboardingMethodField } from "./contract.ts";
 
-/** The fields every method value must have: a reference, or text that is not optional. */
+/** The fields every method value must have: a reference, or text or a number that is not optional. */
 export function requiredFields(method: OnboardingMethod): OnboardingMethodField[] {
     return method.fields.filter(
-        (field) => field.kind === "reference" || (field.kind === "text" && field.optional !== true),
+        (field) =>
+            field.kind === "reference" ||
+            ((field.kind === "text" || field.kind === "number") && field.optional !== true),
     );
 }
 

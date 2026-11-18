@@ -98,6 +98,19 @@ export function optionalQuestion(label: string, example?: string): string {
     return `${label} (optional: press Enter to leave it unset${example === undefined ? "" : `; for example ${example}`})`;
 }
 
+/** The question for an optional number: Enter keeps what is set, or the default while it is unset, and says so. */
+export function optionalNumberQuestion(
+    question: string,
+    keeps: { value: string | number; unset: boolean } | undefined,
+    example?: string,
+): string {
+    const note =
+        keeps === undefined
+            ? "press Enter to leave it unset"
+            : `Enter keeps ${keeps.unset ? "the default, " : ""}${keeps.value}`;
+    return `${question} (optional: ${note}${example === undefined ? "" : `; for example ${example}`})`;
+}
+
 /** The question for a credential, built from the company's label without doubling its article. */
 export function referenceQuestion(label: string): string {
     const named = label.replace(/^the\s+/i, "").trim();

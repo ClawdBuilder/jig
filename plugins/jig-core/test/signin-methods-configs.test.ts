@@ -46,7 +46,14 @@ const values: Record<string, string> = {
 function write(method: OnboardingMethod, section: Record<string, unknown>, wildcard: string): void {
     for (const field of method.fields) {
         const path = field.path.replaceAll("*", wildcard);
-        put(section, path, field.kind === "reference" ? values[field.path] : (values[field.path] ?? "value"));
+        // A number field, such as a time limit in seconds, takes a number inside the validator's range.
+        const sample =
+            field.kind === "number"
+                ? 60
+                : field.kind === "reference"
+                  ? values[field.path]
+                  : (values[field.path] ?? "value");
+        put(section, path, sample);
     }
 }
 
