@@ -932,6 +932,80 @@ describe("review of the relay setup: signing in another way takes the old way's 
     });
 });
 
+describe("review of the relay setup: a wrong value is still asked while its method is not answered", () => {
+    const relays = { transports: { "orders-relay": { kind: "relay", url: "http://127.0.0.1:8700" } } };
+
+    test("a time limit outside 5 to 120 is asked on the main screen when a relay exists", () => {
+        const config = {
+            ...relays,
+            jira: {
+                site: "https://jira.example.com",
+                auth: { email: "me@example.com", token: "env:JIRA_TOKEN" },
+                timeoutSeconds: 500,
+            },
+        };
+        const state = stateWith(config);
+        const questions = sectionQuestions(setupStateFrom(state), "jira", config, false);
+        assert.deepEqual(
+            questions.fields.map((field) => [field.path, field.kind]),
+            [
+                ["timeoutSeconds", "number"],
+                ["projects", "text"],
+            ],
+        );
+        const logs = {
+            ...relays,
+            logs: {
+                backend: { type: "elasticsearch", url: "https://logs.example.com:9200", transport: "orders-relay" },
+                environments: { staging: { index: "app-logs-*" } },
+                timeoutSeconds: 500,
+            },
+        };
+        const asked = sectionQuestions(setupStateFrom(stateWith(logs)), "logs", logs, false);
+        assert.ok(
+            asked.fields.some((field) => field.path === "timeoutSeconds"),
+            JSON.stringify(asked.fields.map((field) => field.path)),
+        );
+    });
+
+    test("a token that is not a secret reference is asked where it is kept, as the sign-in question is not asked", () => {
+        const config = {
+            jira: {
+                site: "https://jira.example.com",
+                auth: { email: "me@example.com", token: "plain-value" },
+            },
+        };
+        const questions = sectionQuestions(setupStateFrom(stateWith(config)), "jira", config, false);
+        assert.equal(questions.askMethod, false);
+        assert.deepEqual(
+            questions.fields.map((field) => [field.path, field.kind]),
+            [
+                ["auth.token", "reference"],
+                ["projects", "text"],
+            ],
+        );
+    });
+
+    test("the same wrong value is asked once more through the relay question, with the corrected value kept", async () => {
+        const config = {
+            ...relays,
+            jira: {
+                site: "https://jira.example.com",
+                auth: { email: "me@example.com", token: "env:JIRA_TOKEN" },
+                timeoutSeconds: 500,
+            },
+        };
+        const state = stateWith(config);
+        const ui = new ScriptedUi()
+            .picking(/Jira needs/, "Answer these")
+            .reading(/Jira timeout seconds/, "60")
+            .reading(/Project keys to work in/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui), 0, ui.seen.join("\n"));
+        assert.equal(written().jira.timeoutSeconds, 60);
+    });
+});
+
 describe("review of the relay setup: the look at the relay", () => {
     /** A relay that answers `/v1/health` with whatever `reply` says, for one test. */
     async function answering(

@@ -445,7 +445,8 @@ export function loginsOf(
     return out;
 }
 
-/** A method's field paths, for dropping a validator field a method already asks for. */
-export function methodPaths(methods: readonly { fields: readonly { path: string }[] }[] | undefined): string[] {
-    return (methods ?? []).flatMap((method) => method.fields.map((field) => field.path));
+/** The paths the sign-in methods own (see `ownedPaths`), for dropping a validator field a method asks for. A plain setting
+ *  that a method happens to ask, such as `timeoutSeconds`, is not one: the validator's question stays for it. */
+export function methodPaths(methods: readonly { owns: readonly string[] }[] | undefined): string[] {
+    return (methods ?? []).flatMap((method) => method.owns);
 }
