@@ -16,6 +16,8 @@ export interface Transports {
     register(name: string, transport: Transport, source?: TransportSource): void;
     has(name: string): boolean;
     hasPlugin(name: string): boolean;
+    /** The names a company plugin registered in code, not the relays the section declared. */
+    pluginNames(): string[];
     unregister(name: string): void;
     /** A name that is declared and also registered: a request fails before sending. */
     block(name: string, message: string): void;
@@ -92,6 +94,10 @@ export function createTransports(): Transports {
 
         hasPlugin(name) {
             return sources.get(name) === "plugin";
+        },
+
+        pluginNames() {
+            return [...sources].flatMap(([name, source]) => (source === "plugin" ? [name] : []));
         },
 
         unregister(name) {

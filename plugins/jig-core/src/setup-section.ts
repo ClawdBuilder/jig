@@ -8,6 +8,7 @@ import { referenceChoice } from "./setup-reference.ts";
 import { layered, removedAt, removedPaths } from "./section-defaults.ts";
 import { messagePaths } from "./setup-answer.ts";
 import { setupMethods } from "./setup-methods-plan.ts";
+import { transportNames } from "./setup-transports.ts";
 import {
     coversPath,
     itemAtPath,
@@ -120,7 +121,7 @@ export function sectionQuestions(
     const rawSection = isObject(rawValue) ? rawValue : {};
     const merged = layeredSection(state, section, rawSection);
     const items = questionItems(state.onboarding, state.sectionSetup?.get(section)?.items, section);
-    const { methods, askMethod } = setupMethods(state, section, merged, requested);
+    const { methods, askMethod } = setupMethods(state, section, merged, requested, transportNames(state, raw));
     const methodCovered = methodPaths(methods);
     const itemOrder = new Map(items.map((one, index) => [one.item.path, index]));
 

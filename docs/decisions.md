@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-19: a person sets up a session relay and signs in through it](#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)
 - [2026-11-17: setup adds one named object of a map](#2026-11-17-setup-adds-one-named-object-of-a-map)
 - [2026-11-17: a library that must hold a credential gets it from the resolver](#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)
 - [2026-11-16: the 500-line check is a ratchet](#2026-11-16-the-500-line-check-is-a-ratchet)
@@ -76,6 +77,24 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-19: a person sets up a session relay and signs in through it
+
+**Decision.** `jig setup` asks for a relay under jig-core's own `transports` section, and Jira and logs offer "Through a
+session relay or transport" to a person with no company plugin whenever a transport exists. The relay is one `object` item
+with three additions to the kind: an empty `path` means the section itself is the map, a form's `fixed` values (`kind:
+"relay"`) are written without a question, and `optional` lets an empty name leave the map unset. A method that goes through a
+transport names `viaTransport: true` instead of `companyOnly: true`: setup offers it while a transport exists (the person's
+file, a company's defaults, one a company plugin registered, or one answered earlier in the same run), as a pick of those
+names, and not at all when there is none. A company's own sign-in service stays `companyOnly`. After the answers, setup looks
+once at the relay with `GET /v1/health`, which needs no token, and never sends or reads the token; `jig doctor` already checks
+the health, the protocol and the token.
+
+**Why:** the relay and the sign-in through it were configurable by hand, but setup never asked for a relay and offered the
+transport method only to a company, so a person on their own was never led there. `Transports` comes first in the plugin list
+so a relay can be set up before the tools that use it. Setup asks no `services` map: with none, Jig asks the relay for the
+service named like the tool (`jira`, `logs`), and a map that lists only one of them would make the other refuse, so a relay
+that names its services differently is written by hand.
 
 ## 2026-11-17: setup adds one named object of a map
 

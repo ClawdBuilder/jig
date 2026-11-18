@@ -107,6 +107,20 @@ function checkMethodField(
     return field as unknown as OnboardingMethodField;
 }
 
+/** A method that goes through a transport: a flag, and one required text field that holds the transport's name. */
+function checkViaTransport(
+    flag: unknown,
+    fields: readonly OnboardingMethodField[],
+    at: string,
+    errors: string[],
+): void {
+    if (flag === undefined) return;
+    if (typeof flag !== "boolean") errors.push(`${at}: true or false`);
+    const [only] = fields;
+    if (flag === true && (fields.length !== 1 || only?.kind !== "text" || only.optional === true))
+        errors.push(`${at}: needs exactly one required text field, the transport's name`);
+}
+
 /** Throws when a plugin's methods for one section are not a list setup can use. */
 export function checkOnboardingMethods(section: string, raw: unknown): readonly OnboardingMethod[] {
     if (!SECTION.test(section)) throw new TypeError(`onboarding methods: ${JSON.stringify(section)} is not a section`);
@@ -124,7 +138,7 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
             continue;
         }
         const method = value as Record<string, unknown>;
-        const keys = ["id", "label", "who", "fields", "requires", "companyOnly"];
+        const keys = ["id", "label", "who", "fields", "requires", "companyOnly", "viaTransport"];
         for (const key of Object.keys(method)) {
             if (!keys.includes(key)) errors.push(unknownField(at, key, keys));
         }
@@ -156,8 +170,10 @@ export function checkOnboardingMethods(section: string, raw: unknown): readonly 
             ...(typeof method.who === "string" ? { who: method.who } : {}),
             ...(typeof method.requires === "string" ? { requires: method.requires } : {}),
             ...(method.companyOnly === true ? { companyOnly: true as const } : {}),
+            ...(method.viaTransport === true ? { viaTransport: true as const } : {}),
             fields,
         };
+        checkViaTransport(method.viaTransport, fields, `${at}.viaTransport`, errors);
         if (requiredFields(complete as OnboardingMethod).length === 0)
             errors.push(`${at}.fields: at least one field is required`);
         const paths = requiredPaths(complete as OnboardingMethod);

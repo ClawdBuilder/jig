@@ -4,7 +4,7 @@
 import type { SetupChange, SetupField, SetupPlan } from "./setup-plan.ts";
 import { layered } from "./section-defaults.ts";
 import { parseSecretReference } from "./secrets.ts";
-import { isObject, parentIsObject, safePath } from "./setup-values.ts";
+import { getPath, isObject, parentIsObject, safePath } from "./setup-values.ts";
 import { setValuePath } from "./setup-write.ts";
 
 /** What an answer did: a change to write, a plain refusal, or nothing because the current value stays. */
@@ -102,7 +102,7 @@ export function applyEntry(
         return { problem: cannotChange(field) };
     }
     const nextSection = structuredClone(isObject(existing) ? existing : {});
-    const current = getAt(nextSection, field.path);
+    const current = getPath(nextSection, field.path);
     const map = isObject(current) ? { ...current } : {};
     map[cleanKey] = value.trim();
     setValuePath(nextSection, field.path, map);
@@ -127,14 +127,17 @@ export function applyObject(
     const cleanKey = key.trim();
     const problem = keyProblem(cleanKey);
     if (problem !== undefined) return { problem };
-    // The map's own path, and every path inside the new object: an answer is a path, and one setup cannot follow (a
-    // prototype key, an index) is refused here, never written. Registration refuses these too; this is the answer time.
-    if (!safePath(field.path) || !Object.keys(values).every(safePath)) return { problem: cannotChange(field) };
+    // The map's own path (empty when the section is the map), and every path inside the new object: an answer is a path,
+    // and one setup cannot follow (a prototype key, an index) is refused here, never written. Registration refuses these
+    // too; this is the answer time.
+    if ((field.path !== "" && !safePath(field.path)) || !Object.keys(values).every(safePath)) {
+        return { problem: cannotChange(field) };
+    }
     const existing = draft[field.section];
     if (existing !== undefined && (!isObject(existing) || !parentIsObject(existing, field.path))) {
         return { problem: cannotChange(field) };
     }
-    const nextSection = structuredClone(isObject(existing) ? existing : {});
+    let nextSection = structuredClone(isObject(existing) ? existing : {});
     const merged = layered(
         plan.defaults.get(field.section),
         nextSection,
@@ -142,16 +145,17 @@ export function applyObject(
         plan.oneOf.get(field.section) ?? [],
         plan.union.get(field.section) ?? [],
     );
-    const already = getAt(merged, field.path);
+    const already = getPath(merged, field.path);
     if (isObject(already) && Object.hasOwn(already, cleanKey)) {
         return { problem: `${cleanKey} is already set up here; edit it in your settings file, or use another name.` };
     }
-    const current = getAt(nextSection, field.path);
+    const current = getPath(nextSection, field.path);
     const map = isObject(current) ? { ...current } : {};
     const object: Record<string, unknown> = {};
     for (const [path, value] of Object.entries(values)) setValuePath(object, path, value);
     map[cleanKey] = object;
-    setValuePath(nextSection, field.path, map);
+    if (field.path === "") nextSection = map;
+    else setValuePath(nextSection, field.path, map);
 
     const check = plan.checks.get(field.section);
     let messages: readonly string[];
@@ -160,7 +164,7 @@ export function applyObject(
     } catch {
         return { problem: `The plugin's check could not run for ${field.label}. Try another value.` };
     }
-    const keyPath = `${field.path}.${cleanKey}`;
+    const keyPath = field.path === "" ? cleanKey : `${field.path}.${cleanKey}`;
     const refused = messages.find(
         (message) =>
             messageNames(message, field.section, field.path) ||
@@ -211,7 +215,7 @@ function mergedSection(plan: SetupPlan, section: string, rawSection: Record<stri
 /** A validator's message without the path it names, for the sentence setup writes around it. Never a value or a
  *  reference: the message is the plugin's, and a plugin's messages name keys, not values. */
 export function plainObjectText(message: string, section: string, strip: string): string {
-    const key = `${section}.${strip}`;
+    const key = strip === "" ? section : `${section}.${strip}`;
     const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     let text = message
         .replace(new RegExp(escaped, "ig"), "")
@@ -259,7 +263,9 @@ function commit(
     if (rejected.length > 0) return { problem: plainProblem(field, rejected[0] ?? "", key) };
     draft[field.section] = nextSection;
     const oldValue =
-        key === undefined ? getAt(plan.raw[field.section], path) : getAt(getAt(plan.raw[field.section], path), key);
+        key === undefined
+            ? getPath(plan.raw[field.section], path)
+            : getPath(getPath(plan.raw[field.section], path), key);
     return {
         change: {
             section: field.section,
@@ -288,7 +294,7 @@ export function messagePaths(message: string, section: string): string[] {
  *  message about `acme.sso.token.slot`, or about a map's sibling key such as `environments.prod.us`, does not. A map key
  *  may hold a dot or a space, so the match is the literal path, with the same name characters `messagePaths` reads. */
 export function messageNames(message: string, section: string, path: string): boolean {
-    const full = `${section}.${path}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const full = (path === "" ? section : `${section}.${path}`).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return new RegExp(`(?:^|[^A-Za-z0-9_.-])${full}(?![A-Za-z0-9_.-])`).test(message);
 }
 
@@ -313,13 +319,4 @@ function plainProblem(field: SetupField, message: string, key?: string): string 
     }
     const sentence = `${field.label} ${text}`.replace(/[.?!]?$/, ".");
     return sentence.length > 240 ? `${sentence.slice(0, 237)}...` : sentence;
-}
-
-function getAt(value: unknown, path: string): unknown {
-    let at: unknown = value;
-    for (const part of path.split(".")) {
-        if (!isObject(at)) return undefined;
-        at = at[part];
-    }
-    return at;
 }

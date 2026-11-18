@@ -43,7 +43,8 @@ Plugin overview: [jig-core](../EGM.md).
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
   (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20
   questions each, checked when the list or a plugin's `setup` is registered), `setup-ask-object.ts` (`askObject`, `fieldForRefusal`: one named
-  object of a map), `setup-reference-ask.ts` (`chooseReference`, `probeChosen`: where a credential is kept, shared by a single question and a field
+  object of a map), `setup-transports.ts` (`TRANSPORTS_SETUP`, `withTransports`, `transportNames`: the questions for jig-core's own `transports` section, which setup
+  lists with the plugins' sections), `setup-relay-check.ts` (`checkRelay`: one `GET /v1/health`, never with the token), `setup-reference-ask.ts` (`chooseReference`, `probeChosen`: where a credential is kept, shared by a single question and a field
   inside an object),
   `detect.ts` (`DETECTS`: `user`, `git-email`, `gh-account`, `aws-profile`; one fixed command each, 1.5 s, never secret), `plain-label.ts`.
 - **Contract splits.** `contract.ts` stays the one import for plugins and re-exports `contract-onboarding.ts` (the onboarding and sign-in
@@ -93,7 +94,11 @@ Plugin overview: [jig-core](../EGM.md).
   again the field it names, else the whole form (or the name, when it is about the name). A credential inside it goes through the same "where is
   it kept" flow and is never typed or shown. `repeat` asks for another. An older Jig that does not know the kind refuses the item at
   registration. The doctor counts an `object` item as missing while its map is empty (`doctor-needs.ts`). Changing or removing an object stays
-  the settings file's job ([Decisions](../../../docs/decisions.md#2026-11-17-setup-adds-one-named-object-of-a-map)).
+  the settings file's job ([Decisions](../../../docs/decisions.md#2026-11-17-setup-adds-one-named-object-of-a-map)). An empty `path` makes the
+  section itself the map (`transports`), a form's `fixed` values are written without a question (`kind: "relay"`), and `optional` lets an empty name
+  leave the map unset. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` is offered only while a
+  transport exists (the person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run)
+  ([Decisions](../../../docs/decisions.md#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)).
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless
   `keep` says `tail` for the end or `both` for both ends, and the marker says how many bytes were left out), process group killed on
   timeout and at process exit, a minimal environment (`PATH`, `HOME`, `USER`, `LOGNAME`, locale, `TZ`, `TMPDIR`, XDG folders; git,

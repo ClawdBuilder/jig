@@ -7,7 +7,10 @@ import type { JigState } from "./state.ts";
 import type { SecretBackend } from "./config.ts";
 import { applyObject, keyProblem, listValues } from "./setup-answer.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
+import { checkRelay } from "./setup-relay-check.ts";
+import { TRANSPORTS_SECTION } from "./transports-section.ts";
 import { layered } from "./section-defaults.ts";
+import { optionalQuestion } from "./setup-fields.ts";
 import { getPath, isObject } from "./setup-values.ts";
 
 /** The names in the map this item adds to, from the person's answers over the company's defaults. */
@@ -120,6 +123,11 @@ async function addObject(
         if (answer === "cancel") return "cancel";
         if (answer === "retry") return "retry";
         if (answer === "form") continue;
+        // A session relay is asked once whether it is running; its token is never sent or read here.
+        if (field.section === TRANSPORTS_SECTION) {
+            const url = (answer.change.value as { url?: unknown }).url;
+            if (typeof url === "string" && (await checkRelay(state, ui, url)) === "cancel") return "cancel";
+        }
         changes.push(answer.change);
         return "added";
     }
@@ -131,12 +139,16 @@ async function askName(ui: SetupUi, field: SetupField, names: readonly string[])
     const spec = field.object;
     if (spec === undefined) return "cancel";
     for (;;) {
-        const text = await ui.input(spec.keyLabel, spec.keyPlaceholder);
+        // An optional object says so in its question, and puts its example there, as an optional text question does.
+        const text =
+            field.optional === true
+                ? await ui.input(optionalQuestion(spec.keyLabel, spec.keyPlaceholder))
+                : await ui.input(spec.keyLabel, spec.keyPlaceholder);
         if (text === undefined) return "cancel";
         const name = text.trim();
         if (name === "") {
-            if (names.length > 0) {
-                ui.notify(`${field.label} left as it is.`, "info");
+            if (names.length > 0 || field.optional === true) {
+                ui.notify(`${field.label} left ${names.length > 0 ? "as it is" : "unset (optional)"}.`, "info");
                 return "stop";
             }
             ui.notify(`Please enter a value for ${spec.keyLabel}`, "warning");
@@ -226,7 +238,7 @@ async function fillForm(
                 asking++;
             }
         }
-        const result = applyObject(plan, draft, field, name, Object.fromEntries(values));
+        const result = applyObject(plan, draft, field, name, { ...form.fixed, ...Object.fromEntries(values) });
         if ("change" in result) {
             if (enable.size > 0) result.change.enableBackends = [...new Set(enable.values())];
             if (missing.size > 0) result.change.note = `${result.change.note ?? ""} (not found yet)`;

@@ -36,9 +36,17 @@ export const LOGS_METHODS = [
     },
     {
         id: "transport",
-        label: "Company transport",
-        companyOnly: true,
-        fields: [{ kind: "text", path: "backend.transport", label: "The transport name" }],
+        label: "Through a session relay or transport",
+        who: "it holds your session, so Jig holds no log credential",
+        viaTransport: true,
+        fields: [
+            {
+                kind: "text",
+                path: "backend.transport",
+                label: "Relay or transport for log searches",
+                why: "Jig sends each request to it by name, and it signs in; no log credential is kept.",
+            },
+        ],
     },
 ] as const;
 

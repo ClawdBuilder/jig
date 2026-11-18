@@ -119,7 +119,8 @@ limits, and has an example for each type.
   request and signs it in, so `backend` holds `{ "transport": "<name>", "url" }`
   in place of `auth`, and its `url` may be `http://`. A relay configured under
   `transports` is named the same way; see the
-  [relay protocol](../../docs/relay-protocol.md).
+  [relay protocol](../../docs/relay-protocol.md). A person with no company plugin sets
+  a relay up with `jig setup transports`, and `jig setup logs` then offers to search through it.
 
 ## Later
 

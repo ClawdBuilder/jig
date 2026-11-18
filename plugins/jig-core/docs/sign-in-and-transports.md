@@ -281,6 +281,15 @@ configured in `jig.json`, so no plugin code is needed for that route:
 }
 ```
 
+Run `jig setup transports` to add one without writing the file: it asks a name, the
+address and where the token is kept (a relay usually writes it to a file), then looks
+once at `GET /v1/health`, which the protocol allows without the token, and says what
+it found. After that, `jig setup jira` and `jig setup logs` offer "Through a session
+relay or transport", a pick of the names that exist, and write `jira.auth.transport`
+or `logs.backend.transport`. Setup writes no `services` map, so Jig asks for the
+service named like the tool (`jira`, `logs`); a relay that names its services
+differently needs the map above, written by hand.
+
 Then a tool names it: `"auth": { "transport": "orders" }` for Jira, or
 `"backend": { "transport": "orders", "url": "..." }` for logs. A company plugin
 can give the `kind`, `url`, `services` and `fields` as defaults, and the person

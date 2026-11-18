@@ -16,6 +16,8 @@ import { itemAt, introOf, loginsOf } from "./setup-questions.ts";
 import { DONE_LINE, LIST_TITLE, pendingLines, pluginLines, readyLines } from "./setup-menu.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
 import { labelOf } from "./setup-fields.ts";
+import { withTransports } from "./setup-transports.ts";
+import { TRANSPORTS_SECTION } from "./transports-section.ts";
 import { sectionQuestions } from "./setup-section.ts";
 import { shorten } from "./secret-status.ts";
 import type { JigState } from "./state.ts";
@@ -43,8 +45,10 @@ export async function runSetup(
     } catch {
         // A test's stand-in may not carry the profile state; there can be no proposal then.
     }
-    if (requestedSection !== undefined && !state.sectionChecks.has(requestedSection) && !proposed) {
-        const known = [...state.sectionChecks.keys()].sort();
+    // `transports` is jig-core's own section, which setup asks too; it is not one a plugin registered.
+    const own = requestedSection === TRANSPORTS_SECTION;
+    if (requestedSection !== undefined && !own && !state.sectionChecks.has(requestedSection) && !proposed) {
+        const known = [...state.sectionChecks.keys(), TRANSPORTS_SECTION].sort();
         ui.notify(
             `Unknown section ${JSON.stringify(requestedSection)}. Known sections: ${known.join(", ") || "none"}.`,
             "error",
@@ -254,9 +258,10 @@ function cancel(ui: SetupUi): number {
 /** The checked part of a running jig-core, with the company's defaults gathered for `layered()`. */
 export function setupStateFrom(state: JigState): SetupState {
     const backends = effectiveBackends(state.personal.config.secrets, state.company);
+    const own = withTransports(state.sectionChecks, state.sectionSetup);
     return {
         personal: state.personal,
-        sectionChecks: state.sectionChecks,
+        sectionChecks: own.sectionChecks,
         defaults: effectiveDefaults(state),
         replace: state.sectionReplace,
         oneOf: state.sectionOneOf,
@@ -271,7 +276,8 @@ export function setupStateFrom(state: JigState): SetupState {
         commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
         onboarding: activeOnboarding(state),
         onboardingMethods: state.onboardingMethods,
-        sectionSetup: state.sectionSetup,
+        sectionSetup: own.sectionSetup,
         companyActive: state.profile.selection.plugin !== undefined,
+        pluginTransports: state.transports.pluginNames(),
     };
 }

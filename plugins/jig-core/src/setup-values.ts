@@ -5,7 +5,9 @@ export function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** The value at a dotted path; an empty path is the value itself, as a section that is its own map has. */
 export function getPath(value: unknown, path: string): unknown {
+    if (path === "") return value;
     let at = value;
     for (const part of path.split(".")) {
         if (!isObject(at)) return undefined;

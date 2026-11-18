@@ -15,7 +15,14 @@ export interface MethodPlan {
     askMethod: boolean;
 }
 
-export function setupMethods(state: SetupState, section: string, merged: unknown, requested = false): MethodPlan {
+/** `transports` are the names a method that goes through a transport may offer: it is offered only while there is one. */
+export function setupMethods(
+    state: SetupState,
+    section: string,
+    merged: unknown,
+    requested = false,
+    transports: readonly string[] = [],
+): MethodPlan {
     const registered = state.onboardingMethods?.get(section) ?? [];
     const choice = state.onboarding?.methods?.[section];
     const hidden = new Set(choice?.hide ?? []);
@@ -34,8 +41,12 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
         added.push(method);
     }
     const all = [...registered, ...added];
+    // A method that goes through a transport is offered while one exists, or while a company fixes which one.
     const visible = all.filter(
-        (method) => !hidden.has(method.id) && (method.companyOnly !== true || state.companyActive === true),
+        (method) =>
+            !hidden.has(method.id) &&
+            (method.companyOnly !== true || state.companyActive === true) &&
+            (method.viaTransport !== true || transports.length > 0 || prefill.has(method.id)),
     );
     if (visible.length === 0) return { methods: [], askMethod: false };
     const chosen = choice?.default ?? visible[0]?.id;
@@ -88,6 +99,20 @@ export function setupMethods(state: SetupState, section: string, merged: unknown
                         ...(current === undefined ? {} : { current, keep: true as const }),
                         reason: field.why ?? "Jig reads the value from there when a tool needs it.",
                         reference,
+                    });
+                    continue;
+                }
+                if (method.viaTransport === true && field.kind === "text") {
+                    // Which transport: a pick of the names that exist, never a name typed.
+                    fields.push({
+                        section,
+                        path,
+                        label: field.label,
+                        question: field.label,
+                        kind: "pick",
+                        choices: [...transports],
+                        ...(current === undefined ? {} : { current, keep: true as const }),
+                        reason: field.why ?? "Jig sends the requests through the transport you pick.",
                     });
                     continue;
                 }

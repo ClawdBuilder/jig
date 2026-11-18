@@ -50,6 +50,8 @@ export interface SetupState {
     sectionSetup?: ReadonlyMap<string, OnboardingSetup>;
     /** True while a company plugin is active: a method a company makes usable is offered only then. */
     companyActive?: boolean;
+    /** The transports a company plugin registered in code, which a method that goes through a transport may offer. */
+    pluginTransports?: readonly string[];
 }
 
 export type SetupFieldKind = "text" | "number" | "boolean" | "reference" | "pick" | "proposal" | "entry" | "object";
@@ -77,6 +79,8 @@ export interface SetupObjectForm {
     label?: string;
     who?: string;
     when?: { path: string; equals: string };
+    /** Written into every object of this form without asking, by path inside the object. */
+    fixed?: Readonly<Record<string, string | number | boolean>>;
     fields: SetupObjectField[];
 }
 

@@ -38,6 +38,10 @@ export interface OnboardingMethod {
     /** True for a method only a company plugin makes usable, such as its sign-in service or transport: setup offers it
      *  only while a company is active, and a company's `add` still prefills it. */
     companyOnly?: boolean;
+    /** True for a method that sends the tool's requests through a transport, whose name is its one required `text` field:
+     *  setup offers it while a transport exists (the person's `transports`, a company's defaults, one a company plugin
+     *  registered, or one answered earlier in the same run), asks which as a pick of those names, and writes the name. */
+    viaTransport?: boolean;
 }
 
 /** One field of an `OnboardingMethod`. A plugin method has no `value`; a company-only method fixes every field. */
@@ -116,6 +120,8 @@ export interface OnboardingObjectForm {
     who?: string;
     /** Asks this form only while the section's merged value at `path` is `equals`; a form without one is the fallback. */
     when?: { path: string; equals: string };
+    /** Values written into every object of this form without asking, by path inside the object, such as `kind`. */
+    fixed?: Readonly<Record<string, string | number | boolean>>;
     /** Ask these in order; each answer goes inside the new object at its own path. */
     fields: readonly OnboardingObjectField[];
 }
@@ -173,7 +179,7 @@ export type OnboardingItem =
       } & OnboardingAnswer)
     | ({
           /** One named object in the map at `path`: the name is asked, then one form's questions, and the answers are one
-           *  object written as `path.<name>`. */
+           *  object written as `path.<name>`. An empty `path` means the section itself is the map, as `transports` is. */
           kind: "object";
           /** The question for the object's name. */
           keyLabel: string;
@@ -182,6 +188,8 @@ export type OnboardingItem =
           forms: readonly OnboardingObjectForm[];
           /** Ask for another object after this one is accepted. */
           repeat?: boolean;
+          /** An empty name leaves the map as it is even when it has no object yet, so nothing is written. */
+          optional?: boolean;
       } & OnboardingAnswer)
     | {
           kind: "login";

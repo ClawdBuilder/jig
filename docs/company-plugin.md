@@ -297,7 +297,8 @@ api.onboarding?.register({
   for another entry. An `object` item adds one named object to a map, such as a database connection: it asks the name,
   then one of its `forms` (each a list of `text`, `pick` and `reference` questions with paths inside the new object), and
   `repeat` asks for another. Setup is add-only: a name already in the map is refused, and an existing entry is edited in
-  `jig.json`, or left out of a company's defaults with a `null`. A plugin cannot use `proposal`; a company can. An older Jig
+  `jig.json`, or left out of a company's defaults with a `null`. An empty `path` makes the section itself the map, a form's
+  `fixed` values are written without a question, and `optional` lets an empty name leave the map unset. A plugin cannot use `proposal`; a company can. An older Jig
   refuses a list with these kinds, as it does with `proposal`.
 - **It goes through the profile view,** next to `status.register`, so only the active company's list applies. A plugin that never
   registers a profile applies always, as with every other seam.

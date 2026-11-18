@@ -612,6 +612,8 @@ describe("a package installed from git", () => {
             { when: "Save this company choice?", answer: "y" },
             { when: "needs 1 thing", answer: "1" },
             { when: "Your Git Co login", answer: "gdev" },
+            // The plugin list is never empty now: jig-core's own session relay is always on it.
+            { when: "which plugin do you want to set up?", answer: "done" },
             { when: "Review these changes", answer: "1" },
             { when: "Save these changes?", answer: "y" },
         ]);
