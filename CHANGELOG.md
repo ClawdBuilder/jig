@@ -6,6 +6,25 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 A change a user would notice is one file in [`changelog.d/`](changelog.d/): its `### Added`, `### Changed`, `### Fixed` or `### Removed` heading and its line. The release folds them here.
 
+## [0.5.9] - 2026-11-19
+
+`jig setup` now sets up a session relay and offers "through a relay" as Jira's and logs' sign-in, so a person with no company plugin can reach them through a browser's session, and switching a sign-in method no longer leaves the replaced method's fields behind.
+
+### Added
+
+- `jig setup` adds a session relay, so a person with no company plugin can use Jira and logs through one: `jig setup transports` asks its name, its address and where its token is kept, then looks once at `GET /v1/health` without the token and says what it found (a relay that is not running, a refusal, a web page or a protocol Jig does not know).
+- A relay's name is a plain identifier, 1 to 40 letters, digits, `-` or `_`, and never the name of a transport a company plugin registered. Its address is checked before it is shown or sent: `http` is for `127.0.0.1`, `localhost` or `[::1]` only, and a user name, password, path or query is refused, so a bad address is never contacted, echoed or written.
+- Jira's and logs' sign-in offers "Through a session relay or transport" as a pick of the transports that exist (the person's, a company's defaults, or one added earlier in the same run) and writes `jira.auth.transport` or `logs.backend.transport`; with none, it is not offered, and a company's own sign-in service stays company-only.
+- That sign-in then asks one optional time limit for a request (`jira.timeoutSeconds` or `logs.timeoutSeconds`, 5 to 120) and says what Enter keeps, since a browser relay can be slow right after you sign in; a Jira search keeps its own `searchTimeoutSeconds`.
+- A relay's token lists "A file" first, without the weak-choice warning, because the relay writes the file itself, and asks one line to turn files on as a place Jig reads from when they are not yet; a no goes back to the choices.
+- A company's onboarding list can use the same pieces: a method names `viaTransport: true`; an `object` item may name the section itself as its map (empty `path`), write a form's `fixed` values without a question, and be `optional`; a method field may be a `number` (with a `default`) or carry a whole `question`; a `reference` in an object may say `fileExpected`. A `fixed` value that lies inside or above a question's path, or inside another fixed value's, is refused when the list is registered. An older Jig refuses a list that uses them.
+
+### Fixed
+
+- `jig setup` no longer leaves the old sign-in's fields beside the new one's: choosing a sign-in method removes the fields of the methods it replaces (an email and a token when you pick a relay, a token when you pick a token command) and keeps a setting that belongs to no method, such as a time limit.
+- `jig setup` runs the plugin's own check on a changed sign-in before keeping it; when the check still fails, the sign-in is left as it was and the check's words are shown.
+- A wrong value beside a sign-in, such as a time limit of 500, is asked again on the main screen too.
+
 ## [0.5.8] - 2026-11-18
 
 `jig setup` now shows one list of every plugin and asks each plugin's own questions, so Jira, git, mongo, logs and api are set up without a company plugin; it also keeps a `jig` command that runs another home, and the drift review's fixes make the docs and the code agree.
