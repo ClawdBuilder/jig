@@ -4,8 +4,31 @@
 import type { CallClass, GateCall, GateVerdict } from "./contract.ts";
 
 /** Whole words that mean a script can leave the tool sandbox or reach a model on the session's credentials. */
-const RISKY =
-    /\b(?:models|globalThis|eval|Function|constructor|Reflect|import|this|self|global|getOwnPropertyDescriptor|getOwnPropertyDescriptors|__lookupGetter__|setPrototypeOf|getPrototypeOf|defineProperty|prototype|__proto__)\b/;
+export const RISKY_WORDS = [
+    "models",
+    "globalThis",
+    "eval",
+    "Function",
+    "constructor",
+    "Reflect",
+    "import",
+    "this",
+    "self",
+    "global",
+    "getOwnPropertyDescriptor",
+    "getOwnPropertyDescriptors",
+    "__lookupGetter__",
+    "setPrototypeOf",
+    "getPrototypeOf",
+    "defineProperty",
+    "prototype",
+    "__proto__",
+] as const;
+
+/** Backslash and u: an escape that can spell a word above without writing it (`\u006dodels`). Nothing is decoded. */
+const ESCAPE = /\\u/;
+
+const RISKY = new RegExp(`\\b(?:${RISKY_WORDS.join("|")})\\b|${ESCAPE.source}`);
 
 /** A computed member access whose index is not a number or one plain string literal; it can build a name at run time. */
 const COMPUTED =
@@ -23,5 +46,8 @@ export function codemodeAsk(call: GateCall): GateVerdict | undefined {
     if (call.tool !== "codemode") return undefined;
     if (typeof call.input.code !== "string") return { decision: "ask", reason: "the script could not be read: ask" };
     if (!RISKY.test(call.input.code) && !COMPUTED.test(call.input.code)) return undefined;
-    return { decision: "ask", reason: "the script can call outside models: ask" };
+    const reason = ESCAPE.test(call.input.code)
+        ? "the script writes an escaped name: ask"
+        : "the script can call outside models: ask";
+    return { decision: "ask", reason };
 }
