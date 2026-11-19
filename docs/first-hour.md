@@ -58,12 +58,12 @@ Three more commands help you look around:
 `/jig doctor` prints the full report; its first lines look like this:
 
 ```text
-Jig doctor · 12 ok · 1 warning · 0 failures · 11 skipped
+Jig doctor · 12 ok · 1 warning · 0 failures · 10 skipped
 
 This machine
   ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
   ok Pi — 1.5.2
-  ok Jig — 0.5.10
+  ok Jig — 0.5.11
 …
 Nothing is blocked. 1 warning is worth a look.
 ```

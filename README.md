@@ -24,7 +24,7 @@ Jig is an ordinary Pi package: it loads in the folder your `pi` already uses. In
 model provider, `/jig setup` to answer the first questions and `/jig doctor` to check the result:
 
 ```text
-Jig doctor · 12 ok · 1 warning · 0 failures · 11 skipped
+Jig doctor · 12 ok · 1 warning · 0 failures · 10 skipped
 ```
 
 A separate home with its own `jig` command is optional: [A separate Jig home](docs/setup-and-doctor.md#a-separate-jig-home-optional).
