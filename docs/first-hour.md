@@ -62,7 +62,7 @@ Jig doctor · 12 ok · 1 warning · 0 failures · 11 skipped
 This machine
   ok Node.js — 26.13.0 (Jig needs 22.19.0 or later)
   ok Pi — 1.5.2
-  ok Jig — 0.5.9
+  ok Jig — 0.5.10
 …
 Nothing is blocked. 1 warning is worth a look.
 ```
