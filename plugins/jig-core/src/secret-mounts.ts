@@ -1,7 +1,9 @@
-// Whether a file lives on a Windows drive, seen from WSL. Linux reports every file there as readable by everyone, and
-// chmod changes nothing: Windows's own access rules decide who can read it. The secret probe uses this to leave out the
-// mode warning for such a file. The answer comes from the kernel's mount table (/proc/mounts), and only when that table
-// is not there from the /mnt/<letter>/ prefix on a WSL kernel.
+// Whether a file lives on a Windows drive where the mode means nothing, seen from WSL. Linux reports every file there as
+// readable by everyone, and chmod changes nothing: Windows's own access rules decide who can read it. The secret probe uses
+// this to leave out the mode warning for such a file. A drive mounted with the `metadata` option (WSL's
+// `automount.options`) keeps Linux permissions and chmod works, so it is an ordinary file system here. The answer comes
+// from the kernel's mount table (/proc/mounts), and only when that table is not there from the /mnt/<letter>/ prefix on a
+// WSL kernel.
 import { readFileSync, realpathSync } from "node:fs";
 import { release as kernelRelease } from "node:os";
 
@@ -11,7 +13,7 @@ export interface MountFacts {
     release?: string;
 }
 
-/** How a file was found to be on a Windows drive. */
+/** How a file was found to be on a Windows drive without a mode. */
 export type DriveEvidence = "mount table" | "path prefix";
 
 /** The mount table's text, or undefined when this system has none (not Linux, or `/proc` is not mounted). */
@@ -28,9 +30,11 @@ function unescapeMount(text: string): string {
     return text.replace(/\\([0-7]{3})/g, (_all, octal: string) => String.fromCharCode(Number.parseInt(octal, 8)));
 }
 
-/** Whether a mount is a Windows drive: WSL 1's `drvfs`, or WSL 2's `9p` with `aname=drvfs` (other 9p mounts are not). */
+/** Whether a mount is a Windows drive whose files carry no Linux mode: WSL 1's `drvfs`, or WSL 2's `9p` with `aname=drvfs`
+ *  (other 9p mounts are not), unless it is mounted with `metadata`, which keeps the mode and lets chmod work. */
 function isDrive(type: string, options: string): boolean {
-    return type === "drvfs" || (type === "9p" && /(?:^|[,;])aname=drvfs(?:[,;]|$)/.test(options));
+    const drive = type === "drvfs" || (type === "9p" && /(?:^|[,;])aname=drvfs(?:[,;]|$)/.test(options));
+    return drive && !/(?:^|[,;])metadata(?:[,;=]|$)/.test(options);
 }
 
 /** The type and options of the mount that holds `file`: the one with the longest mount point that is a parent of it. */

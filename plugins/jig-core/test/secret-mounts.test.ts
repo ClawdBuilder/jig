@@ -59,6 +59,24 @@ describe("a file on a Windows drive", () => {
         );
     });
 
+    test("is not one when it is mounted with metadata: WSL then keeps Linux permissions there and chmod works", () => {
+        const where = "/mnt/c/Users/jdoe/AppData/Local/relay/token";
+        const wsl2 =
+            "C:\\134 /mnt/c 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000;metadata;symlinkroot=/mnt/,cache=0x5 0 0\n";
+        const wsl1 = "C: /mnt/c drvfs rw,noatime,uid=1000,gid=1000,metadata,case=off 0 0\n";
+        assert.equal(windowsDrive(where, { mounts: wsl2, release: WSL2 }), undefined, "WSL 2");
+        assert.equal(windowsDrive(where, { mounts: wsl1, release: WSL2 }), undefined, "WSL 1");
+        // The word has to be the option itself: a longer one that holds it is not it.
+        const other = WSL2_TABLE.replace("symlinkroot=/mnt/", "nometadata;metadatafoo;symlinkroot=/mnt/");
+        assert.equal(windowsDrive(where, { mounts: other, release: WSL2 }), "mount table");
+    });
+
+    test("with metadata on only another drive, this one is still a drive without permissions", () => {
+        const table = `${WSL2_TABLE}D:\\134 /mnt/d 9p rw,aname=drvfs;path=D:\\;uid=1000;metadata 0 0\n`;
+        assert.equal(windowsDrive("/mnt/c/Users/jdoe/token", { mounts: table, release: WSL2 }), "mount table");
+        assert.equal(windowsDrive("/mnt/d/token", { mounts: table, release: WSL2 }), undefined);
+    });
+
     test("a table that does not list the path leaves the prefix out of it: the table is the answer", () => {
         assert.equal(
             windowsDrive("/mnt/c/token", { mounts: WSL2_TABLE.replace(/C:.*\n/, ""), release: WSL2 }),

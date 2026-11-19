@@ -96,7 +96,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
-| `secret-mounts.ts` | Whether a file is on a WSL Windows drive: the mount table, else the `/mnt/<letter>/` prefix | `secret-status.ts` |
+| `secret-mounts.ts` | Whether a file is on a WSL Windows drive with no mode (not mounted with `metadata`): the mount table, else the `/mnt/<letter>/` prefix | `secret-status.ts` |
 | `secret-status.ts` | One reference's status, found by metadata only: pass/env/file, a Keychain lookup without `-w`, an op item list, or a login tool's status; never a value | `doctor-secrets.ts`, `setup.ts` |
 | `pi-version.ts` | Pi's version from the package Pi loaded, and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts` |
 

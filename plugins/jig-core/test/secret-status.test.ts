@@ -137,6 +137,22 @@ describe("probeSecret", () => {
         assert.match(ordinary.warning ?? "", /other users can read this file; make it private \(chmod 600\)/);
     });
 
+    test("a file on a Windows drive mounted with metadata is an ordinary file: it keeps its mode warning and chmod advice", async () => {
+        const file = path.join(home, "token");
+        writeFileSync(file, "abc\n");
+        chmodSync(file, 0o644);
+        const mount = realpathSync(home);
+        // WSL's `automount.options = "metadata"` keeps Linux permissions on the drive, so chmod works there.
+        const metadata = `C:\\134 ${mount} 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000;metadata;symlinkroot=/mnt/,cache=0x5 0 0\n`;
+        const probe = await probeSecret(`file:${file}`, {
+            ...options,
+            mounts: metadata,
+            release: "6.6.0-microsoft-standard-WSL2",
+        });
+        assert.equal(probe.status, "found");
+        assert.match(probe.warning ?? "", /other users can read this file; make it private \(chmod 600\)/);
+    });
+
     test("a file inside Pi's agent folder is refused, and a relative path is invalid", async () => {
         writeFileSync(path.join(home, "agent", "inside"), "abc\n");
         const inside = await probeSecret(`file:${path.join(home, "agent", "inside")}`, options);
