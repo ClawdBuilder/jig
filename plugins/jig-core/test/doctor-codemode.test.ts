@@ -1,14 +1,17 @@
-// The doctor's codemode line in its states: off, on through Pi's defaultTools, on because an MCP server is configured (with
-// the reason), and the session's own answer winning over the files. Every folder is a temporary one; nothing real is read.
+// The doctor's codemode line: the session's answer, and the reason an MCP server gives when the files show one. Without a
+// session the line is a skip that sends the person to /jig doctor inside Pi. Every folder is a temporary one.
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { DOCTOR_CHECKS } from "../src/doctor-checks.ts";
-import { codemodeChecks, codemodeInSession, layerCodemode } from "../src/doctor-codemode.ts";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { DOCTOR_CHECKS, doctorContext } from "../src/doctor-checks.ts";
+import { codemodeChecks, codemodeInSession } from "../src/doctor-codemode.ts";
+import { createState } from "../src/state.ts";
 
 const MCP = " (turned on by Pi: an MCP server is configured)";
+const DOCS = { url: "https://example.com/mcp" };
 
 let home: string;
 let agentDir: string;
@@ -28,99 +31,139 @@ function json(file: string, value: unknown): void {
     writeFileSync(file, JSON.stringify(value));
 }
 
-/** The line's detail: what comes after "Codemode — ". */
-function detail(codemodeActive?: boolean): string | undefined {
+const user = (name: string) => path.join(agentDir, name);
+const project = (name: string) => path.join(workingDir, ".pi", name);
+
+/** Pi's folder trusts every project, as `defaultProjectTrust: "always"` does. */
+function trustProjects(): void {
+    json(user("settings.json"), { defaultProjectTrust: "always" });
+}
+
+/** The line's detail for a session that says codemode is `active`. */
+function detail(active: boolean | undefined): string | undefined {
     const [line, ...rest] = codemodeChecks({
         agentDir,
         workingDir,
-        ...(codemodeActive === undefined ? {} : { codemodeActive }),
+        ...(active === undefined ? {} : { codemodeActive: active }),
     });
     assert.equal(rest.length, 0);
-    if (line === undefined) return undefined;
-    assert.deepEqual([line.id, line.group, line.level, line.title], ["config.codemode", "config", "ok", "Codemode"]);
-    return line.detail;
+    assert.deepEqual([line?.id, line?.group, line?.title], ["config.codemode", "config", "Codemode"]);
+    return line?.detail;
 }
 
-describe("the doctor's codemode line", () => {
-    test("it is off when nothing turns it on", () => {
-        assert.equal(detail(), "off");
-        json(path.join(agentDir, "settings.json"), { defaultTools: ["read", "bash"] });
-        assert.equal(detail(), "off");
+describe("the doctor's codemode line in a session", () => {
+    test("it is off when Pi says so, whatever the files hold", () => {
+        assert.equal(detail(false), "off");
+        json(user("settings.json"), { defaultTools: ["+codemode"] });
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
+        assert.equal(detail(false), "off");
     });
 
-    test("it is on when defaultTools adds it, with no reason", () => {
-        json(path.join(agentDir, "settings.json"), { defaultTools: ["+codemode"] });
-        assert.equal(detail(), "on");
-        json(path.join(agentDir, "settings.json"), { defaultTools: ["read", "codemode"] });
-        assert.equal(detail(), "on");
-    });
-
-    test("it is on, with the reason, when an MCP server is configured", () => {
-        json(path.join(agentDir, "mcp.json"), { mcpServers: { docs: { url: "https://example.com/mcp" } } });
-        assert.equal(detail(), `on${MCP}`);
-    });
-
-    test("an MCP server does not turn it on when autoEnableCodemode is false or every server is off", () => {
-        const docs = { url: "https://example.com/mcp" };
-        json(path.join(agentDir, "mcp.json"), { autoEnableCodemode: false, mcpServers: { docs } });
-        assert.equal(detail(), "off");
-        json(path.join(agentDir, "mcp.json"), { mcpServers: { docs: { ...docs, enabled: false } } });
-        assert.equal(detail(), "off");
-        json(path.join(agentDir, "mcp.json"), { mcpServers: {} });
-        assert.equal(detail(), "off");
-        writeFileSync(path.join(agentDir, "mcp.json"), "{ not json");
-        assert.equal(detail(), "off");
-    });
-
-    test("defaultTools and an MCP server together give no reason: the setting is what turned it on", () => {
-        json(path.join(agentDir, "settings.json"), { defaultTools: ["+codemode"] });
-        json(path.join(agentDir, "mcp.json"), { mcpServers: { docs: { url: "https://example.com/mcp" } } });
-        assert.equal(detail(), "on");
-    });
-
-    test("the session's answer wins over the files, and the reason still comes from the files", () => {
+    test("it is on, with no reason, when defaultTools names codemode", () => {
+        json(user("settings.json"), { defaultTools: ["+codemode"] });
         assert.equal(detail(true), "on");
-        json(path.join(agentDir, "mcp.json"), { mcpServers: { docs: { url: "https://example.com/mcp" } } });
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
+        assert.equal(detail(true), "on");
+        json(user("settings.json"), { defaultTools: ["read", "codemode"] });
+        assert.equal(detail(true), "on");
+    });
+
+    test("it is on, with no reason, when nothing in the files explains it (a flag, an extension)", () => {
+        assert.equal(detail(true), "on");
+    });
+
+    test("an MCP server of the default exposure gives the reason", () => {
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
         assert.equal(detail(true), `on${MCP}`);
-        assert.equal(detail(false), "off");
-        json(path.join(agentDir, "settings.json"), { defaultTools: ["+codemode"] });
-        assert.equal(detail(false), "off");
+        json(user("mcp.json"), { mcpServers: { docs: { ...DOCS, exposure: "codemode" } } });
+        assert.equal(detail(true), `on${MCP}`);
+        json(user("mcp.json"), {
+            mcpServers: { docs: { ...DOCS, exposure: "direct", toolExposure: { search: "codemode" } } },
+        });
+        assert.equal(detail(true), `on${MCP}`);
+        json(user("mcp.json"), { mcpServers: { local: { command: "docs-server" } } });
+        assert.equal(detail(true), `on${MCP}`);
     });
 
-    test("with no folder it says nothing, unless the session answers", () => {
-        assert.deepEqual(codemodeChecks({ agentDir: "", workingDir }), []);
-        assert.equal(codemodeChecks({ agentDir: "", workingDir, codemodeActive: true })[0]?.detail, "on");
-    });
-
-    test("a trusted project's defaultTools lays over the folder's; an untrusted one is not read", () => {
-        json(path.join(workingDir, ".pi", "settings.json"), { defaultTools: ["+codemode"] });
-        assert.equal(detail(), "off");
-        json(path.join(agentDir, "settings.json"), { defaultProjectTrust: "always" });
-        assert.equal(detail(), "on");
-        json(path.join(agentDir, "settings.json"), { defaultProjectTrust: "always", defaultTools: ["+codemode"] });
-        json(path.join(workingDir, ".pi", "settings.json"), { defaultTools: ["-codemode"] });
-        assert.equal(detail(), "off");
-    });
-
-    test("Pi's defaultTools rule: plain names replace, + and - apply in order, an empty list replaces", () => {
-        const cases: Array<[boolean, unknown, boolean]> = [
-            [false, ["+codemode"], true],
-            [true, ["+grep"], true],
-            [true, ["-codemode"], false],
-            [true, ["read", "bash"], false],
-            [true, [], false],
-            [false, ["codemode", "-codemode"], false],
-            [false, ["read", "+codemode"], true],
-            [true, undefined, true],
-            [true, "codemode", true],
-        ];
-        for (const [before, list, expected] of cases) {
-            assert.equal(layerCodemode(before, list), expected, JSON.stringify([before, list]));
+    test("a server that would not turn it on gives no reason", () => {
+        for (const server of [
+            { ...DOCS, exposure: "direct" },
+            { ...DOCS, exposure: "hidden" },
+            { ...DOCS, exposure: "deferred" },
+            { ...DOCS, enabled: false },
+            { description: "no command and no URL" },
+        ]) {
+            json(user("mcp.json"), { mcpServers: { docs: server } });
+            assert.equal(detail(true), "on", JSON.stringify(server));
         }
+        json(user("mcp.json"), { autoEnableCodemode: false, mcpServers: { docs: DOCS } });
+        assert.equal(detail(true), "on");
+        json(user("mcp.json"), { mcpServers: {} });
+        assert.equal(detail(true), "on");
+        writeFileSync(user("mcp.json"), "{ not json");
+        assert.equal(detail(true), "on");
     });
 
-    test("it is in the doctor's check list, in the configuration group", () => {
-        assert.ok(DOCTOR_CHECKS.some(([group, check]) => group === "config" && check === codemodeChecks));
+    test("a trusted project's mcp.json adds a server, overrides one and sets autoEnableCodemode", () => {
+        trustProjects();
+        json(project("mcp.json"), { mcpServers: { docs: DOCS } });
+        assert.equal(detail(true), `on${MCP}`);
+
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
+        json(project("mcp.json"), { autoEnableCodemode: false });
+        assert.equal(detail(true), "on");
+
+        json(user("mcp.json"), { autoEnableCodemode: false, mcpServers: { docs: DOCS } });
+        json(project("mcp.json"), { autoEnableCodemode: true });
+        assert.equal(detail(true), `on${MCP}`);
+
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
+        json(project("mcp.json"), { mcpServers: { docs: { enabled: false } } });
+        assert.equal(detail(true), "on");
+
+        json(user("mcp.json"), { mcpServers: { docs: { ...DOCS, exposure: "direct" } } });
+        json(project("mcp.json"), { mcpServers: { docs: { enabled: true } } });
+        assert.equal(detail(true), "on");
+        json(project("mcp.json"), { mcpServers: { docs: { exposure: "codemode" } } });
+        assert.equal(detail(true), `on${MCP}`);
+    });
+
+    test("a project's files are not read when Pi would not trust the folder", () => {
+        json(project("mcp.json"), { mcpServers: { docs: DOCS } });
+        assert.equal(detail(true), "on");
+        json(project("settings.json"), { defaultTools: ["+codemode"] });
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
+        assert.equal(detail(true), `on${MCP}`);
+        trustProjects();
+        assert.equal(detail(true), "on");
+    });
+
+    test("with no Pi folder the session's answer stands, with no reason", () => {
+        assert.equal(codemodeChecks({ agentDir: "", workingDir, codemodeActive: true })[0]?.detail, "on");
+        assert.equal(codemodeChecks({ agentDir: "", workingDir, codemodeActive: false })[0]?.detail, "off");
+    });
+});
+
+describe("the doctor's codemode line outside a session", () => {
+    test("it is a skip that says where to look, and no file is read", () => {
+        json(user("settings.json"), { defaultTools: ["+codemode"] });
+        json(user("mcp.json"), { mcpServers: { docs: DOCS } });
+        const lines = codemodeChecks({ agentDir, workingDir });
+        assert.deepEqual(lines, [
+            {
+                id: "config.codemode",
+                group: "config",
+                level: "skip",
+                title: "Codemode",
+                detail: "Pi decides this when a session starts; /jig doctor inside Pi shows it.",
+            },
+        ]);
+        assert.deepEqual(codemodeChecks({ agentDir: "", workingDir: "" }), lines);
+    });
+
+    test("a session's line is level ok, on or off", () => {
+        assert.equal(codemodeChecks({ agentDir, workingDir, codemodeActive: true })[0]?.level, "ok");
+        assert.equal(codemodeChecks({ agentDir, workingDir, codemodeActive: false })[0]?.level, "ok");
     });
 });
 
@@ -141,5 +184,20 @@ describe("the session's tool list", () => {
             }),
             undefined,
         );
+    });
+
+    test("doctorContext reads it from the state's Pi: a session answers, the headless Pi does not", () => {
+        const withTools = (names: string[]) =>
+            doctorContext(createState({ getActiveTools: () => names } as unknown as ExtensionAPI, { env: {} }));
+        assert.equal(withTools(["read", "codemode"]).codemodeActive, true);
+        assert.equal(withTools(["read"]).codemodeActive, false);
+        // The `jig` command's Pi answers every unknown method with a function that returns nothing.
+        const headless = new Proxy({}, { get: () => () => undefined }) as unknown as ExtensionAPI;
+        assert.equal(doctorContext(createState(headless, { env: {} })).codemodeActive, undefined);
+        assert.equal(doctorContext(createState({} as ExtensionAPI, { env: {} })).codemodeActive, undefined);
+    });
+
+    test("it is in the doctor's check list, in the configuration group", () => {
+        assert.ok(DOCTOR_CHECKS.some(([group, check]) => group === "config" && check === codemodeChecks));
     });
 });

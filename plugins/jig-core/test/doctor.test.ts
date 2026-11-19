@@ -95,14 +95,15 @@ function text(report: Awaited<ReturnType<typeof runDoctor>>): string {
 }
 
 describe("/jig doctor checks", () => {
-    test("the report says whether codemode is on, from the folder's settings", async () => {
-        const off = await runDoctor(context(), options());
-        assert.equal(off.lines.find((line) => line.id === "config.codemode")?.detail, "off", text(off));
-        writeFileSync(path.join(agentDir, "settings.json"), JSON.stringify({ defaultTools: ["+codemode"] }));
-        const on = await runDoctor(context(), options());
+    test("the report says whether codemode is on when a session answers, and sends the terminal to Pi", async () => {
+        const on = await runDoctor(context({ overrides: { codemodeActive: true } }), options());
         assert.match(text(on), /Codemode — on/);
-        const session = await runDoctor(context({ overrides: { codemodeActive: false } }), options());
-        assert.match(text(session), /Codemode — off/);
+        const off = await runDoctor(context({ overrides: { codemodeActive: false } }), options());
+        assert.match(text(off), /Codemode — off/);
+        const terminal = await runDoctor(context(), options());
+        const line = terminal.lines.find((entry) => entry.id === "config.codemode");
+        assert.equal(line?.level, "skip", text(terminal));
+        assert.match(text(terminal), /Codemode — Pi decides this when a session starts/);
     });
 
     test("a company's onboarding list becomes a 'you need' line for each field still missing", async () => {

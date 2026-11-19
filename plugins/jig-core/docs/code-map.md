@@ -93,7 +93,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
 | `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside | `doctor-checks.ts` |
-| `doctor-codemode.ts` | The doctor line "Codemode — on" or "off", from the session or Pi's settings files | `doctor-checks.ts` |
+| `doctor-codemode.ts` | The doctor line "Codemode": on or off from the session, a skip in the terminal | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
