@@ -357,7 +357,8 @@ describe("a call that cannot run", () => {
         const result = await h.call({ action: "comment", key: "PROJ-1", text: "x" });
         assert.match(
             result.blocked ?? "",
-            /jira cannot run with this input: jira is not set up: add a "jira" section with "site" and "auth" to jig\.json/,
+            /jira cannot run with this input: jira is not set up: ask the person to run \/jig setup jira in Pi, or jig setup jira in a terminal; by hand, add a "jira" section with "site" and "auth" to jig\.json \(see the jig-jira README\)$/,
+            "the line survives jig-core's cut of a preview's refusal to 200 characters, README pointer and all",
         );
     });
 

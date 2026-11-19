@@ -512,7 +512,7 @@ test("a section jig-core finds invalid reads as absent, and the tool says it is 
         () => requireSettings(),
         (error: Error) =>
             error instanceof TypeError &&
-            /^logs is not configured: add a "logs" section with "backend" and "environments" to jig.json/.test(
+            /^logs is not set up: ask the person to run \/jig setup logs in Pi, or jig setup logs in a terminal; by hand, add a "logs" section with "backend" and "environments" to jig\.json/.test(
                 error.message,
             ),
     );

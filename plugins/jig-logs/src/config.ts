@@ -9,6 +9,7 @@
 // about it never repeats the value: a mistake there may well be the secret itself, pasted by hand.
 import { jig } from "../../jig-core/src/client.ts";
 import { unknownField } from "../../jig-core/src/kit/fields.ts";
+import { notSetUpMessage } from "../../jig-core/src/kit/values.ts";
 import { backends } from "./backends/index.ts";
 import type { LogBackend } from "./backends/index.ts";
 import { LONGEST_WINDOW, MAX_RANGE_MS, windowSpan } from "./time.ts";
@@ -354,9 +355,11 @@ export function logsSettings(): LogsSettings | undefined {
     return settingsFrom(jig().config.section("logs"));
 }
 
-const NOT_CONFIGURED =
-    'logs is not configured: add a "logs" section with "backend" and "environments" to jig.json, ' +
-    "or fix the errors /jig shows for it";
+const NOT_CONFIGURED = notSetUpMessage({
+    section: "logs",
+    plugin: "jig-logs",
+    needs: 'a "logs" section with "backend" and "environments"',
+});
 
 /** The settings, or a refusal that says the tool is not configured. */
 export function requireSettings(): LogsSettings {

@@ -518,7 +518,10 @@ describe("the command", () => {
             /^No collection is a Postman cloud collection: add one under api\.collections/,
         );
         h.jig.reset();
-        assert.match(text(await h.command("/api refresh")), /^api is not set up: add an "api" section/);
+        assert.match(
+            text(await h.command("/api refresh")),
+            /^api is not set up: run \/jig setup api in Pi, or jig setup api in a terminal; by hand, add an "api" section/,
+        );
     });
 
     test("without a name it refreshes every cloud collection", async () => {

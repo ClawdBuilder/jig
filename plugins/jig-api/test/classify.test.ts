@@ -336,7 +336,7 @@ describe("a tool that is not set up", () => {
             () => classify({ action: "list" }),
             (error: unknown) =>
                 error instanceof TypeError &&
-                /^api is not set up: add an "api" section with "collections" to jig\.json \(\/jig lists configuration problems\)$/.test(
+                /^api is not set up: ask the person to run \/jig setup api in Pi, or jig setup api in a terminal; by hand, add an "api" section with "collections" to jig\.json \(see the jig-api README\)$/.test(
                     error.message,
                 ),
         );

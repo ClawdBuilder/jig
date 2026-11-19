@@ -190,7 +190,7 @@ roles: [code map](../docs/code-map.md).
   `JigToolOptions.summary`, and an `execute` wrapper that calls `jig().markRefused` on a `RefusedError`), `TOOLS_SECTION`,
   `TOOL_SEARCH`, `NOT_DEFERRABLE`, `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`.
   `stringEnum(values, { description?, default? })` (`schema.ts`). `isObject`, `InputError`, `RefusedError`,
-  `NotConfiguredError` (`values.ts`). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
+  `NotConfiguredError`, `notSetUpMessage` (`values.ts`: the one line a plugin says while its section is missing, naming `/jig setup <section>` and `jig setup <section>` before the by-hand route). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
 - **Actions.** `ActionSpec`, `ActionTable`, `usageLine`, `unknownAction`, `checkParams`, `describeActions`, `previewChanged`, `actionList`
   (`actions.ts`): one shape for an action-based tool, so its usage line, its refusal for an unknown action and its schema's action list
   read the same in every plugin.

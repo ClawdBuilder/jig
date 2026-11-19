@@ -17,8 +17,9 @@ cut to 40 characters. No secret is read and no request is made.
 - **No `environment`, or one nobody configured:** `logs needs environment: one of
   staging, production` or `logs: unknown environment "uat"; use one of staging,
   production`
-- **The tool is not configured:** `logs is not configured: add a "logs" section with
-  "backend" and "environments" to jig.json, or fix the errors /jig shows for it`
+- **The tool is not set up:** `logs is not set up: ask the person to run /jig setup logs in Pi,
+  or jig setup logs in a terminal; by hand, add a "logs" section with "backend" and "environments"
+  to jig.json (see the jig-logs README)`
 - **A text that is empty, only spaces, too long or not printable:** `logs: phrase
   must be 1-512 printable characters, not only spaces`, and the same for `query`,
   `match`, `exclude` and `around` with their own limits. A control character has no

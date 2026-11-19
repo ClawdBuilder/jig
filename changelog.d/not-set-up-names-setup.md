@@ -1,0 +1,3 @@
+### Fixed
+
+- A tool that has no valid section now names the setup command first, so the agent no longer tells a person to edit `jig.json` by hand: `jira is not set up: ask the person to run /jig setup jira in Pi, or jig setup jira in a terminal; by hand, add a "jira" section with "site" and "auth" to jig.json (see the jig-jira README)`. The same line, with its own section, is said by `api` (also for `/api refresh`, which says "run"), `mongo` and `logs` (which said "is not configured" and now says "is not set up"). `ops` keeps its by-hand line, because it has no setup questions yet. Plugin authors get `notSetUpMessage` in `kit/values.ts`.

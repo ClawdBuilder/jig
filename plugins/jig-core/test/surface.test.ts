@@ -453,7 +453,14 @@ describe("what plugins import", () => {
                 "registerJigTool",
                 "transcriptTools",
             ],
-            "values.ts": ["InputError", "NotConfiguredError", "RefusedError", "isObject"],
+            "values.ts": [
+                "InputError",
+                "NotConfiguredError",
+                "NotSetUp",
+                "RefusedError",
+                "isObject",
+                "notSetUpMessage",
+            ],
         };
         for (const module of modules) {
             assert.deepEqual(exportedNames(path.join(kit, module)), (expected[module] ?? []).sort(), module);

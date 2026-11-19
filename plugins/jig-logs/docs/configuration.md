@@ -4,7 +4,7 @@ The fields of `logs` in `~/.jig/jig.json`, with their defaults and limits.
 Back to the [jig-logs overview](../README.md).
 
 `backend` and `environments` are both needed, and `maxWindow` is optional. `jig-core` reports an unknown or
-invalid field, and the tool then says it is not configured instead of running half
+invalid field, and the tool then says it is not set up, and names `jig setup logs`, instead of running half
 set up.
 
 Which environment fields apply depends on `backend.type`. A field that belongs to

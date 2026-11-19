@@ -32,3 +32,27 @@ export class RefusedError extends InputError {
  * configured" from "the call is wrong" without reading the text.
  */
 export class NotConfiguredError extends InputError {}
+
+/** What `notSetUpMessage` needs to name: the section (the word after `jig setup`), the plugin whose README describes it,
+ *  and the section as one would write it by hand. `reader` is who the line is for: the model, which cannot run a command
+ *  and so asks the person (the default), or the person, who typed a command of the plugin's own. */
+export interface NotSetUp {
+    section: string;
+    plugin: string;
+    needs: string;
+    reader?: "model" | "person";
+}
+
+/**
+ * The one line a plugin says while its section is missing or invalid: the command that sets it up first (`/jig setup` in Pi,
+ * `jig setup` in a terminal, which asks every question, repairs an invalid section and writes the file), then the by-hand
+ * route. The model reads it and repeats it, so it stays one line and names the command before the file. Keep what it says
+ * short: jig-core cuts a refusal from a preview at 200 characters, so a longer line loses its end.
+ */
+export function notSetUpMessage({ section, plugin, needs, reader = "model" }: NotSetUp): string {
+    const run = reader === "person" ? "run" : "ask the person to run";
+    return (
+        `${section} is not set up: ${run} /jig setup ${section} in Pi, or jig setup ${section} in a terminal; ` +
+        `by hand, add ${needs} to jig.json (see the ${plugin} README)`
+    );
+}

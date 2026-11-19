@@ -5,7 +5,7 @@
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { previewChanged } from "../../jig-core/src/kit/actions.ts";
 import { jig } from "../../jig-core/src/client.ts";
-import { NotConfiguredError } from "../../jig-core/src/kit/values.ts";
+import { NotConfiguredError, notSetUpMessage } from "../../jig-core/src/kit/values.ts";
 import type { CallClass, Preview } from "../../jig-core/src/contract.ts";
 import { checkTimeout } from "./ad-hoc.ts";
 import { loadCatalog } from "./catalog.ts";
@@ -69,7 +69,7 @@ function requiredSettings(): ApiSettings {
     const settings = settingsOf(jig().config.section("api"));
     if (settings === undefined) {
         throw new NotConfiguredError(
-            'api is not set up: add an "api" section with "collections" to jig.json (/jig lists configuration problems)',
+            notSetUpMessage({ section: "api", plugin: "jig-api", needs: 'an "api" section with "collections"' }),
         );
     }
     return settings;

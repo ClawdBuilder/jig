@@ -483,8 +483,10 @@ describe("input that is invalid blocks the call without asking", () => {
         h.configure({
             connections: { staging: { uri: "mongodb://agent:pw@db.example.com:27017", user: "a", password: "pass:x" } },
         });
-        await refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
+        const how =
+            /mongo is not set up: ask the person to run \/jig setup mongo in Pi, or jig setup mongo in a terminal; by hand, add a "mongo" section with "connections" to jig\.json/;
+        await refused({ environment: "staging", action: "find", ...target }, how);
         h.jig.setSection("mongo", undefined);
-        await refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
+        await refused({ environment: "staging", action: "find", ...target }, how);
     });
 });

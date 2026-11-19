@@ -86,7 +86,7 @@ Usage: logs {phrase or query, environment, window?, ...}`.
 
 In `~/.jig/jig.json`, under `logs`. `jig-core` reports an unknown or invalid
 field (one that belongs to the other type is named), and the tool then says it is
-not configured instead of running half set up.
+not set up, and names `jig setup logs`, instead of running half set up.
 
 | Field | Meaning |
 |---|---|

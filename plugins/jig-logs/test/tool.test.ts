@@ -89,13 +89,14 @@ test("without a valid section the tool is not configured, and says what to add",
         section: { backend: { url: "http://insecure", auth: { token: "env:T" } }, environments: ENVIRONMENTS },
     });
     const message =
-        /^logs is not configured: add a "logs" section with "backend" and "environments" to jig\.json, or fix the errors \/jig shows for it$/;
+        /^logs is not set up: ask the person to run \/jig setup logs in Pi, or jig setup logs in a terminal; by hand, add a "logs" section with "backend" and "environments" to jig\.json \(see the jig-logs README\)$/;
     assert.throws(
         () => w.tool.declaration.classify({ phrase: "x", environment: "staging" }),
         (error: Error) => error instanceof TypeError && message.test(error.message),
     );
     const result = await w.call(ask);
     assert.ok(result.error instanceof TypeError && message.test(result.error.message));
+    assert.ok(result.error.message.length <= 200, "jig-core cuts a refusal from a preview at 200 characters");
     assert.equal(w.requests.length, 0);
 });
 
@@ -189,7 +190,7 @@ test("logs.maxWindow lets one call search 45 days, one request a day, and refuse
 
 test("a maxWindow outside 1h to 90d leaves the tool not configured", async (t) => {
     const w = await world(t, { section: { ...logsSection(), maxWindow: "120d" } });
-    assert.match((await w.call({ ...ask })).error?.message ?? "", /^logs is not configured/);
+    assert.match((await w.call({ ...ask })).error?.message ?? "", /^logs is not set up/);
     assert.equal(w.requests.length, 0);
 });
 

@@ -3,6 +3,7 @@
 // agent cannot run it. The fetch goes through the sending engine, so a company transport or sign-in service carries it.
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
+import { notSetUpMessage } from "../../jig-core/src/kit/values.ts";
 import { settingsOf } from "./config.ts";
 import type { ApiSettings } from "./config.ts";
 import { createHttp } from "./engine/http.ts";
@@ -88,8 +89,15 @@ export function registerRefresh(pi: ExtensionAPI, options: ApiOptions): void {
             }
             const settings = settingsOf(jig().config.section("api"));
             if (settings === undefined) {
-                const how = 'add an "api" section with "collections" to jig.json (/jig lists configuration problems)';
-                ctx.ui.notify(`api is not set up: ${how}`, "warning");
+                ctx.ui.notify(
+                    notSetUpMessage({
+                        section: "api",
+                        plugin: "jig-api",
+                        needs: 'an "api" section with "collections"',
+                        reader: "person",
+                    }),
+                    "warning",
+                );
                 return;
             }
             const report = await refreshCollections(settings, wanted, options, ctx.signal);
