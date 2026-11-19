@@ -88,12 +88,12 @@ export interface DoctorContext {
     jigListedButMissing?: { source: string; problem: string };
     /** Project packages Pi would not load because the folder is not trusted: skipped, never imported. */
     projectSkipped?: { sources: string[]; detail: string; fix?: string; setupLine: string; jigIncluded: boolean };
-    /** Jig plugins Pi's settings filter out: core and sandbox are failures, the rest are calm skips. */
+    /** Jig plugins that are off: core and sandbox are failures, the rest are one calm skip line. A session names no settings file. */
     filtered?: {
         core?: { settings: string };
         sandbox?: { settings: string };
-        features: Array<{ feature: string; section?: string; settings: string }>;
-        alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
+        features: Array<{ feature: string; section?: string; settings?: string }>;
+        alwaysOn: Array<{ feature: string; plugin: string; settings?: string }>;
         offSections: string[];
     };
     protectedPaths: () => readonly ProtectedPathInfo[];

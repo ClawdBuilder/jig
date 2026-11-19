@@ -322,19 +322,20 @@ describe("jig doctor", () => {
         assert.doesNotMatch(result.stdout, /the sandbox starts with Pi/);
     });
 
-    test("an always-on plugin that is off is one plain warning, and its section is kept", {
+    test("an always-on plugin that is off is one skip line, and its section is kept", {
         timeout: 60_000,
     }, async () => {
         settingsFiltered(["!plugins/jig-git/index.ts"]);
         writeFileSync(path.join(agent, "jig.json"), JSON.stringify({ git: { base: "develop" } }));
         const result = await run(["doctor"]);
         assert.equal(result.code, 0, result.stdout);
-        assert.match(result.stdout, /warn Jig's git tools are off in Pi's settings/);
-        assert.match(result.stdout, /leaves out\s+plugins\/jig-git\/index\.ts/);
+        assert.match(result.stdout, /skip Off: git\./);
+        assert.match(result.stdout, /Turn one on by removing its filter in\s+\S*settings\.json\./);
         assert.doesNotMatch(result.stdout, /is not a known field/);
+        assert.doesNotMatch(result.stdout, /warn .*git/i);
     });
 
-    test("a choosable plugin that is off is a calm skip, and its section is not a problem", {
+    test("a choosable plugin that is off is the same one skip line, and its section is not a problem", {
         timeout: 60_000,
     }, async () => {
         settingsFiltered(["!plugins/jig-jira/index.ts"]);
@@ -344,9 +345,23 @@ describe("jig doctor", () => {
         );
         const result = await run(["doctor"]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
-        assert.match(result.stdout, /skip Feature jira — off in Pi's settings; its section in jig\.json is kept/);
+        assert.match(result.stdout, /skip Off: jira\./);
+        assert.match(result.stdout, /sections in jig\.json are\s+kept/);
         assert.doesNotMatch(result.stdout, /is not a known field/);
         assert.doesNotMatch(result.stdout, /warn .*jira/i);
+    });
+
+    test("several plugins that are off are one line, sorted, and --json has the one id", {
+        timeout: 60_000,
+    }, async () => {
+        settingsFiltered(["!plugins/jig-jira/index.ts", "!plugins/jig-git/index.ts", "!plugins/jig-api/index.ts"]);
+        const result = await run(["doctor", "--json"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        const ids = (JSON.parse(result.stdout) as { lines: Array<{ id: string; title: string }> }).lines;
+        assert.deepEqual(
+            ids.filter((line) => line.id.startsWith("config.filtered")).map((line) => [line.id, line.title]),
+            [["config.filtered.off", "Off: api, git, jira."]],
+        );
     });
 
     const settingsFor = (file: string, packages: unknown[]): void => writeFileSync(file, JSON.stringify({ packages }));

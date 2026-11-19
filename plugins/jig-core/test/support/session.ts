@@ -237,6 +237,8 @@ export interface WorldOptions {
     realMasker?: boolean;
     /** Put the fake plugin before jig-core, so its `withJig` waits for jig-core to load. */
     pluginFirst?: boolean;
+    /** More extensions, loaded after the fake plugin: a real Jig plugin whose section a test needs registered. */
+    plugins?: ExtensionFactory[];
     /** The time and timers the watch engine uses, so a test can move them by hand. Default: the real ones. */
     clock?: FakeClock;
     env?: Record<string, string>;
@@ -299,7 +301,10 @@ export async function startWorld(options: WorldOptions = {}): Promise<World> {
     const resourceLoader = new DefaultResourceLoader({
         cwd,
         agentDir,
-        extensionFactories: options.pluginFirst === true ? [plugin, jigFactory] : [jigFactory, plugin],
+        extensionFactories: [
+            ...(options.pluginFirst === true ? [plugin, jigFactory] : [jigFactory, plugin]),
+            ...(options.plugins ?? []),
+        ],
         noExtensions: false,
         noSkills: true,
         noPromptTemplates: true,

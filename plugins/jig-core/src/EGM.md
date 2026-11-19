@@ -31,6 +31,7 @@ Plugin overview: [jig-core](../EGM.md).
   `capContent`, `cleanupSpill`), `records.ts` (`callRecord`, `turnRecord`, `writeRecord`, `cleanupRecords`, `recordsDir`,
   `cleanFacts`, `conditionProblem`).
 - **Configuration and state.** `config.ts` (`jig.json` and company additions), `section-defaults.ts`, `section-state.ts`,
+  `plugin-table.ts` (`FEATURES`, `offSectionsOf`: a session sets `state.offSections` from it, so a section kept for a plugin that did not load is off, not an unknown field),
   `state.ts` (`createState`, `loadPersonalConfig`), `paths.ts` (`CONFIG_FILE_NAME`, `stateDir`, `configFile`, `privateDir`, `privateFolder`,
   `appendPrivateLine`, `createPrivateFile`, `replacePrivateFile`, `removeOldFiles`), `commands.ts` (`/jig`, `/jig setup`, `/jig doctor`,
   `/jig rules`, `/jig records`).
@@ -38,7 +39,7 @@ Plugin overview: [jig-core](../EGM.md).
   `transports-section.ts` (`TRANSPORTS_SECTION`, `validateTransportsSection`, `relayOf`, `relayNames`, `tokenFilePaths`), `relay.ts`
   (`RELAY_PROTOCOL` 1, `relayRequest`, `relayHealth`; [relay protocol](../../../docs/relay-protocol.md)), `exec.ts`
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
-- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
+- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-off.ts`: `offLine`, `sessionFiltered`, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
   `model-auth.ts` (`modelAuthState`, `modelSignInLine`: whether the home has a model provider a person can use, from local files only);
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
   (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20

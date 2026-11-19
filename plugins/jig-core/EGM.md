@@ -55,7 +55,7 @@ transports, the watch engine, the setup questions, the `jig` command for the Jig
   `jig().http.request` and scrubbed from the reply; the plugin never signs in ([Decisions](../../docs/decisions.md)). The one
   exception is a library that must hold the secret in-process (a database driver, an SSH tunnel), which gets it from
   `jig().secrets.resolve` for that connection only ([the exception](../../docs/decisions.md#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)).
-- **An unknown configuration field is an error** that names the file and the key; the plugin then starts with defaults rather than guessing.
+- **An unknown configuration field is an error** that names the file and the key; the plugin then starts with defaults rather than guessing. The section of one of Jig's own plugins that is not loaded is not unknown: it is off (`src/plugin-table.ts`).
 - **The README is the specification.** Code follows it and when either changes the other changes in the same commit.
   `test/code-maps.test.ts` fails when `src/` and [code map](./docs/code-map.md) disagree. A source file over 500 lines is a ratchet
   (`plugins/jig-core/test/file-sizes.test.ts`): a new file may not cross 500, and a listed one may not grow.

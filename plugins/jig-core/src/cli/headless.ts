@@ -8,6 +8,7 @@ import { buildApi } from "../api.ts";
 import { agentDirFor } from "../kit/theme-preference.ts";
 import { publishJig } from "../client.ts";
 import { errorMessage } from "../errors.ts";
+import { FEATURES } from "../plugin-table.ts";
 import { createState, loadPersonalConfig } from "../state.ts";
 import {
     globalNpmRoot,
@@ -87,25 +88,6 @@ function manifestExtensions(folder: string): string[] {
 function pluginOf(file: string): string | undefined {
     return /^plugins\/([^/]+)\/index\.ts$/.exec(file.replace(/^\.\//, ""))?.[1];
 }
-
-/** Every built-in plugin, its feature name, the section it validates and whether it is always on. */
-export const FEATURES: Readonly<Record<string, { feature: string; section?: string; alwaysOn?: boolean }>> = {
-    "jig-core": { feature: "core", alwaysOn: true },
-    "jig-sandbox": { feature: "sandbox", section: "sandbox", alwaysOn: true },
-    "jig-git": { feature: "git", section: "git", alwaysOn: true },
-    "jig-memory": { feature: "memory", section: "memory", alwaysOn: true },
-    "jig-session": { feature: "session", alwaysOn: true },
-    "jig-theme": { feature: "theme", section: "theme", alwaysOn: true },
-    "jig-jira": { feature: "jira", section: "jira" },
-    "jig-logs": { feature: "logs", section: "logs" },
-    "jig-mongo": { feature: "mongo", section: "mongo" },
-    "jig-api": { feature: "api", section: "api" },
-    "jig-ops": { feature: "ops", section: "ops" },
-    "jig-review": { feature: "review" },
-    "jig-agents": { feature: "agents", section: "agents" },
-    "jig-workflow": { feature: "workflow", section: "workflow" },
-    "jig-lens": { feature: "lens", section: "lens" },
-};
 
 /** Pi's dedupe: project scope wins over user for the same package; a project `autoload:false` entry is a delta. */
 function effectivePackages(listed: readonly ListedPackage[]): ListedPackage[] {

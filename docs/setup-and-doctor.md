@@ -241,8 +241,10 @@ names `src/index.ts` matches nothing. Keep `jig-core` first in the list, because
 }
 ```
 
-`jig doctor` reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`, or when a plugin's section in
-`jig.json` is left behind.
+`jig doctor` reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`. Any other plugin you leave out is one
+`skip` line, `Off: api, jira, logs.`, with the settings file to change; its section in `jig.json` is not a problem, stays in
+the file and applies again when the plugin does. `/jig doctor` in Pi prints the same line, without a file name. A section
+that belongs to no plugin is still an unknown field.
 
 ## The four words
 

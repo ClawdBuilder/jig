@@ -26,7 +26,7 @@ fixes: [setup and doctor](../../../../docs/setup-and-doctor.md); file roles: [co
   `helpFor(topic)`, `nearestCommand(word)`, `strayWordsMessage(command, argv, word)`.
 - **`headless.ts`**: `loadHeadless({ agentDir?, workingDir?, env? })` returns `{ state, failures, loaded, jigInPi,
   jigInPiVersion?, jigCopies?, jigListedButMissing?, packageProblems, projectSkipped?, filtered?, timings }`;
-  `ownPackage()`, `FEATURES` (each built-in plugin folder to its feature and `jig.json` section), `LoadFailure`, `Headless`.
+  `ownPackage()`, `LoadFailure`, `Headless`. It reads `FEATURES` from `../plugin-table.ts` (each built-in plugin folder to its feature and `jig.json` section).
 - **`update.ts`**: `update(args, options)`, `parse`, `piCommands`, `upToDate`, `looksLikeSource`, `installedRequirement`,
   `UpdateOptions`. Targets `--all`, `--self`, `--extensions`, `--models`, a source or `--extension <source>`; flags `--check`,
   `--json`, `--to <version>`, `--yes`/`-y`, `-a`/`--approve`, `-na`/`--no-approve`.

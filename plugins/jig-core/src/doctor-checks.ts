@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./doctor.ts";
 import { networkChecks } from "./doctor-network.ts";
+import { offLine, sessionFiltered } from "./doctor-off.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
 import { companyRangeChecks } from "./doctor-company-range.ts";
@@ -66,6 +67,7 @@ export function doctorContext(state: JigState): DoctorContext {
         now: state.now,
         onboarding: activeOnboarding(state),
         sectionSetup: state.sectionSetup,
+        ...sessionFiltered(state.offSections),
     };
 }
 /** The relays declared in jig.json: health, the protocol it speaks, and whether the token resolves. */
@@ -408,25 +410,7 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             fix: `In ${context.filtered.sandbox.settings}, remove the filter that leaves out plugins/jig-sandbox/index.ts (or make it include that file).`,
         });
     }
-    for (const feature of context.filtered?.alwaysOn ?? []) {
-        lines.push({
-            id: `config.filtered.always.${feature.feature}`,
-            group: "config",
-            level: "warn",
-            title: `Jig's ${feature.feature} tools are off in Pi's settings`,
-            detail: "The tools are not loaded, and their section in jig.json is kept.",
-            fix: `In ${feature.settings}, remove the filter that leaves out plugins/${feature.plugin}/index.ts.`,
-        });
-    }
-    for (const feature of context.filtered?.features ?? []) {
-        lines.push({
-            id: `config.filtered.${feature.feature}`,
-            group: "config",
-            level: "skip",
-            title: `Feature ${feature.feature}`,
-            detail: "off in Pi's settings; its section in jig.json is kept and comes back with it.",
-        });
-    }
+    lines.push(...offLine(context.filtered));
 
     if (context.projectSkipped !== undefined) {
         lines.push({

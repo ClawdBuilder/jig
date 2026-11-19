@@ -370,7 +370,8 @@ such as `git`, `lens` or `memory`.
   and the key. If your section is complete without the defaults, the plugin
   gets it as you wrote it; if not, it gets nothing.
 - **A top-level key that neither jig-core nor a plugin registered** is an
-  unknown field.
+  unknown field. The section of one of Jig's own plugins that is not loaded is
+  not: it stays in the file and applies again when the plugin loads.
 - **A plugin cannot register a name jig-core uses itself:** `environments`,
   `rules`, `classify`, `protectedPaths`, `secrets`, `records`, `spill`, `approvals`, `startChecks`, `updates`.
 - **Order does not matter.** A plugin that loads before jig-core waits for it,
