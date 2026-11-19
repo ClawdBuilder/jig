@@ -1,6 +1,6 @@
 // The secret probe behind `/jig doctor` and `/jig setup`: found, missing, locked, unknown or invalid, and never a value.
 import assert from "node:assert/strict";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -115,8 +115,10 @@ describe("probeSecret", () => {
         const file = path.join(home, "token");
         writeFileSync(file, "abc\n");
         chmodSync(file, 0o644);
+        // The kernel's table names real paths: where this test's folder really is (macOS's /var is /private/var).
+        const mount = realpathSync(home);
         // What /proc/mounts says on WSL 2 for the C: drive, with the folder of this test standing for /mnt/c.
-        const windows = `C:\\134 ${home} 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000,cache=0x5 0 0\n`;
+        const windows = `C:\\134 ${mount} 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000,cache=0x5 0 0\n`;
         const probe = await probeSecret(`file:${file}`, {
             ...options,
             mounts: windows,
@@ -126,7 +128,7 @@ describe("probeSecret", () => {
         assert.equal(probe.warning, undefined);
         assert.doesNotMatch(JSON.stringify(probe), /chmod/);
         // The same file on an ordinary Linux mount still warns.
-        const linux = `/dev/sdc ${home} ext4 rw,relatime 0 0\n`;
+        const linux = `/dev/sdc ${mount} ext4 rw,relatime 0 0\n`;
         const ordinary = await probeSecret(`file:${file}`, {
             ...options,
             mounts: linux,
