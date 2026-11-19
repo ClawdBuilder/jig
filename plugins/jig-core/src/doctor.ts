@@ -97,6 +97,8 @@ export interface DoctorContext {
         alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
         offSections: string[];
     };
+    /** In a session: whether Pi's active tools include codemode. Absent in the `jig` command, where the files decide. */
+    codemodeActive?: boolean;
     protectedPaths: () => readonly ProtectedPathInfo[];
     /** Pi's model registry, in a session: the Model line asks it how many models can be used. The terminal has none. */
     models?: ModelCatalogue;

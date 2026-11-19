@@ -3,12 +3,12 @@
 // that the script cannot reach one that was not given.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { writeRolePolicy } from "../src/kit/role-policy.ts";
-import { classifyCodemode, codemodeAsk } from "../src/codemode.ts";
+import { RISKY_WORDS, classifyCodemode, codemodeAsk } from "../src/codemode.ts";
 import type { GateCall } from "../src/contract.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "../../..");
@@ -169,6 +169,53 @@ describe("the codemode classification", () => {
             assert.equal(classifyCodemode({ code })?.environment, "external", code);
             assert.deepEqual(ask(code), { decision: "ask", reason: "the script can call outside models: ask" });
         }
+    });
+
+    test("a \\u escape asks: it can spell models without the word", () => {
+        const asks = { decision: "ask", reason: "the script writes an escaped name: ask" };
+        for (const code of [
+            "return await \\u006dodels.classify(x, y);",
+            "return await \\u{6d}odels.classify(x, y);",
+            'return await tools.read({ path: "caf\\u00e9.txt" });',
+        ]) {
+            assert.deepEqual(classifyCodemode({ code }), {
+                environment: "external",
+                effect: "write",
+                atLeast: "ask",
+            });
+            assert.deepEqual(ask(code), asks, code);
+        }
+    });
+
+    test("an escaped form of each listed word asks", () => {
+        for (const word of RISKY_WORDS) {
+            const first = (word.codePointAt(0) ?? 0).toString(16).padStart(4, "0");
+            const code = `return \\u${first}${word.slice(1)};`;
+            assert.equal(classifyCodemode({ code })?.environment, "external", code);
+            assert.deepEqual(ask(code), { decision: "ask", reason: "the script writes an escaped name: ask" }, code);
+        }
+        assert.ok(RISKY_WORDS.includes("models"));
+        assert.ok(RISKY_WORDS.length >= 18, "RISKY_WORDS lost an entry");
+    });
+
+    test("the reason names what triggered the ask: a word or a computed access first, an escape only when alone", () => {
+        const models = { decision: "ask", reason: "the script can call outside models: ask" };
+        const escaped = { decision: "ask", reason: "the script writes an escaped name: ask" };
+        assert.deepEqual(ask("return await models.classify(x, y);"), models);
+        assert.deepEqual(ask('return await models.classify(x, "caf\\u00e9");'), models);
+        assert.deepEqual(ask('const a = tools["re" + "ad"]; return "caf\\u00e9";'), models);
+        assert.deepEqual(ask('return "caf\\u00e9";'), escaped);
+        assert.deepEqual(ask("return await \\u006dodels.classify(x, y);"), escaped);
+    });
+
+    test("the doc names exactly the words the check looks for", () => {
+        const page = readFileSync(path.resolve(import.meta.dirname, "../docs/tools-and-codemode.md"), "utf8");
+        const bullet =
+            /- a script that names (.*?) is an \*\*external write\*\*/.exec(page.replace(/\s+/g, " "))?.[1] ?? "";
+        assert.deepEqual(
+            [...bullet.matchAll(/`([^`]+)`/g)].map((match) => match[1]),
+            [...RISKY_WORDS],
+        );
     });
 
     test("missing or unparsable input falls back to asking", () => {

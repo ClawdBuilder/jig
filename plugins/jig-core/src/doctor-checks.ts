@@ -9,6 +9,7 @@ import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
 import { companyRangeChecks } from "./doctor-company-range.ts";
+import { codemodeChecks, codemodeInSession } from "./doctor-codemode.ts";
 import { folderRow, folderWhy as whyFolder } from "./doctor-folder.ts";
 import { UPDATE_PI, installCommand, installMode } from "./install-mode.ts";
 import {
@@ -40,6 +41,7 @@ export const DOCTOR_CHECKS: ReadonlyArray<
     ["secrets", checkSecrets],
     ["config", relayChecks],
     ["config", companyRangeChecks],
+    ["config", codemodeChecks],
     ["logins", loginChecks],
     ["network", networkChecks],
     ["sandbox", sandboxChecks],
@@ -69,6 +71,7 @@ export function doctorContext(state: JigState): DoctorContext {
         now: state.now,
         onboarding: activeOnboarding(state),
         sectionSetup: state.sectionSetup,
+        codemodeActive: codemodeInSession(state.pi),
     };
 }
 /** The relays declared in jig.json: health, the protocol it speaks, and whether the token resolves. */
@@ -185,8 +188,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const wsl =
         platform === "linux" && (context.env.WSL_DISTRO_NAME !== undefined || context.env.WSL_INTEROP !== undefined);
     const system = platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : wsl ? "Linux (WSL)" : "Linux";
-
-    const lines: DoctorLine[] = [
+    return [
         {
             id: "machine.node",
             group: "machine",
@@ -290,10 +292,8 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
               ]
             : []),
         { id: "machine.system", group: "machine", level: "ok", title: "System", detail: system },
+        folderRow(context, home),
     ];
-
-    lines.push(folderRow(context, home));
-    return lines;
 }
 
 function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
