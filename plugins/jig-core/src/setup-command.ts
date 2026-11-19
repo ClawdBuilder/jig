@@ -48,6 +48,7 @@ export async function runSetupCommand(
     const ui: SetupUi = {
         select: (title, options) => ctx.ui.select(title, options),
         input: (title, placeholder) => ctx.ui.input(title, placeholder),
+        // Pi's confirm is a Yes/No list with Yes selected, so a question that defaults to yes needs nothing more here.
         confirm: (title, message) => ctx.ui.confirm(title, message),
         notify: (text, level) => ctx.ui.notify(text, level),
     };

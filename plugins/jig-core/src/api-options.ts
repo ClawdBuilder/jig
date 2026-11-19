@@ -18,3 +18,14 @@ export function checkMethodSections(entry: OnboardingEntry, state: JigState, lab
             throw new Error(`${label}: section ${JSON.stringify(section)} has no methods`);
     }
 }
+
+/** Keeps a copy of a section's list under its name, or forgets the name when the list is empty or not given. */
+export function keepList<T>(
+    into: Map<string, readonly T[]>,
+    name: string,
+    list: readonly T[] | undefined,
+    copy: (item: T) => T = (item) => item,
+): void {
+    if (list === undefined || list.length === 0) into.delete(name);
+    else into.set(name, list.map(copy));
+}

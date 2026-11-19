@@ -368,47 +368,6 @@ export interface ProtectedPathInfo {
     ask?: boolean;
 }
 
-/**
- * A call as a gate sees it, after the rules have decided. Frozen: a gate looks and does not change what runs.
- */
-export interface GateCall {
-    toolCallId: string;
-    tool: string;
-    action?: string;
-    environment: EnvironmentName;
-    environmentKind: EnvironmentKind;
-    effect: Effect;
-    /** What has been decided so far. A call that is already denied is not shown to gates. */
-    decision: "allow" | "ask";
-    /** The call's input, as the model sent it. */
-    input: Readonly<Record<string, unknown>>;
-    /** Pi's working folder: where a relative path starts. */
-    cwd: string;
-    /** For Pi's `write` and `edit`: the absolute path the call acts on, as written once `~` and `..` are resolved, and
-     *  with every link followed (the same path twice when there is no link). Empty for every other tool. */
-    paths: readonly string[];
-}
-
-/** What a gate may answer: stricter, never looser. */
-export interface GateVerdict {
-    decision: "ask" | "deny";
-    /** One line for the model and the user: why. It names the condition and what fixes it. */
-    reason: string;
-}
-
-/**
- * A check a plugin registers with `gates.register`. jig-core asks every gate about each call once the rules have decided,
- * and a gate can only make the decision stricter: an `allow` becomes an `ask` or a `deny`, an `ask` becomes a `deny`.
- */
-export interface Gate {
-    /** Unique: registering the same name again replaces the gate. */
-    name: string;
-    /** The plugin that registered it, for `/jig`. */
-    plugin: string;
-    /** Answers nothing to leave the decision as it is. Throwing, or taking more than 10 seconds, denies the call. */
-    check(call: GateCall, signal: AbortSignal): GateVerdict | undefined | Promise<GateVerdict | undefined>;
-}
-
 /** jig-core's run-time API, reached through `jig()` in client.ts. */
 export interface JigApi {
     readonly version: 1;
@@ -596,6 +555,10 @@ export interface JigApi {
         /** The section as loaded at the last session start, after validation: the user's, laid over the company's
          *  defaults when it gave some. Undefined when absent or invalid. `ui` is jig-core's own page-theme section. */
         section(name: string): unknown;
+        /** What the section's own check said about the user's section, as loaded at the last session start: its messages,
+         *  in order, each naming the key. Empty when the section loaded, is not in the file, or nobody registered it. A
+         *  tool that finds `section()` undefined asks this to tell "set up wrongly" (a message to quote) from "not set up". */
+        problems(name: string): readonly string[];
     };
 
     /** The paths Pi's file tools must not touch, so that a sandbox for `bash` can hide the same ones. */
@@ -760,6 +723,7 @@ export interface WatchDoneEvent {
     result: WatchResult;
 }
 
+import type { Gate } from "./contract-gate.ts";
 import type { RunOptions, RunResult } from "./contract-run.ts";
 import type { StartWatch, WatchInfo, WatchKind, WatchResult } from "./contract-watch.ts";
 
@@ -772,6 +736,7 @@ export type {
     OnboardingSetup,
     OnboardingStore,
 } from "./contract-onboarding.ts";
+export type { Gate, GateCall, GateVerdict } from "./contract-gate.ts";
 export type { OutputKeep, RunOptions, RunResult } from "./contract-run.ts";
 export type { SandboxNetworkMode, SandboxProvider, SandboxRunOptions, SandboxRunResult } from "./contract-sandbox.ts";
 export type { PollOutcome, StartWatch, WatchInfo, WatchKind, WatchResult, WatchUpdate } from "./contract-watch.ts";

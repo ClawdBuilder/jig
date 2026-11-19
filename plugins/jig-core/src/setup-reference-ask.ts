@@ -8,6 +8,7 @@ import { probeSecret } from "./secret-status.ts";
 import type { SecretProbe } from "./secret-status.ts";
 import { buildReference, describeReference, storeChoiceLabel, storeLabel } from "./setup-reference.ts";
 import type { ReferenceParts } from "./setup-reference.ts";
+import { exampleQuestion } from "./setup-fields.ts";
 import type { SetupField } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
 import type { JigState } from "./state.ts";
@@ -148,7 +149,7 @@ async function askParts(
     ui: SetupUi,
 ): Promise<ReferenceParts | undefined> {
     const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
-        const value = await ui.input(title, placeholder);
+        const value = await ui.input(exampleQuestion(title, placeholder));
         return value === undefined ? undefined : value.trim();
     };
     if (store === "op") {

@@ -8,7 +8,7 @@ export const JIRA_SETUP: OnboardingSetup = {
         {
             kind: "info",
             label: "Your Jira",
-            detail: "Jig reads the token from the store you choose; it never signs in for you.",
+            detail: "Jig never signs in for you: it reads a token from a store you choose, or sends requests through a session relay that holds your sign-in.",
         },
         {
             kind: "text",

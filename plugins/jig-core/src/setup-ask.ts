@@ -4,14 +4,14 @@
 // where a secret is.
 import { detectedLine } from "./detect.ts";
 import { applyAnswer, applyEntry, applyValue } from "./setup-answer.ts";
-import { askObject } from "./setup-ask-object.ts";
+import { askObject, midSentence, objectNames } from "./setup-ask-object.ts";
 import { beginSwitch, endSwitch } from "./setup-method-switch.ts";
 import { askProposal } from "./setup-proposal.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
 import type { SetupChange, SetupField, SetupMethod, SetupPlan, SetupSection } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
 import type { JigState } from "./state.ts";
-import { optionalNumberQuestion } from "./setup-fields.ts";
+import { emptyAnswer, exampleQuestion, isHint, optionalNumberQuestion } from "./setup-fields.ts";
 import { getPath } from "./setup-values.ts";
 
 /** The line for one sign-in method: its plain label, whose it is, and whether it is the one in use. */
@@ -36,7 +36,7 @@ export async function ask(
     if (field.kind === "entry") return askEntry(plan, field, draft, changes, ui, found);
     if (field.kind === "object") return askObject(state, plan, field, draft, changes, ui);
     const detected = found(field);
-    const hint = detected ?? field.placeholder ?? (field.current === undefined ? undefined : `Now: ${field.current}`);
+    const { hint, example } = beside(field, detected);
     // An optional question already ends in its own parenthetical, so it gets no second one for the example: the
     // question carries the example, and Enter either keeps the value or says it is left unset.
     const typed = field.optional === true ? undefined : hint;
@@ -63,7 +63,8 @@ export async function ask(
         // The prompt already carries the label; the line above it only says why.
         ui.notify(field.reason, "info");
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const text = await ui.input(questionOf(field, draft), typed);
+        const question = questionOf(field, draft);
+        const text = await ui.input(field.optional === true ? question : exampleQuestion(question, example), typed);
         if (text === undefined) return "cancel";
         const answer = text.trim() === "" && detected !== undefined ? detected : text;
         // An optional field: an empty answer leaves it unset, and nothing is written for it.
@@ -82,6 +83,17 @@ export async function ask(
         }
         ui.notify(result.problem, "warning");
     }
+}
+
+/** What goes with a text question: a hint stays beside it, because Enter keeps what it names (a value found on the machine,
+ *  the value now); an example goes into the question's words, because left bare in parentheses it reads as a default that
+ *  Enter does not take. A value that is set shows as the hint, and then the example is left out. */
+function beside(field: SetupField, detected: string | undefined): { hint?: string; example?: string } {
+    const own = field.placeholder;
+    const kept = own !== undefined && isHint(own) ? own : undefined;
+    const hint = detected ?? kept ?? (field.current === undefined ? undefined : `Now: ${field.current}`);
+    const example = hint === undefined && own !== undefined && !isHint(own) ? own : undefined;
+    return { ...(hint === undefined ? {} : { hint }), ...(example === undefined ? {} : { example }) };
 }
 
 /** The words of one text or number question. An optional number says what Enter keeps: the value set now (an answer of this
@@ -121,8 +133,28 @@ export async function askMethods(
     if (picked === undefined) return "cancel";
     const method = ordered[labels.indexOf(picked)];
     if (method === undefined) return "cancel";
-    const mark = beginSwitch(plan, section.name, draft, changes);
+    // A pick of names that do not exist yet (a relay, when none is set up) is made first, here, and then offers what was made.
+    const made = new Map<SetupField, SetupField>();
     for (const field of method.fields) {
+        if (field.create === undefined) continue;
+        if (objectNames(plan, field.create, draft).length === 0) {
+            // Asked from a sign-in, not from its own section: nothing has said yet what the thing is.
+            if (field.create.explain !== undefined) ui.notify(field.create.explain, "info");
+            if ((await askObject(state, plan, field.create, draft, changes, ui)) === "cancel") return "cancel";
+        }
+        const names = objectNames(plan, field.create, draft);
+        if (names.length === 0) {
+            ui.notify(
+                `No ${midSentence(field.create.label)} was set up, so the ${section.label} sign-in was not changed.`,
+                "info",
+            );
+            return "ok";
+        }
+        made.set(field, { ...field, choices: names });
+    }
+    const mark = beginSwitch(plan, section.name, draft, changes);
+    for (const planned of method.fields) {
+        const field = made.get(planned) ?? planned;
         if (field.fixed !== undefined) {
             const at = getPath(draft[field.section], field.path);
             if (at === field.fixed) continue;
@@ -151,23 +183,26 @@ async function askEntry(
     if (entry === undefined) return "cancel";
     for (;;) {
         ui.notify(`${field.label}: ${field.reason}`, "info");
-        const key = await ui.input(entry.keyLabel, entry.keyPlaceholder);
+        const key = await ui.input(exampleQuestion(entry.keyLabel, entry.keyPlaceholder));
         if (key === undefined) return "cancel";
         if (key.trim() === "" && field.optional === true) {
             ui.notify(`${field.label} left unset (optional).`, "info");
             return "ok";
         }
         if (key.trim() === "") {
-            ui.notify(`Please enter a value for ${entry.keyLabel}.`, "warning");
+            ui.notify(emptyAnswer(entry.keyLabel), "warning");
             continue;
         }
         const detected = found(field);
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const value = await ui.input(entry.valueLabel, detected ?? entry.valuePlaceholder);
+        const value =
+            detected === undefined
+                ? await ui.input(exampleQuestion(entry.valueLabel, entry.valuePlaceholder))
+                : await ui.input(entry.valueLabel, detected);
         if (value === undefined) return "cancel";
         const answer = value.trim() === "" && detected !== undefined ? detected : value;
         if (answer.trim() === "") {
-            ui.notify(`Please enter a value for ${entry.valueLabel}.`, "warning");
+            ui.notify(emptyAnswer(entry.valueLabel), "warning");
             continue;
         }
         const result = applyEntry(plan, draft, field, key, answer);

@@ -12,6 +12,8 @@ import { writeSetup } from "./setup-write.ts";
 export interface CompanyStepResult {
     status: "ok" | "cancel" | "failed";
     backup?: string;
+    /** The step saved the company choice, so a later "nothing was written" would not be true. */
+    wrote?: true;
 }
 
 /** The company step: which setup applies, and where. It writes the profile entry, then setup asks the rest. */
@@ -92,7 +94,7 @@ async function writeProfile(
         const result = writeSetup(built.plan, changes, state.now());
         ui.notify(`Saved to ${result.file}.${result.backup === undefined ? "" : ` Backup: ${result.backup}`}`, "info");
         loadPersonalConfig(state);
-        return { status: "ok", ...(result.backup === undefined ? {} : { backup: result.backup }) };
+        return { status: "ok", wrote: true, ...(result.backup === undefined ? {} : { backup: result.backup }) };
     } catch (error) {
         ui.notify(`The company choice was not saved: ${errorMessage(error)}`, "error");
         return { status: "failed" };

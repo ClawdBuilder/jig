@@ -286,9 +286,10 @@ digits, `-` and `_`, up to 40), the address and where the token is kept (a relay
 once at `GET /v1/health`, which the protocol allows without the token, and says what
 it found. The token's place is asked like any other, with a file first and no
 warning, since a relay writes its own token file; when files are not a place Jig reads
-from yet, one line asks to turn them on. After that, `jig setup jira` and
-`jig setup logs` offer "Through a session relay or transport", a pick of the names
-that exist, and write `jira.auth.transport` or `logs.backend.transport`. Each then
+from yet, one line asks to turn them on. `jig setup jira` and
+`jig setup logs` always offer "Through a session relay or transport", a pick of the names
+that exist, and write `jira.auth.transport` or `logs.backend.transport`; with no relay yet,
+choosing it asks the same questions right there, so Jira can be picked first. Each then
 asks one optional time limit for a request (`jira.timeoutSeconds`,
 `logs.timeoutSeconds`: 5 to 120, default 30), because a browser relay can be slow
 right after you sign in; a Jira search has its own limit, `searchTimeoutSeconds`. Setup writes no `services` map, so Jig asks for the

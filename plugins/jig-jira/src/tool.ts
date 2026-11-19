@@ -4,6 +4,7 @@
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { jig } from "../../jig-core/src/client.ts";
 import type { CallClass, Preview } from "../../jig-core/src/contract.ts";
+import { notSetUpMessage } from "../../jig-core/src/kit/values.ts";
 import type { Env, Session } from "./api.ts";
 import { classifyCall } from "./classify.ts";
 import { settingsOf } from "./config.ts";
@@ -51,8 +52,13 @@ export function createTool(options: JiraOptions = {}): JiraTool {
         if (settings === undefined) {
             // An InputError, so that jig-core blocks the call without asking: nothing can work until this is fixed.
             throw new InputError(
-                'jira is not set up: add a "jira" section with "site" and "auth" to jig.json ' +
-                    "(/jig lists configuration problems)",
+                notSetUpMessage({
+                    section: "jira",
+                    plugin: "jig-jira",
+                    needs: 'a "jira" section with "site" and "auth"',
+                    // There but failing its check: say what is wrong, not that it is missing.
+                    problem: jig().config.problems("jira")[0],
+                }),
             );
         }
         const http = createHttp(settings, { ...options, ...(signal === undefined ? {} : { signal }) });

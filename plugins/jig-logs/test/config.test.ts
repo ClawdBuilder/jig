@@ -505,19 +505,24 @@ test("the settings are read from jig-core when a call needs them", () => {
     assert.equal(requireSettings().backend.kind, "direct");
 });
 
-test("a section jig-core finds invalid reads as absent, and the tool says it is not configured", () => {
+test("a section jig-core finds invalid reads as absent, and the tool says it is set up wrongly, not that it is missing", () => {
     jig.setSection("logs", { ...section(), typo: 1 });
     assert.equal(logsSettings(), undefined);
     assert.throws(
         () => requireSettings(),
         (error: Error) =>
             error instanceof TypeError &&
-            /^logs is not configured: add a "logs" section with "backend" and "environments" to jig.json/.test(
+            error.message.length <= 200 &&
+            /^logs's settings have a problem: logs\.typo[^;]*; ask the person to fix it with \/jig setup logs in Pi or jig setup logs in a terminal, or see \/jig for all problems$/.test(
                 error.message,
             ),
     );
     jig.setSection("logs", undefined);
-    assert.throws(() => requireSettings(), TypeError);
+    assert.throws(
+        () => requireSettings(),
+        (error: Error) =>
+            error instanceof TypeError && /^logs is not set up: /.test(error.message) && error.message.length <= 200,
+    );
 });
 
 test("without jig-core nothing is read: the tool fails closed", () => {

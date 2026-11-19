@@ -7,6 +7,7 @@ import { expandMethodPath, methodPathAllowed } from "./setup-method-paths.ts";
 import { referenceChoice } from "./setup-reference.ts";
 import { optionalQuestion, referenceQuestion } from "./setup-fields.ts";
 import { ownedPaths } from "./setup-method-switch.ts";
+import { relayQuestion } from "./setup-transports.ts";
 import { getPath } from "./setup-values.ts";
 
 /** The methods of one section as setup asks them, and whether the "How do you sign in?" question is needed. */
@@ -16,7 +17,8 @@ export interface MethodPlan {
     askMethod: boolean;
 }
 
-/** `transports` are the names a method that goes through a transport may offer: it is offered only while there is one. */
+/** `transports` are the names a method that goes through a transport offers. The method is always offered: while there is
+ *  none, its pick carries the question that sets one up, asked right there. */
 export function setupMethods(
     state: SetupState,
     section: string,
@@ -43,12 +45,8 @@ export function setupMethods(
         added.push(method);
     }
     const all = [...registered, ...added];
-    // A method that goes through a transport is offered while one exists, or while a company fixes which one.
     const visible = all.filter(
-        (method) =>
-            !hidden.has(method.id) &&
-            (method.companyOnly !== true || state.companyActive === true) &&
-            (method.viaTransport !== true || transports.length > 0 || prefill.has(method.id)),
+        (method) => !hidden.has(method.id) && (method.companyOnly !== true || state.companyActive === true),
     );
     if (visible.length === 0) return { methods: [], askMethod: false };
     const chosen = choice?.default ?? visible[0]?.id;
@@ -115,6 +113,7 @@ export function setupMethods(
                         question: field.label,
                         kind: "pick",
                         choices: [...transports],
+                        ...(transports.length === 0 ? { create: relayQuestion(state) } : {}),
                         ...(current === undefined ? {} : { current, keep: true as const }),
                         reason: field.why ?? "Jig sends the requests through the transport you pick.",
                     });

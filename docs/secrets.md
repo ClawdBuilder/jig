@@ -161,7 +161,9 @@ only:
 - **`pass`:** the entry file exists.
 - **`env`:** the variable is set in this Pi process; its value and length are not shown.
 - **`file`:** the path is a regular, non-empty file; its mode is checked, and a file other users can read is
-  a warning. The file is never read.
+  a warning. The file is never read. On a Windows drive under WSL mounted without `metadata` (WSL's default) the
+  mode always looks open and `chmod` changes nothing, so there is no warning there; a drive mounted with `metadata`
+  keeps Linux permissions, so its files are ordinary.
 - **`keychain`:** `security find-generic-password -s <service> -a <account>`, without `-w` or `-g`.
 - **`op`:** `op item list --vault <vault> --format json`, matched by item title. The field is not verified;
   `op item get` and `op read` are never run.

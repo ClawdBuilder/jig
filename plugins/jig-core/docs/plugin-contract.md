@@ -114,7 +114,9 @@ closed instead of running ungoverned.
     `secrets.disabledBackends` still turns any off. See
     [Secret references](configuration.md#secret-references).
   - A plugin registers its own section with `registerSection`, and reads it back
-    with `section`.
+    with `section`. When `section` is undefined, `problems(name)` says why: the
+    messages its check gave for the section as written, or none when it is not in
+    the file. A tool uses it to say a section is set up wrongly, not missing.
   - A company can give defaults for any plugin's section with
     `addSectionDefaults`. Your own section is laid over them: objects merge key
     by key, anything else of yours replaces theirs, and the plugin's check sees
@@ -134,9 +136,12 @@ closed instead of running ungoverned.
     service, names `companyOnly: true`, and is offered only while a company is
     active. A method that sends the requests through a transport names
     `viaTransport: true` with one required `text` field, the transport's name:
-    setup offers it while a transport exists (the person's `transports`, a
-    company's defaults, one a company plugin registered, or one answered earlier
-    in the same run), asks which as a pick of those names, and writes the name.
+    setup always offers it and asks which as a pick of the transports that exist
+    (the person's `transports`, a company's defaults, one a company plugin
+    registered, or one answered earlier in the same run), and writes the name.
+    While none exists, choosing it first asks the questions of `jig setup
+    transports` (name, address, token reference, a health check without the
+    token), then picks the relay just made.
     Its first field is that name, a required `text` one; later fields must be
     optional, such as a `number` field for a time limit (a method field may be
     `text`, `number`, `pick` or `reference`). A `text` field may carry a
@@ -226,6 +231,13 @@ talks to Pi.
   `InputError`, which `jig-core` reads as "invalid input" when a tool's classify
   or preview throws it, and `NotConfiguredError`, an `InputError` for a section
   the tool needs and the user has not set up.
+  - **`notSetUpMessage({ section, plugin, needs, reader?, problem? })`** is the
+    one line a tool says then, so the model repeats it and sends the person to
+    `/jig setup <section>` in Pi or `jig setup <section>` in a terminal before any
+    hand edit. With `problem` (`jig().config.problems(section)[0]`) it says the
+    section is there but wrong, and quotes the problem. It stays on one line of at
+    most 200 characters, the length a preview keeps, cutting the problem and never
+    the command.
 - **`kit/role-policy.ts`:** what a role gives its child agent to obey, as one environment variable,
   `JIG_ROLE_POLICY`: `writeRolePolicy(policy)` and `readRolePolicy(env)`. The policy holds the role's name,
   whether it `writes`, the only `actions` some tools may run, and the actions that must `ask`.

@@ -10,12 +10,12 @@ import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
 import { checkRelay } from "./setup-relay-check.ts";
 import { TRANSPORTS_SECTION } from "./transports-section.ts";
 import { layered } from "./section-defaults.ts";
-import { optionalQuestion } from "./setup-fields.ts";
+import { emptyAnswer, exampleQuestion, skipQuestion } from "./setup-fields.ts";
 import { getPath, isObject } from "./setup-values.ts";
 
 /** The names in the map this item adds to, from the person's answers over the company's defaults. The transports a
  *  company plugin registered in code are there too: the name of one is not free. */
-function objectNames(plan: SetupPlan, field: SetupField, draft: Record<string, unknown>): string[] {
+export function objectNames(plan: SetupPlan, field: SetupField, draft: Record<string, unknown>): string[] {
     const value = getPath(mergedSection(plan, field.section, draft), field.path);
     const names = isObject(value) ? Object.keys(value) : [];
     return field.section === TRANSPORTS_SECTION ? [...new Set([...names, ...plan.pluginTransports])] : names;
@@ -55,7 +55,7 @@ function formLabel(form: SetupObjectForm): string {
 }
 
 /** A plain label in the middle of a sentence, such as "mongo connection" in "Which kind of mongo connection?". */
-function midSentence(label: string): string {
+export function midSentence(label: string): string {
     return /^[A-Z][a-z]/.test(label) ? `${label[0]?.toLowerCase() ?? ""}${label.slice(1)}` : label;
 }
 
@@ -148,11 +148,12 @@ async function askName(
     const spec = field.object;
     if (spec === undefined) return "cancel";
     for (;;) {
-        // An optional object says so in its question, and puts its example there, as an optional text question does.
+        // An empty name adds nothing, and that is allowed when the object is optional or the map already has one: the
+        // question says Enter skips. Otherwise a name is needed, and the question gives its example.
         const text =
-            field.optional === true
-                ? await ui.input(optionalQuestion(spec.keyLabel, spec.keyPlaceholder))
-                : await ui.input(spec.keyLabel, spec.keyPlaceholder);
+            field.optional === true || names.length > 0
+                ? await ui.input(skipQuestion(spec.keyLabel, spec.keyPlaceholder))
+                : await ui.input(exampleQuestion(spec.keyLabel, spec.keyPlaceholder));
         if (text === undefined) return "cancel";
         const name = text.trim();
         if (name === "") {
@@ -160,7 +161,7 @@ async function askName(
                 ui.notify(`${field.label} left ${names.length > 0 ? "as it is" : "unset (optional)"}.`, "info");
                 return "stop";
             }
-            ui.notify(`Please enter a value for ${spec.keyLabel}`, "warning");
+            ui.notify(`Please enter a name for the ${midSentence(field.label)}.`, "warning");
             continue;
         }
         const problem = objectNameProblem(plan, field, name);
@@ -323,7 +324,9 @@ async function askObjectText(
 ): Promise<"ok" | "cancel"> {
     for (;;) {
         ui.notify(sub.reason, "info");
-        const text = await ui.input(sub.question, sub.optional === true ? undefined : sub.placeholder);
+        const text = await ui.input(
+            sub.optional === true ? sub.question : exampleQuestion(sub.question, sub.placeholder),
+        );
         if (text === undefined) return "cancel";
         const answer = text.trim();
         if (answer === "") {
@@ -332,7 +335,7 @@ async function askObjectText(
                 values.delete(sub.path);
                 return "ok";
             }
-            ui.notify(`Please enter a value for ${sub.label}.`, "warning");
+            ui.notify(emptyAnswer(sub.label), "warning");
             continue;
         }
         values.set(sub.path, sub.list === true ? listValues(answer) : answer);

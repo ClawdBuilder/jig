@@ -38,7 +38,7 @@ Plugin overview: [jig-core](../EGM.md).
   `transports-section.ts` (`TRANSPORTS_SECTION`, `validateTransportsSection`, `relayOf`, `relayNames`, `tokenFilePaths`), `relay.ts`
   (`RELAY_PROTOCOL` 1, `relayRequest`, `relayHealth`; [relay protocol](../../../docs/relay-protocol.md)), `exec.ts`
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
-- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-json.ts`, ...), `secret-status.ts`, `pi-version.ts`,
+- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
   `model-auth.ts` (`modelAuthState`, `modelSignInLine`: whether the home has a model provider a person can use, from local files only);
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
   (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20
@@ -48,7 +48,7 @@ Plugin overview: [jig-core](../EGM.md).
   inside an object),
   `detect.ts` (`DETECTS`: `user`, `git-email`, `gh-account`, `aws-profile`; one fixed command each, 1.5 s, never secret), `plain-label.ts`.
 - **Contract splits.** `contract.ts` stays the one import for plugins and re-exports `contract-onboarding.ts` (the onboarding and sign-in
-  method types), `contract-run.ts` (`OutputKeep`, `RunOptions`, `RunResult`), `contract-sandbox.ts` (`SandboxProvider`,
+  method types), `contract-gate.ts` (`Gate`, `GateCall`, `GateVerdict`), `contract-run.ts` (`OutputKeep`, `RunOptions`, `RunResult`), `contract-sandbox.ts` (`SandboxProvider`,
   `SandboxNetworkMode`, `SandboxRunOptions`, `SandboxRunResult`: what a sandbox plugin registers, including the optional
   `brokerScript`) and `contract-watch.ts` (watch types); `api-options.ts` checks
   `registerSection`'s path lists and method sections before anything is registered.
@@ -100,9 +100,10 @@ Plugin overview: [jig-core](../EGM.md).
   letters, digits, `-` or `_` and not a transport a company plugin registered (`objectNameProblem`). When a sign-in method is chosen, the paths the other methods own (their
   required fields and the optional ones beside them, `SetupMethod.owns`) are removed as `remove` changes, and a check message that was not there before the pick reverts it; a validator's
   field is dropped for a method only while "How do you sign in?" is asked, and only for the paths the method owns. A `reference` with `fileExpected` is listed first as "A file", skips the
-  "Use a file?" warning, and asks one line to turn the file store on when it is not on. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is offered only while a
-  transport exists (the person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run)
+  "Use a file?" warning, and asks one line to turn the file store on when it is not on. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is always offered, as a pick of the transports that exist (the
+  person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run); while none exists, its pick carries `SetupField.create`, the relay question of `jig setup transports` (its `explain` says what a relay is first), which `askMethods` asks first and whose answer the pick then offers
   ([Decisions](../../../docs/decisions.md#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)).
+- **The plugin list and Ctrl+C.** `pluginMenu` (`setup.ts`) titles the list with the settings not saved yet (`listTitle`, counted by `settingCount`: a setting answered twice is one, and `secrets.backends` counts once). A cancel at the list with changes asks `ui.confirm("Save the N changes you made?", …, { defaultYes: true })`: yes (the default) goes on to `finish`, an explicit no cancels. A cancel inside one plugin's questions restores `draft` and `changes` to what they were before it and returns to the list. Those questions see the screen through `listScreen` (`setup-menu.ts`): a choice that says "Cancel setup" (the relay check, "Not found yet") says "Back to the list" there, and anywhere else still ends setup.
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless
   `keep` says `tail` for the end or `both` for both ends, and the marker says how many bytes were left out), process group killed on
   timeout and at process exit, a minimal environment (`PATH`, `HOME`, `USER`, `LOGNAME`, locale, `TZ`, `TMPDIR`, XDG folders; git,
@@ -190,7 +191,7 @@ roles: [code map](../docs/code-map.md).
   `JigToolOptions.summary`, and an `execute` wrapper that calls `jig().markRefused` on a `RefusedError`), `TOOLS_SECTION`,
   `TOOL_SEARCH`, `NOT_DEFERRABLE`, `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`.
   `stringEnum(values, { description?, default? })` (`schema.ts`). `isObject`, `InputError`, `RefusedError`,
-  `NotConfiguredError` (`values.ts`). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
+  `NotConfiguredError`, `notSetUpMessage` (`values.ts`: the one line a plugin says while its section is missing, naming `/jig setup <section>` and `jig setup <section>` before the by-hand route; with `problem` it says the section is there but wrong and quotes it). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
 - **Actions.** `ActionSpec`, `ActionTable`, `usageLine`, `unknownAction`, `checkParams`, `describeActions`, `previewChanged`, `actionList`
   (`actions.ts`): one shape for an action-based tool, so its usage line, its refusal for an unknown action and its schema's action list
   read the same in every plugin.

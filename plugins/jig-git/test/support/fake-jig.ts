@@ -330,6 +330,12 @@ export function installFakeJig(): FakeJig {
                     ? value
                     : undefined;
             },
+            problems: (name) => {
+                const value = values.get(name);
+                const validate = sections.get(name);
+                // As in jig-core: what the check said about a section that is there and failed.
+                return value !== undefined && validate !== undefined ? validate(value) : [];
+            },
         },
         protectedPaths: { list: () => [] },
         sandbox: {

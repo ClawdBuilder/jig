@@ -511,6 +511,207 @@ describe("/jig", () => {
     });
 });
 
+/** One plugin on setup's list that asks one text question, so the list, a cancel inside it and a cancel at the list can run. */
+function deskSection(api: JigApi): void {
+    api.config.registerSection(
+        "desk",
+        (raw) => {
+            const user = (raw as { user?: unknown }).user;
+            return typeof user === "string" && user !== "" ? [] : ["desk.user is required"];
+        },
+        {
+            setup: {
+                summary: "A desk to sit at.",
+                items: [
+                    {
+                        kind: "text",
+                        section: "desk",
+                        path: "user",
+                        label: "Desk user",
+                        why: "Who sits at the desk.",
+                        placeholder: "orders-api",
+                    },
+                ],
+            },
+        },
+    );
+}
+
+const PLUGIN_LIST = "Jig setup: which plugin do you want to set up?";
+
+describe("/jig setup in Pi: Esc", () => {
+    // Pi's dialogs have no numbers and Esc closes one without an answer, so Esc is the terminal's Ctrl+C: inside one plugin's
+    // questions it returns to the list, at the list with unsaved answers it asks to save (Pi's confirm has Yes selected), and
+    // in the questions before the list, or at the last confirmations, it cancels the run and the settings file is restored.
+    test("at the list with answers asks to save, and Yes goes to the review and writes", async () => {
+        let visits = 0;
+        const harness = await begin({
+            mode: "tui",
+            plugins: deskSection,
+            ui: {
+                select: (title, options) => {
+                    if (title.startsWith(PLUGIN_LIST))
+                        return ++visits === 1 ? options.find((one) => one.startsWith("Desk")) : undefined;
+                    return options.includes("Save these changes") ? "Save these changes" : undefined;
+                },
+                input: () => "orders-api",
+                confirm: () => true,
+            },
+        });
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        const file = path.join(harness.agentDir, "jig.json");
+        assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), { desk: { user: "orders-api" } });
+        assert.ok(
+            harness.ui.selects.some((entry) => entry.title === `${PLUGIN_LIST} (1 unsaved change)`),
+            "the list counts what is not saved",
+        );
+        assert.deepEqual(
+            harness.ui.confirms.map((entry) => entry.title),
+            ["Save the 1 change you made?", "Save these changes?"],
+        );
+        assert.match(shown, /Run \/reload to apply\./);
+    });
+
+    test("at the list with answers, closing the question about saving restores the file as it was", async () => {
+        let visits = 0;
+        const harness = await begin({
+            mode: "tui",
+            plugins: deskSection,
+            ui: {
+                select: (title, options) =>
+                    title.startsWith(PLUGIN_LIST)
+                        ? ++visits === 1
+                            ? options.find((one) => one.startsWith("Desk"))
+                            : undefined
+                        : undefined,
+                input: () => "orders-api",
+                // Esc on Pi's Yes/No list answers false.
+                confirm: () => false,
+            },
+        });
+        const file = path.join(harness.agentDir, "jig.json");
+        writeFileSync(file, '{"rules":[]}\n');
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(readFileSync(file, "utf8"), '{"rules":[]}\n', "the file is as it was");
+        assert.match(shown, /Nothing was written\./);
+        assert.match(shown, /Setup cancelled; .*jig\.json was restored\./);
+    });
+
+    test("at the list with answers and no file before, nothing is left behind", async () => {
+        let visits = 0;
+        const harness = await begin({
+            mode: "tui",
+            plugins: deskSection,
+            ui: {
+                select: (title, options) =>
+                    title.startsWith(PLUGIN_LIST) && ++visits === 1
+                        ? options.find((one) => one.startsWith("Desk"))
+                        : undefined,
+                input: () => "orders-api",
+                confirm: () => false,
+            },
+        });
+        await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "no file was created");
+    });
+
+    test("at the list after the company's choice was written, a no restores that write too and names the backup", async () => {
+        let visits = 0;
+        const harness = await begin({
+            mode: "tui",
+            plugins: (api) => {
+                deskSection(api);
+                api.profiles?.register("acme", { displayName: "Acme" });
+            },
+            ui: {
+                select: (title, options) => {
+                    if (title.startsWith("Which company")) return options.find((option) => option.startsWith("Acme"));
+                    if (title.startsWith("Use Acme")) return "Everywhere";
+                    if (title.startsWith(PLUGIN_LIST)) {
+                        return ++visits === 1 ? options.find((one) => one.startsWith("Desk")) : undefined;
+                    }
+                    return undefined;
+                },
+                input: () => "orders-api",
+                // Yes to the company choice, which writes at once; no to saving the rest.
+                confirm: (title) => title.startsWith("Save this company choice"),
+            },
+        });
+        const file = path.join(harness.agentDir, "jig.json");
+        writeFileSync(file, '{"rules":[]}\n');
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(readFileSync(file, "utf8"), '{"rules":[]}\n', "the company's write was undone too");
+        assert.match(shown, /Setup cancelled; .*jig\.json was restored\. Backup: .*\.bak/);
+    });
+
+    test("inside a plugin's questions returns to the list, and the run goes on", async () => {
+        let visits = 0;
+        const harness = await begin({
+            mode: "tui",
+            plugins: deskSection,
+            ui: {
+                select: (title, options) =>
+                    title.startsWith(PLUGIN_LIST)
+                        ? ++visits === 1
+                            ? options.find((one) => one.startsWith("Desk"))
+                            : options.find((one) => one.startsWith("Done"))
+                        : undefined,
+                // Esc in the text question.
+                input: () => undefined,
+                confirm: () => true,
+            },
+        });
+        const file = path.join(harness.agentDir, "jig.json");
+        writeFileSync(file, '{"rules":[]}\n');
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(visits, 2, "the list came back after the cancelled plugin");
+        assert.match(shown, /Desk was left as it was; nothing from it is kept\. Back to the list\./);
+        assert.equal(readFileSync(file, "utf8"), '{"rules":[]}\n');
+    });
+
+    test("in the questions before the list cancels the whole run and restores the file", async () => {
+        const harness = await begin({
+            mode: "tui",
+            plugins: (api) => {
+                setupSections(api);
+                deskSection(api);
+            },
+            ui: { select: () => undefined, confirm: () => true },
+        });
+        const file = path.join(harness.agentDir, "jig.json");
+        writeFileSync(file, '{"rules":[]}\n');
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(
+            harness.ui.selects.some((entry) => entry.title.startsWith(PLUGIN_LIST)),
+            false,
+            "the list was never reached",
+        );
+        assert.equal(readFileSync(file, "utf8"), '{"rules":[]}\n');
+        assert.match(shown, /Setup cancelled; .*jig\.json was restored\./);
+    });
+
+    test("at the review closes the run, and the file is restored", async () => {
+        let visits = 0;
+        const harness = await begin({
+            mode: "tui",
+            plugins: deskSection,
+            ui: {
+                select: (title, options) =>
+                    title.startsWith(PLUGIN_LIST)
+                        ? ++visits === 1
+                            ? options.find((one) => one.startsWith("Desk"))
+                            : options.find((one) => one.startsWith("Done"))
+                        : undefined,
+                input: () => "orders-api",
+                confirm: () => true,
+            },
+        });
+        const shown = await inHome(harness, () => jigCommand(harness, "setup"));
+        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
+        assert.match(shown, /Setup cancelled/);
+    });
+});
+
 describe("/jig rules", () => {
     const tools = [
         { name: "read" },

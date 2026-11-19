@@ -96,6 +96,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
+| `secret-mounts.ts` | Whether a file is on a WSL Windows drive (no mode): the mount table, else the /mnt/<letter>/ prefix | `secret-status.ts` |
 | `secret-status.ts` | One reference's status, found by metadata only: pass/env/file, a Keychain lookup without `-w`, an op item list, or a login tool's status; never a value | `doctor-secrets.ts`, `setup.ts` |
 | `pi-version.ts` | Pi's version from the package Pi loaded, and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts` |
 
@@ -190,6 +191,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `tunnels.ts` | How a company plugin gives a tool a network route of its own, such as a database behind a jump host | `state.ts` |
 | `exec.ts` | Runs programs for tools: an argument list, never a shell, with a timeout and a minimal environment | `api.ts`, `preview-html.ts`, `secrets.ts` |
 | `exec-output.ts` | What a program's output keeps past the cap: head, tail, or both | `exec.ts` |
+| `contract-gate.ts` | The gate part of the contract: a gate's call and verdict, re-exported from `contract.ts` | `contract.ts` |
 | `contract-run.ts` | The `exec.run` options and result, re-exported from `contract.ts` | `contract.ts`, `exec.ts` |
 | `contract-sandbox.ts` | The sandbox part of the contract: the provider a sandbox plugin registers and what a command runs with, re-exported from `contract.ts` | `contract.ts` |
 | `contract-watch.ts` | The watch part of the contract: result, news, poll, kind and info, re-exported from `contract.ts` | `contract.ts` |

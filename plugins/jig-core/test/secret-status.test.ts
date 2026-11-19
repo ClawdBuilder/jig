@@ -1,6 +1,6 @@
 // The secret probe behind `/jig doctor` and `/jig setup`: found, missing, locked, unknown or invalid, and never a value.
 import assert from "node:assert/strict";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -109,6 +109,48 @@ describe("probeSecret", () => {
             chmodSync(file, 0o600);
             assert.equal((await probeSecret(`file:${file}`, options)).warning, undefined);
         }
+    });
+
+    test("a file on a Windows drive mount gets no mode warning, and no chmod advice: Windows decides who can read it", async () => {
+        const file = path.join(home, "token");
+        writeFileSync(file, "abc\n");
+        chmodSync(file, 0o644);
+        // The kernel's table names real paths: where this test's folder really is (macOS's /var is /private/var).
+        const mount = realpathSync(home);
+        // What /proc/mounts says on WSL 2 for the C: drive, with the folder of this test standing for /mnt/c.
+        const windows = `C:\\134 ${mount} 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000,cache=0x5 0 0\n`;
+        const probe = await probeSecret(`file:${file}`, {
+            ...options,
+            mounts: windows,
+            release: "6.6.0-microsoft-standard-WSL2",
+        });
+        assert.equal(probe.status, "found");
+        assert.equal(probe.warning, undefined);
+        assert.doesNotMatch(JSON.stringify(probe), /chmod/);
+        // The same file on an ordinary Linux mount still warns.
+        const linux = `/dev/sdc ${mount} ext4 rw,relatime 0 0\n`;
+        const ordinary = await probeSecret(`file:${file}`, {
+            ...options,
+            mounts: linux,
+            release: "6.6.0-microsoft-standard-WSL2",
+        });
+        assert.match(ordinary.warning ?? "", /other users can read this file; make it private \(chmod 600\)/);
+    });
+
+    test("a file on a Windows drive mounted with metadata is an ordinary file: it keeps its mode warning and chmod advice", async () => {
+        const file = path.join(home, "token");
+        writeFileSync(file, "abc\n");
+        chmodSync(file, 0o644);
+        const mount = realpathSync(home);
+        // WSL's `automount.options = "metadata"` keeps Linux permissions on the drive, so chmod works there.
+        const metadata = `C:\\134 ${mount} 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000;metadata;symlinkroot=/mnt/,cache=0x5 0 0\n`;
+        const probe = await probeSecret(`file:${file}`, {
+            ...options,
+            mounts: metadata,
+            release: "6.6.0-microsoft-standard-WSL2",
+        });
+        assert.equal(probe.status, "found");
+        assert.match(probe.warning ?? "", /other users can read this file; make it private \(chmod 600\)/);
     });
 
     test("a file inside Pi's agent folder is refused, and a relative path is invalid", async () => {

@@ -85,8 +85,8 @@ Usage: logs {phrase or query, environment, window?, ...}`.
 ## Configure
 
 In `~/.jig/jig.json`, under `logs`. `jig-core` reports an unknown or invalid
-field (one that belongs to the other type is named), and the tool then says it is
-not configured instead of running half set up.
+field (one that belongs to the other type is named), and the tool then says its settings have a problem
+(quoting the first), and names `jig setup logs`, instead of running half set up.
 
 | Field | Meaning |
 |---|---|
@@ -119,8 +119,8 @@ limits, and has an example for each type.
   request and signs it in, so `backend` holds `{ "transport": "<name>", "url" }`
   in place of `auth`, and its `url` may be `http://`. A relay configured under
   `transports` is named the same way; see the
-  [relay protocol](../../docs/relay-protocol.md). A person with no company plugin sets
-  a relay up with `jig setup transports`, and `jig setup logs` then offers to search through it.
+  [relay protocol](../../docs/relay-protocol.md). A person with no company plugin picks
+  "Through a session relay" in `jig setup logs`, which asks for the relay right there when none is set up.
 
 ## Later
 

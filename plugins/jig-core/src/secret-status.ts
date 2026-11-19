@@ -8,6 +8,8 @@ import path from "node:path";
 import type { SecretBackend } from "./config.ts";
 import type { RunOptions, RunResult } from "./contract.ts";
 import { isEnvName, isPassEntry, MAX_FILE_BYTES, parseSecretReference } from "./secrets.ts";
+import { windowsDrive } from "./secret-mounts.ts";
+import type { MountFacts } from "./secret-mounts.ts";
 
 export type SecretStatus = "found" | "missing" | "locked" | "unknown" | "invalid";
 
@@ -27,7 +29,7 @@ export interface SecretProbe {
     fix?: string;
 }
 
-export interface SecretProbeOptions {
+export interface SecretProbeOptions extends MountFacts {
     /** Pi's environment, where `env:` looks. */
     env: NodeJS.ProcessEnv;
     /** The folder `pass` reads, by the rule `secrets.pass` sets. */
@@ -200,7 +202,11 @@ function probeFile(rest: string, options: SecretProbeOptions): SecretProbe {
                 fix: `Create ${shown} and put the value on its first line.`,
             };
         }
-        const worldReadable = (options.platform ?? process.platform) !== "win32" && (info.mode & 0o004) !== 0;
+        // A file on a Windows drive (WSL) always looks readable by everyone and chmod changes nothing there: Windows decides.
+        const worldReadable =
+            (options.platform ?? process.platform) !== "win32" &&
+            (info.mode & 0o004) !== 0 &&
+            windowsDrive(where, options) === undefined;
         return {
             status: "found",
             backend: "file",

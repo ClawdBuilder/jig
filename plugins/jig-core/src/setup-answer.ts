@@ -3,6 +3,7 @@
 // "kept" (an empty answer where a value is already set).
 import type { SetupChange, SetupField, SetupPlan } from "./setup-plan.ts";
 import { layered } from "./section-defaults.ts";
+import { emptyAnswer } from "./setup-fields.ts";
 import { parseSecretReference } from "./secrets.ts";
 import { getPath, isObject, parentIsObject, safePath } from "./setup-values.ts";
 import { setValuePath } from "./setup-write.ts";
@@ -48,7 +49,7 @@ export function applyAnswer(
     const trimmed = text.trim();
     if (trimmed === "") {
         if (field.keep === true) return { kept: true };
-        return { problem: `Please enter a value for ${field.label}.` };
+        return { problem: emptyAnswer(field.label) };
     }
     let value: unknown;
     if (field.kind === "reference") {

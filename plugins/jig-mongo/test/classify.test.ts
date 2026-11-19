@@ -395,9 +395,10 @@ describe("input that is invalid blocks the call without asking", () => {
             "read",
         );
         h.jig.kinds.set("staging", "production");
+        // The section is there and fails its check now, so it is "set up wrongly", with the key that says why.
         await refused(
             { environment: "staging", action: "find", ...target, filter: { $where: "true" } },
-            /mongo is not set up/,
+            /^mongo's settings have a problem: mongo\.access\.staging\.javascript: /,
         );
     });
 
@@ -479,12 +480,48 @@ describe("input that is invalid blocks the call without asking", () => {
         );
     });
 
-    test("the section is invalid or absent: the tool is not set up", async () => {
+    /** What the tool says to a find in staging, whatever the section is. */
+    const saidOf = async (): Promise<string> => {
+        try {
+            await h.declaration.preview?.(
+                { environment: "staging", action: "find", ...target },
+                new AbortController().signal,
+            );
+        } catch (error) {
+            return (error as Error).message;
+        }
+        throw new Error("the call was not refused");
+    };
+
+    test("the section is invalid: the tool says it is set up wrongly, quoting the first problem and naming the command", async () => {
         h.configure({
             connections: { staging: { uri: "mongodb://agent:pw@db.example.com:27017", user: "a", password: "pass:x" } },
         });
-        await refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
+        const said = await saidOf();
+        assert.match(said, /^mongo's settings have a problem: mongo\.connections\.staging\.uri: /);
+        assert.ok(
+            said.endsWith(
+                "ask the person to fix it with /jig setup mongo in Pi or jig setup mongo in a terminal, or see /jig for all problems",
+            ),
+            said,
+        );
+        assert.doesNotMatch(said, /by hand, add/, "a section that is there is not added by hand");
+        assert.ok(
+            said.length <= 200,
+            `jig-core cuts a refusal from a preview at 200 characters; this is ${said.length}`,
+        );
+    });
+
+    test("the section is absent: the tool is not set up, and says so within the 200 characters", async () => {
         h.jig.setSection("mongo", undefined);
-        await refused({ environment: "staging", action: "find", ...target }, /mongo is not set up/);
+        const said = await saidOf();
+        assert.match(
+            said,
+            /^mongo is not set up: ask the person to run \/jig setup mongo in Pi, or jig setup mongo in a terminal; by hand, add a "mongo" section with "connections" to jig\.json \(see the jig-mongo README\)$/,
+        );
+        assert.ok(
+            said.length <= 200,
+            `jig-core cuts a refusal from a preview at 200 characters; this is ${said.length}`,
+        );
     });
 });

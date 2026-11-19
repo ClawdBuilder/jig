@@ -297,6 +297,9 @@ async function setup(args: readonly string[]): Promise<number> {
         const step = await companyStep(loaded.state, ui as SetupUi);
         if (step.status === "cancel") return 130;
         if (step.status === "failed") return 1;
+        // From here on the answers are kept in memory until the one confirmation, so a Ctrl+C at a wait (a health check)
+        // that is not a question ends the run with nothing more written.
+        screen?.quitSaying(step.wrote === true ? "Only the company choice was saved." : "Nothing was written.");
         const code = await runSetup(loaded.state, ui as SetupUi, words.section);
         if (code === 0 && modelAuthState(home, process.env).kind === "missing")
             ui.notify(modelSignInLine(home), "warning");

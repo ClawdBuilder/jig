@@ -4,6 +4,7 @@
 import type { SectionCheck } from "./config.ts";
 import type { OnboardingSetup } from "./contract-onboarding.ts";
 import type { SetupState } from "./setup-plan.ts";
+import type { SetupUi } from "./setup.ts";
 import { onboardingOrder } from "./onboarding.ts";
 import { sectionState } from "./section-state.ts";
 import { labelOf } from "./setup-fields.ts";
@@ -33,6 +34,38 @@ export const DONE_LINE = "Done: save and finish";
 /** The question above the list. */
 export const LIST_TITLE = "Jig setup: which plugin do you want to set up?";
 
+/** What a choice that ends the plugin's questions is called while the questions come from the list. */
+const BACK_TO_LIST = "Back to the list";
+
+/**
+ * The screen as a plugin's questions see it when they were picked from the list. Its choices that say "Cancel setup" (a
+ * relay that does not answer, a credential not found yet) only leave that plugin and return to the list, so they say
+ * that. Anywhere else there is no list, and the same choice does end setup.
+ */
+export function listScreen(ui: SetupUi): SetupUi {
+    return {
+        select: async (title, options) => {
+            const answer = await ui.select(
+                title,
+                options.map((option) => (option === "Cancel setup" ? BACK_TO_LIST : option)),
+            );
+            return answer === BACK_TO_LIST ? "Cancel setup" : answer;
+        },
+        input: (title, placeholder) => ui.input(title, placeholder),
+        confirm: (title, message, options) => ui.confirm(title, message, options),
+        notify: (text, level) => ui.notify(text, level),
+    };
+}
+
+/** The words for a number of changes: "1 change", "3 changes". */
+export function changeCount(count: number): string {
+    return count === 1 ? "1 change" : `${count} changes`;
+}
+
+/** The list's title: with answers not yet saved it says how many, so Ctrl+C at the list is not a surprise. */
+export function listTitle(unsaved: number): string {
+    return unsaved === 0 ? LIST_TITLE : `${LIST_TITLE} (${unsaved} unsaved ${unsaved === 1 ? "change" : "changes"})`;
+}
 function timeToAsk(setup: OnboardingSetup | undefined): number {
     if (setup?.items !== undefined) return 0;
     if (setup?.pending !== undefined) return 1;

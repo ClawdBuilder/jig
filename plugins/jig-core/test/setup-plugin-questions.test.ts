@@ -96,8 +96,10 @@ class ScriptedUi implements SetupUi {
 
     async select(title: string, options: string[]): Promise<string | undefined> {
         this.seen.push(`select: ${title} [${options.join(" | ")}]`);
-        if (title === LIST_TITLE) {
+        if (title.startsWith(LIST_TITLE)) {
             const wanted = this.list.shift() ?? DONE_LINE;
+            // Ctrl+C or Esc at the list.
+            if (wanted === "<cancel>") return undefined;
             return options.find((one) => one.startsWith(wanted)) ?? DONE_LINE;
         }
         const index = this.answers.findIndex((one) => one.when.test(title));
@@ -132,6 +134,40 @@ function jiraAnswers(): ScriptedUi {
         .picking(/Not found yet/, "Continue without it")
         .picking(/Review these changes/, "Save these changes");
 }
+
+describe("the way out of a credential that is not found yet", () => {
+    /** Jira's token in an environment variable nobody set, so the store answers "Not found yet". */
+    const notFound = (list: string[]) =>
+        new ScriptedUi(list)
+            .reading(/Your Jira address/, "https://example.atlassian.net")
+            .reading(/Your Jira email/, "jane@example.test")
+            .reading(/Which environment variable/, "JIG_TEST_NO_SUCH_VARIABLE")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Email and API token")
+            .picking(/Where does the Jira API token live/, "An environment variable");
+
+    // A screen that never offers "Back to the list" would check again for ever: fail in seconds, not minutes.
+    test("from the plugin list it says it goes back to the list, which is all it does", {
+        timeout: 10_000,
+    }, async () => {
+        const ui = notFound(["Jira", "Done"]).picking(/Not found yet/, "Back to the list");
+        assert.equal(await runSetup(stateWith({}), ui), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /select: Not found yet \[Check again \| Continue without it \| Back to the list\]/);
+        assert.match(seen, /Jira was left as it was; nothing from it is kept\. Back to the list\./);
+        assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {}, "nothing was written");
+    });
+
+    test("from a named section there is no list, and it still says it cancels setup", { timeout: 10_000 }, async () => {
+        const ui = notFound(["Done"]).picking(/Not found yet/, "Cancel setup");
+        assert.equal(await runSetup(stateWith({}), ui, "jira"), 130, ui.seen.join("\n"));
+        assert.match(
+            ui.seen.join("\n"),
+            /select: Not found yet \[Check again \| Continue without it \| Cancel setup\]/,
+        );
+        assert.doesNotMatch(ui.seen.join("\n"), /Back to the list/);
+    });
+});
 
 describe("the regression: a validator field a sign-in method covers", () => {
     test("is never asked as raw text: the sign-in method asks for it", async () => {
@@ -641,14 +677,14 @@ describe("a plugin's sign-in methods", () => {
         const plain = sectionQuestions(setupStateFrom(state), "jira", {}, true);
         assert.deepEqual(
             plain.methods?.map((method) => method.id),
-            ["cloud-basic", "data-center-pat", "oauth"],
+            ["cloud-basic", "data-center-pat", "oauth", "transport"],
         );
         state.profile.selection = { reason: "explicit", plugin: "acme", profile: "acme", why: "test" };
         const withCompany = sectionQuestions(setupStateFrom(state), "jira", {}, true);
         assert.deepEqual(
             withCompany.methods?.map((method) => method.id),
-            ["cloud-basic", "data-center-pat", "oauth", "sign-in-service"],
-            "its transport method needs a transport that exists, which a company's own presence does not give",
+            ["cloud-basic", "data-center-pat", "oauth", "sign-in-service", "transport"],
+            "the relay sign-in is everyone's; the company-only one is added beside it",
         );
     });
 });

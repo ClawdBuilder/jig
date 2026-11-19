@@ -3,8 +3,8 @@
 `jig doctor` looks at this machine, your Jig settings and the tools Jig uses, and says in plain words what is
 wrong and what to do. The doctor reads only: it changes no setting, signs in to nothing, and never shows a password
 or a token. `jig setup` fills in what is missing, and writes only what you confirm. Both run in a terminal, with no
-Pi session, no model and no provider login. Inside Pi, `/jig doctor` shows the same report, and `/jig setup` tells you
-to run the command.
+Pi session, no model and no provider login. Inside Pi, `/jig doctor` shows the same report, and `/jig setup` asks the same
+questions in Pi's dialogs (in a Pi mode with no screen, it tells you to run the command).
 
 ## Run it
 
@@ -105,13 +105,30 @@ one entry of a map, such as a database connection for each environment, asks for
 there, and can be left as it is. **Done** writes everything once, with one backup and one confirmation, so a cancel writes
 nothing.
 
+The list's title counts the settings not saved yet (`(2 unsaved changes)`). Ctrl+C at the list, with changes not saved, asks
+"Save the 2 changes you made?" with Yes as the default (`(Y/n)`). Enter goes to the review, where you can still cancel; only an
+explicit `n`, or a second Ctrl+C, writes nothing and ends setup (exit code 130, "Nothing was written.").
+
+Ctrl+C inside one plugin's questions puts that plugin back as it was and returns to the list, so the plugins you answered
+before it are not lost. When setup is not asking anything (Pi is installing, or Jig is looking at a relay), Ctrl+C ends the run
+at once, as in any program, and nothing is written.
+
+**In Pi.** `/jig setup` asks the same questions in Pi's dialogs, which have no numbers, and Esc is what Ctrl+C is in a terminal:
+
+- Esc inside one plugin's questions puts that plugin back as it was and returns to the list.
+- Esc at the list, with changes not saved, asks "Save the 2 changes you made?". Yes is selected, so Enter saves: it goes to the review, and No ends the run.
+- Esc in the questions before the list, at the review or at the last confirmation ends the run.
+
+When a run ends without saving, Pi restores `jig.json` as it was before `/jig setup`, including a company choice setup had
+already written, and says so, naming the backup when setup made one.
+
 **A session relay.** The first line of the list, `Transports`, adds a [relay](relay-protocol.md): a program that holds your session
 for Jira or logs, such as a browser extension's local host. Setup asks its name (letters, digits, `-` and `_`, up to 40, and never the name of a transport a company plugin registered), its address (plain `http` only for
 `127.0.0.1`, `localhost` or `[::1]`) and where its token is kept, a file being the usual place, listed first. Then it asks the relay once
 whether it is running with `GET /v1/health`, which needs no token, and says what it found; it never sends or reads the token.
-`jig doctor` checks the same health, the protocol and the token later, without `--network`. Once a relay exists in your file, a
-company's defaults or earlier in the same run, Jira and logs offer "Through a session relay or transport" among their sign-in
-methods, and ask one optional time limit for a request (5 to 120 seconds); with no transport, they do not offer it. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
+`jig doctor` checks the same health, the protocol and the token later, without `--network`. Jira and logs always offer
+"Through a session relay or transport" among their sign-in methods, and ask one optional time limit for a request (5 to 120
+seconds). Choosing it before any relay exists says what a relay is and that it must be running on this machine, then asks the relay's questions right there, so Jira can be picked first. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
 
 The time-limit question says what Enter keeps: the value in your file, or the default while it is unset. It is for most requests; a Jira search has its own limit, `searchTimeoutSeconds` (60 seconds), which setup does not ask.
 
