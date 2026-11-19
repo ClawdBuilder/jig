@@ -105,10 +105,12 @@ one entry of a map, such as a database connection for each environment, asks for
 there, and can be left as it is. **Done** writes everything once, with one backup and one confirmation, so a cancel writes
 nothing.
 
-The list's title counts the changes not saved yet (`(2 unsaved changes)`). Ctrl+C (or Esc in Pi) at the list, with changes
-not saved, asks "Save the 2 changes you made?": yes goes to the review, where you can still cancel, and no writes nothing.
-Ctrl+C inside one plugin's questions puts that plugin back as it was and returns to the list, so the plugins you answered before
-it are not lost.
+The list's title counts the settings not saved yet (`(2 unsaved changes)`). Ctrl+C (or Esc in Pi) at the list, with changes
+not saved, asks "Save the 2 changes you made?" with Yes as the default: Enter goes to the review, where you can still cancel,
+and only an explicit `n`, or a second Ctrl+C, writes nothing and ends setup (exit code 130, "Nothing was written."). Ctrl+C
+inside one plugin's questions puts that plugin back as it was and returns to the list, so the plugins you answered before it
+are not lost. When setup is not asking anything (Pi is installing, or Jig is looking at a relay), Ctrl+C ends the run at once,
+as it does in any program, and nothing is written.
 
 **A session relay.** The first line of the list, `Transports`, adds a [relay](relay-protocol.md): a program that holds your session
 for Jira or logs, such as a browser extension's local host. Setup asks its name (letters, digits, `-` and `_`, up to 40, and never the name of a transport a company plugin registered), its address (plain `http` only for

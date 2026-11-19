@@ -106,6 +106,8 @@ class ScriptedUi implements SetupUi {
     private readonly list: string[];
     /** What each confirm answers, in turn; the last one repeats. */
     private readonly confirms: boolean[];
+    /** The title of each confirm that said Yes is its default (Enter answers it), in order. */
+    readonly yesByDefault: string[] = [];
 
     constructor(list: string[] = ["Done"], confirms: boolean[] = [true]) {
         this.list = [...list];
@@ -148,8 +150,9 @@ class ScriptedUi implements SetupUi {
         return found?.answer;
     }
 
-    async confirm(title: string): Promise<boolean> {
+    async confirm(title: string, _message?: string, options?: { defaultYes?: boolean }): Promise<boolean> {
         this.seen.push(`confirm: ${title}`);
+        if (options?.defaultYes === true) this.yesByDefault.push(title);
         return this.confirms.length > 1 ? (this.confirms.shift() ?? true) : (this.confirms[0] ?? true);
     }
 }
@@ -722,6 +725,17 @@ describe("Ctrl+C at the plugin list", () => {
         );
         assert.equal(written().transports["orders-relay"].url, relayUrl);
         assert.doesNotMatch(seen, /Nothing was written/);
+    });
+
+    test("the offer says Yes is its default, so Enter saves and only an explicit no discards; the final save does not", async () => {
+        const ui = relayThenCancel([true]);
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        assert.deepEqual(ui.yesByDefault, ["Save the 1 change you made?"]);
+        assert.match(
+            ui.seen.join("\n"),
+            /confirm: Save these changes\?/,
+            "the consent to write keeps No as its default",
+        );
     });
 
     test("a no writes nothing", async () => {

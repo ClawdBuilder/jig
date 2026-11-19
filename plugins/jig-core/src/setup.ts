@@ -26,7 +26,9 @@ import type { JigState } from "./state.ts";
 export interface SetupUi {
     select(title: string, options: string[]): Promise<string | undefined>;
     input(title: string, placeholder?: string): Promise<string | undefined>;
-    confirm(title: string, message: string): Promise<boolean>;
+    /** A yes/no. `defaultYes` says Enter answers yes (a terminal shows "(Y/n)"); Pi's dialog already has Yes selected. A
+     *  question that writes or spends something leaves it out: there No is the default, and consent is the person's word. */
+    confirm(title: string, message: string, options?: { defaultYes?: boolean }): Promise<boolean>;
     notify(text: string, level: "info" | "warning" | "error"): void;
 }
 
@@ -173,9 +175,12 @@ async function pluginMenu(
         if (choice === undefined) {
             // Ctrl+C or Esc at the list: answers not yet saved are offered for saving, never thrown away unasked.
             if (changes.length === 0) return "cancel";
+            // Yes is the default: this is the way out of a person who wants out but not to lose their answers, and the
+            // review that follows still lets them cancel. Only an explicit no (or a second Ctrl+C) discards.
             const keep = await ui.confirm(
                 `Save the ${changeCount(changes.length)} you made?`,
                 "Yes goes to the review, where you can still cancel. No writes nothing.",
+                { defaultYes: true },
             );
             return keep ? "ok" : "cancel";
         }
