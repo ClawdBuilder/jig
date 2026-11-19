@@ -34,9 +34,11 @@ classifies the call from the **script text**:
   access with something other than a number or one plain string, is an **external write**. It asks, with “the script can
   call outside models: ask”, and a role that may not write refuses it. `models` runs classifier and image models on the
   session's credentials, outside every Jig record and gate;
+- a script that contains a backslash and `u` (a `\u` escape) anywhere, even inside a string, is the same **external write**,
+  because `\u006dodels` spells `models` without the word. Its dialog says “the script writes an escaped name: ask”;
 - a missing or unreadable script falls back to asking.
 
-The check reads text. It is conservative, not a proof: a script that can reach `models` is asked even when it does not,
+The check reads text and decodes nothing. It is conservative, not a proof: a script that can reach `models` is asked even when it does not,
 and a script that builds a name from pieces can still get past it. Pi defines `models` on the sandbox's global object as a
 non-configurable, non-writable namespace, so Jig cannot remove it before the script runs; the text check and the ask are
 the guard. What a missed script can reach is the session's own model providers, on its credentials, outside every Jig
@@ -48,8 +50,16 @@ To turn it on, enable Pi's builtin in the agent's `settings.json` and keep the o
 { "defaultTools": ["+codemode"], "codemode": { "mode": "on" } }
 ```
 
-`"only"` would hide the direct tools and list them inside `codemode`; Jig's docs and tests use `"on"`. Jig ships codemode
-off, and Pi never lets a package defer it.
+`"only"` would hide the direct tools and list them inside `codemode`; Jig's docs and tests use `"on"`. Pi never lets a
+package defer it.
+
+Codemode is Pi's tool, and it is inactive by default. Pi activates it in two cases:
+
+- `defaultTools` in `settings.json` adds `"+codemode"`, as above;
+- an MCP server is configured in `mcp.json`: Pi then turns it on by itself, unless `autoEnableCodemode` is false (it
+  defaults to true).
+
+Jig adds no setting for it. `/jig doctor` and `jig doctor` show whether it is on, and why when Pi turned it on.
 
 What Jig still guards inside the script:
 

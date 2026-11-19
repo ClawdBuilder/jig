@@ -96,6 +96,8 @@ export interface DoctorContext {
         alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
         offSections: string[];
     };
+    /** In a session: whether Pi's active tools include codemode. Absent in the `jig` command, where the files decide. */
+    codemodeActive?: boolean;
     protectedPaths: () => readonly ProtectedPathInfo[];
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;

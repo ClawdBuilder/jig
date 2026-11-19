@@ -95,6 +95,16 @@ function text(report: Awaited<ReturnType<typeof runDoctor>>): string {
 }
 
 describe("/jig doctor checks", () => {
+    test("the report says whether codemode is on, from the folder's settings", async () => {
+        const off = await runDoctor(context(), options());
+        assert.equal(off.lines.find((line) => line.id === "config.codemode")?.detail, "off", text(off));
+        writeFileSync(path.join(agentDir, "settings.json"), JSON.stringify({ defaultTools: ["+codemode"] }));
+        const on = await runDoctor(context(), options());
+        assert.match(text(on), /Codemode — on/);
+        const session = await runDoctor(context({ overrides: { codemodeActive: false } }), options());
+        assert.match(text(session), /Codemode — off/);
+    });
+
     test("a company's onboarding list becomes a 'you need' line for each field still missing", async () => {
         const report = await runDoctor(
             context({
