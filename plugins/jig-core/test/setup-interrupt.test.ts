@@ -181,7 +181,9 @@ describe("Ctrl+C while jig setup waits for something that is not a question", ()
             result.afterKey >= 0 && result.afterKey < 4000,
             `ended ${result.afterKey} ms after the key\n${result.out}`,
         );
-        assert.equal(result.code, 130, "ended by the interrupt, as the shell reports it");
+        // util-linux's `script` reports the child's end by a signal as 128 + the signal; BSD's reports it its own way.
+        if (process.platform !== "darwin")
+            assert.equal(result.code, 130, "ended by the interrupt, as the shell reports it");
         assert.match(result.out, /\^C/);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
         // The install was in the same terminal group: it does not go on downloading behind a finished command.
@@ -222,7 +224,7 @@ describe("Ctrl+C while jig setup waits for something that is not a question", ()
             result.afterKey >= 0 && result.afterKey < 2500,
             `ended ${result.afterKey} ms after the key\n${result.out}`,
         );
-        assert.equal(result.code, 130);
+        if (process.platform !== "darwin") assert.equal(result.code, 130);
         assert.doesNotMatch(result.out, /Relay not answering/);
         assert.match(result.out, /\^C\r?\nNothing was written\./);
         assert.equal(existsSync(path.join(agent, "jig.json")), false, "nothing was written");
