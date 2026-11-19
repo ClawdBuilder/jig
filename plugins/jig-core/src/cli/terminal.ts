@@ -9,12 +9,19 @@ export interface TerminalScreen extends SetupUi {
     close(): void;
 }
 
-function say(text: string): void {
-    process.stdout.write(`${text}\n`);
+/** Where the screen reads and writes: the terminal, unless a test gives it streams. */
+export interface TerminalStreams {
+    input: NodeJS.ReadableStream;
+    output: NodeJS.WritableStream;
 }
 
-export function terminalUi(): TerminalScreen {
-    const rl: Interface = createInterface({ input: process.stdin, output: process.stdout });
+export function terminalUi(
+    streams: TerminalStreams = { input: process.stdin, output: process.stdout },
+): TerminalScreen {
+    const say = (text: string): void => {
+        streams.output.write(`${text}\n`);
+    };
+    const rl: Interface = createInterface({ input: streams.input, output: streams.output });
     const ask = async (title: string, placeholder?: string): Promise<string | undefined> => {
         const hint = placeholder === undefined ? "" : ` (${placeholder})`;
         try {
@@ -29,7 +36,9 @@ export function terminalUi(): TerminalScreen {
     return {
         async select(title, options) {
             say(title);
-            for (const [index, option] of options.entries()) say(`  ${index + 1}) ${option}`);
+            // The numbers are right-aligned, so the names stay in one column from 10) on.
+            const width = String(options.length).length;
+            for (const [index, option] of options.entries()) say(`  ${String(index + 1).padStart(width)}) ${option}`);
             for (;;) {
                 const answer = (await rl.question("> ")).trim();
                 if (answer === "") return undefined;

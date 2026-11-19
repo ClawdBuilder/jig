@@ -35,7 +35,7 @@ fixes: [setup and doctor](../../../../docs/setup-and-doctor.md); file roles: [co
   `PackageScope`, `ListedPackage`, `JigEntry`, `ReadPackages`.
 - **`package-filter.ts`**: `filterOf`, `applyDelta`, `enabledFiles`, `ResourceType`, `PackageFilter`.
 - **`trust.ts`**: `projectTrust(agentDir, cwd)`, `untrustedDetail`, `untrustedSetupLine`, `TrustReading`.
-- **`terminal.ts`**: `terminalUi()` returns a `TerminalScreen` (a `SetupUi` plus `close()`).
+- **`terminal.ts`**: `terminalUi(streams?)` returns a `TerminalScreen` (a `SetupUi` plus `close()`) over the terminal, or over two streams a test gives it. A choice list numbers its lines right-aligned to the width of the last number, so the names stay in one column from `10)` on.
 
 ## Invariants
 
