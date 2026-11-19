@@ -61,6 +61,10 @@ fixes: [setup and doctor](../../../../docs/setup-and-doctor.md); file roles: [co
 - **`update` reads the registry first** for every form that moves Jig, refuses before changing anything it cannot finish (two Jig
   entries, a version that needs a newer Pi), and stops at the first `pi` command that fails. `--check` changes nothing; `--json`
   prints only JSON; `CI=true` on a non-TTY implies `--yes`.
+- **Jig's changelog marker follows the pin.** Pi keys "last changelog shown" by the pinned source, so each release is a new key
+  and Pi would show nothing; after `pi install` moves Jig, `update` carries the newest version an older Jig key held (never newer
+  than the installed one, never over a value the new key has) and drops the older Jig keys. Another package's key, a
+  project-scope key, a first install (`setup`) and an update that leaves the version where it was change nothing.
 - **Terminal prompts:** an empty answer to a choice cancels; confirm is true only for `y` or `yes`.
 
 ## Side Effects
@@ -75,7 +79,10 @@ fixes: [setup and doctor](../../../../docs/setup-and-doctor.md); file roles: [co
   Jig API slot with `publishJig(buildApi(state))`.
 - **Writes.** `setup` makes the home, runs `pi install`, writes or repairs the `jig` command (`~/.local/bin/jig`, or `--bin`), copies
   an old `jig.json` (and `auth.json`/`sessions/` only on a separate yes), and writes `jig.json` through `../setup-write.ts` (backup,
-  atomic replace). `doctor` and `update --check` write no settings; `doctor --network` may write the one-day cache
+  atomic replace). `update` also writes one field of the home's Pi `settings.json` when it moves Jig to a new version:
+  `extensionChangelogVersions` gets the new pinned source's key (`JSON.stringify({ source, scope })`, Pi's own) with the
+  version Pi last showed, and the older Jig keys go (`changelog-marker.ts`, atomic replace, nothing else in the file changes
+  but Pi's two-space layout); a problem there is one line on stderr, never a failed update. `doctor` and `update --check` write no settings; `doctor --network` may write the one-day cache
   `doctor-release.json` in the state folder.
 - **Processes.** `pi install <source>` (bootstrap), `npm view <name> versions` and `npm view <name>@<version> …` (update), then
   `pi install` or `pi update [--extensions|--models|--extension <source>]` in the home (update). Output is capped softly at

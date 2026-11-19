@@ -159,8 +159,8 @@ updates the Pi binary, because your `pi` and any other Jig home share it; `pi up
 | `<source>`, `--extension <source>` | that one package |
 | `pi`, `--force` | refused, naming `pi update --self` |
 
-Setup pins Jig's own entry to the version it installed, so `pi update` leaves it alone and `jig update` moves it.
-Other pinned packages stay where they are, as in Pi. A company package can cap which Jig versions are allowed with
+Setup pins Jig's own entry to the version it installed, so `pi update` leaves it alone and `jig update` moves it, and Pi then
+shows Jig's new changelog entries on its next start. Other pinned packages stay where they are, as in Pi. A company package can cap which Jig versions are allowed with
 `"jig": { "range": ">=0.4.1 <0.5.0" }`; update stops at the newest version inside every installed company's range and
 names the range. `jig doctor` warns when the running Jig is outside one of those ranges, and says nothing when it is
 inside.

@@ -10,6 +10,7 @@ import { compareVersions, currentPiRequirement, jigPackage, meetsMinimum, npmIns
 import { companyRanges } from "../update-company.ts";
 import { selectTarget } from "../update-versions.ts";
 import type { RegistryMetadata, RegistryRelease } from "../update-versions.ts";
+import { keepJigChangelogMarker } from "./changelog-marker.ts";
 import { helpFor, strayWordsMessage } from "./help.ts";
 import { homeCommand, homeFolder, homeVersion, jigHome } from "./home.ts";
 import { findPi } from "./pi-command.ts";
@@ -432,6 +433,8 @@ export async function update(args: readonly string[], options: UpdateOptions = {
             process.stderr.write(`pi ${one[0]} exited ${result.code} in ${home}; the update stopped there.\n`);
             return 1;
         }
+        // Jig's entry is pinned, so a new release is a new key for Pi's "last changelog shown": carry it over right away.
+        if (one[0] === "install" && target !== undefined) keepJigChangelogMarker(home, name, installed);
     }
     // After moving Jig: the version now in the home is the one that says which Pi it needs. Jig never installs or moves Pi.
     if (target !== undefined) {
