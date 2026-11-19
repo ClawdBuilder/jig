@@ -11,7 +11,7 @@ import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
 import type { SetupChange, SetupField, SetupMethod, SetupPlan, SetupSection } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
 import type { JigState } from "./state.ts";
-import { optionalNumberQuestion } from "./setup-fields.ts";
+import { emptyAnswer, exampleQuestion, isHint, optionalNumberQuestion } from "./setup-fields.ts";
 import { getPath } from "./setup-values.ts";
 
 /** The line for one sign-in method: its plain label, whose it is, and whether it is the one in use. */
@@ -36,7 +36,7 @@ export async function ask(
     if (field.kind === "entry") return askEntry(plan, field, draft, changes, ui, found);
     if (field.kind === "object") return askObject(state, plan, field, draft, changes, ui);
     const detected = found(field);
-    const hint = detected ?? field.placeholder ?? (field.current === undefined ? undefined : `Now: ${field.current}`);
+    const { hint, example } = beside(field, detected);
     // An optional question already ends in its own parenthetical, so it gets no second one for the example: the
     // question carries the example, and Enter either keeps the value or says it is left unset.
     const typed = field.optional === true ? undefined : hint;
@@ -63,7 +63,8 @@ export async function ask(
         // The prompt already carries the label; the line above it only says why.
         ui.notify(field.reason, "info");
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const text = await ui.input(questionOf(field, draft), typed);
+        const question = questionOf(field, draft);
+        const text = await ui.input(field.optional === true ? question : exampleQuestion(question, example), typed);
         if (text === undefined) return "cancel";
         const answer = text.trim() === "" && detected !== undefined ? detected : text;
         // An optional field: an empty answer leaves it unset, and nothing is written for it.
@@ -82,6 +83,17 @@ export async function ask(
         }
         ui.notify(result.problem, "warning");
     }
+}
+
+/** What goes with a text question: a hint stays beside it, because Enter keeps what it names (a value found on the machine,
+ *  the value now); an example goes into the question's words, because left bare in parentheses it reads as a default that
+ *  Enter does not take. A value that is set shows as the hint, and then the example is left out. */
+function beside(field: SetupField, detected: string | undefined): { hint?: string; example?: string } {
+    const own = field.placeholder;
+    const kept = own !== undefined && isHint(own) ? own : undefined;
+    const hint = detected ?? kept ?? (field.current === undefined ? undefined : `Now: ${field.current}`);
+    const example = hint === undefined && own !== undefined && !isHint(own) ? own : undefined;
+    return { ...(hint === undefined ? {} : { hint }), ...(example === undefined ? {} : { example }) };
 }
 
 /** The words of one text or number question. An optional number says what Enter keeps: the value set now (an answer of this
@@ -169,23 +181,26 @@ async function askEntry(
     if (entry === undefined) return "cancel";
     for (;;) {
         ui.notify(`${field.label}: ${field.reason}`, "info");
-        const key = await ui.input(entry.keyLabel, entry.keyPlaceholder);
+        const key = await ui.input(exampleQuestion(entry.keyLabel, entry.keyPlaceholder));
         if (key === undefined) return "cancel";
         if (key.trim() === "" && field.optional === true) {
             ui.notify(`${field.label} left unset (optional).`, "info");
             return "ok";
         }
         if (key.trim() === "") {
-            ui.notify(`Please enter a value for ${entry.keyLabel}.`, "warning");
+            ui.notify(emptyAnswer(entry.keyLabel), "warning");
             continue;
         }
         const detected = found(field);
         if (detected !== undefined) ui.notify(detectedLine(detected), "info");
-        const value = await ui.input(entry.valueLabel, detected ?? entry.valuePlaceholder);
+        const value =
+            detected === undefined
+                ? await ui.input(exampleQuestion(entry.valueLabel, entry.valuePlaceholder))
+                : await ui.input(entry.valueLabel, detected);
         if (value === undefined) return "cancel";
         const answer = value.trim() === "" && detected !== undefined ? detected : value;
         if (answer.trim() === "") {
-            ui.notify(`Please enter a value for ${entry.valueLabel}.`, "warning");
+            ui.notify(emptyAnswer(entry.valueLabel), "warning");
             continue;
         }
         const result = applyEntry(plan, draft, field, key, answer);

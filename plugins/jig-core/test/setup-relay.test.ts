@@ -248,10 +248,7 @@ describe("a session relay in setup", () => {
         const ui = new ScriptedUi().reading(/What do you call this relay/, "");
         assert.equal(await runSetup(state, ui, "transports"), 0, ui.seen.join("\n"));
         const seen = ui.seen.join("\n");
-        assert.match(
-            seen,
-            /input: What do you call this relay\? \(optional: press Enter to leave it unset; for example orders-relay\)/,
-        );
+        assert.match(seen, /input: What do you call this relay\? \(press Enter to skip; for example orders-relay\)/);
         assert.match(seen, /Session relay left unset \(optional\)\./);
         assert.match(seen, /Nothing was written\./);
         assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {});
@@ -777,6 +774,100 @@ describe("Ctrl+C at the plugin list", () => {
         assert.equal(await runSetup(stateWith(), ui), 130, ui.seen.join("\n"));
         assert.match(ui.seen.join("\n"), /Nothing was written\./);
         assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {});
+    });
+});
+
+describe("an example in a prompt reads as an example, and an empty answer is refused in plain words", () => {
+    test("a required text question says 'for example', so it is not taken for a default", async () => {
+        const ui = new ScriptedUi()
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, "")
+            .reading(/The relay's address/, relayUrl)
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(stateWith(), ui, "transports"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /^input: The relay's address \(for example http:\/\/127\.0\.0\.1:8700\)$/m);
+        assert.doesNotMatch(seen, /input: The relay's address \(http/, "the bare example reads like a default");
+        assert.match(seen, /Please enter a value for the relay's address\./);
+        assert.doesNotMatch(seen, /Please enter a value for The/);
+        assert.match(seen, /^input: Which file\? \(for example ~\/\.config\/tool\/token\)$/m);
+    });
+
+    test("an object's name says Enter skips it, and gives its example the same way", async () => {
+        const ui = new ScriptedUi().reading(/What do you call this relay/, "");
+        assert.equal(await runSetup(stateWith(), ui, "transports"), 0, ui.seen.join("\n"));
+        assert.match(
+            ui.seen.join("\n"),
+            /^input: What do you call this relay\? \(press Enter to skip; for example orders-relay\)$/m,
+        );
+        assert.doesNotMatch(ui.seen.join("\n"), /optional: press Enter to leave it unset/);
+    });
+
+    test("a required object's name carries its example, and says Enter skips once the map has an entry", async () => {
+        const ui = new ScriptedUi(["Done"], [false, true])
+            .picking(/Log backend/, "elasticsearch")
+            .reading(/Backend address/, "https://logs.example.com:9200")
+            .reading(/Which environment\?/, "")
+            .reading(/Which environment\?/, "staging")
+            .reading(/The index or pattern to search/, "app-logs-*");
+        // The run ends at the sign-in's first question, which has no answer: what is checked is what was asked before it.
+        await runSetup(stateWith(), ui, "logs");
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /^input: Which environment\? \(for example staging\)$/m);
+        assert.match(seen, /Please enter a name for the log environment\./);
+        assert.doesNotMatch(seen, /Please enter a value for Which/);
+    });
+
+    test("a text question of a plugin does too: Jira's address", async () => {
+        const ui = new ScriptedUi(["Jira", "<cancel>"]).reading(/Your Jira address/, "");
+        await runSetup(stateWith(), ui);
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /^input: Your Jira address \(for example https:\/\/example\.atlassian\.net\)$/m);
+        assert.doesNotMatch(seen, /input: Your Jira address \(https/);
+    });
+
+    test("a value that is already set stays a 'Now' hint, which Enter keeps", async () => {
+        const state = stateWith({
+            jira: { site: "http://jira.example.com", auth: { email: "jane@example.test", token: "pass:jira/token" } },
+        });
+        const ui = new ScriptedUi().reading(/Your Jira address/, "");
+        await runSetup(state, ui, "jira");
+        assert.match(ui.seen.join("\n"), /^input: Your Jira address \(Now: http:\/\/jira\.example\.com\)$/m);
+    });
+
+    test("a question of a company's list or an entry names its example the same way, and its refusal reads as a sentence", async () => {
+        const state = stateWith();
+        buildApi(state).config.registerSection("orders", () => [], {
+            setup: {
+                summary: "Orders.",
+                items: [
+                    {
+                        kind: "entry",
+                        section: "orders",
+                        path: "names",
+                        label: "A name",
+                        keyLabel: "Which order?",
+                        keyPlaceholder: "A-100",
+                        valueLabel: "Its customer",
+                        valuePlaceholder: "acme",
+                    },
+                ],
+            },
+        });
+        loadPersonalConfig(state, file);
+        const ui = new ScriptedUi()
+            .reading(/Which order\?/, "A-100")
+            .reading(/Its customer/, "")
+            .reading(/Which order\?/, "A-100")
+            .reading(/Its customer/, "acme")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "orders"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /^input: Which order\? \(for example A-100\)$/m);
+        assert.match(seen, /^input: Its customer \(for example acme\)$/m);
+        assert.match(seen, /Please enter a value for its customer\./);
     });
 });
 

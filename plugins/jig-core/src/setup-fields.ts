@@ -78,18 +78,46 @@ export function placeholderFor(kind: SetupFieldKind, current: unknown, last: str
     }
     if (kind === "number") return "A number";
     const examples: Record<string, string> = {
-        user: "For example: jdoe",
-        username: "For example: jdoe",
-        site: "For example: https://staging.example.com",
-        url: "For example: https://staging.example.com",
-        baseurl: "For example: https://staging.example.com",
-        host: "For example: api.staging.example.com",
+        user: "jdoe",
+        username: "jdoe",
+        site: "https://staging.example.com",
+        url: "https://staging.example.com",
+        baseurl: "https://staging.example.com",
+        host: "api.staging.example.com",
     };
     return examples[last.toLowerCase()] ?? undefined;
 }
 
+/** Whether a field's `placeholder` is a hint about the answer (the value now, the shape) and not an example of one. A hint
+ *  stays beside the question, because Enter keeps what it names; an example goes into the question's words. */
+export function isHint(placeholder: string): boolean {
+    return /^(?:Now: |yes or no$|A number$|A value Jig reads when needed$)/.test(placeholder);
+}
+
 function isPrimitive(value: unknown): value is string | number | boolean {
     return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+/** The question with an example of its answer: "Address (for example https://example.com)". An example left bare in
+ *  parentheses after a question reads as a default, and Enter does not take it. */
+export function exampleQuestion(question: string, example?: string): string {
+    return example === undefined ? question : `${question} (for example ${example})`;
+}
+
+/** The question for a name that Enter skips: an object's name, where an empty answer adds nothing. */
+export function skipQuestion(question: string, example?: string): string {
+    return `${question} (press Enter to skip${example === undefined ? "" : `; for example ${example}`})`;
+}
+
+/** A label in the middle of a sentence: its leading article or "your" in lower case ("The relay's address" becomes
+ *  "the relay's address"), and any other word as it is, so a name such as Jira keeps its capital. */
+export function inSentence(label: string): string {
+    return label.replace(/[?.]$/, "").replace(/^(The|Your|A|An|Its|Their)\s/, (word) => word.toLowerCase());
+}
+
+/** What setup says to an empty answer to a question that needs one. A question is repeated; a label is a sentence. */
+export function emptyAnswer(label: string): string {
+    return label.endsWith("?") ? `Please answer: ${label}` : `Please enter a value for ${inSentence(label)}.`;
 }
 
 /** The question for an optional field: an empty answer leaves it unset. The example joins the same parenthetical, so a

@@ -265,6 +265,8 @@ api.onboarding?.register({
 
 - **`section` and `path` are where the answer goes:** a dotted path inside one of your sections (`bastion.user`, `sso.token`),
   so the validator you already wrote is the check.
+- **`placeholder` is an example answer.** Setup puts it in the question as "(for example jdoe)", so it is not taken for a value
+  Enter would keep; an optional question says "optional" first, and the name of an `object` says Enter skips it.
 - **`reference` is a credential, never a value.** `suggested` gives a reference *shape* per store and `addHints` what to tell the
   person to add it; setup shows both, and `preferredStore` (on the item, or the entry) is offered first. Setup never asks for the
   token itself.
