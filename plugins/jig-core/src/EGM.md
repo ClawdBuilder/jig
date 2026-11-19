@@ -23,8 +23,8 @@ Plugin overview: [jig-core](../EGM.md).
   `namesNothing`, `namesOutsideCommand`, `DecisionSource`: `floor` | `rule` | `session` | `tool` | `table` | `unknown` | `gate`), `gates.ts`, `environments.ts`,
   `protected-paths.ts` (`checkFileTool`, `FILE_TOOLS`, `defaultProtectedPaths`, `expandProtected`, `guardedEntry`, `otherAgentFolders`),
   `writable-folders.ts` (`writableFolders`: the working folder plus the folders the person allowed, compared by real path), `loaded-code.ts`.
-  `codemode.ts` (`classifyCodemode`, `codemodeAsk`): a Pi `codemode` script of tool calls is a local read, and a script naming `models` or an
-  escape hatch is an external write that asks.
+  `codemode.ts` (`classifyCodemode`, `codemodeAsk`, `RISKY_WORDS`): a Pi `codemode` script of tool calls is a local read, and a script naming `models`, an
+  escape hatch or containing a `\u` escape (nothing is decoded) is an external write that asks.
 - **Asking.** `approvals.ts` (inside the waiting call: Pi's selector, or the review screen in `tui` mode; the `form` kind has no screen yet and uses the selector; a tool's `always: "ask"` drops the "allow for this session" answer), `review.ts`, `preview.ts`, `preview-html.ts`,
   `preview-server.ts` (`createPreviewServer`, `MAX_PAGES` 50).
 - **Results.** `redact.ts` (`createRedactor`, `REDACTED`, `RedactionError`, `secretForms`), `cap.ts` (`CAP_CHARS` 50,000,
@@ -38,7 +38,7 @@ Plugin overview: [jig-core](../EGM.md).
   `transports-section.ts` (`TRANSPORTS_SECTION`, `validateTransportsSection`, `relayOf`, `relayNames`, `tokenFilePaths`), `relay.ts`
   (`RELAY_PROTOCOL` 1, `relayRequest`, `relayHealth`; [relay protocol](../../../docs/relay-protocol.md)), `exec.ts`
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
-- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
+- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-codemode.ts`: the codemode line, which reads the session's tool list and, for its reason, the settings and MCP files, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
   `model-auth.ts` (`modelAuthState`, `modelSignInLine`: whether the home has a model provider a person can use, from local files only);
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
   (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20

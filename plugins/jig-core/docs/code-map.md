@@ -28,7 +28,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | File | What it does | Called by |
 |---|---|---|
 | `classify.ts` | Where a call acts and whether it reads or writes, from the tool's own word, a rule, or a default | `commands.ts`, `config.ts` and 3 more |
-| `codemode.ts` | Reads a codemode script: a plain read, or an external write when it can reach models or an escape hatch; the gate's ask reason | `index.ts` |
+| `codemode.ts` | Reads a codemode script: a plain read, or an external write when it can reach models, an escape hatch or a `\u` escape; the gate's ask reason | `index.ts` |
 | `decide.ts` | The pure decision: allow, ask or deny, from the rules table, the floor and your configuration | `commands.ts`, `config.ts` and 2 more |
 | `gates.ts` | Checks that other plugins register; a gate can make a decision stricter and never looser | `gate.ts`, `state.ts` |
 | `environments.ts` | The names a call can act in, and which are test and which are production | `config.ts` |
@@ -93,6 +93,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
 | `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside | `doctor-checks.ts` |
+| `doctor-codemode.ts` | The doctor line "Codemode": on or off from the session, a skip in the terminal | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
