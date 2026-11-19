@@ -3,8 +3,8 @@
 // sections setup lists. This file also names the transports that exist, for a sign-in method that goes through one.
 import type { SectionCheck } from "./config.ts";
 import type { OnboardingSetup } from "./contract-onboarding.ts";
-import { mergedSection } from "./setup-questions.ts";
-import type { SetupState } from "./setup-plan.ts";
+import { mergedSection, questionField } from "./setup-questions.ts";
+import type { SetupField, SetupState } from "./setup-plan.ts";
 import { isObject } from "./setup-values.ts";
 import { TRANSPORTS_SECTION, validateTransportsSection } from "./transports-section.ts";
 
@@ -69,4 +69,12 @@ export function transportNames(state: SetupState, raw: Record<string, unknown>):
     const merged = mergedSection(state, TRANSPORTS_SECTION, raw);
     const configured = isObject(merged) ? Object.keys(merged) : [];
     return [...new Set([...configured, ...(state.pluginTransports ?? [])])];
+}
+
+/** The question that sets a relay up: the one `jig setup transports` asks, for a sign-in that goes through a relay while
+ *  none exists yet, so the person need not leave Jira's questions to make one. */
+export function relayQuestion(state: SetupState): SetupField {
+    const item = TRANSPORTS_SETUP.items?.find((one) => one.kind === "object");
+    if (item === undefined || item.kind !== "object") throw new TypeError("the transports setup has no relay question");
+    return questionField(state, { item, order: 0 });
 }

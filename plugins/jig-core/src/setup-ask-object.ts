@@ -15,7 +15,7 @@ import { getPath, isObject } from "./setup-values.ts";
 
 /** The names in the map this item adds to, from the person's answers over the company's defaults. The transports a
  *  company plugin registered in code are there too: the name of one is not free. */
-function objectNames(plan: SetupPlan, field: SetupField, draft: Record<string, unknown>): string[] {
+export function objectNames(plan: SetupPlan, field: SetupField, draft: Record<string, unknown>): string[] {
     const value = getPath(mergedSection(plan, field.section, draft), field.path);
     const names = isObject(value) ? Object.keys(value) : [];
     return field.section === TRANSPORTS_SECTION ? [...new Set([...names, ...plan.pluginTransports])] : names;
@@ -55,7 +55,7 @@ function formLabel(form: SetupObjectForm): string {
 }
 
 /** A plain label in the middle of a sentence, such as "mongo connection" in "Which kind of mongo connection?". */
-function midSentence(label: string): string {
+export function midSentence(label: string): string {
     return /^[A-Z][a-z]/.test(label) ? `${label[0]?.toLowerCase() ?? ""}${label.slice(1)}` : label;
 }
 

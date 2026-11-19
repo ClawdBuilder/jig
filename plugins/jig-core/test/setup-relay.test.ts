@@ -350,10 +350,10 @@ describe("a session relay in setup", () => {
 describe("Jira and logs through a session relay", () => {
     const relays = { transports: { "orders-relay": { kind: "relay", url: "http://127.0.0.1:8700" } } };
 
-    test("it is not offered while no transport exists, and the company-only sign-in service stays hidden", () => {
+    test("it is offered while no transport exists, and the company-only sign-in service stays hidden", () => {
         const state = stateWith();
-        assert.deepEqual(methodIds(state, "jira"), ["cloud-basic", "data-center-pat", "oauth"]);
-        assert.deepEqual(methodIds(state, "logs"), ["basic", "api-key", "token"]);
+        assert.deepEqual(methodIds(state, "jira"), ["cloud-basic", "data-center-pat", "oauth", "transport"]);
+        assert.deepEqual(methodIds(state, "logs"), ["basic", "api-key", "token", "transport"]);
     });
 
     test("it is offered to a person when their own file has a transport, as a pick of the names", () => {
@@ -560,18 +560,137 @@ describe("Jira and logs through a session relay", () => {
         assert.deepEqual(saved.jira, { site: "https://jira.example.com", auth: { transport: "orders-relay" } });
     });
 
-    test("Jira asked before the relay does not offer it, and says nothing about it", async () => {
+    test("Jira picked before any relay exists offers the relay sign-in and sets the relay up right there, with one save", async () => {
         const state = stateWith();
         const ui = new ScriptedUi(["Jira", "Done"])
             .reading(/Your Jira address/, "https://jira.example.com")
             .reading(/Project keys to work in/, "")
-            .picking(/How do you sign in to Jira/, "Personal access token")
-            .picking(/Where does the Jira personal access token live/, "An environment variable")
-            .reading(/Which environment variable/, "JIRA_PAT")
-            .picking(/Not found yet/, "Continue without it")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, relayUrl)
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may most Jira requests take/, "90")
             .picking(/Review these changes/, "Save these changes");
         assert.equal(await runSetup(state, ui), 0, ui.seen.join("\n"));
-        assert.doesNotMatch(ui.seen.join("\n"), /session relay or transport/);
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /select: How do you sign in to Jira\? \[.*Through a session relay or transport/);
+        assert.deepEqual(written().transports, {
+            "orders-relay": { kind: "relay", url: relayUrl, token: `file:${tokenFile}` },
+        });
+        assert.deepEqual(written().jira, {
+            site: "https://jira.example.com",
+            auth: { transport: "orders-relay" },
+            timeoutSeconds: 90,
+        });
+        assert.match(seen, /Found: orders-api relay, protocol 1/, "the relay was looked at once, without its token");
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0]?.headers.authorization, undefined);
+        const order = [
+            "select: How do you sign in to Jira",
+            "input: What do you call this relay",
+            "input: The relay's address",
+            "select: Where does the relay's token live",
+            "select: Relay or transport for Jira requests",
+            "input: How long may most Jira requests take",
+            "select: Review these changes",
+        ].map((text) => seen.indexOf(text));
+        assert.ok(
+            order.every((at) => at >= 0),
+            `every step came up: ${order.join(", ")}\n${seen}`,
+        );
+        assert.deepEqual(
+            order,
+            [...order].sort((left, right) => left - right),
+            "in that order",
+        );
+        assert.equal(seen.split("select: Review these changes").length - 1, 1, "one review, one save");
+        assert.doesNotMatch(readFileSync(file, "utf8"), new RegExp(TOKEN_LINE));
+    });
+
+    test("logs picked before any relay exists sets the relay up right there too", async () => {
+        const state = stateWith();
+        const ui = new ScriptedUi(["Logs", "Done"], [false, true])
+            .picking(/Log backend/, "elasticsearch")
+            .reading(/Backend address/, "https://logs.example.com:9200")
+            .reading(/Which environment\?/, "staging")
+            .reading(/The index or pattern to search/, "app-logs-*")
+            .picking(/How do you sign in to Logs/, "Through a session relay")
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, relayUrl)
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Relay or transport for log searches/, "orders-relay")
+            .reading(/How long may a log request take/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui), 0, ui.seen.join("\n"));
+        assert.equal(written().transports["orders-relay"].url, relayUrl);
+        assert.equal(written().logs.backend.transport, "orders-relay");
+        assert.equal(written().logs.backend.auth, undefined);
+    });
+
+    test("with a relay already there, choosing the relay sign-in asks no relay question", async () => {
+        const state = stateWith(relays);
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may most Jira requests take/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.doesNotMatch(ui.seen.join("\n"), /What do you call this relay/);
+        assert.equal(requests.length, 0);
+    });
+
+    test("an empty relay name sets no relay up, and says the sign-in was not changed", async () => {
+        const state = stateWith();
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /No session relay was set up, so the Jira sign-in was not changed\./);
+        assert.doesNotMatch(seen, /Relay or transport for Jira requests/, "no pick of nothing");
+        assert.equal(written().transports, undefined);
+        assert.equal(written().jira.auth, undefined);
+        assert.equal(written().jira.site, "https://jira.example.com");
+    });
+
+    test("cancelling inside the relay's questions cancels setup and writes nothing", async () => {
+        const state = stateWith();
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "orders-relay");
+        // The address question has no answer left, so the screen returns nothing: a cancel.
+        assert.equal(await runSetup(state, ui, "jira"), 130, ui.seen.join("\n"));
+        assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {});
+    });
+
+    test("a relay that is not running yet is kept when the person goes on, and Jira then picks it", async () => {
+        const dead = await closedUrl();
+        const state = stateWith();
+        const ui = new ScriptedUi()
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, dead)
+            .picking(/Relay not answering/, "Continue without it")
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may most Jira requests take/, "")
+            .picking(/Review these changes/, "Save these changes");
+        assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
+        assert.equal(written().transports["orders-relay"].url, dead);
+        assert.equal(written().jira.auth.transport, "orders-relay");
     });
 });
 

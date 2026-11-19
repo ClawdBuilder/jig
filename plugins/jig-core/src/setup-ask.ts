@@ -4,7 +4,7 @@
 // where a secret is.
 import { detectedLine } from "./detect.ts";
 import { applyAnswer, applyEntry, applyValue } from "./setup-answer.ts";
-import { askObject } from "./setup-ask-object.ts";
+import { askObject, midSentence, objectNames } from "./setup-ask-object.ts";
 import { beginSwitch, endSwitch } from "./setup-method-switch.ts";
 import { askProposal } from "./setup-proposal.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
@@ -121,8 +121,26 @@ export async function askMethods(
     if (picked === undefined) return "cancel";
     const method = ordered[labels.indexOf(picked)];
     if (method === undefined) return "cancel";
-    const mark = beginSwitch(plan, section.name, draft, changes);
+    // A pick of names that do not exist yet (a relay, when none is set up) is made first, here, and then offers what was made.
+    const made = new Map<SetupField, SetupField>();
     for (const field of method.fields) {
+        if (field.create === undefined) continue;
+        if (objectNames(plan, field.create, draft).length === 0) {
+            if ((await askObject(state, plan, field.create, draft, changes, ui)) === "cancel") return "cancel";
+        }
+        const names = objectNames(plan, field.create, draft);
+        if (names.length === 0) {
+            ui.notify(
+                `No ${midSentence(field.create.label)} was set up, so the ${section.label} sign-in was not changed.`,
+                "info",
+            );
+            return "ok";
+        }
+        made.set(field, { ...field, choices: names });
+    }
+    const mark = beginSwitch(plan, section.name, draft, changes);
+    for (const planned of method.fields) {
+        const field = made.get(planned) ?? planned;
         if (field.fixed !== undefined) {
             const at = getPath(draft[field.section], field.path);
             if (at === field.fixed) continue;

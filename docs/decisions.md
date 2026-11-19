@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-19: the relay sign-in is always offered, and sets a relay up when there is none](#2026-11-19-the-relay-sign-in-is-always-offered-and-sets-a-relay-up-when-there-is-none)
 - [2026-11-19: a person sets up a session relay and signs in through it](#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)
 - [2026-11-17: setup adds one named object of a map](#2026-11-17-setup-adds-one-named-object-of-a-map)
 - [2026-11-17: a library that must hold a credential gets it from the resolver](#2026-11-17-a-library-that-must-hold-a-credential-gets-it-from-the-resolver)
@@ -77,6 +78,17 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-19: the relay sign-in is always offered, and sets a relay up when there is none
+
+**Decision.** A method that names `viaTransport: true` is offered to everyone, whether or not a transport exists. While none
+exists, its pick of names carries the question that sets a relay up (the one `jig setup transports` asks: name, address,
+token reference, a look at `GET /v1/health` without the token). Choosing the method asks it first, then carries on with the
+pick of the relay just made and the method's other fields, and one save at the end writes both. An empty relay name makes
+no relay, and the sign-in is left as it was. This replaces the rule that the method is offered only while a transport exists.
+
+**Why:** a person naturally picks Jira, not `Transports`, the first line of the list. Offered only after a relay existed,
+the method was missing from the one place they looked, and they were left with a token they did not have.
 
 ## 2026-11-19: a person sets up a session relay and signs in through it
 

@@ -100,8 +100,8 @@ Plugin overview: [jig-core](../EGM.md).
   letters, digits, `-` or `_` and not a transport a company plugin registered (`objectNameProblem`). When a sign-in method is chosen, the paths the other methods own (their
   required fields and the optional ones beside them, `SetupMethod.owns`) are removed as `remove` changes, and a check message that was not there before the pick reverts it; a validator's
   field is dropped for a method only while "How do you sign in?" is asked, and only for the paths the method owns. A `reference` with `fileExpected` is listed first as "A file", skips the
-  "Use a file?" warning, and asks one line to turn the file store on when it is not on. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is offered only while a
-  transport exists (the person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run)
+  "Use a file?" warning, and asks one line to turn the file store on when it is not on. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is always offered, as a pick of the transports that exist (the
+  person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run); while none exists, its pick carries `SetupField.create`, the relay question of `jig setup transports`, which `askMethods` asks first and whose answer the pick then offers
   ([Decisions](../../../docs/decisions.md#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)).
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless
   `keep` says `tail` for the end or `both` for both ends, and the marker says how many bytes were left out), process group killed on

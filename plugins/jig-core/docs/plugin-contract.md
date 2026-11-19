@@ -134,9 +134,12 @@ closed instead of running ungoverned.
     service, names `companyOnly: true`, and is offered only while a company is
     active. A method that sends the requests through a transport names
     `viaTransport: true` with one required `text` field, the transport's name:
-    setup offers it while a transport exists (the person's `transports`, a
-    company's defaults, one a company plugin registered, or one answered earlier
-    in the same run), asks which as a pick of those names, and writes the name.
+    setup always offers it and asks which as a pick of the transports that exist
+    (the person's `transports`, a company's defaults, one a company plugin
+    registered, or one answered earlier in the same run), and writes the name.
+    While none exists, choosing it first asks the questions of `jig setup
+    transports` (name, address, token reference, a health check without the
+    token), then picks the relay just made.
     Its first field is that name, a required `text` one; later fields must be
     optional, such as a `number` field for a time limit (a method field may be
     `text`, `number`, `pick` or `reference`). A `text` field may carry a

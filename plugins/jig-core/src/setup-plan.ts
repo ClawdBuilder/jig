@@ -130,6 +130,9 @@ export interface SetupField {
     };
     /** For an object: the name question and the shapes one object of the map at `path` may take. */
     object?: SetupObjectSpec;
+    /** For a pick of names that may not exist yet (the relays a sign-in goes through): the object question that makes
+     *  one. Setup asks it first while no name exists, and the pick then offers what it made. */
+    create?: SetupField;
 }
 
 export interface SetupReferenceChoice {

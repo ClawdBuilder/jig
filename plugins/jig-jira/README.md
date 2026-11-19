@@ -123,7 +123,7 @@ A screen field whose schema says `array` takes one value as a one-item list; the
 - the Jira site;
 - the sign-in: a company sign-in service, a company transport, a relay configured
   in `transports`, or an API token through a secret reference. A person with no company
-  plugin sets a relay up with `jig setup transports`, and `jig setup jira` then offers to sign in through it;
+  plugin picks "Through a session relay" in `jig setup jira`, which asks for the relay right there when none is set up;
 - the project keys, so that `search` needs no JQL for them and `create`, `link`
   and `unlink` cannot reach another project;
 - default fields: friendly names, the fields `update` may set, and private names — its `privateNames` and yours add up;

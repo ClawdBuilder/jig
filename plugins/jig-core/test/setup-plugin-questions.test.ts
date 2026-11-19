@@ -641,14 +641,14 @@ describe("a plugin's sign-in methods", () => {
         const plain = sectionQuestions(setupStateFrom(state), "jira", {}, true);
         assert.deepEqual(
             plain.methods?.map((method) => method.id),
-            ["cloud-basic", "data-center-pat", "oauth"],
+            ["cloud-basic", "data-center-pat", "oauth", "transport"],
         );
         state.profile.selection = { reason: "explicit", plugin: "acme", profile: "acme", why: "test" };
         const withCompany = sectionQuestions(setupStateFrom(state), "jira", {}, true);
         assert.deepEqual(
             withCompany.methods?.map((method) => method.id),
-            ["cloud-basic", "data-center-pat", "oauth", "sign-in-service"],
-            "its transport method needs a transport that exists, which a company's own presence does not give",
+            ["cloud-basic", "data-center-pat", "oauth", "sign-in-service", "transport"],
+            "the relay sign-in is everyone's; the company-only one is added beside it",
         );
     });
 });
