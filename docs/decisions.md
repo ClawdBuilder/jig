@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-19: Jig runs as an ordinary Pi package, and the home is optional](#2026-11-19-jig-runs-as-an-ordinary-pi-package-and-the-home-is-optional)
 - [2026-11-19: the relay sign-in is always offered, and sets a relay up when there is none](#2026-11-19-the-relay-sign-in-is-always-offered-and-sets-a-relay-up-when-there-is-none)
 - [2026-11-19: a person sets up a session relay and signs in through it](#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)
 - [2026-11-17: setup adds one named object of a map](#2026-11-17-setup-adds-one-named-object-of-a-map)
@@ -78,6 +79,26 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-19: Jig runs as an ordinary Pi package, and the home is optional
+
+**Decision.** `pi install npm:@clawdbuilder/jig` is how Jig is installed, into the folder Pi already uses, and after it
+nothing a session says or does assumes `~/.jig` or a `jig` terminal command. `/jig setup` works in any Pi folder and writes that
+folder's `jig.json`. The update notice, the doctor and the model line name the commands that exist where Jig was installed: one
+function, `installMode` in `plugins/jig-core/src/install-mode.ts`, tells a Jig home from any other folder, from the folder
+in use and `JIG_HOME`. The separate home and the `jig` command stay as an option, and their wording does not change.
+
+**Why.** Jig is one person's own agent setup, used from the Pi they already run. As a package it still refused `/jig setup`
+outside the home, named `jig setup` and `jig doctor` in thirty messages where no such command exists, could not read its
+own Pi's version, and told a person with jig-bedrock installed that no model provider was signed in.
+
+**The 2026-11-12 entry stays true** for the optional home: Jig changes how Pi behaves, so a person who wants it kept apart
+from their own Pi gets a home of its own, and `jig` is Pi for it. What changed is that the home is no longer required.
+
+**Words that changed.** `notSetUpMessage` (public, signature unchanged) says `/jig setup <section>`, no longer
+"in Pi, or jig setup <section> in a terminal"; a plugin that pins those words in a test changes the test. A session in a
+Pi folder shows `Model — N models available`, from Pi's own registry, in place of the guess from files. In a plain `pi`
+session the home's `auth.json` is now a protected path, as every other Pi folder's already was.
 
 ## 2026-11-19: the relay sign-in is always offered, and sets a relay up when there is none
 
@@ -194,6 +215,10 @@ folders give each its own settings, sessions and packages, and any Pi package ca
 that set it for the launcher must use `JIG_PACKAGE_DIR`; the launcher, `docs/launcher.md` and the pinned `JIG_*` list in
 `surface.test.ts` changed together. A misspelled `jig` command now starts Pi with the word as its message, because
 anything that is not a command is a message.
+
+**Since 2026-11-19** the home is optional: Jig also installs as an ordinary Pi package, and
+[that entry](#2026-11-19-jig-runs-as-an-ordinary-pi-package-and-the-home-is-optional) says what changed. The reasons above
+still hold for a person who keeps a home.
 
 ## 2026-11-16: the 0.4.x action aliases are gone
 

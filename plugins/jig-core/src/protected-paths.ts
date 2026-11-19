@@ -12,8 +12,9 @@
 //
 // This checks the file tools only. `bash` is the sandbox's job: until the sandbox runs, a shell command can still reach
 // these paths.
-import { existsSync, lstatSync, readdirSync, readlinkSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readlinkSync } from "node:fs";
 import path from "node:path";
+import { jigHome } from "./cli/home.ts";
 import { PI_PROJECT_PATHS, projectFoldersBelowHome } from "./kit/pi-project-paths.ts";
 import { runsLaterPaths } from "./kit/runs-later.ts";
 import { writableFolders } from "./writable-folders.ts";
@@ -221,9 +222,10 @@ export function relocatedStores(env: Env, home: string, platform?: NodeJS.Platfo
 
 /**
  * Every other Pi folder on the machine, besides the one Pi and Jig run with: each folder directly under `~/.pi` that
- * holds a `settings.json` or an `auth.json`, and the outer `PI_CODING_AGENT_DIR` that `jig` replaced (bin/jig.mjs passes
- * it on as `JIG_OUTER_PI_DIR`). A `jig` session can reach all of them with a plain path, so the floor has to cover them:
- * their logins are secret, and their settings and the code those name are guarded.
+ * holds a `settings.json` or an `auth.json`, the Jig home (`~/.jig`, or `JIG_HOME`) when it exists, and the outer
+ * `PI_CODING_AGENT_DIR` that `jig` replaced (bin/jig.mjs passes it on as `JIG_OUTER_PI_DIR`). A session can reach all of
+ * them with a plain path, so the floor has to cover them: their logins are secret, and their settings and the code those
+ * name are guarded.
  */
 export function otherAgentFolders(input: {
     agentDir: string;
@@ -243,23 +245,18 @@ export function otherAgentFolders(input: {
         const root = pathApi.join(input.home, ".pi");
         try {
             for (const name of readdirSync(root)) {
+                // A name that is not a folder has no `settings.json` or `auth.json` inside it, so it is passed over here.
                 const folder = pathApi.join(root, name);
-                try {
-                    if (!statSync(folder).isDirectory()) continue;
-                } catch {
-                    continue;
-                }
-                if (
-                    existsSync(pathApi.join(folder, "settings.json")) ||
-                    existsSync(pathApi.join(folder, "auth.json"))
-                ) {
+                if (existsSync(pathApi.join(folder, "settings.json")) || existsSync(pathApi.join(folder, "auth.json")))
                     add(folder);
-                }
             }
         } catch {
             // No `~/.pi`: there is no other Pi folder here.
         }
     }
+    // The Jig home, when it exists and is not the folder in use: a plain `pi` session can reach its `auth.json` as well.
+    const jig = input.home === "" ? "" : jigHome(input.env ?? {}, input.home);
+    if (jig !== "" && existsSync(jig)) add(jig);
     const outer = input.env?.JIG_OUTER_PI_DIR;
     if (outer !== undefined && outer.trim() !== "") add(outer.trim());
     return out;

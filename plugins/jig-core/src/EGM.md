@@ -21,10 +21,10 @@ Plugin overview: [jig-core](../EGM.md).
   writes a call-shaped record itself (call id `record-<uuid>`, facts `entries` and `queries`) outside any tool call.
 - **Deciding.** `classify.ts` (`classify`), `decide.ts` (`decide`, `isOutside`, `sessionKey`, `commandMatches`, `ruleMatches`,
   `namesNothing`, `namesOutsideCommand`, `DecisionSource`: `floor` | `rule` | `session` | `tool` | `table` | `unknown` | `gate`), `gates.ts`, `environments.ts`,
-  `protected-paths.ts` (`checkFileTool`, `FILE_TOOLS`, `defaultProtectedPaths`, `expandProtected`, `guardedEntry`, `otherAgentFolders`),
+  `protected-paths.ts` (`checkFileTool`, `FILE_TOOLS`, `defaultProtectedPaths`, `expandProtected`, `guardedEntry`, `otherAgentFolders`: the other Pi folders under `~/.pi`, the Jig home when it exists and is not the folder in use, and the outer `PI_CODING_AGENT_DIR`),
   `writable-folders.ts` (`writableFolders`: the working folder plus the folders the person allowed, compared by real path), `loaded-code.ts`.
-  `codemode.ts` (`classifyCodemode`, `codemodeAsk`): a Pi `codemode` script of tool calls is a local read, and a script naming `models` or an
-  escape hatch is an external write that asks.
+  `codemode.ts` (`classifyCodemode`, `codemodeAsk`, `RISKY_WORDS`): a Pi `codemode` script of tool calls is a local read, and a script naming `models`, an
+  escape hatch or containing a `\u` escape (nothing is decoded) is an external write that asks.
 - **Asking.** `approvals.ts` (inside the waiting call: Pi's selector, or the review screen in `tui` mode; the `form` kind has no screen yet and uses the selector; a tool's `always: "ask"` drops the "allow for this session" answer), `review.ts`, `preview.ts`, `preview-html.ts`,
   `preview-server.ts` (`createPreviewServer`, `MAX_PAGES` 50).
 - **Results.** `redact.ts` (`createRedactor`, `REDACTED`, `RedactionError`, `secretForms`), `cap.ts` (`CAP_CHARS` 50,000,
@@ -39,8 +39,9 @@ Plugin overview: [jig-core](../EGM.md).
   `transports-section.ts` (`TRANSPORTS_SECTION`, `validateTransportsSection`, `relayOf`, `relayNames`, `tokenFilePaths`), `relay.ts`
   (`RELAY_PROTOCOL` 1, `relayRequest`, `relayHealth`; [relay protocol](../../../docs/relay-protocol.md)), `exec.ts`
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
-- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-off.ts`: `offLine`, `sessionFiltered`, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
-  `model-auth.ts` (`modelAuthState`, `modelSignInLine`: whether the home has a model provider a person can use, from local files only);
+- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-folder.ts`, `doctor-off.ts`: `offLine`, `sessionFiltered`, `doctor-codemode.ts`: the codemode line, which reads the session's tool list and, for its reason, the settings and MCP files, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
+  `model-auth.ts` (`modelAuthState`, `modelSignInLine`, `modelStatus`, `modelProviderLine`: whether the folder has a model provider a person can use, from Pi's model registry in a session and from local files without one; Jig's own package is told from `jig-bedrock` by its exact name),
+  `install-mode.ts` (`installMode(agentDir)`: `"home"` when the folder is `jigHome()`, else `"package"`; `installCommand`, `updateCommand`, `signInHint`, `folderName`, `UPDATE_PI`: the few words that differ, so no session text names a `jig` terminal command where Jig was installed with `pi install`);
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
   (item kinds: `text`, `pick`, `reference`, `entry`, `object`, `proposal`, `login`, `info`; `onboarding-object-check.ts`: `checkObjectForms`, at most 8 forms of 20
   questions each, checked when the list or a plugin's `setup` is registered), `setup-ask-object.ts` (`askObject`, `fieldForRefusal`: one named
@@ -54,7 +55,9 @@ Plugin overview: [jig-core](../EGM.md).
   `brokerScript`) and `contract-watch.ts` (watch types); `api-options.ts` checks
   `registerSection`'s path lists and method sections before anything is registered.
 - **Updating.** `update-versions.ts` (choosing a published version), `update-company.ts` (a company package's `jig.range`),
-  `registry.ts`, `updates-section.ts` (the `updates` section), `update-notice.ts`. `jig update`'s plan and run are [cli/update.ts](./cli/EGM.md).
+  `registry.ts`, `updates-section.ts` (the `updates` section), `update-notice.ts` and `update-notice-text.ts` (`isPinned`, `piNewerNotice`,
+  `deprecatedNotice`, `availableNotice`: in a Pi folder the available-notice is left to Pi's own unless the entry is pinned or a company
+  caps the version). `jig update`'s plan and run are [cli/update.ts](./cli/EGM.md).
 - **Profiles and start-up.** `profiles.ts`, `profile-state.ts`, `overlays.ts`, `profile-command.ts`; `start-jobs.ts`,
   `start-unlock.ts`, `start-checks.ts`, `tool-exposure.ts`. **Helper:** `errors.ts` (`errorMessage`).
 
@@ -137,7 +140,7 @@ Plugin overview: [jig-core](../EGM.md).
   `doctor-release.json` (network doctor cache).
 - **`jig.json`** at `<agentDir>/jig.json`, where the Jig home (`~/.jig`, or `JIG_HOME`) is the agent folder for `jig` and Pi's
   `PI_CODING_AGENT_DIR` (else `~/.pi/agent`) is for a plain Pi. Only `setup-write.ts` writes it, called by `runSetup` (`jig setup`) and
-  by `/jig setup` in a TUI whose agent folder is the home: re-read the target, refuse a changed file, back up an existing file, replace atomically.
+  by `/jig setup` in a TUI, in whichever agent folder the session uses: re-read the target, refuse a changed file, back up an existing file, replace atomically.
 - **Loopback listener.** `createPreviewServer` listens on `127.0.0.1`, random port, unref'd, rejects other `Host` headers,
   started only when a page is served (the `o` key of a review screen, or `approvals.openInBrowser: "always"`; a long preview alone
   starts nothing) and closed at `session_shutdown`.
@@ -192,7 +195,7 @@ roles: [code map](../docs/code-map.md).
   `JigToolOptions.summary`, and an `execute` wrapper that calls `jig().markRefused` on a `RefusedError`), `TOOLS_SECTION`,
   `TOOL_SEARCH`, `NOT_DEFERRABLE`, `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`.
   `stringEnum(values, { description?, default? })` (`schema.ts`). `isObject`, `InputError`, `RefusedError`,
-  `NotConfiguredError`, `notSetUpMessage` (`values.ts`: the one line a plugin says while its section is missing, naming `/jig setup <section>` and `jig setup <section>` before the by-hand route; with `problem` it says the section is there but wrong and quotes it). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
+  `NotConfiguredError`, `notSetUpMessage` (`values.ts`: the one line a plugin says while its section is missing, naming `/jig setup <section>` before the by-hand route; with `problem` it says the section is there but wrong and quotes it). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
 - **Actions.** `ActionSpec`, `ActionTable`, `usageLine`, `unknownAction`, `checkParams`, `describeActions`, `previewChanged`, `actionList`
   (`actions.ts`): one shape for an action-based tool, so its usage line, its refusal for an unknown action and its schema's action list
   read the same in every plugin.

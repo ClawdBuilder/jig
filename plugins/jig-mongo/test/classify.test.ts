@@ -499,12 +499,7 @@ describe("input that is invalid blocks the call without asking", () => {
         });
         const said = await saidOf();
         assert.match(said, /^mongo's settings have a problem: mongo\.connections\.staging\.uri: /);
-        assert.ok(
-            said.endsWith(
-                "ask the person to fix it with /jig setup mongo in Pi or jig setup mongo in a terminal, or see /jig for all problems",
-            ),
-            said,
-        );
+        assert.ok(said.endsWith("ask the person to fix it with /jig setup mongo, or see /jig for all problems"), said);
         assert.doesNotMatch(said, /by hand, add/, "a section that is there is not added by hand");
         assert.ok(
             said.length <= 200,
@@ -517,7 +512,7 @@ describe("input that is invalid blocks the call without asking", () => {
         const said = await saidOf();
         assert.match(
             said,
-            /^mongo is not set up: ask the person to run \/jig setup mongo in Pi, or jig setup mongo in a terminal; by hand, add a "mongo" section with "connections" to jig\.json \(see the jig-mongo README\)$/,
+            /^mongo is not set up: ask the person to run \/jig setup mongo; by hand, add a "mongo" section with "connections" to jig\.json \(see the jig-mongo README\)$/,
         );
         assert.ok(
             said.length <= 200,

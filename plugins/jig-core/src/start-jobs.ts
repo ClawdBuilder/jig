@@ -27,10 +27,12 @@ export function startJobs(state: JigState): void {
     state.startJobs?.abort();
     state.startJobs = undefined;
     if (isChildAgent(state.env)) return;
+    // Pi's own version, as Pi says it; without one the notice reads Pi's package itself.
+    const notice = state.piVersion === undefined ? {} : { pi: state.piVersion };
     // A print-mode session has no UI but a person reading the command's output: the update notice can still be shown
     // on stderr, never in the model's context. The other start jobs need a screen, so they stay off.
     if (state.screen === undefined) {
-        void checkUpdateAtStart(state, (message) => process.stderr.write(`${message}\n`));
+        void checkUpdateAtStart(state, (message) => process.stderr.write(`${message}\n`), notice);
         return;
     }
     const control = new AbortController();
@@ -51,7 +53,7 @@ export function startJobs(state: JigState): void {
             signal: control.signal,
         });
     }
-    void checkUpdateAtStart(state, notify);
+    void checkUpdateAtStart(state, notify, notice);
     const { startChecks } = state.personal.config;
     if (startChecks.length > 0) {
         void state.startChecks

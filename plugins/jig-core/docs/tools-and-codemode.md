@@ -30,17 +30,22 @@ classifies the call from the **script text**:
 - a script that names only tools is a **local read**. Every tool call inside it is classified and gated as its own call,
   as a direct call is, and a read-only role can run a script of reads;
 - a script that names `models`, `globalThis`, `eval`, `Function`, `constructor`, `Reflect`, `import`, `this`, `self`,
-  `global`, `getOwnPropertyDescriptor`, `getPrototypeOf`, `defineProperty`, `prototype` or `__proto__`, or computes a member
-  access with something other than a number or one plain string, is an **external write**. It asks, with “the script can
+  `global`, `getOwnPropertyDescriptor`, `getOwnPropertyDescriptors`, `__lookupGetter__`, `setPrototypeOf`,
+  `getPrototypeOf`, `defineProperty`, `prototype` or `__proto__`, or indexes a name with something other than a number
+  or one plain string, is an **external write**. It asks, with “the script can
   call outside models: ask”, and a role that may not write refuses it. `models` runs classifier and image models on the
   session's credentials, outside every Jig record and gate;
+- a script that contains a backslash and `u` (a `\u` escape) anywhere, even inside a string, is the same **external write**,
+  because `\u006dodels` spells `models` without the word. Its dialog says “the script writes an escaped name: ask”;
 - a missing or unreadable script falls back to asking.
 
-The check reads text. It is conservative, not a proof: a script that can reach `models` is asked even when it does not,
-and a script that builds a name from pieces can still get past it. Pi defines `models` on the sandbox's global object as a
-non-configurable, non-writable namespace, so Jig cannot remove it before the script runs; the text check and the ask are
-the guard. What a missed script can reach is the session's own model providers, on its credentials, outside every Jig
-record and gate. That is why the fallback is ask, not allow.
+The check reads text and decodes nothing. It is a speed bump in front of the ask, not a proof: a script that can reach
+`models` is asked even when it does not, and a script can still build a name the check does not see, for example with
+a space before `[` or an escape other than `\u` inside a string.
+
+Pi defines `models` on the sandbox's global object as a non-configurable, non-writable namespace, so Jig cannot remove it
+before the script runs; the text check and the ask are the guard. What a missed script can reach is the session's own
+model providers, on its credentials, outside every Jig record and gate. That is why the fallback is ask, not allow.
 
 To turn it on, enable Pi's builtin in the agent's `settings.json` and keep the other tools declared:
 
@@ -48,8 +53,17 @@ To turn it on, enable Pi's builtin in the agent's `settings.json` and keep the o
 { "defaultTools": ["+codemode"], "codemode": { "mode": "on" } }
 ```
 
-`"only"` would hide the direct tools and list them inside `codemode`; Jig's docs and tests use `"on"`. Jig ships codemode
-off, and Pi never lets a package defer it.
+`"only"` would hide the direct tools and list them inside `codemode`; Jig's docs and tests use `"on"`. Pi never lets a
+package defer it.
+
+Codemode is Pi's tool, and it is inactive by default. Pi activates it, for example:
+
+- when `defaultTools` in `settings.json` adds `"+codemode"`, as above;
+- for one run, with `--tools +codemode`;
+- by itself, when an MCP server whose tools use `codemode` exposure (the default) is configured and
+  `autoEnableCodemode` is not false.
+
+Jig adds no setting for it. `/jig doctor` inside Pi shows whether it is on.
 
 What Jig still guards inside the script:
 

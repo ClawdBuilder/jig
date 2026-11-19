@@ -29,7 +29,7 @@ export function notSetupLines(context: DoctorContext, sections: readonly string[
             group: "config",
             level: "skip",
             title: section,
-            detail: `not set up: ${setup.summary} Run jig setup ${section}.`,
+            detail: `not set up: ${setup.summary} Run /jig setup ${section}.`,
         });
     }
     if (rest.length > 0) {
@@ -67,8 +67,8 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
                 title: `You need: ${item.label}`,
                 detail:
                     item.why ??
-                    `Add ${dotted(item.section, item.path)} to ${settingsShown}, or run jig setup and it asks for it.`,
-                fix: "Run jig setup and it asks for this.",
+                    `Add ${dotted(item.section, item.path)} to ${settingsShown}, or run /jig setup and it asks for it.`,
+                fix: "Run /jig setup and it asks for this.",
             });
             continue;
         }
@@ -83,8 +83,8 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
                 group: "config",
                 level: "warn",
                 title: `You need: ${item.label}`,
-                detail: `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
-                fix: hint ?? "Run jig setup and it asks for this.",
+                detail: `Add ${item.section}.${item.path} to ${settingsShown}, or run /jig setup and it asks for it.`,
+                fix: hint ?? "Run /jig setup and it asks for this.",
             });
             continue;
         }
@@ -95,8 +95,8 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
             title: `You need: ${item.label}`,
             detail:
                 item.why ??
-                `Add ${item.section}.${item.path} to ${settingsShown}, or run jig setup and it asks for it.`,
-            fix: hint ?? "Run jig setup and it asks for this.",
+                `Add ${item.section}.${item.path} to ${settingsShown}, or run /jig setup and it asks for it.`,
+            fix: hint ?? "Run /jig setup and it asks for this.",
         });
     }
     if (context.configPath !== "") {
@@ -120,7 +120,7 @@ export function onboardingLines(context: DoctorContext, settingsShown: string): 
                 level: "warn",
                 title: "Company proposals",
                 detail: `${pending} proposed ${pending === 1 ? "entry is" : "entries are"} waiting for your answer.`,
-                fix: "Run jig setup and answer them.",
+                fix: "Run /jig setup and answer them.",
             });
         }
     }

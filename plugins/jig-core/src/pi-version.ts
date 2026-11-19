@@ -48,6 +48,13 @@ export function piVersion(): string | undefined {
     return undefined;
 }
 
+/** The Pi version a report or a notice shows: what `read` says (default: Pi's own package). `0.0.0` is the version Pi
+ *  reports when it cannot read its package, so it counts as unknown. */
+export function reportedPiVersion(read: () => string | undefined = piVersion): string | undefined {
+    const found = read();
+    return found === "0.0.0" ? undefined : found;
+}
+
 /** Jig's version, the Node.js range its package.json requires, and where its repository is. Empty when it cannot be
  *  read. `file` is for a test; the default is this checkout's own package.json. */
 export function jigPackage(file: string | URL = new URL("../../../package.json", import.meta.url)): {

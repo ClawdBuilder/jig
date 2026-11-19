@@ -161,6 +161,8 @@ export function fakeContext(
         cwd?: string;
         /** What `sessionManager.getBranch()` returns: the entries of the conversation so far. Default none. */
         branch?: readonly unknown[];
+        /** Pi's model registry: how many models it can use. Default: the context has none, as a unit test's has not. */
+        models?: number;
     } = {},
 ): FakeContext {
     const screen = fakeUi(options.ui === false ? {} : (options.ui ?? { select: () => "Allow" }));
@@ -174,6 +176,13 @@ export function fakeContext(
             getSessionId: () => options.session ?? "session-test",
             getBranch: () => [...(options.branch ?? [])],
         },
+        ...(options.models === undefined
+            ? {}
+            : {
+                  modelRegistry: {
+                      getAvailable: () => Array.from({ length: options.models ?? 0 }, (_, index) => ({ index })),
+                  },
+              }),
     } as unknown as ExtensionContext;
     return { ctx, log: screen.log };
 }

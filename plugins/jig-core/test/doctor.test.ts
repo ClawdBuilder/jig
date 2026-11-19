@@ -95,6 +95,17 @@ function text(report: Awaited<ReturnType<typeof runDoctor>>): string {
 }
 
 describe("/jig doctor checks", () => {
+    test("the report says whether codemode is on when a session answers, and sends the terminal to Pi", async () => {
+        const on = await runDoctor(context({ overrides: { codemodeActive: true } }), options());
+        assert.match(text(on), /Codemode — on/);
+        const off = await runDoctor(context({ overrides: { codemodeActive: false } }), options());
+        assert.match(text(off), /Codemode — off/);
+        const terminal = await runDoctor(context(), options());
+        const line = terminal.lines.find((entry) => entry.id === "config.codemode");
+        assert.equal(line?.level, "skip", text(terminal));
+        assert.match(text(terminal), /Codemode — Pi decides this when a session starts/);
+    });
+
     test("a company's onboarding list becomes a 'you need' line for each field still missing", async () => {
         const report = await runDoctor(
             context({
@@ -120,7 +131,7 @@ describe("/jig doctor checks", () => {
         assert.ok(line, text(report));
         assert.equal(line.group, "config");
         assert.equal(line.detail, "The gateway asks for it.");
-        assert.equal(line.fix, "Run jig setup and it asks for this.");
+        assert.equal(line.fix, "Run /jig setup and it asks for this.");
     });
 
     test("a field you left out with a null is not a 'you need' line", async () => {
@@ -324,12 +335,24 @@ describe("/jig doctor checks", () => {
         assert.equal(line?.fix, undefined, "nothing to run: Pi's version is not the problem");
     });
 
-    test("Pi below the package's minimum warns and points at jig update", async () => {
+    test("Pi below the package's minimum warns, and says to update Pi yourself: Jig never updates Pi", async () => {
         const report = await runDoctor(context(), options({ piVersion: () => "1.3.9" }));
         const line = report.lines.find((entry) => entry.id === "machine.pi");
         assert.equal(line?.level, "warn");
         assert.match(line?.detail ?? "", /needs 1\.4\.0 or later/);
-        assert.match(line?.fix ?? "", /jig update/);
+        assert.equal(line?.fix, "Update Pi yourself: npm install -g @earendil-works/pi-coding-agent");
+    });
+
+    test("the Pi line shows the version it was given, and Pi's own 0.0.0 is an unknown version", async () => {
+        const known = await runDoctor(context(), options({ piVersion: () => "1.5.2" }));
+        const line = known.lines.find((entry) => entry.id === "machine.pi");
+        assert.equal(line?.detail, "1.5.2");
+        assert.equal(known.meta.pi, "1.5.2");
+        const unknown = await runDoctor(context(), options({ piVersion: () => "0.0.0" }));
+        const none = unknown.lines.find((entry) => entry.id === "machine.pi");
+        assert.equal(none?.level, "skip");
+        assert.equal(none?.detail, "version unknown");
+        assert.equal(unknown.meta.pi, null);
     });
 
     test("Pi newer than the tested version warns, and does not block", async () => {
@@ -943,7 +966,28 @@ describe("the human marks", () => {
         // `jig` sets PI_CODING_AGENT_DIR from the home, so the fix installs into the home; the old hint would send that
         // install into the person's own Pi folder instead.
         assert.doesNotMatch(jigLine?.detail ?? "", /If your Pi runs/);
-        assert.match(jigLine?.fix ?? "", /Install it: jig install npm:@clawdbuilder\/jig/);
+        // The terminal doctor passes the home as the folder, so the command is the home's own.
+        const withJigHome = async <T>(folder: string, work: () => Promise<T>): Promise<T> => {
+            const saved = process.env.JIG_HOME;
+            process.env.JIG_HOME = folder;
+            try {
+                return await work();
+            } finally {
+                if (saved === undefined) delete process.env.JIG_HOME;
+                else process.env.JIG_HOME = saved;
+            }
+        };
+        const asHome = (folder: string) =>
+            withJigHome(folder, () =>
+                runDoctor(
+                    context({ overrides: { env: { PATH: "" }, agentDir: folder, standalone: true, jigInPi: false } }),
+                    options(),
+                ),
+            );
+        const homeFix = (await asHome(agentDir)).lines.find((entry) => entry.id === "machine.jig")?.fix;
+        assert.equal(homeFix, "Install it: jig install npm:@clawdbuilder/jig");
+        // Any other folder takes the Pi command.
+        assert.match(jigLine?.fix ?? "", /Install it: pi install npm:@clawdbuilder\/jig/);
         // The `jig` command sets PI_CODING_AGENT_DIR itself, so the default home must not read as the variable's doing.
         const launcher = path.join(home, ".jig");
         const asLauncher = await runDoctor(
@@ -961,18 +1005,30 @@ describe("the human marks", () => {
         assert.match(launcherLine?.detail ?? "", /the default home/);
         assert.doesNotMatch(launcherLine?.detail ?? "", /from PI_CODING_AGENT_DIR/);
         const named = path.join(home, "named");
-        const fromJigHome = await runDoctor(
-            context({
-                overrides: {
-                    standalone: true,
-                    jigInPi: false,
-                    agentDir: named,
-                    env: { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: named },
-                },
-            }),
-            options(),
+        const rowFor = async (overrides: Partial<DoctorContext>) =>
+            (await runDoctor(context({ overrides }), options())).lines.find((entry) => entry.id === "machine.agent");
+        const jigHomeEnv = { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: named };
+        // The folder in use is the home that JIG_HOME names, so the row says it is from JIG_HOME (the terminal doctor, and
+        // the same folder inside Pi).
+        for (const standalone of [true, false]) {
+            const fromJigHome = await withJigHome(named, () =>
+                rowFor({ standalone, jigInPi: false, agentDir: named, env: jigHomeEnv }),
+            );
+            assert.match(fromJigHome?.detail ?? "", /from JIG_HOME/, `standalone ${standalone}`);
+        }
+        // A Pi folder that is not the home, with JIG_HOME exported, was installed with `pi install`: it is not the
+        // home's doing, and the row says who did choose it.
+        const piFolder = path.join(home, "pi-folder");
+        const notHome = await withJigHome(named, () =>
+            rowFor({ agentDir: piFolder, env: { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: piFolder } }),
         );
-        assert.match(fromJigHome.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /from JIG_HOME/);
+        assert.equal(notHome?.title, "Pi's folder");
+        assert.doesNotMatch(notHome?.detail ?? "", /JIG_HOME/);
+        assert.match(notHome?.detail ?? "", /from PI_CODING_AGENT_DIR/);
+        const notHomeDefault = await withJigHome(named, () =>
+            rowFor({ agentDir: piFolder, env: { PATH: "", JIG_HOME: named } }),
+        );
+        assert.match(notHomeDefault?.detail ?? "", /the default folder/);
         const byDefault = await runDoctor(context({ overrides: { standalone: true, jigInPi: false } }), options());
         assert.match(byDefault.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /the default/);
         // The `jig` command checks the home, so its row says so; inside Pi the same row names Pi's folder.

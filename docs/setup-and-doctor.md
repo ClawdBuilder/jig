@@ -1,95 +1,76 @@
 # Setup and doctor
 
-`jig doctor` looks at this machine, your Jig settings and the tools Jig uses, and says in plain words what is
+`/jig doctor` looks at this machine, your Jig settings and the tools Jig uses, and says in plain words what is
 wrong and what to do. The doctor reads only: it changes no setting, signs in to nothing, and never shows a password
-or a token. `jig setup` fills in what is missing, and writes only what you confirm. Both run in a terminal, with no
-Pi session, no model and no provider login. Inside Pi, `/jig doctor` shows the same report, and `/jig setup` asks the same
-questions in Pi's dialogs (in a Pi mode with no screen, it tells you to run the command).
+or a token. `/jig setup` fills in what is missing, and writes only what you confirm. Both run inside Pi, in the folder
+Pi uses. In a [separate Jig home](#a-separate-jig-home-optional), `jig doctor` and `jig setup` do the same in a
+terminal, with no Pi session, no model and no provider login.
 
 ## Run it
 
 ```text
-jig doctor [--json] [--network] [--quiet]
+/jig doctor [--json] [--network] [--quiet]
 ```
 
-It says "Checking your setup…" at once, then loads the same packages Pi loads. The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
+The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
 the network, the sandbox and the records folder.
 
 ```text
-Jig doctor · 8 ok · 1 warning · 2 failures · 7 skipped
+Jig doctor · 21 ok · 1 warning · 0 failures · 7 skipped
 
 This machine
-  ✓ System — Linux, Node.js 24.15.0
-  ! Pi — 1.4.0; this Jig is tested with 1.5.2
-  ✗ Jig — not installed in ~/.jig (the default home), so Pi does not load
-       Jig's plugins.
-       fix: jig install npm:@clawdbuilder/jig
-  ✓ Jig home — ~/.jig, the default home
+  ✓ Node.js — 24.15.0 (Jig needs 22.19.0 or later)
+  ✓ Pi — 1.5.2
+  ✓ Jig — 0.5.10
+  ✓ System — Linux
+  ✓ Pi's folder — ~/.pi/agent, the default folder
 ...
+Logins
+  ✓ Model — 3 models available
+...
+Sandbox
+  ! Sandbox — bash is not sandboxed; a shell command can read your credentials.
+       fix: Install jig-sandbox, or run Pi inside a container.
 ```
 
 A check starts with **✓** (ok), **!** (warning), **✗** (failure) or **–** (skipped). The words come back when `NO_COLOR` is set,
 `TERM=dumb`, or the locale (`LC_ALL`, `LC_CTYPE` or `LANG`) is not UTF-8, so a plain terminal still reads `ok`, `warn`,
 `fail` and `skip`. The summary line keeps its words. `--json` is unchanged.
 
-This machine names the folder it checked and why: for `jig`, the home (`~/.jig, the default home`, or the path
-`from JIG_HOME`); inside Pi, Pi's folder (`~/.pi/agent, the default`, or the path `from PI_CODING_AGENT_DIR`). When Jig
-is not installed there, the `Jig` row names the folder, and the fix installs it where the command runs.
+This machine names the folder it checked and why: Pi's folder (`~/.pi/agent, the default folder`, or the path
+`from PI_CODING_AGENT_DIR`). In a separate home the row is `Jig home`: `~/.jig, the default home`, or the path
+`from JIG_HOME`. When Jig is not installed in the folder the terminal command checks, the `Jig` row names the folder, and
+the fix installs it where the command runs.
 
-Exit code `0` means no failures, `1` means at least one; `--json` prints one JSON report with `"schema": 1` on stdout and
+**In a terminal** (`jig doctor`, in a separate home), exit code `0` means no failures, `1` means at least one; `--json` prints one JSON report with `"schema": 1` on stdout and
 nothing else (failures still exit 1); every line carries `durationMs`, the milliseconds its check took. The exit codes are the same for every command: 0 success, 1 a failure, 2 a usage error
 or a missing required flag. It works when `jig.json` is invalid or a plugin fails to load: that is a failure line in the report, not
 a crash, because that is exactly when you need it. If Jig is not installed in Pi, or Pi itself is not found, the machine
 group has a failure with the command to install it: the doctor does not give an all-clear for a Jig Pi will not load.
 Two copies with different versions are a warning.
 
-**The home and the `jig` command.** `jig` is Pi for Jig's own folder, the home: `~/.jig`, or `JIG_HOME`. Your own
-`pi` keeps `~/.pi/agent` and is not changed. One command makes both: `npx @clawdbuilder/jig setup` checks Pi, makes the
-home, runs `pi install npm:@clawdbuilder/jig@<version>` with the home as Pi's agent folder, and writes the `jig`
-command to `~/.local/bin` (or `--bin <folder>`). It never overwrites a file there that is not Jig's, and says whether
-the folder is on your PATH with the line to add when it is not. Setup never edits your shell files.
-
-A `jig` command that already runs another home is kept: setup names the home it runs and the two ways to reach this one,
-`JIG_HOME=<new home> jig …`, or a second command with `--bin <folder>`. In a terminal it offers to replace the command,
-and the answer is no unless you say yes; `--yes` never replaces it.
-
-Every `jig` command runs with the home as `PI_CODING_AGENT_DIR` and ignores an outer one. A `jig` started from
-anywhere else — a global npm copy, a checkout, `npx` — hands over to the Jig installed in the home, so the command and
-the plugins are one version. When the home has no Jig, only `setup`, `help` and `--version` run; the others say
-`Jig is not installed in <home>. Run: npx @clawdbuilder/jig setup` and exit 2.
-
-The command runs from `node_modules`, where Node will not strip TypeScript itself: its first line installs a small loader
-that does, so the installed copy behaves like a checkout. If `jig` cannot find Pi, it says so with the folder to set in
-`PI_HOST_DIR` (or `JIG_PI_HOST`).
+**The model.** The `Model` line asks Pi how many models it can use: `Model — 3 models available`, or `Model — none available.
+Type /login.` as a warning. `/jig` shows the same line. The terminal doctor has no Pi to ask, so it reads the folder's files
+([What it looks at](#what-it-looks-at)).
 
 ## Packages
 
-A Pi package goes into Jig's home with `jig install npm:…`, into your own Pi with `pi install npm:…`, or into both.
-A package installed by name is unpinned, so `jig update` moves it to the newest release with Jig; `npm:<pkg>@<version>`
-keeps it where it is. `jig install -l` writes the project's `.pi/settings.json`, which both read. The launcher is optional; [The
-launcher](launcher.md) covers it, and Jig works without it.
+A Pi package goes into your own Pi with `pi install npm:…`. A package installed by name is unpinned, so
+`pi update --extensions` moves it to the newest release; `npm:<pkg>@<version>` keeps it where it is. `pi install -l` writes the project's
+`.pi/settings.json`, which both `pi` and a separate home read. The launcher is optional; [The launcher](launcher.md)
+covers it, and Jig works without it.
 
 ## Setting up
 
 ```text
-jig setup [section] [--bin <folder>] [--source <source>] [--from <folder>] [--yes]
+/jig setup [section]
 ```
 
-On a machine with no home, setup does the install above, then asks its questions. `--bin` names where the `jig`
-command goes, and `--from` names an older Jig folder to offer settings from. `--source` is for the tests: a packed copy
-to install instead of the published package. A file at the `jig` command's path that is not Jig's is left alone, and setup stops and says so.
-A `jig` command that runs a different home is left alone too, and setup says which home it runs.
+`/jig setup` asks its questions in Pi's dialogs, in the folder Pi uses, and writes that folder's `jig.json`: `~/.pi/agent/jig.json`
+by default. In a Pi mode with no screen (print or RPC) it tells you to open Pi in a terminal and run it. In a separate home,
+`jig setup` asks the same questions in a terminal ([Setting up in a terminal](#setting-up-in-a-terminal)).
 
-**Migration.** When `~/.pi/jig-agent/jig.json` exists, or `--from` names a folder with one, setup offers to copy
-`jig.json` into the home. `auth.json` and `sessions/` are separate offers with their own yes, because they hold your
-sign-ins and history. Nothing is moved or deleted: the old folder stays as it was.
-
-**Running it again** does the questions only, and repairs a `jig` command that is missing, or that an older setup wrote
-for this home. **Uninstalling** is deleting the home and the `jig` command.
-
-The questions need a terminal: their company, profile and credential choices have no safe headless default. With
-`--yes` setup takes the safe answers and skips them, so a script can finish. Without a terminal and without `--yes` it
-does the install, says the home is ready and that the questions need a terminal, names those two ways, and exits 2. It starts with the company question: which installed
+It starts with the company question: which installed
 company setup you use, or "None, just me", and where it applies: every folder, only this folder, or, when the company names
 remote patterns, repositories matching them. The last writes `when.remotes`. That writes the `profiles`
 and `profile` entries a newcomer cannot be expected to know. Then setup asks one question at a time about the parts a
@@ -126,7 +107,7 @@ already written, and says so, naming the backup when setup made one.
 for Jira or logs, such as a browser extension's local host. Setup asks its name (letters, digits, `-` and `_`, up to 40, and never the name of a transport a company plugin registered), its address (plain `http` only for
 `127.0.0.1`, `localhost` or `[::1]`) and where its token is kept, a file being the usual place, listed first. Then it asks the relay once
 whether it is running with `GET /v1/health`, which needs no token, and says what it found; it never sends or reads the token.
-`jig doctor` checks the same health, the protocol and the token later, without `--network`. Jira and logs always offer
+`/jig doctor` checks the same health, the protocol and the token later, without `--network`. Jira and logs always offer
 "Through a session relay or transport" among their sign-in methods, and ask one optional time limit for a request (5 to 120
 seconds). Choosing it before any relay exists says what a relay is and that it must be running on this machine, then asks the relay's questions right there, so Jira can be picked first. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
 
@@ -134,7 +115,7 @@ The time-limit question says what Enter keeps: the value in your file, or the de
 
 **Signing in another way.** Choosing a sign-in method removes the fields of the methods it replaces (an email and a token when you pick a relay), and keeps a setting that belongs to no method, such as a time limit. Setup then runs the plugin's own check on the result. If it still fails, setup leaves that sign-in as it was and says the check's words.
 
-`jig setup <section>` goes straight to that section's questions, without the list. A plugin's own questions come after a
+`/jig setup <section>` goes straight to that section's questions, without the list. A plugin's own questions come after a
 company's list, and a company default or answer skips the question it already answers. `--yes` asks nothing and sets up
 nothing new when there is no terminal, so a script can finish; at a terminal setup asks its questions anyway.
 
@@ -150,15 +131,28 @@ never changes the stores you turned off. A plugin or company list may add its ow
 setup shows it and never runs it.
 
 Before it writes, it shows one line per change, in plain words. "Show the exact change" reveals the JSON.
-Nothing is written until you confirm. It keeps a backup next to the file and says to start Pi again, or run `/reload`
-in it. Exit code `0` is done or nothing to do, `1` failed, `2` a usage error or an interactive step without a terminal,
-`130` cancelled.
+Nothing is written until you confirm. It keeps a backup next to the file and says to run `/reload` in Pi (the terminal
+command says to start Pi again, or run `/reload`). In a terminal, exit code `0` is done or nothing to do, `1` failed, `2` a usage
+error or an interactive step without a terminal, `130` cancelled.
 
 If your settings file is a link, as a dotfiles setup often makes it, setup follows the link, says which file it
 will change, and writes that file. The link stays a link. A link that points nowhere, or to a folder, is refused
 and nothing changes.
 
+
 ## Updating
+
+In your own Pi, Jig installed by name moves with `pi update --extensions` (every package) or `pi update npm:@clawdbuilder/jig`
+(Jig only). A pinned entry moves with `pi install npm:@clawdbuilder/jig@<version>`. `pi update` alone replaces only the Pi
+program, which every other `pi` on the machine shares: decide that separately.
+
+A Jig listed as a folder, a git clone or a link gets no update notice, from Pi or from Jig: whoever owns the checkout moves it.
+
+A company package can cap which Jig versions are allowed with `"jig": { "range": ">=0.4.1 <0.5.0" }`. Pi's own update ignores
+the cap, so the notice below names the install command with the version the cap allows. `/jig doctor` warns when the running
+Jig is outside the range, and its fix is `pi install npm:@clawdbuilder/jig@<version>` with a version inside it.
+
+### In a separate home: `jig update`
 
 ```text
 jig update [--check] [--json] [--yes] [--to <version>] [target]
@@ -202,13 +196,16 @@ Jig version instead of the newest. Open Pi sessions keep the old code until rest
 
 ### The notice inside Pi
 
-At most once a day, in the background, Jig asks the npm registry whether a newer stable release exists and tells you on
-your screen: "Jig X is available... run `jig update` in a terminal." In print mode it writes the same line to stderr, so
-it reaches you and never the model's context. The notice respects the company cap, is silent when
-offline or when `PI_OFFLINE` is set, and never reaches the model's context. If the running version is deprecated on npm,
-it says so more strongly. It also warns once when Pi is newer than the tested version. Turn it off with
-`"updates": { "check": false }`; a company default can turn it off too, and your file wins. The check is cached in Jig's
-state folder.
+At most once a day, in the background, Jig asks the npm registry whether a newer stable release exists. In a separate home it
+tells you on your screen: "Jig X is available... Run jig update in a terminal." In your own Pi folder Pi prints its own
+"Package updates are available", so Jig adds a line only where Pi says nothing: an entry pinned to one version, or a company
+cap on the version. That line gives `pi install npm:@clawdbuilder/jig@<version>` with the version allowed.
+
+In print mode the notice goes to stderr, so it reaches you and never the model's context. It respects the company cap, is
+silent when offline or when `PI_OFFLINE` is set, and is stronger when the running version is deprecated on npm, with the same
+install command (in a home, `jig update`). It also warns once when Pi is newer than the tested version: a home is pointed at
+`jig update`, a Pi folder at installing the tested Pi. Turn it off with `"updates": { "check": false }`; a company default can
+turn it off too, and your file wins. The check is cached in Jig's state folder.
 
 ## This folder's Pi packages, and trust
 
@@ -241,11 +238,62 @@ names `src/index.ts` matches nothing. Keep `jig-core` first in the list, because
 }
 ```
 
-`jig doctor` reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`. Any other plugin you leave out is one
+The doctor reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`. Any other plugin you leave out is one
 `skip` line, `Off: api, jira, logs.`, and its section in `jig.json` stays and is not a problem.
 
 In a terminal that line has a `fix:`, the settings file to change; `/jig doctor` in Pi names no file. A section that belongs
 to no plugin is still an unknown field.
+
+## A separate Jig home (optional)
+
+Everything above works in the folder your own `pi` uses. A separate home is for a person who wants Jig kept apart from it,
+with its own settings, sessions and packages. [Decisions](decisions.md#2026-11-12-jig-lives-in-its-own-pi-folder-and-jig-is-pi-for-it)
+has why it exists; the 2026-11-19 entry says it is now optional.
+
+**The home and the `jig` command.** `jig` is Pi for Jig's own folder, the home: `~/.jig`, or `JIG_HOME`. Your own
+`pi` keeps `~/.pi/agent` and is not changed. One command makes both: `npx @clawdbuilder/jig setup` checks Pi, makes the
+home, runs `pi install npm:@clawdbuilder/jig@<version>` with the home as Pi's agent folder, and writes the `jig`
+command to `~/.local/bin` (or `--bin <folder>`). It never overwrites a file there that is not Jig's, and says whether
+the folder is on your PATH with the line to add when it is not. Setup never edits your shell files.
+
+A `jig` command that already runs another home is kept: setup names the home it runs and the two ways to reach this one,
+`JIG_HOME=<new home> jig …`, or a second command with `--bin <folder>`. In a terminal it offers to replace the command,
+and the answer is no unless you say yes; `--yes` never replaces it.
+
+Every `jig` command runs with the home as `PI_CODING_AGENT_DIR` and ignores an outer one. A `jig` started from
+anywhere else — a global npm copy, a checkout, `npx` — hands over to the Jig installed in the home, so the command and
+the plugins are one version. When the home has no Jig, only `setup`, `help` and `--version` run; the others say
+`Jig is not installed in <home>. Run: npx @clawdbuilder/jig setup` and exit 2.
+
+The command runs from `node_modules`, where Node will not strip TypeScript itself: its first line installs a small loader
+that does, so the installed copy behaves like a checkout. If `jig` cannot find Pi, it says so with the folder to set in
+`PI_HOST_DIR` (or `JIG_PI_HOST`).
+
+**Packages.** A package goes into the home with `jig install npm:…`, or into both with `pi install` and `jig install`.
+`jig install -l` writes the project's `.pi/settings.json`, which both read; `jig update` ([above](#in-a-separate-home-jig-update))
+moves the home's unpinned packages.
+
+### Setting up in a terminal
+
+```text
+jig setup [section] [--bin <folder>] [--source <source>] [--from <folder>] [--yes]
+```
+
+On a machine with no home, setup does the install above, then asks its questions. `--bin` names where the `jig`
+command goes, and `--from` names an older Jig folder to offer settings from. `--source` is for the tests: a packed copy
+to install instead of the published package. A file at the `jig` command's path that is not Jig's is left alone, and setup stops and says so.
+A `jig` command that runs a different home is left alone too, and setup says which home it runs.
+
+**Migration.** When `~/.pi/jig-agent/jig.json` exists, or `--from` names a folder with one, setup offers to copy
+`jig.json` into the home. `auth.json` and `sessions/` are separate offers with their own yes, because they hold your
+sign-ins and history. Nothing is moved or deleted: the old folder stays as it was.
+
+**Running it again** does the questions only, and repairs a `jig` command that is missing, or that an older setup wrote
+for this home. **Uninstalling** is deleting the home and the `jig` command.
+
+The questions need a terminal: their company, profile and credential choices have no safe headless default. With
+`--yes` setup takes the safe answers and skips them, so a script can finish. Without a terminal and without `--yes` it
+does the install, says the home is ready and that the questions need a terminal, names those two ways, and exits 2.
 
 ## The four words
 
@@ -269,15 +317,16 @@ reports (user and password)`. When they do not form a grid, it keeps the plain l
 | This machine | Node.js, Pi, Jig, the system and Pi's folder |
 | Configuration | the settings file, each plugin section, and the protected files |
 | Secrets | the stores that are on, and each reference: found, missing, locked or not checked |
-| Logins | the model provider for the home, plus `gh` and `glab` when your settings use them |
+| Logins | the model (Pi's count of usable models), plus `gh` and `glab` when your settings use them |
 | Network | only with `--network`: the configured hosts and the latest release |
 | Sandbox | whether `bash` is sandboxed, and the programs it needs |
 | Records | where today's records go, and whether they can be written |
 
-The model provider line is `ok` when `auth.json` names a provider or a provider key is set in the environment, `warn`
-when the home has neither and no extension is installed, and `skip` when an extension package is installed because its
-provider cannot be checked without loading Pi. The fix for a warning is `/login` inside `jig`, or
-`jig auth login <provider>` in a terminal.
+Inside Pi the model line is Pi's own count: `ok` with `3 models available`, `warn` with `none available. Type /login.`
+The terminal doctor has no Pi to ask, so it reads the folder: `ok` when `auth.json` names a provider or a provider key is set
+in the environment, `warn` when it has neither and no extension is installed, and `skip` when an extension package other than
+Jig itself is installed (such as jig-bedrock), because its provider cannot be checked without loading Pi. The fix for a
+warning is `/login` in Pi; in a home it can also be `jig auth login <provider>` in a terminal.
 
 A `skip` is not a failure. Every store is asked for metadata only: an entry exists, a variable is set, a file's
 size and mode, a Keychain lookup without the password, a 1Password item list without its fields, or a login
@@ -290,7 +339,7 @@ tool's own status. A field's value is never read to check it.
 - **A section that is not loaded.** The message names the key. A company's defaults can wait for the part only you
   know, such as your login on a bastion host.
 - **A plugin that is not set up.** The doctor's line says `not set up:` with what the plugin does and
-  `Run jig setup <section>.` Nothing is wrong until its tools need it; setup's plugin list asks the questions. A plugin
+  `Run /jig setup <section>.` Nothing is wrong until its tools need it; setup's plugin list asks the questions. A plugin
   whose questions are all optional, and whose section works with nothing written, gets no line: it runs on its defaults.
 - **A login tool that is not signed in.** The fix is its own command, such as `gh auth login`.
 - **A program that is missing.** The fix is the install command. Jig installs nothing.

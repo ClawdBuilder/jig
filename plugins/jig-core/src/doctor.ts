@@ -12,7 +12,8 @@ import type {
 } from "./contract.ts";
 import { DOCTOR_CHECKS } from "./doctor-checks.ts";
 import { errorMessage } from "./errors.ts";
-import { jigPackage, piVersion } from "./pi-version.ts";
+import type { ModelCatalogue } from "./model-auth.ts";
+import { jigPackage, reportedPiVersion } from "./pi-version.ts";
 import type { Connector } from "./start-checks.ts";
 import type { Timers } from "./watch/timers.ts";
 
@@ -99,7 +100,11 @@ export interface DoctorContext {
         alwaysOn: Array<{ feature: string; plugin: string; settings?: string }>;
         offSections: string[];
     };
+    /** In a session: whether Pi's active tools include codemode. Absent in the `jig` command, where the files decide. */
+    codemodeActive?: boolean;
     protectedPaths: () => readonly ProtectedPathInfo[];
+    /** Pi's model registry, in a session: the Model line asks it how many models can be used. The terminal has none. */
+    models?: ModelCatalogue;
     sandbox: SandboxProvider | undefined;
     recordsProblem: string | undefined;
     agentDir: string;
@@ -173,7 +178,7 @@ export async function runDoctor(context: DoctorContext, options: DoctorOptions =
     for (const line of lines) counts[line.level]++;
     const pkg = jigPackage();
     const jig = options.jigVersion === null ? undefined : (options.jigVersion ?? pkg.version);
-    const pi = (options.piVersion ?? piVersion)();
+    const pi = reportedPiVersion(options.piVersion);
     return {
         lines,
         counts,

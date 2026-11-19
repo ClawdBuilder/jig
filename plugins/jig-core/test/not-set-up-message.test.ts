@@ -34,11 +34,11 @@ function sources(): Array<[string, string]> {
 describe("the line for a section that is not set up", () => {
     const input = { section: "orders", plugin: "jig-orders", needs: 'an "orders" section with "services"' };
 
-    test("names the setup command first, in Pi and in a terminal, then the by-hand route and the README", () => {
+    test("names the setup command first, in Pi, then the by-hand route and the README", () => {
         const said = notSetUpMessage(input);
         assert.equal(
             said,
-            'orders is not set up: ask the person to run /jig setup orders in Pi, or jig setup orders in a terminal; by hand, add an "orders" section with "services" to jig.json (see the jig-orders README)',
+            'orders is not set up: ask the person to run /jig setup orders; by hand, add an "orders" section with "services" to jig.json (see the jig-orders README)',
         );
         assert.equal(said.includes("\n"), false);
     });
@@ -46,7 +46,7 @@ describe("the line for a section that is not set up", () => {
     test("to a person typing a command, it says run, not ask the person", () => {
         assert.match(
             notSetUpMessage({ ...input, reader: "person" }),
-            /^orders is not set up: run \/jig setup orders in Pi, or jig setup orders in a terminal; by hand, add/,
+            /^orders is not set up: run \/jig setup orders; by hand, add/,
         );
     });
 });
@@ -59,7 +59,7 @@ describe("the line for a section that is there but fails its check", () => {
         const said = notSetUpMessage({ ...input, problem });
         assert.equal(
             said,
-            "orders's settings have a problem: orders.url must be an https address; ask the person to fix it with /jig setup orders in Pi or jig setup orders in a terminal, or see /jig for all problems",
+            "orders's settings have a problem: orders.url must be an https address; ask the person to fix it with /jig setup orders, or see /jig for all problems",
         );
         assert.doesNotMatch(said, /is not set up/, "a section that is there is not 'not set up'");
         assert.doesNotMatch(said, /by hand, add/, "nor is a person told to add what is already there");
@@ -69,7 +69,7 @@ describe("the line for a section that is there but fails its check", () => {
     test("to a person typing a command, it says fix it, not ask the person", () => {
         assert.match(
             notSetUpMessage({ ...input, problem, reader: "person" }),
-            /^orders's settings have a problem: .*; fix it with \/jig setup orders in Pi or jig setup orders in a terminal, or see \/jig for all problems$/,
+            /^orders's settings have a problem: .*; fix it with \/jig setup orders, or see \/jig for all problems$/,
         );
     });
 
@@ -85,10 +85,7 @@ describe("the line for a section that is there but fails its check", () => {
                 });
                 assert.ok(said.length <= 200, `${reader} ${section}: ${said.length} characters`);
                 assert.match(said, /…; (?:ask the person to )?fix it with /, "the problem ends in an ellipsis");
-                assert.ok(
-                    said.includes(`/jig setup ${section} in Pi or jig setup ${section} in a terminal`),
-                    "the command",
-                );
+                assert.ok(said.includes(`/jig setup ${section}, or see /jig for all problems`), "the command");
                 assert.ok(said.endsWith(", or see /jig for all problems"), "the pointer");
             }
         }

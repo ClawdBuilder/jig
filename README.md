@@ -16,18 +16,19 @@ and records every call it allows. It never signs in: the tool that owns a login 
 Jig needs Pi 1.4 or later and Node.js 22.19 or later ([Compatibility](docs/compatibility.md)).
 
 ```bash
-npx @clawdbuilder/jig setup
-jig
+pi install npm:@clawdbuilder/jig
+pi
 ```
 
-After setup, sign in to a model provider: type `/login` inside jig to choose one, or run `jig auth login <provider>` in a
-terminal.
-
-`jig` is Pi for `~/.jig` (or `JIG_HOME`); see [Setup and doctor](docs/setup-and-doctor.md) and [Your first hour](docs/first-hour.md).
+Jig is an ordinary Pi package: it loads in the folder your `pi` already uses. Inside Pi, type `/login` to sign in to a
+model provider, `/jig setup` to answer the first questions and `/jig doctor` to check the result:
 
 ```text
 Jig doctor · 12 ok · 1 warning · 0 failures · 11 skipped
 ```
+
+A separate home with its own `jig` command is optional: [A separate Jig home](docs/setup-and-doctor.md#a-separate-jig-home-optional).
+[Setup and doctor](docs/setup-and-doctor.md) and [Your first hour](docs/first-hour.md) go further.
 
 ## How it works
 
@@ -83,7 +84,7 @@ Work with a page behind it, not a promise:
 - [Architecture](docs/architecture.md): the tool manager, the sandbox boundary and where each plugin fits.
 - [Permissions](docs/permissions.md): environments, rules and the floor configuration cannot lower.
 - [Plugins](docs/plugins.md): every tool, its actions and the plugin that owns it.
-- [Setup and doctor](docs/setup-and-doctor.md): `jig setup`, `jig doctor` and what each finding means.
+- [Setup and doctor](docs/setup-and-doctor.md): `/jig setup`, `/jig doctor` and what each finding means.
 
 The longer [reading paths](docs/reading.md) page keeps the order through Approvals, Secrets, Writing a company plugin,
 Decisions, Compatibility and the code maps; the [docs index](docs/README.md) has every page, grouped. [Contributing](CONTRIBUTING.md) covers the checks and where code goes;
