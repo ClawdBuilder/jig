@@ -346,9 +346,24 @@ describe("jig doctor", () => {
         const result = await run(["doctor"]);
         assert.equal(result.code, 0, result.stdout + result.stderr);
         assert.match(result.stdout, /skip Off: jira\./);
-        assert.match(result.stdout, /sections in jig\.json are\s+kept/);
+        assert.match(result.stdout, /This plugin is not loaded\. Its section in jig\.json is\s+kept/);
         assert.doesNotMatch(result.stdout, /is not a known field/);
         assert.doesNotMatch(result.stdout, /warn .*jira/i);
+    });
+
+    test("review and session filtered out keep their sections: one Off line, no problem", {
+        timeout: 60_000,
+    }, async () => {
+        settingsFiltered(["!plugins/jig-review/index.ts", "!plugins/jig-session/index.ts"]);
+        writeFileSync(
+            path.join(agent, "jig.json"),
+            JSON.stringify({ review: { diffView: "split" }, session: { compactWhenIdle: { afterSeconds: 600 } } }),
+        );
+        const result = await run(["doctor"]);
+        assert.equal(result.code, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /skip Off: review, session\./);
+        assert.doesNotMatch(result.stdout, /unknown field|is not a known field/);
+        assert.doesNotMatch(result.stdout, /fail /);
     });
 
     test("several plugins that are off are one line, sorted, and --json has the one id", {

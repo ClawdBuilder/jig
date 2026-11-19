@@ -67,7 +67,7 @@ export function doctorContext(state: JigState): DoctorContext {
         now: state.now,
         onboarding: activeOnboarding(state),
         sectionSetup: state.sectionSetup,
-        ...sessionFiltered(state.offSections),
+        ...sessionFiltered(state.offSections, state.sectionChecks),
     };
 }
 /** The relays declared in jig.json: health, the protocol it speaks, and whether the token resolves. */

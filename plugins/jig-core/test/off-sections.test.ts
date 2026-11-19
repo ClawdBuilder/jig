@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
+import type { ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { jigJira } from "../../jig-jira/src/index.ts";
 import { jig } from "../src/client.ts";
 import { runDoctor } from "../src/doctor.ts";
@@ -13,7 +14,6 @@ import { doctorContext } from "../src/doctor-checks.ts";
 import { offLine } from "../src/doctor-off.ts";
 import type { DoctorOptions } from "../src/doctor.ts";
 import { runningJigState } from "../src/index.ts";
-import { FEATURES } from "../src/plugin-table.ts";
 import type { FakeUiScript } from "./support/fakes.ts";
 import { startWorld } from "./support/session.ts";
 import type { World, WorldOptions } from "./support/session.ts";
@@ -132,19 +132,64 @@ describe("the doctor's one Off line", () => {
         const report = await runDoctor(doctorContext(live), { ...OPTIONS, home: scratch });
         const off = report.lines.filter((line) => line.id.startsWith("config.filtered"));
         assert.equal(off.length, 1, JSON.stringify(off));
-        const expected = Object.values(FEATURES)
-            .flatMap((entry) => (entry.section === undefined || entry.section === "jira" ? [] : [entry.feature]))
-            .sort();
         assert.equal(off[0]?.id, "config.filtered.off");
         assert.equal(off[0]?.level, "skip");
-        assert.equal(off[0]?.title, `Off: ${expected.join(", ")}.`);
-        assert.ok(expected.includes("review") && expected.includes("session"), "the two new table entries are counted");
+        // Loaded: jig-core, the test's own plugin and jig-jira. The sandbox is never in the line.
+        assert.equal(
+            off[0]?.title,
+            "Off: agents, api, git, lens, logs, memory, mongo, ops, review, session, theme, workflow.",
+        );
+        assert.match(off[0]?.detail ?? "", /^These plugins are not loaded\./);
         assert.equal(off[0]?.fix, undefined, "a session cannot tell which settings file holds the filter");
         assert.equal(
             report.lines.some((line) => line.id.startsWith("config.problem")),
             false,
             "the sections left in the file are not problems",
         );
+    });
+
+    test("in a session the sandbox is not in the Off line, and its own line says what it said before", async () => {
+        await begin({ ui: ALLOW });
+        const live = runningJigState();
+        assert.ok(live);
+        assert.equal(live.offSections?.has("sandbox"), true, "no sandbox plugin is loaded here");
+        const report = await runDoctor(doctorContext(live), { ...OPTIONS, home: scratch });
+        const off = report.lines.find((line) => line.id === "config.filtered.off");
+        assert.ok(off);
+        assert.doesNotMatch(off.title, /sandbox/);
+        const sandbox = report.lines.filter((line) => line.id === "sandbox.provider");
+        assert.deepEqual(
+            sandbox.map((line) => [line.level, line.detail]),
+            [["warn", "bash is not sandboxed; a shell command can read your credentials."]],
+        );
+    });
+
+    test("a section a plugin registers after the session started is not listed as Off", async () => {
+        const late: ExtensionFactory = (pi) => {
+            pi.on("session_start", () => {
+                jig().config.registerSection("jira", () => []);
+            });
+        };
+        await begin({ config: { jira: JIRA }, plugins: [late], ui: ALLOW });
+        const live = runningJigState();
+        assert.ok(live);
+        assert.equal(live.offSections?.has("jira"), true, "jig-core saw no jira section when the session started");
+        assert.equal(live.sectionChecks.has("jira"), true, "and the plugin registered it just after");
+        const report = await runDoctor(doctorContext(live), { ...OPTIONS, home: scratch });
+        const off = report.lines.find((line) => line.id === "config.filtered.off");
+        assert.ok(off);
+        assert.doesNotMatch(off.title, /jira/);
+        assert.match(off.title, /\blens\b/, "the sections still off are listed");
+    });
+
+    test("one plugin that is off reads in the singular", () => {
+        const [line] = offLine({
+            features: [{ feature: "jira", section: "jira" }],
+            alwaysOn: [],
+            offSections: ["jira"],
+        });
+        assert.equal(line?.title, "Off: jira.");
+        assert.match(line?.detail ?? "", /^This plugin is not loaded\. Its section in jig\.json is kept/);
     });
 
     test("with every plugin loaded there is no Off line", () => {
