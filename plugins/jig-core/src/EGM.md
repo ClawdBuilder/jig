@@ -48,7 +48,7 @@ Plugin overview: [jig-core](../EGM.md).
   inside an object),
   `detect.ts` (`DETECTS`: `user`, `git-email`, `gh-account`, `aws-profile`; one fixed command each, 1.5 s, never secret), `plain-label.ts`.
 - **Contract splits.** `contract.ts` stays the one import for plugins and re-exports `contract-onboarding.ts` (the onboarding and sign-in
-  method types), `contract-run.ts` (`OutputKeep`, `RunOptions`, `RunResult`), `contract-sandbox.ts` (`SandboxProvider`,
+  method types), `contract-gate.ts` (`Gate`, `GateCall`, `GateVerdict`), `contract-run.ts` (`OutputKeep`, `RunOptions`, `RunResult`), `contract-sandbox.ts` (`SandboxProvider`,
   `SandboxNetworkMode`, `SandboxRunOptions`, `SandboxRunResult`: what a sandbox plugin registers, including the optional
   `brokerScript`) and `contract-watch.ts` (watch types); `api-options.ts` checks
   `registerSection`'s path lists and method sections before anything is registered.

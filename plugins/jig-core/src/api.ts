@@ -15,7 +15,7 @@ import { TOOLS_SECTION } from "./kit/tools.ts";
 import { UPDATES_SECTION } from "./updates-section.ts";
 import type { ExecGuard } from "./exec.ts";
 import { checkOnboarding, checkOnboardingMethods } from "./onboarding.ts";
-import { checkMethodSections, checkPathList } from "./api-options.ts";
+import { checkMethodSections, checkPathList, keepList } from "./api-options.ts";
 import { checkSetup } from "./setup-questions.ts";
 import { newCompanyEntry, refreshCompany } from "./profile-state.ts";
 import type { CompanyEntry } from "./profile-state.ts";
@@ -301,18 +301,10 @@ export function buildApi(state: JigState): JigApi {
                     const target = state.companies.get(company);
                     if (target !== undefined) target.onboarding = entry;
                 }
-                if (oneOf === undefined || oneOf.length === 0) state.sectionOneOf.delete(name);
-                else
-                    state.sectionOneOf.set(
-                        name,
-                        oneOf.map((paths) => [...paths]),
-                    );
-                if (replace === undefined || replace.length === 0) state.sectionReplace.delete(name);
-                else state.sectionReplace.set(name, [...replace]);
-                if (union === undefined || union.length === 0) state.sectionUnion.delete(name);
-                else state.sectionUnion.set(name, [...union]);
-                if (first === undefined || first.length === 0) state.sectionFirst.delete(name);
-                else state.sectionFirst.set(name, [...first]);
+                keepList(state.sectionOneOf, name, oneOf, (paths) => [...paths]);
+                keepList(state.sectionReplace, name, replace);
+                keepList(state.sectionUnion, name, union);
+                keepList(state.sectionFirst, name, first);
                 // A section registered after the file was read is checked now, so the order plugins load in does not matter.
                 if (state.configLoaded) loadPersonalConfig(state, state.personal.file);
             },

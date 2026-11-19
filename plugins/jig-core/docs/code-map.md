@@ -190,6 +190,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `tunnels.ts` | How a company plugin gives a tool a network route of its own, such as a database behind a jump host | `state.ts` |
 | `exec.ts` | Runs programs for tools: an argument list, never a shell, with a timeout and a minimal environment | `api.ts`, `preview-html.ts`, `secrets.ts` |
 | `exec-output.ts` | What a program's output keeps past the cap: head, tail, or both | `exec.ts` |
+| `contract-gate.ts` | The gate part of the contract: a gate's call and verdict, re-exported from `contract.ts` | `contract.ts` |
 | `contract-run.ts` | The `exec.run` options and result, re-exported from `contract.ts` | `contract.ts`, `exec.ts` |
 | `contract-sandbox.ts` | The sandbox part of the contract: the provider a sandbox plugin registers and what a command runs with, re-exported from `contract.ts` | `contract.ts` |
 | `contract-watch.ts` | The watch part of the contract: result, news, poll, kind and info, re-exported from `contract.ts` | `contract.ts` |
