@@ -114,6 +114,7 @@ describe("the API", () => {
             "config.addSecretCommands()",
             "config.addSectionDefaults()",
             "config.enableSecretBackends()",
+            "config.problems()",
             "config.registerSection()",
             "config.section()",
             "declareTool()",
@@ -453,14 +454,9 @@ describe("what plugins import", () => {
                 "registerJigTool",
                 "transcriptTools",
             ],
-            "values.ts": [
-                "InputError",
-                "NotConfiguredError",
-                "NotSetUp",
-                "RefusedError",
-                "isObject",
-                "notSetUpMessage",
-            ],
+            // `notSetUpMessage` is public on purpose: the one line a tool says while its section is missing or wrong, which a
+            // company plugin's own tool says the same way. Its input type is not exported: a plugin never needs the name.
+            "values.ts": ["InputError", "NotConfiguredError", "RefusedError", "isObject", "notSetUpMessage"],
         };
         for (const module of modules) {
             assert.deepEqual(exportedNames(path.join(kit, module)), (expected[module] ?? []).sort(), module);

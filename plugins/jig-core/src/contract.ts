@@ -596,6 +596,10 @@ export interface JigApi {
         /** The section as loaded at the last session start, after validation: the user's, laid over the company's
          *  defaults when it gave some. Undefined when absent or invalid. `ui` is jig-core's own page-theme section. */
         section(name: string): unknown;
+        /** What the section's own check said about the user's section, as loaded at the last session start: its messages,
+         *  in order, each naming the key. Empty when the section loaded, is not in the file, or nobody registered it. A
+         *  tool that finds `section()` undefined asks this to tell "set up wrongly" (a message to quote) from "not set up". */
+        problems(name: string): readonly string[];
     };
 
     /** The paths Pi's file tools must not touch, so that a sandbox for `bash` can hide the same ones. */

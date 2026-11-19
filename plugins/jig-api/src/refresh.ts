@@ -95,6 +95,7 @@ export function registerRefresh(pi: ExtensionAPI, options: ApiOptions): void {
                         plugin: "jig-api",
                         needs: 'an "api" section with "collections"',
                         reader: "person",
+                        problem: jig().config.problems("api")[0],
                     }),
                     "warning",
                 );

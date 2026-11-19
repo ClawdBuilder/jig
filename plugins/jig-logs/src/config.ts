@@ -355,16 +355,20 @@ export function logsSettings(): LogsSettings | undefined {
     return settingsFrom(jig().config.section("logs"));
 }
 
-const NOT_CONFIGURED = notSetUpMessage({
-    section: "logs",
-    plugin: "jig-logs",
-    needs: 'a "logs" section with "backend" and "environments"',
-});
+/** The line for a call while the section is missing, or there and failing its check (then it quotes the first problem). */
+function notConfigured(): string {
+    return notSetUpMessage({
+        section: "logs",
+        plugin: "jig-logs",
+        needs: 'a "logs" section with "backend" and "environments"',
+        problem: jig().config.problems("logs")[0],
+    });
+}
 
 /** The settings, or a refusal that says the tool is not configured. */
 export function requireSettings(): LogsSettings {
     const settings = logsSettings();
-    if (settings === undefined) return refuse(NOT_CONFIGURED);
+    if (settings === undefined) return refuse(notConfigured());
     return settings;
 }
 

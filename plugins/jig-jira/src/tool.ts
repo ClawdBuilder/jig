@@ -56,6 +56,8 @@ export function createTool(options: JiraOptions = {}): JiraTool {
                     section: "jira",
                     plugin: "jig-jira",
                     needs: 'a "jira" section with "site" and "auth"',
+                    // There but failing its check: say what is wrong, not that it is missing.
+                    problem: jig().config.problems("jira")[0],
                 }),
             );
         }

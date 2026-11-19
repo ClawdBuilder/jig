@@ -330,22 +330,32 @@ describe("invalid input", () => {
 });
 
 describe("a tool that is not set up", () => {
-    test("without an api section every call is invalid input that says what to add", () => {
+    test("without an api section every call is invalid input that says what to add, within the 200 characters a preview keeps", () => {
         h.jig.reset();
         assert.throws(
             () => classify({ action: "list" }),
             (error: unknown) =>
                 error instanceof TypeError &&
+                error.message.length <= 200 &&
                 /^api is not set up: ask the person to run \/jig setup api in Pi, or jig setup api in a terminal; by hand, add an "api" section with "collections" to jig\.json \(see the jig-api README\)$/.test(
                     error.message,
                 ),
         );
     });
 
-    test("a section with an error reads as absent, as jig-core reports it at start-up and the plugin uses nothing from it", async () => {
+    test("a section with an error reads as absent, as jig-core reports it at start-up, and the tool says it is set up wrongly", async () => {
         h.configure({ collections: { orders: { http: "relative/path" } } });
         const result = await h.call({ action: "list" });
-        assert.match(result.blocked ?? "", /^jig-core could not decide: api is not set up/);
+        const said = (result.blocked ?? "").replace(/^jig-core could not decide: /, "");
+        assert.match(said, /^api's settings have a problem: api\.collections\.orders\.http: /);
+        assert.ok(
+            said.endsWith(
+                "ask the person to fix it with /jig setup api in Pi or jig setup api in a terminal, or see /jig for all problems",
+            ),
+            said,
+        );
+        assert.doesNotMatch(said, /by hand, add/);
+        assert.ok(said.length <= 200, `${said.length} characters`);
     });
 });
 

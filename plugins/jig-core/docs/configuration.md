@@ -341,7 +341,7 @@ such as `git`, `lens` or `memory`.
 - **At session start,** jig-core checks each registered section that is in the
   file. A section that fails is reported with the file and the key, `section()`
   returns `undefined`, and the plugin uses its defaults. The rest of the file
-  still loads.
+  still loads. `config.problems(name)` gives the plugin that section's messages.
 - **A company can give defaults for a section** with
   `config.addSectionDefaults(name, defaults)`. Your section is laid over them
   before the plugin's check runs, so you write only what you change.

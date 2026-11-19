@@ -79,7 +79,7 @@ describe("what the plugin registers", () => {
         await assert.rejects(
             h.declaration.preview?.({ action: "databases", environment: "staging" }, new AbortController().signal) ??
                 Promise.resolve(),
-            /mongo is not set up/,
+            /mongo's settings have a problem: mongo\.connections\.staging\.uri: /,
         );
         assert.ok(
             validateMongo({

@@ -187,6 +187,34 @@ describe("through the API", () => {
         assert.deepEqual(problems, [`${file}: git: git.timeout must be a number`]);
     });
 
+    test("problems() gives what the check said about a section that failed, so a tool can say it is set up wrongly", () => {
+        const { state, api, file } = setup({ git: { timeout: "soon" } });
+        api.config.registerSection("git", gitCheck);
+        assert.deepEqual(api.config.problems("git"), [], "nothing is known before the session starts");
+        loadPersonalConfig(state, file);
+        assert.deepEqual(api.config.problems("git"), ["git.timeout must be a number"]);
+        assert.equal(api.config.section("git"), undefined);
+    });
+
+    test("problems() is empty for a section that loaded, one that is not in the file, and one nobody registered", () => {
+        const { state, api, file } = setup({ git: { timeout: 30 } });
+        api.config.registerSection("git", gitCheck);
+        api.config.registerSection("lens", () => ["lens.port must be a number"]);
+        loadPersonalConfig(state, file);
+        assert.deepEqual(api.config.problems("git"), []);
+        assert.deepEqual(api.config.problems("lens"), [], "absent: not set up, not set up wrongly");
+        assert.deepEqual(api.config.problems("nobody"), []);
+    });
+
+    test("problems() answers with a copy, so a plugin that changes it changes nothing", () => {
+        const { state, api, file } = setup({ git: { timeout: "soon" } });
+        api.config.registerSection("git", gitCheck);
+        loadPersonalConfig(state, file);
+        const first = api.config.problems("git") as string[];
+        assert.throws(() => first.push("x"), TypeError, "it is frozen");
+        assert.deepEqual(api.config.problems("git"), ["git.timeout must be a number"]);
+    });
+
     test("an unregistered top-level key is reported as unknown", () => {
         const { state, api, file } = setup({ lens: {} });
         loadPersonalConfig(state, file);

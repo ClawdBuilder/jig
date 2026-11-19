@@ -331,6 +331,12 @@ export function buildApi(state: JigState): JigApi {
                 if (name === "ui") return state.personal.config.ui;
                 return state.personal.sections.get(name);
             },
+            problems(name) {
+                ensureConfigLoaded(state);
+                return Object.freeze(
+                    state.personal.problems.filter((problem) => problem.key === name).map((problem) => problem.message),
+                );
+            },
         },
 
         protectedPaths: {

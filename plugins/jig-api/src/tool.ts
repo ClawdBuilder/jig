@@ -69,7 +69,13 @@ function requiredSettings(): ApiSettings {
     const settings = settingsOf(jig().config.section("api"));
     if (settings === undefined) {
         throw new NotConfiguredError(
-            notSetUpMessage({ section: "api", plugin: "jig-api", needs: 'an "api" section with "collections"' }),
+            notSetUpMessage({
+                section: "api",
+                plugin: "jig-api",
+                needs: 'an "api" section with "collections"',
+                // There but failing its check: say what is wrong, not that it is missing.
+                problem: jig().config.problems("api")[0],
+            }),
         );
     }
     return settings;
