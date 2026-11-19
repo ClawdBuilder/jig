@@ -126,12 +126,12 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
             nowTarget = realpathSync(plan.file);
         } catch {
             throw new SetupRefused(
-                "Your settings file is a link whose target cannot be read, so nothing was written. Run jig setup again.",
+                "Your settings file is a link whose target cannot be read, so nothing was written. Run setup again.",
             );
         }
         if (nowTarget !== plan.target) {
             throw new SetupRefused(
-                "Your settings file is a link that now points somewhere else, so nothing was written. Run jig setup again.",
+                "Your settings file is a link that now points somewhere else, so nothing was written. Run setup again.",
             );
         }
     }
@@ -146,12 +146,12 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
     }
     if (plan.exists && current !== plan.before) {
         throw new SetupRefused(
-            "Your settings file changed while setup was open, so nothing was written. Run jig setup again.",
+            "Your settings file changed while setup was open, so nothing was written. Run setup again.",
         );
     }
     if (!plan.exists && current !== undefined) {
         throw new SetupRefused(
-            "Your settings file was created while setup was open, so nothing was written. Run jig setup again.",
+            "Your settings file was created while setup was open, so nothing was written. Run setup again.",
         );
     }
 

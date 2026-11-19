@@ -47,12 +47,32 @@ test("inside the range says nothing", () => {
     assert.deepEqual(companyRangeChecks(context, at("0.4.5")), []);
 });
 
-test("below the range warns, naming the package, the range and this Jig", () => {
+test("below the range warns, naming the package, the range and this Jig; in a Pi folder the fix is an install", () => {
     const context = install([{ name: "@acme/jig-company", range: ">=0.4.0 <0.5.0" }]);
     const [line] = companyRangeChecks(context, at("0.3.0"));
     assert.equal(line?.level, "warn");
     assert.match(line?.detail ?? "", /@acme\/jig-company allows >=0\.4\.0 <0\.5\.0; this Jig is 0\.3\.0/);
-    assert.match(line?.fix ?? "", /jig update/);
+    assert.match(
+        line?.fix ?? "",
+        /^Run pi install npm:@clawdbuilder\/jig@<version> with a version inside that range, or ask/,
+    );
+    assert.doesNotMatch(line?.fix ?? "", /jig update/);
+});
+
+test("in the Jig home the fix is jig update", () => {
+    const context = install([{ name: "@acme/jig-company", range: ">=0.4.0 <0.5.0" }]);
+    const saved = process.env.JIG_HOME;
+    process.env.JIG_HOME = agentDir;
+    try {
+        const [line] = companyRangeChecks(context, at("0.3.0"));
+        assert.match(
+            line?.fix ?? "",
+            /^Run jig update, or ask for a @acme\/jig-company package that fits Jig 0\.3\.0\./,
+        );
+    } finally {
+        if (saved === undefined) delete process.env.JIG_HOME;
+        else process.env.JIG_HOME = saved;
+    }
 });
 
 test("above the range warns too", () => {

@@ -233,8 +233,7 @@ talks to Pi.
   the tool needs and the user has not set up.
   - **`notSetUpMessage({ section, plugin, needs, reader?, problem? })`** is the
     one line a tool says then, so the model repeats it and sends the person to
-    `/jig setup <section>` in Pi or `jig setup <section>` in a terminal before any
-    hand edit. With `problem` (`jig().config.problems(section)[0]`) it says the
+    `/jig setup <section>` before any hand edit. With `problem` (`jig().config.problems(section)[0]`) it says the
     section is there but wrong, and quotes the problem. It stays on one line of at
     most 200 characters, the length a preview keeps, cutting the problem and never
     the command.

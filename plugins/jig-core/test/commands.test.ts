@@ -157,12 +157,33 @@ describe("/jig", () => {
         );
     });
 
-    test("setup refuses when the agent folder is not the Jig home", async () => {
-        const harness = await begin({ mode: "tui", plugins: setupSections });
+    test("setup in a Pi folder that is not the Jig home opens the plugin list and writes that folder's jig.json", async () => {
+        const harness = await begin({
+            mode: "tui",
+            plugins: setupSections,
+            ui: {
+                select: (_title, options) =>
+                    options.includes("Answer these")
+                        ? "Answer these"
+                        : options.includes("Save these changes")
+                          ? "Save these changes"
+                          : (options.find((option) => option.startsWith("Done")) ?? options[0]),
+                input: () => "orders-api",
+                confirm: () => true,
+            },
+        });
+        // No `inHome`: JIG_HOME is not this folder, so this is Jig installed with `pi install`.
         const shown = await jigCommand(harness, "setup");
-        assert.match(shown, /not the Jig home/);
-        assert.match(shown, /npx @clawdbuilder\/jig setup/);
-        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
+        assert.doesNotMatch(shown, /not the Jig home|npx @clawdbuilder/);
+        assert.ok(
+            harness.ui.selects.some((entry) => entry.title.startsWith("Jig setup: which plugin")),
+            "the plugin list opened",
+        );
+        const file = path.join(harness.agentDir, "jig.json");
+        assert.ok(existsSync(file), "the settings file was written in the folder in use");
+        const written = JSON.parse(readFileSync(file, "utf8")) as { acme?: { bastion?: { user?: string } } };
+        assert.equal(written.acme?.bastion?.user, "orders-api");
+        assert.match(shown, /Run \/reload to apply\./);
     });
 
     test("runs setup with Pi's dialogs in the TUI, and writes the same file", async () => {
@@ -264,6 +285,13 @@ describe("/jig", () => {
         assert.match(shown, /npx @clawdbuilder\/jig setup/);
     });
 
+    test("the no-screen fallback in a Pi folder that is not the Jig home names no terminal command", async () => {
+        const harness = await begin({ mode: "print", env: { PATH: "" }, plugins: setupSections });
+        const shown = await jigCommand(harness, "setup");
+        assert.equal(shown, "This Pi mode has no interactive setup screen.\nOpen Pi in a terminal and run /jig setup.");
+        assert.equal(existsSync(path.join(harness.agentDir, "jig.json")), false, "nothing was written");
+    });
+
     test("Escape at the first Pi question writes nothing", async () => {
         const harness = await begin({ mode: "tui", plugins: setupSections, ui: { select: () => undefined } });
         await inHome(harness, () => jigCommand(harness, "setup"));
@@ -279,7 +307,7 @@ describe("/jig", () => {
             config: { jira: { token: "pass:work/jig-test-does-not-exist" } },
             plugins: (api) => api.config.registerSection("jira", () => []),
         });
-        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run jig setup in a terminal\./);
+        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run \/jig setup\./);
     });
 
     test("adds one line about setup when a company's defaults are incomplete", async () => {
@@ -293,7 +321,7 @@ describe("/jig", () => {
                 );
             },
         });
-        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run jig setup in a terminal\./);
+        assert.match(await jigCommand(harness), /Setup: 1 thing needs you\. Run \/jig setup\./);
     });
 
     test("shows the status: tools governed, plugins, tools on the unknown default, watches and the configuration", async () => {

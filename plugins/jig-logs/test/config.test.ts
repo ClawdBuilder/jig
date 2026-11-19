@@ -513,7 +513,7 @@ test("a section jig-core finds invalid reads as absent, and the tool says it is 
         (error: Error) =>
             error instanceof TypeError &&
             error.message.length <= 200 &&
-            /^logs's settings have a problem: logs\.typo[^;]*; ask the person to fix it with \/jig setup logs in Pi or jig setup logs in a terminal, or see \/jig for all problems$/.test(
+            /^logs's settings have a problem: logs\.typo[^;]*; ask the person to fix it with \/jig setup logs, or see \/jig for all problems$/.test(
                 error.message,
             ),
     );

@@ -24,21 +24,22 @@ sudo apt install bubblewrap socat ripgrep
 ## 1. Install
 
 ```bash
-npx @clawdbuilder/jig setup
+pi install npm:@clawdbuilder/jig
 ```
 
-This makes the Jig home (`~/.jig`), installs every plugin into it with Pi, and writes the `jig` command. Your own
-`pi` is not changed: `jig` is Pi for the home. [`jig-core`](../plugins/jig-core/README.md) is the one that governs
-the others, so it must always be loaded. To load only some plugins, see [Install](../README.md#install).
+This adds Jig to the packages of the folder your `pi` uses (`~/.pi/agent`, or the folder `PI_CODING_AGENT_DIR` names), and
+Pi loads every plugin from there. [`jig-core`](../plugins/jig-core/README.md) is the one that governs the others, so it
+must always be loaded. To load only some plugins, see [Loading only some plugins](setup-and-doctor.md#loading-only-some-plugins).
+A Jig kept apart from your own Pi is optional: [A separate Jig home](setup-and-doctor.md#a-separate-jig-home-optional).
 
 ## 1b. Sign in to a model provider
 
-Before the first session, sign in once: type `/login` inside `jig` to choose one, or run `jig auth login <provider>` in a
-terminal. Jig never asks for the key; Pi stores it in the home's `auth.json`.
+Before the first session, sign in once: start `pi` and type `/login` to choose a provider. Jig never asks for the key; Pi
+stores it in the folder's `auth.json`.
 
 ## 2. Run `/jig`
 
-Start Jig in your scratch repository and type:
+Start Pi in your scratch repository and type:
 
 ```text
 /jig
@@ -54,7 +55,7 @@ Three more commands help you look around:
 - `/jig rules` shows the decision for every tool and action, and where it came from;
 - `/jig records` shows where today's records are.
 
-From a terminal, `jig doctor` reads the same setup without starting Pi:
+`/jig doctor` prints the full report; its first lines look like this:
 
 ```text
 Jig doctor · 12 ok · 1 warning · 0 failures · 11 skipped
@@ -69,11 +70,11 @@ Nothing is blocked. 1 warning is worth a look.
 
 ## 3. Set up one plugin: `jig-git`
 
-Jig reads one file, `~/.jig/jig.json`. Run `jig setup` in a terminal; [Setup and doctor](../docs/setup-and-doctor.md)
-covers the questions, confirmation and backup.
+Jig reads one file, `jig.json` in the folder Pi uses (`~/.pi/agent/jig.json` by default). Type `/jig setup`
+in Pi; [Setup and doctor](../docs/setup-and-doctor.md) covers the questions, confirmation and backup.
 
-Jig loads no company plugin here, so `jig setup` asks git's own questions: pick **Git** in the list, or run
-`jig setup git`, and answer the `gh` login and which account to use for a set of repositories. The rest of the
+Jig loads no company plugin here, so `/jig setup` asks git's own questions: pick **Git** in the list, or type
+`/jig setup git`, and answer the `gh` login and which account to use for a set of repositories. The rest of the
 section is written by hand; this page shows the file's shape, with the branch new work starts from and the branches
 the tools will not change directly:
 

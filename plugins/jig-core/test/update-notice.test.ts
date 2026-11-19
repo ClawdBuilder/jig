@@ -16,6 +16,18 @@ let dir: string;
 let agent: string;
 let work: string;
 
+/** Runs `work` with the test's agent folder as the Jig home: the notice then speaks of `jig update`. */
+async function inHome<T>(work: () => Promise<T>): Promise<T> {
+    const saved = process.env.JIG_HOME;
+    process.env.JIG_HOME = agent;
+    try {
+        return await work();
+    } finally {
+        if (saved === undefined) delete process.env.JIG_HOME;
+        else process.env.JIG_HOME = saved;
+    }
+}
+
 beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), "jig-notice-"));
     agent = path.join(dir, "agent");
@@ -100,19 +112,21 @@ describe("checkUpdateAtStart", () => {
     test("tells the person once, then waits a day", async () => {
         let fetched = 0;
         const notes: string[] = [];
-        const first = await checkUpdateAtStart(state(), (message) => notes.push(message), {
-            fetchJson: async () => {
-                fetched++;
-                return registry;
-            },
-        });
+        const first = await inHome(() =>
+            checkUpdateAtStart(state(), (message) => notes.push(message), {
+                fetchJson: async () => {
+                    fetched++;
+                    return registry;
+                },
+            }),
+        );
         assert.equal(first, undefined);
         assert.equal(fetched, 1);
         assert.match(
             notes.join("\n"),
             new RegExp(`Jig 0\\.6\\.0 is available \\(you have ${CURRENT.replaceAll(".", "\\.")}\\)`),
         );
-        assert.match(notes.join("\n"), /Run jig update in a terminal/);
+        assert.match(notes.join("\n"), /Run jig update in a terminal\./);
         await checkUpdateAtStart(state(), (message) => notes.push(message), {
             now: new Date("2026-11-06T11:00:00.000Z").getTime(),
             fetchJson: async () => {
@@ -211,6 +225,20 @@ describe("checkUpdateAtStart", () => {
         });
         assert.match(notes.join("\n"), /deprecated on npm: use 0\.6\.0/);
         assert.match(notes.join("\n"), /now/);
+    });
+
+    test("in a Jig home the deprecated notice and the newer-Pi notice name `jig update`", async () => {
+        const notes: string[] = [];
+        await inHome(async () => {
+            await checkUpdateAtStart(state(), (message) => notes.push(message), {
+                pi: "1.6.0",
+                fetchJson: async () => ({ versions: { [CURRENT]: { deprecated: "use 0.6.0" }, "0.6.0": {} } }),
+            });
+        });
+        assert.deepEqual(notes, [
+            "Pi 1.6.0 is newer than 1.5.2, the version Jig is tested with. If something stops working, use jig update in a terminal.",
+            `Jig ${CURRENT} is deprecated on npm: use 0.6.0. Run jig update in a terminal now.`,
+        ]);
     });
 
     test("warns once when Pi is newer than the tested version", async () => {

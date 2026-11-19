@@ -780,7 +780,7 @@ describe("the doctor", () => {
         assert.equal(lines[0]?.title, "jira");
         assert.equal(
             lines[0]?.detail,
-            "not set up: Read, search and comment on issues in your Jira. Run jig setup jira.",
+            "not set up: Read, search and comment on issues in your Jira. Run /jig setup jira.",
         );
         assert.equal(lines[1]?.title, "Not set");
         assert.equal(lines[1]?.detail, "sandbox; each plugin uses its defaults.");

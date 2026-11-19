@@ -16,7 +16,7 @@ export async function loginChecks(context: DoctorContext, options: DoctorOptions
     const texts = sectionTexts(context).map((text) => text.toLowerCase());
     const lookup =
         options.pathLookup ?? ((program: string, env: NodeJS.ProcessEnv) => findOnPath(program, env, options.platform));
-    const lines: DoctorLine[] = [modelProviderLine(context.agentDir, context.env)];
+    const lines: DoctorLine[] = [modelProviderLine(context.agentDir, context.env, context.models)];
     const checks: Array<{
         tool: string;
         word: string;
