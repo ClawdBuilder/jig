@@ -167,7 +167,7 @@ export function pendingLines(label: string, setup: OnboardingSetup): string[] {
     return [
         `${label} needs settings that setup cannot ask for yet: ${setup.summary}`,
         `Read ${pending.doc} in the Jig package.`,
-        "Add a section like this one to your settings, then run jig setup again:",
+        "Add a section like this one to your settings, then run setup again:",
         JSON.stringify(pending.example, null, 4),
     ];
 }

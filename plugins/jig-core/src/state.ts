@@ -31,6 +31,7 @@ import { PROFILE_SECTION, PROFILES_SECTION, validateProfilesSection, validatePro
 import type { Gates } from "./gates.ts";
 import { createMasker, dailyMaskKey } from "./mask/index.ts";
 import type { Masker } from "./mask/index.ts";
+import type { ModelCatalogue } from "./model-auth.ts";
 import { stateDir } from "./paths.ts";
 import { loadedCodePaths, loadedExtensionFiles } from "./loaded-code.ts";
 import { defaultProtectedPaths, mergeProtected } from "./protected-paths.ts";
@@ -169,6 +170,10 @@ export interface JigState {
     sessionId: string | undefined;
     /** The screen of the running session, or undefined when it has none (print mode). Set when the session starts. */
     screen: Pick<ExtensionUIContext, "notify"> | undefined;
+    /** Pi's model registry in the running session: which models can be used now. Undefined with no session. */
+    models: ModelCatalogue | undefined;
+    /** Pi's version, as its own `VERSION` says it; the `0.0.0` of a Pi that cannot read its package counts as unknown. */
+    piVersion: string | undefined;
     ticket: string | undefined;
     /** Keys from `sessionKey`, added when the user answers "Allow for this session". */
     sessionAllows: Set<string>;
@@ -286,6 +291,8 @@ export function createState(pi: ExtensionAPI, options: JigCoreOptions = {}): Jig
         env,
         sessionId: undefined,
         screen: undefined,
+        models: undefined,
+        piVersion: undefined,
         ticket: undefined,
         sessionAllows: new Set(),
         calls: new Map(),

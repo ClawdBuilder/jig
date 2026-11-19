@@ -278,7 +278,8 @@ describe("the other Pi folders on the machine", () => {
 
     test("every folder under ~/.pi with settings or a login is found, and the current one is left out", () => {
         assert.deepEqual(otherAgentFolders({ agentDir: jigHome, home: personHome, env: {} }), [plainPi, otherPi]);
-        assert.deepEqual(otherAgentFolders({ agentDir: plainPi, home: personHome, env: {} }), [otherPi]);
+        // The Jig home is another Pi folder to a plain `pi`; it is not under ~/.pi, so it is found by its own name.
+        assert.deepEqual(otherAgentFolders({ agentDir: plainPi, home: personHome, env: {} }), [otherPi, jigHome]);
         assert.deepEqual(otherAgentFolders({ agentDir: jigHome, home: path.join(world, "no-home"), env: {} }), []);
     });
 
@@ -351,6 +352,33 @@ describe("the other Pi folders on the machine", () => {
         assert.match(checkIn("write", path.join(nested, "jig.json"))?.reason ?? "", /is guarded/);
         // A sibling under ~/.pi is still covered by the folder above it.
         assert.match(checkIn("write", path.join(personHome, ".pi", "sibling", "x"))?.reason ?? "", /is guarded/);
+    });
+
+    test("a plain pi session protects the Jig home too: its login is secret and its settings are guarded", () => {
+        const person = path.join(world, "plain-session");
+        const home = path.join(person, ".jig");
+        const plain = path.join(person, ".pi", "jig-agent");
+        for (const folder of [home, plain]) mkdirSync(folder, { recursive: true });
+        writeFileSync(path.join(home, "auth.json"), "{}");
+        writeFileSync(path.join(home, "settings.json"), JSON.stringify({ packages: [] }));
+        const list = defaultProtectedPaths({ agentDir: plain, home: person, env: {} });
+        const login = path.join(home, "auth.json");
+        assert.equal(at(list, login)?.kind, "secret");
+        for (const tool of ["read", "write", "edit"]) {
+            const refusal = checkFileTool(tool, { path: login }, { entries: list, cwd: person, home: person });
+            assert.equal(refusal?.entry?.kind, "secret", tool);
+            assert.match(refusal?.reason ?? "", /holds credentials/);
+        }
+        assert.equal(at(list, path.join(home, "settings.json"))?.kind, "guarded");
+        assert.deepEqual(otherAgentFolders({ agentDir: plain, home: person, env: {} }), [home]);
+        // The folder in use is not listed as another one.
+        assert.deepEqual(otherAgentFolders({ agentDir: home, home: person, env: {} }), []);
+        // JIG_HOME moves the home; the default one is then an ordinary folder that holds nothing.
+        const moved = path.join(world, "moved-home");
+        mkdirSync(moved);
+        assert.deepEqual(otherAgentFolders({ agentDir: plain, home: person, env: { JIG_HOME: moved } }), [moved]);
+        // A home that does not exist yet is not listed.
+        assert.deepEqual(otherAgentFolders({ agentDir: plain, home: path.join(world, "no-jig-here"), env: {} }), []);
     });
 
     test("the folder Pi runs with is guarded whole, and not listed twice", () => {

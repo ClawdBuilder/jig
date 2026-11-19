@@ -484,7 +484,7 @@ describe("reads in general", () => {
         const result = await h.call({ action: "get", key: "PROJ-1" });
         assert.match(
             result.error?.message ?? "",
-            /^jira is not set up: ask the person to run \/jig setup jira in Pi, or jig setup jira in a terminal; by hand, add a "jira" section/,
+            /^jira is not set up: ask the person to run \/jig setup jira; by hand, add a "jira" section/,
         );
         assert.equal(h.jira.requests.length, 0);
     });

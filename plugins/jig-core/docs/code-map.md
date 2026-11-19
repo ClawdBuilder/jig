@@ -92,13 +92,14 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor.ts` | `/jig doctor`: the check list, the levels, the counts, the metadata and the text report, quiet or full | `commands.ts`, `doctor-json.ts` |
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
-| `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside | `doctor-checks.ts` |
+| `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside, with the command that moves Jig | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
 | `secret-mounts.ts` | Whether a file is on a WSL Windows drive (no mode): the mount table, else the /mnt/<letter>/ prefix | `secret-status.ts` |
 | `secret-status.ts` | One reference's status, found by metadata only: pass/env/file, a Keychain lookup without `-w`, an op item list, or a login tool's status; never a value | `doctor-secrets.ts`, `setup.ts` |
-| `pi-version.ts` | Pi's version from the package Pi loaded, and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts` |
+| `pi-version.ts` | Pi's version from the package Pi loaded (`0.0.0` counts as unknown), and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts`, `update-notice.ts` |
+| `install-mode.ts` | Whether the folder in use is the Jig home or an ordinary Pi folder, and the commands that differ | `model-auth.ts`, `setup-command.ts`, `doctor-checks.ts` and 2 more |
 
 ### Setup
 
@@ -155,6 +156,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `registry.ts` | The registry npm uses: `jig update` asks `npm config get registry`; the notice reads env and .npmrc files without starting a program | `cli/update.ts`, `update-notice.ts` |
 | `updates-section.ts` | The `updates.check` section: checked like a plugin's so a company can turn the notice off; the person's file wins | `state.ts`, `update-notice.ts` |
 | `update-notice.ts` | The background notice in Pi: once a day, cached, silent offline or off, company cap, deprecated version, Pi newer than tested; the screen only | `start-jobs.ts` |
+| `update-notice-text.ts` | The notice's words for a home and a Pi folder; whether Jig's entry is pinned (Pi says nothing then) | `update-notice.ts` |
 
 ### Profiles (which company applies)
 
@@ -207,7 +209,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/http-error.ts` | The one error a request throws | `kit/http.ts`, `kit/oauth.ts` |
 | `kit/abort.ts` | Waiting for work that may ignore its signal | `kit/http.ts` |
 | `kit/accounts.ts` | The `git.accounts` map: the `host:owner/name` pattern, its check, and the first match | `jig-git`, `jig-ops` |
-| `model-auth.ts` | The local model-provider check | CLI, doctor, `/jig` |
+| `model-auth.ts` | Pi's model count in a session, else the folder's local files; Jig told from `jig-bedrock` by name | CLI, doctor, `/jig`, `/jig setup` |
 | `kit/actions.ts` | The one action table and unknown-action refusal | every plugin |
 | `kit/fields.ts` | The one unknown-field refusal | section checks |
 | `kit/action-names.ts` | The actions renamed to snake_case in 0.4.0, the current name for an old one, and the rules that still name one | `decide.ts`, `classify.ts`, `jig-agents`' policy, `jig-workflow`'s definitions |

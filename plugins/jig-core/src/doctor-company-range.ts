@@ -1,5 +1,6 @@
 // The doctor's company Jig-range check: an installed company package may cap which Jig release its people may run.
 // Inside the range there is nothing to say; outside it, the line names the package, the range and this Jig.
+import { installMode, updateCommand } from "./install-mode.ts";
 import { companyRanges } from "./update-company.ts";
 import { parseRange } from "./update-versions.ts";
 import { jigPackage } from "./pi-version.ts";
@@ -10,6 +11,8 @@ export function companyRangeChecks(context: DoctorContext, options: DoctorOption
     const current = options.jigVersion === null ? undefined : (options.jigVersion ?? jigPackage().version);
     if (current === undefined || context.agentDir === "") return [];
     const listed = readPackages(context.agentDir, context.workingDir).listed;
+    const mode = installMode(context.agentDir);
+    const move = `${updateCommand(mode, jigPackage().name, "<version>")}${mode === "home" ? "" : " with a version inside that range"}`;
     const lines: DoctorLine[] = [];
     for (const company of companyRanges(listed, jigPackage().name ?? "")) {
         const check = parseRange(company.range);
@@ -31,7 +34,7 @@ export function companyRangeChecks(context: DoctorContext, options: DoctorOption
             level: "warn",
             title: `Company Jig range — ${company.package}`,
             detail: `${company.package} allows ${company.range}; this Jig is ${current}.`,
-            fix: `Run jig update, or ask for a ${company.package} package that fits Jig ${current}.`,
+            fix: `Run ${move}, or ask for a ${company.package} package that fits Jig ${current}.`,
         });
     }
     return lines;

@@ -4,11 +4,13 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { companyRanges } from "./update-company.ts";
-import { compareVersions, currentPiRequirement, jigPackage, piVersion } from "./pi-version.ts";
+import { installMode } from "./install-mode.ts";
+import { compareVersions, currentPiRequirement, jigPackage, piVersion, reportedPiVersion } from "./pi-version.ts";
 import { readPackages } from "./cli/packages.ts";
 import { privateFolder, replacePrivateFile, stateDir } from "./paths.ts";
 import { registryFor, registryUrl } from "./registry.ts";
 import type { JigState } from "./state.ts";
+import { availableNotice, deprecatedNotice, isPinned, piNewerNotice } from "./update-notice-text.ts";
 import { selectTarget } from "./update-versions.ts";
 import type { RegistryMetadata } from "./update-versions.ts";
 import { readUpdates } from "./updates-section.ts";
@@ -92,13 +94,12 @@ export async function checkUpdateAtStart(
         const file = path.join(stateDir(state.env), "update-check.json");
         const cache = readCache(file);
 
-        const pi = options.pi ?? piVersion();
+        const agentDir = state.agentDir();
+        const mode = installMode(agentDir);
+        const pi = reportedPiVersion(() => options.pi ?? piVersion());
         const requirement = currentPiRequirement();
         if (pi !== undefined && compareVersions(pi, requirement.tested) > 0 && cache.piWarned !== pi) {
-            notify(
-                `Pi ${pi} is newer than ${requirement.tested}, the version Jig is tested with. If something stops working, use jig update in a terminal.`,
-                "warning",
-            );
+            notify(piNewerNotice(mode, pi, requirement.tested), "warning");
             cache.piWarned = pi;
             writeCache(file, cache);
         }
@@ -111,9 +112,8 @@ export async function checkUpdateAtStart(
         // that only npm can resolve is still used there.
         const registry = registryFor(state.env, homedir(), state.workingDir, name);
         const metadata = (await (options.fetchJson ?? defaultFetch)(registryUrl(registry, name))) as RegistryMetadata;
-        const agentDir = state.agentDir();
-        const company = agentDir === "" ? [] : companyRanges(readPackages(agentDir, state.workingDir).listed, name);
-        const chosen = selectTarget(metadata, company);
+        const listed = agentDir === "" ? [] : readPackages(agentDir, state.workingDir).listed;
+        const chosen = selectTarget(metadata, companyRanges(listed, name));
         if ("problem" in chosen) return;
         const deprecated = metadata.versions?.[current]?.deprecated;
         if (deprecated !== undefined) {
@@ -121,17 +121,17 @@ export async function checkUpdateAtStart(
                 .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
                 .replace(/\s+/g, " ")
                 .trim();
-            notify(
-                `Jig ${current} is deprecated on npm: ${clean.slice(0, 200)}. Run jig update in a terminal now.`,
-                "warning",
-            );
+            notify(deprecatedNotice(mode, name, current, clean.slice(0, 200), chosen.target.version), "warning");
         } else if (compareVersions(chosen.target.version, current) > 0) {
-            const capped =
-                chosen.target.cappedBy.length === 0 ? "" : ` Your company allows up to ${chosen.target.version}.`;
-            notify(
-                `Jig ${chosen.target.version} is available (you have ${current}). Run jig update in a terminal.${capped}`,
-                "info",
-            );
+            const text = availableNotice({
+                mode,
+                packageName: name,
+                current,
+                target: chosen.target.version,
+                capped: chosen.target.cappedBy.length > 0,
+                pinned: isPinned(listed, name),
+            });
+            if (text !== undefined) notify(text, "info");
         }
         writeCache(file, {
             schema: 1,

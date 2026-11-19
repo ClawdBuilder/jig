@@ -24,7 +24,7 @@ import { renamedInRules } from "./kit/action-names.ts";
 import { doctorMarkers, formatDoctor, runDoctor } from "./doctor.ts";
 import { stateDir } from "./paths.ts";
 import { shorten } from "./secret-status.ts";
-import { modelAuthState, modelSignInLine } from "./model-auth.ts";
+import { modelStatus } from "./model-auth.ts";
 
 import { sectionDetail } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
@@ -70,7 +70,10 @@ async function doctorLines(state: JigState, args: readonly string[]): Promise<st
     const unknown = args.filter((word) => !DOCTOR_FLAGS.has(word));
     if (unknown.length > 0) return ["Usage: /jig doctor [--json] [--network] [--quiet]"];
     const flags = new Set(args);
-    const report = await runDoctor(doctorContext(state), { network: flags.has("--network") });
+    const report = await runDoctor(doctorContext(state), {
+        network: flags.has("--network"),
+        ...(state.piVersion === undefined ? {} : { piVersion: () => state.piVersion }),
+    });
     const lines = formatDoctor(report, { quiet: flags.has("--quiet"), markers: doctorMarkers(state.env) });
     if (!flags.has("--json")) return lines;
     const file = doctorReportFile(stateDir(state.env));
@@ -160,8 +163,8 @@ export function statusLines(state: JigState): string[] {
             ? `Configuration: ${state.personal.file}`
             : `Configuration: none found (${state.personal.file || "not loaded yet"}), defaults apply`,
     ];
-    const home = state.agentDir();
-    if (home !== "" && modelAuthState(home, state.env).kind === "missing") lines.push(modelSignInLine(home));
+    const model = modelStatus(state.agentDir(), state.env, state.models);
+    if (model !== undefined) lines.push(model.line);
     for (const renamed of renamedInRules([...state.personal.config.rules, ...state.personal.config.classify])) {
         lines.push(
             `Renamed action: a rule names ${renamed.tool} ${renamed.from}; the old name no longer applies. Change it to ${renamed.to}.`,
@@ -170,7 +173,7 @@ export function statusLines(state: JigState): string[] {
     const issues = countQuickIssues(doctorContext(state));
     if (issues > 0) {
         const things = issues === 1 ? "1 thing needs" : `${issues} things need`;
-        lines.push(`Setup: ${things} you. Run jig setup in a terminal.`);
+        lines.push(`Setup: ${things} you. Run /jig setup.`);
     }
     const deferred = deferredNames(state);
     if (deferred.length > 0) lines.push(`Deferred tools (found with tool_search): ${deferred.join(", ")}`);

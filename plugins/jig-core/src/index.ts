@@ -12,7 +12,7 @@
 //
 // The factory only registers things. It starts nothing long-lived (Pi's documentation forbids it): the configuration is
 // loaded when the session starts.
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { VERSION, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { agentDirFor } from "./kit/theme-preference.ts";
 import type { ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { buildApi } from "./api.ts";
@@ -49,6 +49,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
         const state = createState(pi, options);
         state.configPath = () => configFile(getAgentDir());
         state.agentDir = () => agentDirFor();
+        state.piVersion = VERSION;
         running = state;
         const api = buildApi(state);
         const badCondition = conditionProblem(process.env);
@@ -88,6 +89,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
             state.startJobs?.abort();
             state.startJobs = undefined;
             state.screen = undefined;
+            state.models = undefined;
             // The preview server listens only while previews are being read.
             await state.previews.close().catch(() => undefined);
         });
@@ -107,6 +109,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
 function startSession(state: JigState, ctx: ExtensionContext): void {
     state.sessionId = ctx.sessionManager.getSessionId();
     state.screen = ctx.hasUI ? ctx.ui : undefined;
+    state.models = ctx.modelRegistry;
     state.workingDir = ctx.cwd;
     // `/profile <name>` of this session, kept in the session file so that a reload or a resume keeps it.
     state.profile.session = restoreSessionProfile(ctx);

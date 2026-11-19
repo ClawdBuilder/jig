@@ -14,10 +14,7 @@ test("without a jira section the tool names the setup command, then the by-hand 
     const said = result.error?.message ?? result.blocked ?? result.text;
     assert.equal(said.includes("\n"), false, "one line");
     assert.ok(said.length <= 200, `jig-core cuts a refusal from a preview at 200 characters; this is ${said.length}`);
-    assert.match(
-        said,
-        /^jira is not set up: ask the person to run \/jig setup jira in Pi, or jig setup jira in a terminal;/,
-    );
+    assert.match(said, /^jira is not set up: ask the person to run \/jig setup jira;/);
     assert.match(said, /by hand, add a "jira" section with "site" and "auth" to jig\.json \(see the jig-jira README/);
     assert.ok(said.indexOf("/jig setup jira") < said.indexOf("by hand"), "the command comes first");
     assert.equal(h.jira.requests.length, 0, "nothing was sent");
@@ -33,12 +30,7 @@ test("a jira section that is there but fails its check is set up wrongly: the to
     assert.match(said, /^jira's settings have a problem: jira\.site: must be an https address/);
     assert.doesNotMatch(said, /is not set up/, "the section is there");
     assert.doesNotMatch(said, /by hand, add/, "a person is not told to add what exists");
-    assert.ok(
-        said.endsWith(
-            "ask the person to fix it with /jig setup jira in Pi or jig setup jira in a terminal, or see /jig for all problems",
-        ),
-        said,
-    );
+    assert.ok(said.endsWith("ask the person to fix it with /jig setup jira, or see /jig for all problems"), said);
     assert.equal(h.jira.requests.length, 0, "nothing was sent");
 });
 

@@ -88,6 +88,8 @@ export interface StartOptions {
     runProgram?: JigCoreOptions["runProgram"];
     /** Makes the connection of a start check, in place of a real TCP one. */
     connect?: JigCoreOptions["connect"];
+    /** How many models Pi's registry says it can use. Default: the session has no registry. */
+    models?: number;
 }
 
 /** Loads jig-core into a fake Pi and starts a session. The state folder must already be set (see `tempState`). */
@@ -115,6 +117,7 @@ export async function start(options: StartOptions = {}): Promise<Harness> {
         ...(options.session === undefined ? {} : { session: options.session }),
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+        ...(options.models === undefined ? {} : { models: options.models }),
     });
     await host.fire("session_start", { reason: "startup" }, ctx);
 

@@ -193,7 +193,7 @@ export function applyProposal(
     field: SetupField,
 ): { change: SetupChange } | { problem: string } {
     const item = field.proposal;
-    if (item === undefined) return { problem: "This proposal is incomplete; run jig setup again." };
+    if (item === undefined) return { problem: "This proposal is incomplete; run setup again." };
     const existing = draft[item.section];
     if (existing !== undefined && (typeof existing !== "object" || existing === null || Array.isArray(existing))) {
         return { problem: `${item.section} is not in a shape setup can change here. /jig doctor names the problem.` };

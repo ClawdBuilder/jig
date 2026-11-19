@@ -67,8 +67,8 @@ transports, the watch engine, the setup questions, the `jig` command for the Jig
   watches, the daily mask key, the doctor report and two small caches (`update-check.json`, `doctor-release.json`), private (0700 folders,
   0600 files). Details: [src](./src/EGM.md).
 - **Configuration file** `<agentDir>/jig.json`: the Jig home (`~/.jig`, or `JIG_HOME`) for `jig`, else Pi's agent folder
-  (`PI_CODING_AGENT_DIR` or `~/.pi/agent`). Written only by setup (`jig setup`, and `/jig setup` in a TUI when the session's agent folder
-  is the Jig home), through `setup-write.ts`: after a confirm, with a backup when the file already exists, and a restore of that backup
+  (`PI_CODING_AGENT_DIR` or `~/.pi/agent`). Written only by setup (`jig setup`, and `/jig setup` in a TUI, in the session's own agent folder: a Jig home or an
+  ordinary Pi folder), through `setup-write.ts`: after a confirm, with a backup when the file already exists, and a restore of that backup
   when the result is not ok.
 - **Processes and network.** Programs without a shell through `exec`; `127.0.0.1` preview listener; the daily update-notice fetch,
   opt-in doctor checks, TCP `startChecks`, and the HTTP requests plugins ask for. Nothing else leaves the machine.

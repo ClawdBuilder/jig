@@ -5,14 +5,14 @@ import { homedir } from "node:os";
 import path from "node:path";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { errorMessage } from "./errors.ts";
-import { modelAuthState, modelSignInLine } from "./model-auth.ts";
+import { installMode } from "./install-mode.ts";
+import { modelStatus } from "./model-auth.ts";
 import { findOnPath } from "./doctor-secrets.ts";
 import { jigPackage } from "./pi-version.ts";
 import { companyStep } from "./setup-company.ts";
 import { runSetup } from "./setup.ts";
 import type { SetupUi } from "./setup.ts";
 import { shorten } from "./secret-status.ts";
-import { jigHome } from "./cli/home.ts";
 import { loadPersonalConfig } from "./state.ts";
 import type { JigState } from "./state.ts";
 
@@ -24,24 +24,19 @@ export async function runSetupCommand(
 ): Promise<void> {
     if (rest.length > 1) return notify(ctx, ["Usage: /jig setup [section]"]);
     const section = rest[0];
-    const home = jigHome();
     const agent = state.agentDir();
-    if (agent === "" || path.resolve(agent) !== path.resolve(home)) {
-        return notify(ctx, [
-            `This Pi is using the agent folder ${agent || "(none)"}, not the Jig home ${home}.`,
-            "Run npx @clawdbuilder/jig setup in a terminal for the Jig home.",
-        ]);
-    }
-    // Pi's dialogs are the same four calls runSetup needs; print and RPC have no screen for it, so they get the
-    // terminal path, naming how to get the command when it is not on PATH.
+    // Pi's dialogs are the same four calls runSetup needs; print and RPC have no screen for it. In the Jig home the `jig`
+    // command asks the same questions in a terminal; in any other Pi folder there is no such command, and a setup run
+    // from outside would make a second Jig, so the person opens Pi there.
     if (ctx.mode !== "tui" || ctx.hasUI !== true) {
-        const lines = [
-            "This Pi mode has no interactive setup screen.",
-            "Run jig setup in a terminal.",
-            "It asks the same questions without Pi, and writes the same file.",
-        ];
-        if (findOnPath("jig", state.env) === undefined) {
-            lines.push("Run setup with: npx @clawdbuilder/jig setup");
+        const lines = ["This Pi mode has no interactive setup screen."];
+        if (installMode(agent) === "package") lines.push("Open Pi in a terminal and run /jig setup.");
+        else {
+            lines.push(
+                "Run jig setup in a terminal.",
+                "It asks the same questions without Pi, and writes the same file.",
+            );
+            if (findOnPath("jig", state.env) === undefined) lines.push("Run setup with: npx @clawdbuilder/jig setup");
         }
         return notify(ctx, lines);
     }
@@ -89,8 +84,8 @@ export async function runSetupCommand(
             return;
         }
         const code = await runSetup(state, ui, section, "reload");
-        if (code === 0 && modelAuthState(home, state.env).kind === "missing")
-            ui.notify(modelSignInLine(home), "warning");
+        const model = code === 0 ? modelStatus(agent, state.env, state.models) : undefined;
+        if (model?.missing === true) ui.notify(model.line, "warning");
         if (code !== 0) {
             restore();
             const suffix = backup === undefined ? "" : ` Backup: ${shorten(backup, homedir())}.`;

@@ -89,7 +89,7 @@ test("a section that is there but invalid is set up wrongly: the tool quotes the
         section: { backend: { url: "http://insecure", auth: { token: "env:T" } }, environments: ENVIRONMENTS },
     });
     const message =
-        /^logs's settings have a problem: logs\.backend\.url must start with https:\/\/.*; ask the person to fix it with \/jig setup logs in Pi or jig setup logs in a terminal, or see \/jig for all problems$/;
+        /^logs's settings have a problem: logs\.backend\.url must start with https:\/\/.*; ask the person to fix it with \/jig setup logs, or see \/jig for all problems$/;
     assert.throws(
         () => w.tool.declaration.classify({ phrase: "x", environment: "staging" }),
         (error: Error) => error instanceof TypeError && message.test(error.message),
@@ -107,7 +107,7 @@ test("without a section the tool is not configured, and says what to add, within
     const said = result.error?.message ?? "";
     assert.match(
         said,
-        /^logs is not set up: ask the person to run \/jig setup logs in Pi, or jig setup logs in a terminal; by hand, add a "logs" section with "backend" and "environments" to jig\.json \(see the jig-logs README\)$/,
+        /^logs is not set up: ask the person to run \/jig setup logs; by hand, add a "logs" section with "backend" and "environments" to jig\.json \(see the jig-logs README\)$/,
     );
     assert.ok(said.length <= 200, `jig-core cuts a refusal from a preview at 200 characters; this is ${said.length}`);
     assert.equal(w.requests.length, 0);

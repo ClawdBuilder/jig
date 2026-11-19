@@ -337,7 +337,7 @@ describe("a tool that is not set up", () => {
             (error: unknown) =>
                 error instanceof TypeError &&
                 error.message.length <= 200 &&
-                /^api is not set up: ask the person to run \/jig setup api in Pi, or jig setup api in a terminal; by hand, add an "api" section with "collections" to jig\.json \(see the jig-api README\)$/.test(
+                /^api is not set up: ask the person to run \/jig setup api; by hand, add an "api" section with "collections" to jig\.json \(see the jig-api README\)$/.test(
                     error.message,
                 ),
         );
@@ -348,12 +348,7 @@ describe("a tool that is not set up", () => {
         const result = await h.call({ action: "list" });
         const said = (result.blocked ?? "").replace(/^jig-core could not decide: /, "");
         assert.match(said, /^api's settings have a problem: api\.collections\.orders\.http: /);
-        assert.ok(
-            said.endsWith(
-                "ask the person to fix it with /jig setup api in Pi or jig setup api in a terminal, or see /jig for all problems",
-            ),
-            said,
-        );
+        assert.ok(said.endsWith("ask the person to fix it with /jig setup api, or see /jig for all problems"), said);
         assert.doesNotMatch(said, /by hand, add/);
         assert.ok(said.length <= 200, `${said.length} characters`);
     });

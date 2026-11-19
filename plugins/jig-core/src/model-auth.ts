@@ -1,8 +1,12 @@
-// Whether this Jig home has a model provider a person can use. It reads only local files and environment names:
-// no credential is printed, no sign-in is attempted, and no model is called.
+// Whether this Pi folder has a model provider a person can use. In a session Pi itself says how many models it can use;
+// without one (the terminal doctor) it reads only local files and environment names. No credential is printed, no
+// sign-in is attempted, and no model is called.
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PACKAGE_NAME } from "./cli/home.ts";
+import { manifestOf, packageFolder, parseNpmSource } from "./cli/packages.ts";
+import { folderName, installMode, signInHint } from "./install-mode.ts";
 import { shorten } from "./secret-status.ts";
 import type { DoctorLine } from "./doctor.ts";
 
@@ -34,12 +38,57 @@ function readObject(file: string): Record<string, unknown> | undefined {
     }
 }
 
-/** The one line a person sees when no provider is signed in for this home. */
-export function modelSignInLine(home: string): string {
-    return `No model provider is signed in for ${shorten(home, homedir())}. Type /login inside jig to choose one, or run \`jig auth login <provider>\` in a terminal.`;
+/** What Pi's model registry offers: the part of `ModelRegistry` Jig reads. A session passes Pi's own; the terminal has none. */
+export interface ModelCatalogue {
+    getAvailable(): readonly unknown[];
 }
 
-/** What the home's local files and environment say about a model provider. */
+/** How many models Pi can use right now, or undefined when there is no registry or it cannot say. */
+function availableModels(models: ModelCatalogue | undefined): number | undefined {
+    try {
+        return models?.getAvailable().length;
+    } catch {
+        return undefined;
+    }
+}
+
+/** The one wording of the model count, for `/jig` and for the doctor: "3 models available", or what to do with none. */
+export function modelCountText(count: number): string {
+    return count === 0 ? "none available. Type /login." : `${count} ${count === 1 ? "model" : "models"} available`;
+}
+
+/** The one line a person sees when no provider is signed in for this folder. */
+export function modelSignInLine(agentDir: string): string {
+    return `No model provider is signed in for ${shorten(agentDir, homedir())}. ${signInHint(installMode(agentDir))}`;
+}
+
+/**
+ * The model line of `/jig`: Pi's own count in a session ("Model — 3 models available"), else the sign-in line when the
+ * folder's files say nothing is signed in. `missing` is true when no model can be used, so setup can warn.
+ */
+export function modelStatus(
+    agentDir: string,
+    env: NodeJS.ProcessEnv,
+    models?: ModelCatalogue,
+): { line: string; missing: boolean } | undefined {
+    const count = availableModels(models);
+    if (count !== undefined) return { line: `Model — ${modelCountText(count)}`, missing: count === 0 };
+    if (agentDir === "" || modelAuthState(agentDir, env).kind !== "missing") return undefined;
+    return { line: modelSignInLine(agentDir), missing: true };
+}
+
+/**
+ * Jig's own package, by its exact name: an `npm:` source that names it (jig-bedrock and the other `jig-*` packages are not
+ * it), its packed tarball, or a folder or clone whose package.json names it, which is how a checkout is listed.
+ */
+function isJigItself(source: string, agentDir: string): boolean {
+    if (parseNpmSource(source)?.name === PACKAGE_NAME || /(^|\/)clawdbuilder-jig-\d[^/]*\.tgz$/i.test(source))
+        return true;
+    const { folder } = packageFolder(source, agentDir);
+    return folder !== undefined && manifestOf(folder)?.name === PACKAGE_NAME;
+}
+
+/** What the folder's local files and environment say about a model provider. */
 export function modelAuthState(home: string, env: NodeJS.ProcessEnv = process.env): ModelAuthState {
     const auth = path.join(home, "auth.json");
     if (existsSync(auth)) {
@@ -66,12 +115,7 @@ export function modelAuthState(home: string, env: NodeJS.ProcessEnv = process.en
                 : typeof entry === "object" && entry !== null
                   ? (entry as { source?: unknown }).source
                   : undefined;
-        if (
-            typeof source !== "string" ||
-            source.includes("@clawdbuilder/jig") ||
-            /(^|\/)clawdbuilder-jig[^/]*\.tgz$/i.test(source)
-        )
-            continue;
+        if (typeof source !== "string" || isJigItself(source, home)) continue;
         return {
             kind: "unknown",
             reason: `an extension package (${source}) is installed; doctor cannot check its model provider.`,
@@ -81,9 +125,18 @@ export function modelAuthState(home: string, env: NodeJS.ProcessEnv = process.en
     return { kind: "missing" };
 }
 
-/** The doctor's one Model provider line; it never names a credential value. */
-export function modelProviderLine(home: string, env: NodeJS.ProcessEnv = process.env): DoctorLine {
-    const state = modelAuthState(home, env);
+/** The doctor's one Model line: Pi's count in a session, else the folder's files; it never names a credential value. */
+export function modelProviderLine(
+    agentDir: string,
+    env: NodeJS.ProcessEnv = process.env,
+    models?: ModelCatalogue,
+): DoctorLine {
+    const count = availableModels(models);
+    if (count !== undefined) {
+        const level = count === 0 ? "warn" : "ok";
+        return { id: "logins.model", group: "logins", level, title: "Model", detail: modelCountText(count) };
+    }
+    const state = modelAuthState(agentDir, env);
     if (state.kind === "ready")
         return {
             id: "logins.model",
@@ -105,7 +158,7 @@ export function modelProviderLine(home: string, env: NodeJS.ProcessEnv = process
         group: "logins",
         level: "warn",
         title: "Model provider",
-        detail: "not signed in for this Jig home.",
-        fix: "Type /login inside jig to choose one, or run `jig auth login <provider>` in a terminal.",
+        detail: `not signed in for ${folderName(installMode(agentDir))}.`,
+        fix: signInHint(installMode(agentDir)),
     };
 }

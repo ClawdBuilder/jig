@@ -9,6 +9,7 @@ import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
 import { companyRangeChecks } from "./doctor-company-range.ts";
+import { UPDATE_PI, installCommand, installMode } from "./install-mode.ts";
 import {
     compareVersions,
     currentPiRequirement,
@@ -16,8 +17,8 @@ import {
     meetsMinimum,
     minimumVersion,
     npmInstall,
-    piVersion,
     reinstallFix,
+    reportedPiVersion,
 } from "./pi-version.ts";
 import { stateDir } from "./paths.ts";
 import { renamedInRules } from "./kit/action-names.ts";
@@ -55,6 +56,7 @@ export function doctorContext(state: JigState): DoctorContext {
         sections,
         commands: { ...state.company.secretCommands, ...state.personal.config.secrets.commands },
         protectedPaths: () => state.policy().protectedPaths,
+        models: state.models,
         sandbox: state.sandbox,
         recordsProblem: state.recordsProblem,
         agentDir: state.agentDir(),
@@ -196,7 +198,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const node = options.nodeVersion ?? process.versions.node;
     const pkg = jigPackage();
     const required = minimumVersion(pkg.node) ?? "22.19.0";
-    const pi = (options.piVersion ?? piVersion)();
+    const pi = reportedPiVersion(options.piVersion);
     const jig = options.jigVersion === null ? undefined : (options.jigVersion ?? pkg.version);
     const fromEnv = context.env.PI_CODING_AGENT_DIR !== undefined && context.env.PI_CODING_AGENT_DIR.trim() !== "";
     // The `jig` command checks the Jig home, which it sets as Pi's folder; inside Pi this is Pi's own folder.
@@ -248,9 +250,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                       : compareVersions(pi, requirement.tested) > 0
                         ? `${pi} (newer than ${requirement.tested}, the version Jig is tested with)`
                         : pi,
-            ...(pi !== undefined && !meetsMinimum(pi, requirement.minimum)
-                ? { fix: "Run jig update in a terminal; it installs the tested Pi." }
-                : {}),
+            ...(pi !== undefined && !meetsMinimum(pi, requirement.minimum) ? { fix: UPDATE_PI } : {}),
         },
         context.standalone === true && context.jigInPi === false && context.projectSkipped?.jigIncluded === true
             ? {
@@ -259,7 +259,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                   level: "skip",
                   title: "Jig",
                   detail: `listed in this folder's Pi packages, which were ${context.projectSkipped.detail}`,
-                  fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
+                  fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run the doctor again.",
               }
             : context.standalone === true && context.jigInPi === false
               ? {
@@ -271,8 +271,8 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
                         context.jigListedButMissing === undefined
                             ? `not installed in ${folder} (${folderWhy}), so Pi does not load Jig's plugins.`
                             : `Pi lists it, but its files are not there: ${context.jigListedButMissing.problem}`,
-                    // The command installs into its home; Pi's own folder takes `pi install`.
-                    fix: `Install it: ${context.standalone === true ? "jig" : "pi"} install ${npmInstall(pkg.name)}`,
+                    // The home takes `jig install`; Pi's own folder takes `pi install`.
+                    fix: `Install it: ${installCommand(installMode(context.agentDir), npmInstall(pkg.name))}`,
                 }
               : {
                     id: "machine.jig",
@@ -435,7 +435,7 @@ function configChecks(context: DoctorContext, options: DoctorOptions): DoctorLin
             level: "skip",
             title: "This folder's Pi packages",
             detail: context.projectSkipped.detail,
-            fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run jig doctor again.",
+            fix: context.projectSkipped.fix ?? "Open Pi here and choose Trust, then run the doctor again.",
         });
     }
 

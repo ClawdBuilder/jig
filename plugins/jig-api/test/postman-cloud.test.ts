@@ -519,21 +519,13 @@ describe("the command", () => {
         );
         h.jig.reset();
         const missing = text(await h.command("/api refresh"));
-        assert.match(
-            missing,
-            /^api is not set up: run \/jig setup api in Pi, or jig setup api in a terminal; by hand, add an "api" section/,
-        );
+        assert.match(missing, /^api is not set up: run \/jig setup api; by hand, add an "api" section/);
         assert.ok(missing.length <= 200, `${missing.length} characters`);
         // There but failing its check: the person who typed the command is told what is wrong, and how to fix it.
         h.configure({ collections: { orders: { http: "relative/path" } } });
         const wrong = text(await h.command("/api refresh"));
         assert.match(wrong, /^api's settings have a problem: api\.collections\.orders\.http: /);
-        assert.ok(
-            wrong.endsWith(
-                "; fix it with /jig setup api in Pi or jig setup api in a terminal, or see /jig for all problems",
-            ),
-            wrong,
-        );
+        assert.ok(wrong.endsWith("; fix it with /jig setup api, or see /jig for all problems"), wrong);
         assert.ok(wrong.length <= 200, `${wrong.length} characters`);
     });
 

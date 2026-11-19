@@ -68,7 +68,7 @@ Rules for contributors live in [AGENTS.md](./AGENTS.md). Read [docs/architecture
 - **State folder.** `$JIG_STATE_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/jig`: records, spill files, previews, watches, the daily mask key, session status and request files, agent run folders, the `lens` index, and the update-notice and doctor caches.
 - **Jig home, or Pi's agent folder.** `jig` runs Pi for the Jig home (`~/.jig`, or `JIG_HOME`), and a plain `pi` for its agent folder
   (`PI_CODING_AGENT_DIR`, default `~/.pi/agent`). The folder holds `jig.json` (written only by setup: `jig setup`, and `/jig setup` in a
-  TUI whose agent folder is the home, with a backup of an existing file), user theme files, `jig-review` records and passkeys, and the
+  TUI, in whichever agent folder the session uses, with a backup of an existing file), user theme files, `jig-review` records and passkeys, and the
   `jig-sandbox` allow-list and background logs.
 - **Ticket memory.** `memory.folder`, else `$XDG_DATA_HOME/jig/tickets`, else `~/.local/share/jig/tickets`.
 - **Local servers on loopback only.** The review page, the lens page, the diff preview, and detached Grafana or Datasette when asked listen on 127.0.0.1. `jig-sandbox`'s localhost bridge listens on 127.0.0.1 and, best effort, `::1`, on the port of each bridged task or `network.localhost` entry.
