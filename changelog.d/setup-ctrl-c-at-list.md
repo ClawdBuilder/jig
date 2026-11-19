@@ -1,0 +1,3 @@
+### Fixed
+
+- `jig setup`: Ctrl+C at the plugin list no longer throws away the plugins already answered in the run ("Setup stopped: Aborted with Ctrl+C", nothing written, the relay just set up lost). The list's title says how many changes are not saved (`(1 unsaved change)`), and Ctrl+C (or Esc in Pi) at the list asks "Save the 1 change you made?": yes goes to the review and the save, no writes nothing. Ctrl+C inside one plugin's questions puts that plugin back as it was and returns to the list, keeping the sections answered before it. In a terminal, Ctrl+C is now a cancel at every question, and no longer closes the screen.

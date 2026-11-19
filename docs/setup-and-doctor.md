@@ -105,13 +105,18 @@ one entry of a map, such as a database connection for each environment, asks for
 there, and can be left as it is. **Done** writes everything once, with one backup and one confirmation, so a cancel writes
 nothing.
 
+The list's title counts the changes not saved yet (`(2 unsaved changes)`). Ctrl+C (or Esc in Pi) at the list, with changes
+not saved, asks "Save the 2 changes you made?": yes goes to the review, where you can still cancel, and no writes nothing.
+Ctrl+C inside one plugin's questions puts that plugin back as it was and returns to the list, so the plugins you answered before
+it are not lost.
+
 **A session relay.** The first line of the list, `Transports`, adds a [relay](relay-protocol.md): a program that holds your session
 for Jira or logs, such as a browser extension's local host. Setup asks its name (letters, digits, `-` and `_`, up to 40, and never the name of a transport a company plugin registered), its address (plain `http` only for
 `127.0.0.1`, `localhost` or `[::1]`) and where its token is kept, a file being the usual place, listed first. Then it asks the relay once
 whether it is running with `GET /v1/health`, which needs no token, and says what it found; it never sends or reads the token.
-`jig doctor` checks the same health, the protocol and the token later, without `--network`. Once a relay exists in your file, a
-company's defaults or earlier in the same run, Jira and logs offer "Through a session relay or transport" among their sign-in
-methods, and ask one optional time limit for a request (5 to 120 seconds). Choosing it before any relay exists asks the relay's questions right there, so Jira can be picked first. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
+`jig doctor` checks the same health, the protocol and the token later, without `--network`. Jira and logs always offer
+"Through a session relay or transport" among their sign-in methods, and ask one optional time limit for a request (5 to 120
+seconds). Choosing it before any relay exists asks the relay's questions right there, so Jira can be picked first. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
 
 The time-limit question says what Enter keeps: the value in your file, or the default while it is unset. It is for most requests; a Jira search has its own limit, `searchTimeoutSeconds` (60 seconds), which setup does not ask.
 

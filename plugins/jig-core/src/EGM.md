@@ -103,6 +103,7 @@ Plugin overview: [jig-core](../EGM.md).
   "Use a file?" warning, and asks one line to turn the file store on when it is not on. A new relay is looked at once with `GET /v1/health` and no token; a method with `viaTransport` (its first field the transport's name, later ones optional, such as a `number` time limit) is always offered, as a pick of the transports that exist (the
   person's file, a company's defaults, one a company plugin registered, or one answered earlier in the run); while none exists, its pick carries `SetupField.create`, the relay question of `jig setup transports`, which `askMethods` asks first and whose answer the pick then offers
   ([Decisions](../../../docs/decisions.md#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)).
+- **The plugin list and Ctrl+C.** `pluginMenu` (`setup.ts`) titles the list with the changes not saved yet (`listTitle`). A cancel at the list with changes asks `ui.confirm("Save the N changes you made?")`: yes goes on to `finish`, no cancels. A cancel inside one plugin's questions restores `draft` and `changes` to what they were before it and returns to the list.
 - **Programs run without a shell** (`exec.ts`): an argument list, timeout 60 s, output cap 10 MiB (the start is kept unless
   `keep` says `tail` for the end or `both` for both ends, and the marker says how many bytes were left out), process group killed on
   timeout and at process exit, a minimal environment (`PATH`, `HOME`, `USER`, `LOGNAME`, locale, `TZ`, `TMPDIR`, XDG folders; git,

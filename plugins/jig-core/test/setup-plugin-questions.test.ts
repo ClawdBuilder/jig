@@ -96,8 +96,10 @@ class ScriptedUi implements SetupUi {
 
     async select(title: string, options: string[]): Promise<string | undefined> {
         this.seen.push(`select: ${title} [${options.join(" | ")}]`);
-        if (title === LIST_TITLE) {
+        if (title.startsWith(LIST_TITLE)) {
             const wanted = this.list.shift() ?? DONE_LINE;
+            // Ctrl+C or Esc at the list.
+            if (wanted === "<cancel>") return undefined;
             return options.find((one) => one.startsWith(wanted)) ?? DONE_LINE;
         }
         const index = this.answers.findIndex((one) => one.when.test(title));

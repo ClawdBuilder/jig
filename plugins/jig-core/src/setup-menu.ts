@@ -33,6 +33,15 @@ export const DONE_LINE = "Done: save and finish";
 /** The question above the list. */
 export const LIST_TITLE = "Jig setup: which plugin do you want to set up?";
 
+/** The words for a number of changes: "1 change", "3 changes". */
+export function changeCount(count: number): string {
+    return count === 1 ? "1 change" : `${count} changes`;
+}
+
+/** The list's title: with answers not yet saved it says how many, so Ctrl+C at the list is not a surprise. */
+export function listTitle(unsaved: number): string {
+    return unsaved === 0 ? LIST_TITLE : `${LIST_TITLE} (${unsaved} unsaved ${unsaved === 1 ? "change" : "changes"})`;
+}
 function timeToAsk(setup: OnboardingSetup | undefined): number {
     if (setup?.items !== undefined) return 0;
     if (setup?.pending !== undefined) return 1;

@@ -5,17 +5,20 @@ import { PassThrough } from "node:stream";
 import { describe, test } from "node:test";
 import { terminalUi } from "../src/cli/terminal.ts";
 
-/** A screen over two streams, and what it printed so far. */
-function screen() {
+/** A screen over two streams, and what it printed so far. `keys` makes the streams a terminal: Ctrl+C is then a key. */
+function screen(keys = false) {
     const input = new PassThrough();
     const output = new PassThrough();
     let printed = "";
     output.on("data", (chunk: Buffer) => {
         printed += chunk.toString("utf8");
     });
-    const ui = terminalUi({ input, output });
+    const ui = terminalUi({ input, output, ...(keys ? { terminal: true } : {}) });
     return { ui, input, printed: () => printed };
 }
+
+/** Lets the screen read what was written, so the next question is waiting before the next key arrives. */
+const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 describe("the numbered choices of the terminal screen", () => {
     test("ten or more choices keep their names in one column, with the numbers right-aligned", async () => {
@@ -63,6 +66,40 @@ describe("the numbered choices of the terminal screen", () => {
         const asked = ui.select("Pick", options);
         input.write("3\n");
         assert.equal(await asked, "Choice 3");
+        ui.close();
+    });
+});
+
+describe("Ctrl+C on the terminal screen", () => {
+    test("at a choice it is a cancel, not an error, and the screen still asks the next question", async () => {
+        const { ui, input } = screen(true);
+        const first = ui.select("Which plugin?", ["Jira", "Logs", "Done"]);
+        await tick();
+        input.write("\x03");
+        assert.equal(await first, undefined, "a cancel, as an empty answer is");
+        // The screen was not closed by the key: a question asked next still gets its answer.
+        const second = ui.confirm("Save the 2 changes you made?", "Yes goes to the review.");
+        await tick();
+        input.write("y\r");
+        assert.equal(await second, true);
+        ui.close();
+    });
+
+    test("at a yes/no question it is a no", async () => {
+        const { ui, input } = screen(true);
+        const asked = ui.confirm("Save?", "Writes the file.");
+        await tick();
+        input.write("\x03");
+        assert.equal(await asked, false);
+        ui.close();
+    });
+
+    test("at a typed answer it is still a cancel", async () => {
+        const { ui, input } = screen(true);
+        const asked = ui.input("Your Jira address", "https://example.atlassian.net");
+        await tick();
+        input.write("\x03");
+        assert.equal(await asked, undefined);
         ui.close();
     });
 });

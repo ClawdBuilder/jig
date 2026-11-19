@@ -128,8 +128,10 @@ class ScriptedUi implements SetupUi {
 
     async select(title: string, options: string[]): Promise<string | undefined> {
         this.seen.push(`select: ${title} [${options.join(" | ")}]`);
-        if (title === LIST_TITLE) {
+        if (title.startsWith(LIST_TITLE)) {
             const wanted = this.list.shift() ?? DONE_LINE;
+            // Ctrl+C or Esc at the list.
+            if (wanted === "<cancel>") return undefined;
             return options.find((one) => one.startsWith(wanted)) ?? DONE_LINE;
         }
         const index = this.answers.findIndex((one) => one.when.test(title));
@@ -691,6 +693,90 @@ describe("Jira and logs through a session relay", () => {
         assert.equal(await runSetup(state, ui, "jira"), 0, ui.seen.join("\n"));
         assert.equal(written().transports["orders-relay"].url, dead);
         assert.equal(written().jira.auth.transport, "orders-relay");
+    });
+});
+
+describe("Ctrl+C at the plugin list", () => {
+    const LIST = /^select: Jig setup: which plugin do you want to set up\?.*$/gm;
+
+    /** The relay answered at the list's first visit, then Ctrl+C on the second. */
+    function relayThenCancel(confirms: boolean[]): ScriptedUi {
+        return relayAnswers(new ScriptedUi(["Transports", "<cancel>"], confirms), "orders-relay", relayUrl);
+    }
+
+    test("the list says how many changes are not saved yet", async () => {
+        const ui = relayThenCancel([true]);
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        const titles = (ui.seen.join("\n").match(LIST) ?? []).map((line) => line.replace(/ \[.*$/, ""));
+        assert.deepEqual(titles, [
+            "select: Jig setup: which plugin do you want to set up?",
+            "select: Jig setup: which plugin do you want to set up? (1 unsaved change)",
+        ]);
+    });
+
+    test("it offers to save what was answered, and a yes goes to the review and writes it", async () => {
+        const ui = relayThenCancel([true]);
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /confirm: Save the 1 change you made\?/);
+        assert.ok(
+            seen.indexOf("confirm: Save the 1 change you made?") < seen.indexOf("select: Review these changes"),
+            "the offer comes before the review",
+        );
+        assert.equal(written().transports["orders-relay"].url, relayUrl);
+        assert.doesNotMatch(seen, /Nothing was written/);
+    });
+
+    test("a no writes nothing", async () => {
+        // The first confirm turns the file store on for the relay's token; the second is the offer to save.
+        const ui = relayThenCancel([true, false]);
+        assert.equal(await runSetup(stateWith(), ui), 130, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /confirm: Save the 1 change you made\?/);
+        assert.match(ui.seen.join("\n"), /Nothing was written\./);
+        assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {});
+    });
+
+    test("with nothing answered there is nothing to save, so it asks nothing and cancels", async () => {
+        const ui = new ScriptedUi(["<cancel>"]);
+        assert.equal(await runSetup(stateWith(), ui), 130, ui.seen.join("\n"));
+        assert.doesNotMatch(ui.seen.join("\n"), /confirm: Save the/);
+        assert.doesNotMatch(ui.seen.join("\n"), /unsaved/);
+    });
+
+    test("the count follows each change, and says changes from two", async () => {
+        const ui = relayAnswers(new ScriptedUi(["Transports", "Jira", "<cancel>"], [true]), "orders-relay", relayUrl)
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may most Jira requests take/, "");
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /\(3 unsaved changes\)/);
+        assert.match(ui.seen.join("\n"), /confirm: Save the 3 changes you made\?/);
+        assert.equal(written().jira.auth.transport, "orders-relay");
+    });
+
+    test("Ctrl+C inside a plugin's questions returns to the list and keeps the sections already answered", async () => {
+        // Jira's address question has no answer left, so it returns nothing: Ctrl+C inside a question.
+        const ui = relayAnswers(new ScriptedUi(["Transports", "Jira", "Done"]), "orders-relay", relayUrl);
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /Jira was left as it was; nothing from it is kept\. Back to the list\./);
+        const titles = seen.match(LIST) ?? [];
+        assert.equal(titles.length, 3, "the list came back after the cancelled section");
+        assert.match(titles[2] ?? "", /\(1 unsaved change\)/);
+        assert.equal(written().transports["orders-relay"].url, relayUrl, "the relay answered before was kept");
+        assert.equal(written().jira, undefined, "nothing of the cancelled section was written");
+    });
+
+    test("Ctrl+C inside the first section's questions leaves nothing to save, and the second Ctrl+C ends setup", async () => {
+        const ui = new ScriptedUi(["Jira", "<cancel>"])
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "");
+        // The sign-in question has no answer for the input that follows it, so a cancel comes inside a question.
+        assert.equal(await runSetup(stateWith(), ui), 130, ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /Nothing was written\./);
+        assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {});
     });
 });
 

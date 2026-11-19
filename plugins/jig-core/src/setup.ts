@@ -13,7 +13,7 @@ import { ask, askMethods } from "./setup-ask.ts";
 import { buildSetupPlan } from "./setup-plan.ts";
 import type { SetupChange, SetupField, SetupPlan, SetupSection, SetupState } from "./setup-plan.ts";
 import { itemAt, introOf, loginsOf } from "./setup-questions.ts";
-import { DONE_LINE, LIST_TITLE, pendingLines, pluginLines, readyLines } from "./setup-menu.ts";
+import { DONE_LINE, changeCount, listTitle, pendingLines, pluginLines, readyLines } from "./setup-menu.ts";
 import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
 import { labelOf } from "./setup-fields.ts";
 import { withTransports } from "./setup-transports.ts";
@@ -169,8 +169,16 @@ async function pluginMenu(
     for (;;) {
         const lines = pluginLines(planState, draft);
         const options = [...lines.map((line) => line.text), DONE_LINE];
-        const choice = await ui.select(LIST_TITLE, options);
-        if (choice === undefined) return "cancel";
+        const choice = await ui.select(listTitle(changes.length), options);
+        if (choice === undefined) {
+            // Ctrl+C or Esc at the list: answers not yet saved are offered for saving, never thrown away unasked.
+            if (changes.length === 0) return "cancel";
+            const keep = await ui.confirm(
+                `Save the ${changeCount(changes.length)} you made?`,
+                "Yes goes to the review, where you can still cancel. No writes nothing.",
+            );
+            return keep ? "ok" : "cancel";
+        }
         if (!options.includes(choice)) return "cancel";
         if (choice === DONE_LINE) return "ok";
         const line = lines.find((one) => one.text === choice);
@@ -197,7 +205,16 @@ async function pluginMenu(
             askMethod: questions.askMethod,
             notes: questions.notes,
         };
-        if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") return "cancel";
+        // Ctrl+C inside a question puts this section back as it was and returns to the list, so the sections answered
+        // before it are not lost; a second Ctrl+C, at the list, asks whether to keep them.
+        const before = { draft: structuredClone(draft), changes: changes.length };
+        if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") {
+            for (const key of Object.keys(draft)) delete draft[key];
+            Object.assign(draft, before.draft);
+            changes.length = before.changes;
+            ui.notify(`${line.label} was left as it was; nothing from it is kept. Back to the list.`, "info");
+            continue;
+        }
         for (const note of section.notes) ui.notify(note, "info");
     }
 }
