@@ -611,6 +611,38 @@ describe("Jira and logs through a session relay", () => {
         assert.doesNotMatch(readFileSync(file, "utf8"), new RegExp(TOKEN_LINE));
     });
 
+    test("the relay's questions from a sign-in are preceded by what a relay is, in the words Transports has, and that it must be running", async () => {
+        // What `jig setup transports` says a relay is: the one source of those words.
+        const named = new ScriptedUi().reading(/What do you call this relay/, "");
+        assert.equal(await runSetup(stateWith(), named, "transports"), 0, named.seen.join("\n"));
+        const explanation = named.seen
+            .find((line) => line.startsWith("notify: A session relay"))
+            ?.slice("notify: ".length);
+        assert.ok(explanation !== undefined, named.seen.join("\n"));
+
+        const ui = new ScriptedUi(["Jira", "<cancel>"])
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "");
+        await runSetup(stateWith(), ui);
+        const ask = ui.seen.findIndex((line) => line.startsWith("input: What do you call this relay"));
+        assert.ok(ask > 0, ui.seen.join("\n"));
+        const before = ui.seen.slice(0, ask).join("\n");
+        assert.ok(
+            before.includes(explanation),
+            `what a relay is is said before the name is asked:\n${ui.seen.join("\n")}`,
+        );
+        assert.match(before, /running on this machine/, "and that the relay must be running here for the check");
+        assert.equal(before.split(explanation).length - 1, 1, "said once");
+    });
+
+    test("the same words are not repeated when the relay is asked from Transports itself, which already says them", async () => {
+        const ui = relayAnswers(new ScriptedUi(), "orders-relay", relayUrl);
+        assert.equal(await runSetup(stateWith(), ui, "transports"), 0, ui.seen.join("\n"));
+        assert.equal(ui.seen.filter((line) => line.startsWith("notify: A session relay")).length, 1);
+    });
+
     test("logs picked before any relay exists sets the relay up right there too", async () => {
         const state = stateWith();
         const ui = new ScriptedUi(["Logs", "Done"], [false, true])

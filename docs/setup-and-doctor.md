@@ -128,7 +128,7 @@ for Jira or logs, such as a browser extension's local host. Setup asks its name 
 whether it is running with `GET /v1/health`, which needs no token, and says what it found; it never sends or reads the token.
 `jig doctor` checks the same health, the protocol and the token later, without `--network`. Jira and logs always offer
 "Through a session relay or transport" among their sign-in methods, and ask one optional time limit for a request (5 to 120
-seconds). Choosing it before any relay exists asks the relay's questions right there, so Jira can be picked first. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
+seconds). Choosing it before any relay exists says what a relay is and that it must be running on this machine, then asks the relay's questions right there, so Jira can be picked first. Details: [Credential sources](../plugins/jig-core/docs/sign-in-and-transports.md#relay-transports).
 
 The time-limit question says what Enter keeps: the value in your file, or the default while it is unset. It is for most requests; a Jira search has its own limit, `searchTimeoutSeconds` (60 seconds), which setup does not ask.
 

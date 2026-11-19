@@ -2,21 +2,30 @@
 // for Jira or logs. The section is jig-core's, so it is not registered like a plugin's; `setupStateFrom` adds it to the
 // sections setup lists. This file also names the transports that exist, for a sign-in method that goes through one.
 import type { SectionCheck } from "./config.ts";
-import type { OnboardingSetup } from "./contract-onboarding.ts";
-import { mergedSection, questionField } from "./setup-questions.ts";
+import type { OnboardingItem, OnboardingSetup } from "./contract-onboarding.ts";
+import { introOf, mergedSection, questionField } from "./setup-questions.ts";
 import type { SetupField, SetupState } from "./setup-plan.ts";
 import { isObject } from "./setup-values.ts";
 import { TRANSPORTS_SECTION, validateTransportsSection } from "./transports-section.ts";
+
+/** What a session relay is: the one place these words are written. The Transports section says them first, and a sign-in
+ *  that sets a relay up says them before asking its name. */
+const RELAY_INFO: OnboardingItem = {
+    kind: "info",
+    label: "A session relay",
+    detail: "a program that keeps your sign-in, such as a browser extension's local host. Jig sends the request to it and holds no Jira token.",
+};
+
+/** What a person who has no relay yet needs to know before naming one: it is a separate program, and the one look setup
+ *  takes at it needs it running now. */
+const RELAY_MUST_RUN =
+    "It has to be running on this machine already: setup asks it once whether it is, and sends no token.";
 
 /** The `transports` section's questions: one relay, asked as a name, its address and where its token is kept. */
 export const TRANSPORTS_SETUP: OnboardingSetup = {
     summary: "A session relay: Jira and logs through a program that holds your session.",
     items: [
-        {
-            kind: "info",
-            label: "A session relay",
-            detail: "a program that keeps your sign-in, such as a browser extension's local host. Jig sends the request to it and holds no Jira token.",
-        },
+        RELAY_INFO,
         {
             kind: "object",
             section: TRANSPORTS_SECTION,
@@ -76,5 +85,8 @@ export function transportNames(state: SetupState, raw: Record<string, unknown>):
 export function relayQuestion(state: SetupState): SetupField {
     const item = TRANSPORTS_SETUP.items?.find((one) => one.kind === "object");
     if (item === undefined || item.kind !== "object") throw new TypeError("the transports setup has no relay question");
-    return questionField(state, { item, order: 0 });
+    return {
+        ...questionField(state, { item, order: 0 }),
+        explain: [...introOf(undefined, [[RELAY_INFO]]), RELAY_MUST_RUN].join("\n"),
+    };
 }

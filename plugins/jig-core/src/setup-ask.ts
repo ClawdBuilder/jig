@@ -138,6 +138,8 @@ export async function askMethods(
     for (const field of method.fields) {
         if (field.create === undefined) continue;
         if (objectNames(plan, field.create, draft).length === 0) {
+            // Asked from a sign-in, not from its own section: nothing has said yet what the thing is.
+            if (field.create.explain !== undefined) ui.notify(field.create.explain, "info");
             if ((await askObject(state, plan, field.create, draft, changes, ui)) === "cancel") return "cancel";
         }
         const names = objectNames(plan, field.create, draft);
