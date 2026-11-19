@@ -6,6 +6,27 @@ What changed in Jig, newest first. Pi shows the entries newer than the version y
 
 A change a user would notice is one file in [`changelog.d/`](changelog.d/): its `### Added`, `### Changed`, `### Fixed` or `### Removed` heading and its line. The release folds them here.
 
+## [0.5.11] - 2026-11-19
+
+Jig runs as an ordinary Pi package in the folder your `pi` uses, a session keeps your configuration when a plugin is off, and a codemode script that spells a name with an escape asks.
+
+### Added
+
+- `/jig doctor` inside Pi gains a "Codemode" line: on or off as Pi's active tools say, and "turned on by Pi: an MCP server is configured" when that is why. `jig doctor` in a terminal shows the line as skipped, because only a running session knows. The Tools and codemode page no longer says Jig ships codemode off: it is Pi's tool, inactive until `defaultTools` adds `"+codemode"`, a run passes `--tools +codemode`, or an MCP server with `codemode` exposure is configured.
+
+### Changed
+
+- Jig now runs as an ordinary Pi package: after `pi install npm:@clawdbuilder/jig`, `/jig setup` asks its questions in the folder Pi uses and writes that folder's `jig.json` (it refused anywhere but `~/.jig`), and nothing a session says names a `jig` terminal command or a Jig home, because there is none there. In Pi with no screen (print or RPC) it says "Open Pi in a terminal and run /jig setup." The separate home and the `jig` command stay as an option, and say what they said.
+- One wording where one is true: "Run /jig setup", "Run /jig setup <section>", "Run setup again", "then run the doctor again", and the line a tool says while its section is missing or wrong, which is now `orders is not set up: ask the person to run /jig setup orders; by hand, add ...` (the plugin contract's `notSetUpMessage` keeps its signature; a plugin that pins the old words in a test changes the test). Four messages name a command that differs, and take it from where Jig runs: an install is `pi install <spec>` in a Pi folder and `jig install <spec>` in a home, a Jig update is `pi install npm:@clawdbuilder/jig@<version>` and `jig update`, the model line says "Type /login" with or without "inside jig, or run `jig auth login <provider>`", and a folder is "this Pi folder" or "this Jig home".
+- `/jig` and `/jig doctor` ask Pi how many models it can use and say "Model — 3 models available" or "Model — none available. Type /login." in a session, instead of guessing from files. Jig no longer mistakes jig-bedrock for itself: only the package named exactly `@clawdbuilder/jig` is skipped when looking for a provider package. The doctor shows the Pi version Pi reports, where it said "Pi — version unknown" in a Pi folder, and `0.0.0` (Pi's fallback) counts as unknown; a Pi older than Jig needs gets "Update Pi yourself: npm install -g @earendil-works/pi-coding-agent" instead of a `jig update` that never updated Pi.
+- The update notice, in a Pi folder, says nothing about a newer Jig while Pi's own "Package updates are available" does, and prints `pi install npm:@clawdbuilder/jig@<version>` where Pi is silent: an entry pinned to one version, or a version a company package caps. A deprecated Jig names that install, and a Pi newer than the tested one says to install the tested Pi. In a plain `pi` session the Jig home's `auth.json` and settings are now protected paths for Pi's file tools, as every other Pi folder's already were. The doctor's "Pi's folder" row says "from JIG_HOME" only when that folder is the home, and a session's "Model — none available" warning has the fix "Type /login.".
+
+### Fixed
+
+- A codemode script that contains a `\u` escape now asks before it runs, as one that names `models` does: `\u006dodels` spelled the word without writing it, so the text check let the script through as a plain read. A `\u` inside a string asks too, which is the safe side. The dialog says "the script writes an escaped name" only when the escape is the sole reason; a script that also names `models` keeps that reason. The check reads text and is a speed bump in front of the ask, not a proof.
+- A `jig.json` section for a Jig plugin that is not loaded (turned off in Pi's settings) no longer makes a session drop your whole configuration. The session used to count it as an unknown field, print "jig-core: 1 configuration problem" and run on the defaults, so your own rules and protected paths were not in force while `jig doctor` showed no failure. The section stays in the file, is not a problem, and applies again when the plugin loads; a key that belongs to no plugin is still an error. The `session` and `review` sections, which the terminal doctor did not know either, are included.
+- `jig doctor` and `/jig doctor` in Pi now print the plugins that are off as one skip line, `Off: api, jira, logs.`, with the settings file to change (a session cannot tell which file, so Pi's line has none). In `doctor --json` the ids `config.filtered.always.<feature>` and `config.filtered.<feature>` are gone and `config.filtered.off` replaces them; an always-on plugin that is off is now a skip, not a warning.
+
 ## [0.5.10] - 2026-11-19
 
 Fixes from a first run of `jig setup` as a person with no company plugin: Jira can be set up first and its session relay set up inside it, Ctrl+C keeps what was answered and always gets a person out, a tool that is not set up names the setup command, and Pi shows Jig's changelog after `jig update`.

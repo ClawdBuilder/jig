@@ -21,7 +21,7 @@ Jig doctor · 21 ok · 1 warning · 0 failures · 7 skipped
 This machine
   ✓ Node.js — 24.15.0 (Jig needs 22.19.0 or later)
   ✓ Pi — 1.5.2
-  ✓ Jig — 0.5.10
+  ✓ Jig — 0.5.11
   ✓ System — Linux
   ✓ Pi's folder — ~/.pi/agent, the default folder
 ...
@@ -390,5 +390,5 @@ shows only the warnings and failures, with the summary. The full report is still
 The checks in detail are in [Configuration](../plugins/jig-core/docs/configuration.md#the-jig-commands). Where a reference comes from is in
 [Secrets](secrets.md#later).
 
-For 0.5.10, install the npm package `@clawdbuilder/jig@0.5.10`; the tarball is checked with the npm versions CI uses. The
+For 0.5.11, install the npm package `@clawdbuilder/jig@0.5.11`; the tarball is checked with the npm versions CI uses. The
 doctor checks the sandbox broker, the built-in roles folder and every Jig copy Pi loads.
