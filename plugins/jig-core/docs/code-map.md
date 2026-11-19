@@ -137,6 +137,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `cli/pi-command.ts` | The Pi a command runs, found as the launcher finds it (skipping a shim called `pi`), and the words to start it | `cli/main.ts`, `cli/bootstrap.ts`, `cli/update.ts` |
 | `cli/bootstrap.ts` | The first setup: check Pi, make the home, `pi install` Jig into it, write the `jig` shim (keeping one that runs another home), say whether it is on PATH, offer the old folder's settings | `cli/main.ts` |
 | `cli/update.ts` | `jig update`: reads the registry for Jig's own new version, refuses a release that needs a newer Pi, then runs `pi install` or Pi's own `pi update` in the home | `cli/main.ts` |
+| `cli/changelog-marker.ts` | Moves Pi's changelog marker to Jig's new pinned entry after an update | `cli/update.ts` |
 | `cli/headless.ts` | The packages Pi would load, their extension files loaded into a host that only records, and the person's settings read against their sections and defaults | `cli/main.ts` |
 | `cli/packages.ts` | Where Pi puts a package: local, npm and git layouts for user and project scope, and the entries listed but not found | `cli/headless.ts` |
 | `cli/package-filter.ts` | Pi's package filter read as Pi reads it: per-type patterns, `!`, `+`, `-`, empty lists and `autoload:false` | `cli/packages.ts`, `cli/headless.ts` |
