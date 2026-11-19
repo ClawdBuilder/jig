@@ -111,6 +111,30 @@ describe("probeSecret", () => {
         }
     });
 
+    test("a file on a Windows drive mount gets no mode warning, and no chmod advice: Windows decides who can read it", async () => {
+        const file = path.join(home, "token");
+        writeFileSync(file, "abc\n");
+        chmodSync(file, 0o644);
+        // What /proc/mounts says on WSL 2 for the C: drive, with the folder of this test standing for /mnt/c.
+        const windows = `C:\\134 ${home} 9p rw,noatime,aname=drvfs;path=C:\\;uid=1000;gid=1000,cache=0x5 0 0\n`;
+        const probe = await probeSecret(`file:${file}`, {
+            ...options,
+            mounts: windows,
+            release: "6.6.0-microsoft-standard-WSL2",
+        });
+        assert.equal(probe.status, "found");
+        assert.equal(probe.warning, undefined);
+        assert.doesNotMatch(JSON.stringify(probe), /chmod/);
+        // The same file on an ordinary Linux mount still warns.
+        const linux = `/dev/sdc ${home} ext4 rw,relatime 0 0\n`;
+        const ordinary = await probeSecret(`file:${file}`, {
+            ...options,
+            mounts: linux,
+            release: "6.6.0-microsoft-standard-WSL2",
+        });
+        assert.match(ordinary.warning ?? "", /other users can read this file; make it private \(chmod 600\)/);
+    });
+
     test("a file inside Pi's agent folder is refused, and a relative path is invalid", async () => {
         writeFileSync(path.join(home, "agent", "inside"), "abc\n");
         const inside = await probeSecret(`file:${path.join(home, "agent", "inside")}`, options);
