@@ -89,12 +89,15 @@ export interface DoctorContext {
     jigListedButMissing?: { source: string; problem: string };
     /** Project packages Pi would not load because the folder is not trusted: skipped, never imported. */
     projectSkipped?: { sources: string[]; detail: string; fix?: string; setupLine: string; jigIncluded: boolean };
-    /** Jig plugins Pi's settings filter out: core and sandbox are failures, the rest are calm skips. */
+    /**
+     * Jig plugins that are off. Only the terminal sets `core` and `sandbox` (they are failures); the rest are one skip
+     * line, and a session, which cannot tell which settings file holds a filter, names none.
+     */
     filtered?: {
         core?: { settings: string };
         sandbox?: { settings: string };
-        features: Array<{ feature: string; section?: string; settings: string }>;
-        alwaysOn: Array<{ feature: string; plugin: string; settings: string }>;
+        features: Array<{ feature: string; section?: string; settings?: string }>;
+        alwaysOn: Array<{ feature: string; plugin: string; settings?: string }>;
         offSections: string[];
     };
     /** In a session: whether Pi's active tools include codemode. Absent in the `jig` command, where the files decide. */

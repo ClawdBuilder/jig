@@ -84,6 +84,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
 | `commands.ts` | The `/jig` commands: status, doctor with its flags, rules, records, and the setup hand-off | `index.ts` |
 | `section-state.ts` | What one registered plugin section is: loaded, waiting for a person, not set, or invalid | `commands.ts`, `doctor-checks.ts` |
+| `plugin-table.ts` | The built-in plugins and their `jig.json` sections; which sections have no loaded plugin | `index.ts`, `cli/headless.ts`, `doctor-off.ts` |
 
 ### Doctor
 
@@ -95,6 +96,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor-folder.ts` | The doctor row for the folder Pi runs with, and who chose it (`JIG_HOME` only for a home) | `doctor-checks.ts` |
 | `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside, with the command that moves Jig | `doctor-checks.ts` |
 | `doctor-codemode.ts` | The doctor line "Codemode": on or off from the session, a skip in the terminal | `doctor-checks.ts` |
+| `doctor-off.ts` | The one `Off: api, jira, logs.` doctor line, and the list a session hands the doctor for it | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |

@@ -23,6 +23,7 @@ import { describeProblem } from "./config.ts";
 import { errorMessage } from "./errors.ts";
 import { gate } from "./gate.ts";
 import { configFile } from "./paths.ts";
+import { offSectionsOf } from "./plugin-table.ts";
 import { cleanupPreviews } from "./preview-html.ts";
 import { cleanupRecords, conditionProblem } from "./records.ts";
 import { classifyCodemode, codemodeAsk } from "./codemode.ts";
@@ -113,6 +114,8 @@ function startSession(state: JigState, ctx: ExtensionContext): void {
     state.workingDir = ctx.cwd;
     // `/profile <name>` of this session, kept in the session file so that a reload or a resume keeps it.
     state.profile.session = restoreSessionProfile(ctx);
+    // A section kept in jig.json for a plugin that did not load is off, not an unknown field (src/plugin-table.ts).
+    state.offSections = offSectionsOf(state.sectionChecks.keys());
     loadPersonalConfig(state);
     // The merged skills of the active company (its overlays laid under the generic skills); the prompt's list is edited each turn.
     syncSkills(state, loadedSkills(state));

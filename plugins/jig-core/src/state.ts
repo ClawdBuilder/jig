@@ -143,7 +143,7 @@ export interface JigState {
     /** The sections of jig.json that plugins registered, with their checks. Registered when plugins load, before
      *  the file is read at session start. */
     sectionChecks: Map<string, SectionCheck>;
-    /** Sections of plugins Pi's settings filter out: a section kept in jig.json is off, not an unknown field. */
+    /** Sections of Jig plugins that are not loaded: a section kept in jig.json for one is off, not an unknown field. */
     offSections?: ReadonlySet<string>;
     /** Defaults of plugins that never registered with `profiles.register`, per plugin section, laid under the personal section.
      *  The active company's defaults come on top of them (`effectiveDefaults`). */

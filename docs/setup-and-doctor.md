@@ -238,8 +238,11 @@ names `src/index.ts` matches nothing. Keep `jig-core` first in the list, because
 }
 ```
 
-`/jig doctor` reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`, or when a plugin's section in
-`jig.json` is left behind.
+The doctor reads the filter and fails when it leaves out `jig-core` or `jig-sandbox`. Any other plugin you leave out is one
+`skip` line, `Off: api, jira, logs.`, and its section in `jig.json` stays and is not a problem.
+
+In a terminal that line has a `fix:`, the settings file to change; `/jig doctor` in Pi names no file. A section that belongs
+to no plugin is still an unknown field.
 
 ## A separate Jig home (optional)
 
@@ -302,7 +305,7 @@ does the install, says the home is ready and that the questions need a terminal,
 | – | `skip` | This was not checked, or does not apply here. |
 
 Each `warn` and `fail` has a `fix:` line under it. The fix is a command or an action for you; Jig does not run it.
-A `skip` has no fix line. Repeated secret rows with the same outcome and source collapse into one counted line. When the names form a grid, it
+A `skip` usually has no fix line. Repeated secret rows with the same outcome and source collapse into one counted line. When the names form a grid, it
 shows the axes: `– Ops job tokens — 20 come from a command, not read: 10 services (orders-api, billing-api,
 payments-api, …) × staging, qa`. Mongo groups read `✓ Mongo connections — 12 found in pass: staging, qa, prod × app,
 reports (user and password)`. When they do not form a grid, it keeps the plain list. `--json` still has one entry per reference.

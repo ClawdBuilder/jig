@@ -5,7 +5,7 @@
     "plugins/jig-core/src/api.ts": 505,
     "plugins/jig-core/src/config.ts": 957,
     "plugins/jig-core/src/contract.ts": 742,
-    "plugins/jig-core/src/doctor-checks.ts": 530,
+    "plugins/jig-core/src/doctor-checks.ts": 514,
     "plugins/jig-core/src/exec.ts": 536,
     "plugins/jig-core/src/kit/http.ts": 667,
     "plugins/jig-core/src/mask/kinds.ts": 589,

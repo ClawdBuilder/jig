@@ -31,6 +31,7 @@ Plugin overview: [jig-core](../EGM.md).
   `capContent`, `cleanupSpill`), `records.ts` (`callRecord`, `turnRecord`, `writeRecord`, `cleanupRecords`, `recordsDir`,
   `cleanFacts`, `conditionProblem`).
 - **Configuration and state.** `config.ts` (`jig.json` and company additions), `section-defaults.ts`, `section-state.ts`,
+  `plugin-table.ts` (`FEATURES`, `offSectionsOf`: a session sets `state.offSections` from it, so a section kept for a plugin that did not load is off, not an unknown field),
   `state.ts` (`createState`, `loadPersonalConfig`), `paths.ts` (`CONFIG_FILE_NAME`, `stateDir`, `configFile`, `privateDir`, `privateFolder`,
   `appendPrivateLine`, `createPrivateFile`, `replacePrivateFile`, `removeOldFiles`), `commands.ts` (`/jig`, `/jig setup`, `/jig doctor`,
   `/jig rules`, `/jig records`).
@@ -38,7 +39,7 @@ Plugin overview: [jig-core](../EGM.md).
   `transports-section.ts` (`TRANSPORTS_SECTION`, `validateTransportsSection`, `relayOf`, `relayNames`, `tokenFilePaths`), `relay.ts`
   (`RELAY_PROTOCOL` 1, `relayRequest`, `relayHealth`; [relay protocol](../../../docs/relay-protocol.md)), `exec.ts`
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
-- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-folder.ts`, `doctor-codemode.ts`: the codemode line, which reads the session's tool list and, for its reason, the settings and MCP files, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
+- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-folder.ts`, `doctor-off.ts`: `offLine`, `sessionFiltered`, `doctor-codemode.ts`: the codemode line, which reads the session's tool list and, for its reason, the settings and MCP files, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
   `model-auth.ts` (`modelAuthState`, `modelSignInLine`, `modelStatus`, `modelProviderLine`: whether the folder has a model provider a person can use, from Pi's model registry in a session and from local files without one; Jig's own package is told from `jig-bedrock` by its exact name),
   `install-mode.ts` (`installMode(agentDir)`: `"home"` when the folder is `jigHome()`, else `"package"`; `installCommand`, `updateCommand`, `signInHint`, `folderName`, `UPDATE_PI`: the few words that differ, so no session text names a `jig` terminal command where Jig was installed with `pi install`);
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
