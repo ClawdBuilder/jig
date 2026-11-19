@@ -93,9 +93,27 @@ function applyChange(document: Record<string, unknown>, change: SetupChange): vo
 /** The write gate: re-read, refuse a changed file, back up beside it, then replace it whole and atomically. */
 export class SetupRefused extends Error {}
 
+/** How many settings a list of changes sets. A setting answered twice is one, and the store turned on for a credential is
+ *  one more (`secrets.backends`), however many credentials use it: the number a person reads is of what is in the file. */
+export function settingCount(changes: readonly SetupChange[]): number {
+    const settings = new Set(
+        changes.map((change) =>
+            [
+                change.section,
+                change.path,
+                change.key ?? "",
+                change.append === true ? JSON.stringify(change.value) : "",
+            ].join("\u0000"),
+        ),
+    );
+    if (changes.some((change) => (change.enableBackends ?? []).length > 0)) settings.add("secrets\u0000backends");
+    return settings.size;
+}
+
 export interface SetupWriteResult {
     file: string;
     backup?: string;
+    /** The settings written, counted as `settingCount` counts them. */
     changes: number;
 }
 
@@ -177,7 +195,7 @@ export function writeSetup(plan: SetupPlan, changes: readonly SetupChange[], now
         `${JSON.stringify(after, null, indentOf(plan.before))}\n`,
         plan.exists ? (plan.mode === 0 ? 0o600 : plan.mode) : 0o600,
     );
-    return { file: plan.target, ...(backup === undefined ? {} : { backup }), changes: changes.length };
+    return { file: plan.target, ...(backup === undefined ? {} : { backup }), changes: settingCount(changes) };
 }
 
 function displayValue(value: unknown): string {

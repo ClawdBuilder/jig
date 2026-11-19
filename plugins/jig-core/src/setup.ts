@@ -13,8 +13,8 @@ import { ask, askMethods } from "./setup-ask.ts";
 import { buildSetupPlan } from "./setup-plan.ts";
 import type { SetupChange, SetupField, SetupPlan, SetupSection, SetupState } from "./setup-plan.ts";
 import { itemAt, introOf, loginsOf } from "./setup-questions.ts";
-import { DONE_LINE, changeCount, listTitle, pendingLines, pluginLines, readyLines } from "./setup-menu.ts";
-import { exactChangeLines, SetupRefused, summaryLines, writeSetup } from "./setup-write.ts";
+import { DONE_LINE, changeCount, listScreen, listTitle, pendingLines, pluginLines, readyLines } from "./setup-menu.ts";
+import { exactChangeLines, SetupRefused, settingCount, summaryLines, writeSetup } from "./setup-write.ts";
 import { labelOf } from "./setup-fields.ts";
 import { withTransports } from "./setup-transports.ts";
 import { TRANSPORTS_SECTION } from "./transports-section.ts";
@@ -171,14 +171,14 @@ async function pluginMenu(
     for (;;) {
         const lines = pluginLines(planState, draft);
         const options = [...lines.map((line) => line.text), DONE_LINE];
-        const choice = await ui.select(listTitle(changes.length), options);
+        const choice = await ui.select(listTitle(settingCount(changes)), options);
         if (choice === undefined) {
             // Ctrl+C or Esc at the list: answers not yet saved are offered for saving, never thrown away unasked.
             if (changes.length === 0) return "cancel";
             // Yes is the default: this is the way out of a person who wants out but not to lose their answers, and the
             // review that follows still lets them cancel. Only an explicit no (or a second Ctrl+C) discards.
             const keep = await ui.confirm(
-                `Save the ${changeCount(changes.length)} you made?`,
+                `Save the ${changeCount(settingCount(changes))} you made?`,
                 "Yes goes to the review, where you can still cancel. No writes nothing.",
                 { defaultYes: true },
             );
@@ -213,7 +213,7 @@ async function pluginMenu(
         // Ctrl+C inside a question puts this section back as it was and returns to the list, so the sections answered
         // before it are not lost; a second Ctrl+C, at the list, asks whether to keep them.
         const before = { draft: structuredClone(draft), changes: changes.length };
-        if ((await askSection(state, ui, plan, section, draft, changes, found)) === "cancel") {
+        if ((await askSection(state, listScreen(ui), plan, section, draft, changes, found)) === "cancel") {
             for (const key of Object.keys(draft)) delete draft[key];
             Object.assign(draft, before.draft);
             changes.length = before.changes;

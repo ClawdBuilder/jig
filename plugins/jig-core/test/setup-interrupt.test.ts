@@ -244,7 +244,7 @@ describe("Ctrl+C at the plugin list of a terminal", () => {
                 { when: "Where does the relay's token live?", send: "1" },
                 { when: "Turn on files as a place Jig reads from?", send: "y" },
                 { when: "Which file?", send: tokenFile },
-                { when: "(1 unsaved change)", send: CTRL_C, after: 200 },
+                { when: "(2 unsaved changes)", send: CTRL_C, after: 200 },
                 ...after,
             ],
             {},
@@ -256,11 +256,11 @@ describe("Ctrl+C at the plugin list of a terminal", () => {
         skip: ptySkip,
     }, async () => {
         const result = await relayThenCtrlC([
-            { when: "Save the 1 change you made?", send: "" },
+            { when: "Save the 2 changes you made?", send: "" },
             { when: "Review these changes", send: "1" },
             { when: "Save these changes?", send: "y" },
         ]);
-        assert.match(result.out, /Save the 1 change you made\?[\s\S]*\(Y\/n\) /);
+        assert.match(result.out, /Save the 2 changes you made\?[\s\S]*\(Y\/n\) /);
         assert.equal(result.code, 0, result.out);
         const written = JSON.parse(readFileSync(path.join(agent, "jig.json"), "utf8")) as Record<string, any>;
         assert.equal(written.transports["orders-relay"].kind, "relay");

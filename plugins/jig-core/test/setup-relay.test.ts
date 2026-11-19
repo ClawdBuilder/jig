@@ -291,6 +291,39 @@ describe("a session relay in setup", () => {
         assert.deepEqual(Object.keys(written().transports), ["orders-relay"], "a cancel writes nothing");
     });
 
+    // A screen that never offers "Back to the list" would check the dead relay again for ever: fail in seconds, not minutes.
+    test("from the plugin list the way out of the check is named for what it does: back to the list", {
+        timeout: 10_000,
+    }, async () => {
+        const dead = await closedUrl();
+        const ui = new ScriptedUi(["Jira", "Done"])
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, dead)
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Relay not answering/, "Back to the list");
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        const seen = ui.seen.join("\n");
+        assert.match(seen, /select: Relay not answering \[Check again \| Continue without it \| Back to the list\]/);
+        assert.doesNotMatch(seen, /Cancel setup/, "it does not cancel setup: it leaves the plugin");
+        assert.match(seen, /Jira was left as it was; nothing from it is kept\. Back to the list\./);
+        assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {}, "nothing was written");
+    });
+
+    test("from a named section there is no list to go back to, so it still says it cancels setup", async () => {
+        const dead = await closedUrl();
+        const ui = relayAnswers(new ScriptedUi(), "orders-relay", dead).picking(/Relay not answering/, "Cancel setup");
+        assert.equal(await runSetup(stateWith(), ui, "transports"), 130, ui.seen.join("\n"));
+        assert.match(
+            ui.seen.join("\n"),
+            /select: Relay not answering \[Check again \| Continue without it \| Cancel setup\]/,
+        );
+        assert.doesNotMatch(ui.seen.join("\n"), /Back to the list/);
+    });
+
     test("a relay that speaks another protocol is not taken for a working one", async () => {
         const odd = createServer((_request, response) => {
             response.setHeader("content-type", "application/json");
@@ -742,7 +775,7 @@ describe("Ctrl+C at the plugin list", () => {
         const titles = (ui.seen.join("\n").match(LIST) ?? []).map((line) => line.replace(/ \[.*$/, ""));
         assert.deepEqual(titles, [
             "select: Jig setup: which plugin do you want to set up?",
-            "select: Jig setup: which plugin do you want to set up? (1 unsaved change)",
+            "select: Jig setup: which plugin do you want to set up? (2 unsaved changes)",
         ]);
     });
 
@@ -750,9 +783,9 @@ describe("Ctrl+C at the plugin list", () => {
         const ui = relayThenCancel([true]);
         assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
         const seen = ui.seen.join("\n");
-        assert.match(seen, /confirm: Save the 1 change you made\?/);
+        assert.match(seen, /confirm: Save the 2 changes you made\?/);
         assert.ok(
-            seen.indexOf("confirm: Save the 1 change you made?") < seen.indexOf("select: Review these changes"),
+            seen.indexOf("confirm: Save the 2 changes you made?") < seen.indexOf("select: Review these changes"),
             "the offer comes before the review",
         );
         assert.equal(written().transports["orders-relay"].url, relayUrl);
@@ -762,7 +795,7 @@ describe("Ctrl+C at the plugin list", () => {
     test("the offer says Yes is its default, so Enter saves and only an explicit no discards; the final save does not", async () => {
         const ui = relayThenCancel([true]);
         assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
-        assert.deepEqual(ui.yesByDefault, ["Save the 1 change you made?"]);
+        assert.deepEqual(ui.yesByDefault, ["Save the 2 changes you made?"]);
         assert.match(
             ui.seen.join("\n"),
             /confirm: Save these changes\?/,
@@ -774,7 +807,7 @@ describe("Ctrl+C at the plugin list", () => {
         // The first confirm turns the file store on for the relay's token; the second is the offer to save.
         const ui = relayThenCancel([true, false]);
         assert.equal(await runSetup(stateWith(), ui), 130, ui.seen.join("\n"));
-        assert.match(ui.seen.join("\n"), /confirm: Save the 1 change you made\?/);
+        assert.match(ui.seen.join("\n"), /confirm: Save the 2 changes you made\?/);
         assert.match(ui.seen.join("\n"), /Nothing was written\./);
         assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), {});
     });
@@ -794,9 +827,48 @@ describe("Ctrl+C at the plugin list", () => {
             .picking(/Relay or transport for Jira requests/, "orders-relay")
             .reading(/How long may most Jira requests take/, "");
         assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
-        assert.match(ui.seen.join("\n"), /\(3 unsaved changes\)/);
-        assert.match(ui.seen.join("\n"), /confirm: Save the 3 changes you made\?/);
+        assert.match(ui.seen.join("\n"), /\(4 unsaved changes\)/);
+        assert.match(ui.seen.join("\n"), /confirm: Save the 4 changes you made\?/);
         assert.equal(written().jira.auth.transport, "orders-relay");
+    });
+
+    /** Jira answered with a relay made on the way, then picked again from the list with the same relay and another limit. */
+    function jiraTwice(): ScriptedUi {
+        return new ScriptedUi(["Jira", "Jira", "<cancel>"], [true])
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .reading(/What do you call this relay/, "orders-relay")
+            .reading(/The relay's address/, relayUrl)
+            .picking(/Where does the relay's token live/, "A file")
+            .reading(/Which file/, tokenFile)
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may most Jira requests take/, "90")
+            .reading(/Your Jira address/, "https://jira.example.com")
+            .reading(/Project keys to work in/, "")
+            .picking(/How do you sign in to Jira/, "Through a session relay")
+            .picking(/Relay or transport for Jira requests/, "orders-relay")
+            .reading(/How long may most Jira requests take/, "60")
+            .picking(/Review these changes/, "Save these changes");
+    }
+
+    test("the count is of settings, not of answers: a setting answered twice is one", async () => {
+        const ui = jiraTwice();
+        assert.equal(await runSetup(stateWith(), ui), 0, ui.seen.join("\n"));
+        const counts = [...ui.seen.join("\n").matchAll(/\((\d+) unsaved changes?\)/g)].map((found) => found[1]);
+        // After the first visit: the address, the relay, the file store turned on for its token, Jira's choice of that
+        // relay and the limit. After the second: the same five settings (the choice and the limit were answered again).
+        assert.deepEqual(counts, ["5", "5"], ui.seen.join("\n"));
+        assert.match(ui.seen.join("\n"), /confirm: Save the 5 changes you made\?/);
+        assert.equal(written().jira.timeoutSeconds, 60, "the later answer is the one saved");
+        assert.match(ui.seen.join("\n"), /Saved 5 changes to /, "and what was saved is counted the same way");
+    });
+
+    test("a store turned on for a credential is a setting too, and counts once however many credentials use it", async () => {
+        const ui = relayAnswers(new ScriptedUi(["Transports", "<cancel>"], [true]), "orders-relay", relayUrl);
+        await runSetup(stateWith(), ui);
+        // The relay and `secrets.backends`: two settings, though the review lists the relay and the store as lines.
+        assert.match(ui.seen.join("\n"), /\(2 unsaved changes\)/);
     });
 
     test("Ctrl+C inside a plugin's questions returns to the list and keeps the sections already answered", async () => {
@@ -807,7 +879,7 @@ describe("Ctrl+C at the plugin list", () => {
         assert.match(seen, /Jira was left as it was; nothing from it is kept\. Back to the list\./);
         const titles = seen.match(LIST) ?? [];
         assert.equal(titles.length, 3, "the list came back after the cancelled section");
-        assert.match(titles[2] ?? "", /\(1 unsaved change\)/);
+        assert.match(titles[2] ?? "", /\(2 unsaved changes\)/);
         assert.equal(written().transports["orders-relay"].url, relayUrl, "the relay answered before was kept");
         assert.equal(written().jira, undefined, "nothing of the cancelled section was written");
     });
