@@ -216,6 +216,10 @@ that set it for the launcher must use `JIG_PACKAGE_DIR`; the launcher, `docs/lau
 `surface.test.ts` changed together. A misspelled `jig` command now starts Pi with the word as its message, because
 anything that is not a command is a message.
 
+**Since 2026-11-19** the home is optional: Jig also installs as an ordinary Pi package, and
+[that entry](#2026-11-19-jig-runs-as-an-ordinary-pi-package-and-the-home-is-optional) says what changed. The reasons above
+still hold for a person who keeps a home.
+
 ## 2026-11-16: the 0.4.x action aliases are gone
 
 Jig 0.4.0 renamed actions to snake case and said the old names would stop applying in 0.5.0. 0.5.5 still matched

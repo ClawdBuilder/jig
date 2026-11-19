@@ -92,6 +92,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `doctor.ts` | `/jig doctor`: the check list, the levels, the counts, the metadata and the text report, quiet or full | `commands.ts`, `doctor-json.ts` |
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
+| `doctor-folder.ts` | The doctor row for the folder Pi runs with, and who chose it (`JIG_HOME` only for a home) | `doctor-checks.ts` |
 | `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside, with the command that moves Jig | `doctor-checks.ts` |
 | `doctor-network.ts` | The opt-in network checks, the hosts from startChecks and the sections, and the cached latest release from the package repository | `doctor-checks.ts` |
 | `doctor-json.ts` | The report as JSON, schema 1, written privately to the state folder | `commands.ts` |

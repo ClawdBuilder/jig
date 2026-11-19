@@ -54,10 +54,12 @@ function settings(packages: unknown[], range?: string): void {
     writeFileSync(path.join(agent, "settings.json"), JSON.stringify({ packages: listed }));
 }
 
-async function notes(options: { pi?: string; versions?: unknown } = {}): Promise<string[]> {
+async function notes(options: { pi?: string; readPi?: string; versions?: unknown } = {}): Promise<string[]> {
     const said: string[] = [];
     await checkUpdateAtStart(state(), (message) => said.push(message), {
         ...(options.pi === undefined ? {} : { pi: options.pi }),
+        // The read of Pi's package: a fixed answer, so the test does not depend on the Pi that runs it.
+        readPi: () => options.readPi,
         fetchJson: async () => options.versions ?? registry,
     });
     return said;
@@ -121,9 +123,31 @@ describe("a Pi folder that is not the Jig home", () => {
         ]);
     });
 
-    test("Pi's own 0.0.0 is an unknown version: no warning about it", async () => {
+    test("Pi's own 0.0.0 is an unknown version, so the package is asked; a known version is believed", async () => {
         settings([`npm:${NAME}`]);
+        const newer =
+            "Pi 1.6.0 is newer than 1.5.2, the version Jig is tested with. If something stops working, install Pi 1.5.2.";
+        // What a session passes when Pi cannot read its own package: unknown, and the package says 1.6.0.
+        assert.deepEqual(await notes({ pi: "0.0.0", readPi: "1.6.0" }), [newer]);
+        rmSync(path.join(dir, "update-check.json"), { force: true });
+        // Nobody knows: no warning. Pi says 1.5.2: the package is not asked.
         assert.deepEqual(await notes({ pi: "0.0.0" }), []);
+        rmSync(path.join(dir, "update-check.json"), { force: true });
+        assert.deepEqual(await notes({ pi: "1.5.2", readPi: "1.6.0" }), []);
+        // No version from Pi at all: the package is read, as it was before.
+        rmSync(path.join(dir, "update-check.json"), { force: true });
+        assert.deepEqual(await notes({ readPi: "1.6.0" }), [newer]);
+    });
+
+    test("a Jig listed as a folder, a git clone or a link gets no notice: its owner moves it", async () => {
+        const checkout = path.join(dir, "jig-checkout");
+        mkdirSync(checkout);
+        writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ name: NAME, version: CURRENT }));
+        for (const source of [checkout, "git:github.com/ClawdBuilder/jig@v0.5.10", `npm:${checkout}`]) {
+            settings([source]);
+            assert.deepEqual(await notes(), [], source);
+            rmSync(path.join(dir, "update-check.json"), { force: true });
+        }
     });
 });
 

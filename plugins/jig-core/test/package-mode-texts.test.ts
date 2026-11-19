@@ -22,7 +22,11 @@ import type { Harness, StartOptions } from "./support/harness.ts";
 import { tempState } from "./support/state.ts";
 
 /** A terminal `jig` command, a "inside jig" and a Jig home: what only a Jig home has. */
-const PATTERNS: readonly RegExp[] = [/(?<![/\w-])jig (setup|doctor|update|install)/, /inside jig(?!-)/, /Jig home/];
+const PATTERNS: readonly RegExp[] = [
+    /(?<![/\w-])jig (setup|doctor|update|install|auth)/,
+    /inside jig(?!-)/,
+    /Jig home/,
+];
 
 function assertClean(texts: ReadonlyArray<string | undefined>, where: string): void {
     const found = texts.filter((text): text is string => text !== undefined && text !== "");
@@ -225,7 +229,10 @@ describe("the doctor, in a folder that is not the Jig home", () => {
                 options(),
             );
             const line = report.lines.find((entry) => entry.id === "logins.model");
-            assert.deepEqual([line?.level, line?.title, line?.detail, line?.fix], [level, "Model", said, undefined]);
+            assert.deepEqual(
+                [line?.level, line?.title, line?.detail, line?.fix],
+                [level, "Model", said, level === "warn" ? "Type /login." : undefined],
+            );
             assert.ok(
                 formatDoctor(report).some((row) => row.includes(`Model — ${said}`)),
                 said,
@@ -456,8 +463,23 @@ describe("the model line", () => {
 });
 
 describe("the source", () => {
-    /** The files whose job is to say `jig update` and the like in a home, or that name the command in a dialog title. */
-    const HOME_ONLY = new Set(["install-mode.ts", "setup-command.ts", "update-notice-text.ts", "commands.ts"]);
+    /**
+     * The only lines of a plugin's source allowed to name a terminal `jig` command, a "Jig home" or "inside jig": each is
+     * the home's own wording (a home has the command) or the title of one of Pi's dialogs, found by the file and a literal
+     * in the line, so a new line in the same file is not covered. Every entry must still be found.
+     */
+    const ALLOWED: ReadonlyArray<readonly [file: string, literal: string]> = [
+        ["jig-core/src/install-mode.ts", `"jig update"`],
+        ["jig-core/src/install-mode.ts", "Type /login inside jig to choose one, or run"],
+        ["jig-core/src/install-mode.ts", `"this Jig home"`],
+        ["jig-core/src/update-notice-text.ts", "use jig update in a terminal."],
+        ["jig-core/src/update-notice-text.ts", "Run jig update in a terminal now."],
+        ["jig-core/src/setup-command.ts", `"Run jig setup in a terminal."`],
+        // Titles of Pi's dialogs, and the terminal doctor's row, which is a home.
+        ["jig-core/src/setup-command.ts", `ctx.ui.select("jig setup"`],
+        ["jig-core/src/commands.ts", `show(ctx, "jig doctor"`],
+        ["jig-core/src/doctor-folder.ts", `"Jig home"`],
+    ];
     const codeFiles = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
             entry.isDirectory()
@@ -468,27 +490,52 @@ describe("the source", () => {
                   ? [path.join(dir, entry.name)]
                   : [],
         );
+    const plugins = path.join(import.meta.dirname, "..", "..");
 
-    test("no other file of a plugin names a terminal jig command in a string", () => {
-        const plugins = path.join(import.meta.dirname, "..", "..");
-        const found: string[] = [];
+    test("no line of a plugin's source names a terminal jig command in a string, but the allowed ones", () => {
+        const found: Array<{ file: string; line: string }> = [];
         for (const plugin of readdirSync(plugins)) {
             const src = path.join(plugins, plugin, "src");
             if (!existsSync(src)) continue;
             for (const file of codeFiles(src)) {
-                if (HOME_ONLY.has(path.basename(file))) continue;
-                for (const [index, line] of readFileSync(file, "utf8").split("\n").entries()) {
+                for (const line of readFileSync(file, "utf8").split("\n")) {
                     if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue;
-                    if (PATTERNS.some((pattern) => pattern.test(line))) {
-                        found.push(`${path.relative(plugins, file)}:${index + 1}: ${line.trim()}`);
-                    }
+                    if (PATTERNS.some((pattern) => pattern.test(line)))
+                        found.push({ file: path.relative(plugins, file).split(path.sep).join("/"), line: line.trim() });
                 }
             }
         }
-        // Titles of Pi's own dialogs (`doctor-checks.ts` rows named "Jig home" belong to the terminal doctor, which is a home).
-        assert.deepEqual(
-            found.filter((entry) => !entry.startsWith("jig-core/src/doctor-checks.ts")),
-            [],
+        const stray = found.filter(
+            (hit) => !ALLOWED.some(([file, literal]) => file === hit.file && hit.line.includes(literal)),
         );
+        assert.deepEqual(stray, []);
+        for (const [file, literal] of ALLOWED) {
+            assert.ok(
+                found.some((hit) => hit.file === file && hit.line.includes(literal)),
+                `the allowed line is gone, so its entry goes too: ${file}: ${literal}`,
+            );
+        }
+    });
+
+    test("the skills and the agent roles, which go into the model's context, name no terminal jig command", () => {
+        const found: string[] = [];
+        const scan = (dir: string): void => {
+            for (const entry of readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) scan(full);
+                else if (entry.name.endsWith(".md")) {
+                    for (const [index, line] of readFileSync(full, "utf8").split("\n").entries())
+                        if (PATTERNS.some((pattern) => pattern.test(line)))
+                            found.push(`${path.relative(plugins, full)}:${index + 1}: ${line.trim()}`);
+                }
+            }
+        };
+        for (const plugin of readdirSync(plugins)) {
+            for (const folder of ["skills", "agents"]) {
+                const dir = path.join(plugins, plugin, folder);
+                if (existsSync(dir)) scan(dir);
+            }
+        }
+        assert.deepEqual(found, []);
     });
 });

@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { companyRanges } from "./update-company.ts";
 import { installMode } from "./install-mode.ts";
-import { compareVersions, currentPiRequirement, jigPackage, piVersion, reportedPiVersion } from "./pi-version.ts";
+import { compareVersions, currentPiRequirement, jigPackage, reportedPiVersion } from "./pi-version.ts";
 import { readPackages } from "./cli/packages.ts";
 import { privateFolder, replacePrivateFile, stateDir } from "./paths.ts";
 import { registryFor, registryUrl } from "./registry.ts";
@@ -33,8 +33,10 @@ export interface NoticeOptions {
     fetchJson?: (url: string) => Promise<unknown>;
     /** A test can move the clock. */
     now?: number;
-    /** A test can name Pi's version; the real one is read from the package. */
+    /** Pi's own version, as a session passes it (`0.0.0` is unknown); a test can name one. Unknown: the package is read. */
     pi?: string;
+    /** A test can replace the read of Pi's package, which stands in when Pi's own version is unknown. */
+    readPi?: () => string | undefined;
 }
 
 function readCache(file: string): Cache {
@@ -96,7 +98,7 @@ export async function checkUpdateAtStart(
 
         const agentDir = state.agentDir();
         const mode = installMode(agentDir);
-        const pi = reportedPiVersion(() => options.pi ?? piVersion());
+        const pi = reportedPiVersion(() => options.pi) ?? reportedPiVersion(options.readPi);
         const requirement = currentPiRequirement();
         if (pi !== undefined && compareVersions(pi, requirement.tested) > 0 && cache.piWarned !== pi) {
             notify(piNewerNotice(mode, pi, requirement.tested), "warning");

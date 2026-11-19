@@ -134,7 +134,14 @@ export function modelProviderLine(
     const count = availableModels(models);
     if (count !== undefined) {
         const level = count === 0 ? "warn" : "ok";
-        return { id: "logins.model", group: "logins", level, title: "Model", detail: modelCountText(count) };
+        return {
+            id: "logins.model",
+            group: "logins",
+            level,
+            title: "Model",
+            detail: modelCountText(count),
+            ...(count === 0 ? { fix: "Type /login." } : {}),
+        };
     }
     const state = modelAuthState(agentDir, env);
     if (state.kind === "ready")

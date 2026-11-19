@@ -1,6 +1,7 @@
 // Where Jig runs: the home that `jig` is Pi for, or an ordinary Pi folder with Jig installed by `pi install`.
 import assert from "node:assert/strict";
-import { homedir } from "node:os";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { UPDATE_PI, folderName, installCommand, installMode, signInHint, updateCommand } from "../src/install-mode.ts";
@@ -35,6 +36,30 @@ describe("installMode", () => {
         assert.equal(installMode(path.join(homedir(), "x", "..", ".jig")), "home");
         assert.equal(installMode(path.join(homedir(), ".jig-other")), "package");
         assert.equal(installMode(path.join(home, "npm")), "package");
+    });
+
+    test("a home that is a link is the same folder as the one it points to, when both exist", () => {
+        const world = realpathSync(mkdtempSync(path.join(tmpdir(), "jig-install-mode-")));
+        try {
+            const real = path.join(world, "real-jig");
+            const link = path.join(world, "linked-jig");
+            mkdirSync(real);
+            symlinkSync(real, link, "dir");
+            process.env.JIG_HOME = link;
+            assert.equal(installMode(link), "home");
+            assert.equal(installMode(real), "home", "the real folder is the home the link names");
+            process.env.JIG_HOME = real;
+            assert.equal(installMode(link), "home");
+            // A folder that is neither is still a package, and a missing one is compared by its path alone.
+            const other = path.join(world, "other");
+            mkdirSync(other);
+            assert.equal(installMode(other), "package");
+            process.env.JIG_HOME = path.join(world, "missing-home");
+            assert.equal(installMode(real), "package");
+            assert.equal(installMode(path.join(world, "missing-home")), "home");
+        } finally {
+            rmSync(world, { recursive: true, force: true });
+        }
     });
 
     test("no folder at all is a package, and so is a home that nothing names", () => {

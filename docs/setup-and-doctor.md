@@ -55,8 +55,8 @@ Type /login.` as a warning. `/jig` shows the same line. The terminal doctor has 
 
 ## Packages
 
-A Pi package goes into your own Pi with `pi install npm:…`. A package installed by name is unpinned, so `pi update` moves it
-to the newest release; `npm:<pkg>@<version>` keeps it where it is. `pi install -l` writes the project's
+A Pi package goes into your own Pi with `pi install npm:…`. A package installed by name is unpinned, so
+`pi update --extensions` moves it to the newest release; `npm:<pkg>@<version>` keeps it where it is. `pi install -l` writes the project's
 `.pi/settings.json`, which both `pi` and a separate home read. The launcher is optional; [The launcher](launcher.md)
 covers it, and Jig works without it.
 
@@ -142,13 +142,15 @@ and nothing changes.
 
 ## Updating
 
-In your own Pi, `pi update --extensions` moves Jig and every other package, and leaves the Pi program alone. Plain `pi update`
-also replaces the Pi program, which every other `pi` on the machine shares: decide that separately. A package installed by
-name is unpinned, so Pi moves it; `pi install npm:@clawdbuilder/jig@<version>` pins Jig to that version, and Pi's update then
-leaves it where it is.
+In your own Pi, Jig installed by name moves with `pi update --extensions` (every package) or `pi update npm:@clawdbuilder/jig`
+(Jig only). A pinned entry moves with `pi install npm:@clawdbuilder/jig@<version>`. `pi update` alone replaces only the Pi
+program, which every other `pi` on the machine shares: decide that separately.
+
+A Jig listed as a folder, a git clone or a link gets no update notice, from Pi or from Jig: whoever owns the checkout moves it.
 
 A company package can cap which Jig versions are allowed with `"jig": { "range": ">=0.4.1 <0.5.0" }`. Pi's own update ignores
-the cap, so the notice below and `/jig doctor` name the install command with the version the cap allows.
+the cap, so the notice below names the install command with the version the cap allows. `/jig doctor` warns when the running
+Jig is outside the range, and its fix is `pi install npm:@clawdbuilder/jig@<version>` with a version inside it.
 
 ### In a separate home: `jig update`
 

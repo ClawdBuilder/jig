@@ -956,19 +956,23 @@ describe("the human marks", () => {
         // install into the person's own Pi folder instead.
         assert.doesNotMatch(jigLine?.detail ?? "", /If your Pi runs/);
         // The terminal doctor passes the home as the folder, so the command is the home's own.
-        const asHome = async (folder: string) => {
+        const withJigHome = async <T>(folder: string, work: () => Promise<T>): Promise<T> => {
             const saved = process.env.JIG_HOME;
             process.env.JIG_HOME = folder;
             try {
-                return await runDoctor(
-                    context({ overrides: { env: { PATH: "" }, agentDir: folder, standalone: true, jigInPi: false } }),
-                    options(),
-                );
+                return await work();
             } finally {
                 if (saved === undefined) delete process.env.JIG_HOME;
                 else process.env.JIG_HOME = saved;
             }
         };
+        const asHome = (folder: string) =>
+            withJigHome(folder, () =>
+                runDoctor(
+                    context({ overrides: { env: { PATH: "" }, agentDir: folder, standalone: true, jigInPi: false } }),
+                    options(),
+                ),
+            );
         const homeFix = (await asHome(agentDir)).lines.find((entry) => entry.id === "machine.jig")?.fix;
         assert.equal(homeFix, "Install it: jig install npm:@clawdbuilder/jig");
         // Any other folder takes the Pi command.
@@ -990,18 +994,30 @@ describe("the human marks", () => {
         assert.match(launcherLine?.detail ?? "", /the default home/);
         assert.doesNotMatch(launcherLine?.detail ?? "", /from PI_CODING_AGENT_DIR/);
         const named = path.join(home, "named");
-        const fromJigHome = await runDoctor(
-            context({
-                overrides: {
-                    standalone: true,
-                    jigInPi: false,
-                    agentDir: named,
-                    env: { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: named },
-                },
-            }),
-            options(),
+        const rowFor = async (overrides: Partial<DoctorContext>) =>
+            (await runDoctor(context({ overrides }), options())).lines.find((entry) => entry.id === "machine.agent");
+        const jigHomeEnv = { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: named };
+        // The folder in use is the home that JIG_HOME names, so the row says it is from JIG_HOME (the terminal doctor, and
+        // the same folder inside Pi).
+        for (const standalone of [true, false]) {
+            const fromJigHome = await withJigHome(named, () =>
+                rowFor({ standalone, jigInPi: false, agentDir: named, env: jigHomeEnv }),
+            );
+            assert.match(fromJigHome?.detail ?? "", /from JIG_HOME/, `standalone ${standalone}`);
+        }
+        // A Pi folder that is not the home, with JIG_HOME exported, was installed with `pi install`: it is not the
+        // home's doing, and the row says who did choose it.
+        const piFolder = path.join(home, "pi-folder");
+        const notHome = await withJigHome(named, () =>
+            rowFor({ agentDir: piFolder, env: { PATH: "", JIG_HOME: named, PI_CODING_AGENT_DIR: piFolder } }),
         );
-        assert.match(fromJigHome.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /from JIG_HOME/);
+        assert.equal(notHome?.title, "Pi's folder");
+        assert.doesNotMatch(notHome?.detail ?? "", /JIG_HOME/);
+        assert.match(notHome?.detail ?? "", /from PI_CODING_AGENT_DIR/);
+        const notHomeDefault = await withJigHome(named, () =>
+            rowFor({ agentDir: piFolder, env: { PATH: "", JIG_HOME: named } }),
+        );
+        assert.match(notHomeDefault?.detail ?? "", /the default folder/);
         const byDefault = await runDoctor(context({ overrides: { standalone: true, jigInPi: false } }), options());
         assert.match(byDefault.lines.find((entry) => entry.id === "machine.agent")?.detail ?? "", /the default/);
         // The `jig` command checks the home, so its row says so; inside Pi the same row names Pi's folder.

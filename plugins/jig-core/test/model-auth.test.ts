@@ -126,7 +126,11 @@ test("in a session, Pi's own count is the line: one wording for /jig and for the
         ["logins.model", "ok", "Model", "3 models available"],
     );
     const none = modelProviderLine(dir, {}, registry(0));
-    assert.deepEqual([none.level, none.title, none.detail], ["warn", "Model", "none available. Type /login."]);
+    assert.deepEqual(
+        [none.level, none.title, none.detail, none.fix],
+        ["warn", "Model", "none available. Type /login.", "Type /login."],
+    );
+    assert.equal(some.fix, undefined);
 
     assert.deepEqual(modelStatus(dir, {}, registry(2)), { line: "Model — 2 models available", missing: false });
     assert.deepEqual(modelStatus(dir, {}, registry(0)), {

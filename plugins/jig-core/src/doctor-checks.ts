@@ -9,6 +9,7 @@ import { networkChecks } from "./doctor-network.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
 import { loginChecks, recordsChecks, sandboxChecks } from "./doctor-tools.ts";
 import { companyRangeChecks } from "./doctor-company-range.ts";
+import { folderRow, folderWhy as whyFolder } from "./doctor-folder.ts";
 import { UPDATE_PI, installCommand, installMode } from "./install-mode.ts";
 import {
     compareVersions,
@@ -170,27 +171,6 @@ export async function relayChecks(context: DoctorContext): Promise<DoctorLine[]>
     return lines;
 }
 
-/** The row naming the folder Pi runs with: the Jig home in the `jig` command, Pi's folder inside Pi. */
-function folderRow(context: DoctorContext, folder: string, why: string, standalone: boolean): DoctorLine {
-    if (context.agentDir === "") {
-        return {
-            id: "machine.agent",
-            group: "machine",
-            level: "fail",
-            title: standalone ? "Jig home" : "Pi's folder",
-            detail: "Jig cannot find the folder where Pi keeps its settings.",
-            fix: "Restart Pi.",
-        };
-    }
-    return {
-        id: "machine.agent",
-        group: "machine",
-        level: "ok",
-        title: standalone ? "Jig home" : "Pi's folder",
-        detail: `${folder}, ${why}`,
-    };
-}
-
 function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLine[] {
     const requirement = currentPiRequirement();
     const platform = options.platform ?? process.platform;
@@ -200,23 +180,8 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
     const required = minimumVersion(pkg.node) ?? "22.19.0";
     const pi = reportedPiVersion(options.piVersion);
     const jig = options.jigVersion === null ? undefined : (options.jigVersion ?? pkg.version);
-    const fromEnv = context.env.PI_CODING_AGENT_DIR !== undefined && context.env.PI_CODING_AGENT_DIR.trim() !== "";
-    // The `jig` command checks the Jig home, which it sets as Pi's folder; inside Pi this is Pi's own folder.
-    const standalone = context.standalone === true;
-    const namedJigHome = context.env.JIG_HOME !== undefined && context.env.JIG_HOME.trim() !== "";
     const folder = shorten(context.agentDir, home);
-    // The `jig` command sets PI_CODING_AGENT_DIR from the home itself, so in the standalone doctor that variable says
-    // nothing about who chose the folder: name the default home, or JIG_HOME when it named one.
-    const defaultHome = path.resolve(home, ".jig");
-    const folderWhy = namedJigHome
-        ? "from JIG_HOME"
-        : standalone && path.resolve(context.agentDir) === defaultHome
-          ? "the default home"
-          : fromEnv
-            ? "from PI_CODING_AGENT_DIR"
-            : standalone
-              ? "the default home"
-              : "the default folder";
+    const folderWhy = whyFolder(context, home);
     const wsl =
         platform === "linux" && (context.env.WSL_DISTRO_NAME !== undefined || context.env.WSL_INTEROP !== undefined);
     const system = platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : wsl ? "Linux (WSL)" : "Linux";
@@ -327,7 +292,7 @@ function machineChecks(context: DoctorContext, options: DoctorOptions): DoctorLi
         { id: "machine.system", group: "machine", level: "ok", title: "System", detail: system },
     ];
 
-    lines.push(folderRow(context, folder, folderWhy, standalone));
+    lines.push(folderRow(context, home));
     return lines;
 }
 

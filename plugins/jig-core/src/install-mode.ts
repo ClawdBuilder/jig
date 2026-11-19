@@ -1,6 +1,7 @@
 // Where Jig runs: in a Jig home (`jig` is Pi for `~/.jig`) or as an ordinary Pi package (`pi install`, any Pi folder).
 // Most messages read the same in both. The few that name a command or a folder come from here, so none of them guesses,
 // and nothing a session says names a `jig` terminal command that does not exist where Jig was installed with `pi install`.
+import { realpathSync } from "node:fs";
 import path from "node:path";
 import { jigHome } from "./cli/home.ts";
 import { npmInstall } from "./pi-version.ts";
@@ -16,7 +17,17 @@ export const UPDATE_PI = "Update Pi yourself: npm install -g @earendil-works/pi-
  * The only thing read from outside is `jigHome()`, which reads `JIG_HOME`.
  */
 export function installMode(agentDir: string): InstallMode {
-    return agentDir !== "" && path.resolve(agentDir) === path.resolve(jigHome()) ? "home" : "package";
+    return agentDir !== "" && sameFolder(agentDir, jigHome()) ? "home" : "package";
+}
+
+/** The same folder: the same resolved path, or, when both exist, the same real path (a home that is a link). */
+function sameFolder(one: string, other: string): boolean {
+    if (path.resolve(one) === path.resolve(other)) return true;
+    try {
+        return realpathSync(one) === realpathSync(other);
+    } catch {
+        return false;
+    }
 }
 
 /** The command that installs a package: `jig install` for the home, `pi install` for an ordinary Pi folder. */
