@@ -71,12 +71,12 @@ export interface ToolDeclaration {
     plugin: string;
     /** Classifies one call from its input. Pure and fast: it runs before every call. Returning undefined makes
      *  the call unknown, and an unknown call asks. Throwing a `TypeError` says the input is invalid: jig-core
-     *  blocks the call with its message and does not ask. */
-    classify(input: Readonly<Record<string, unknown>>): CallClass | undefined;
+     *  blocks the call with its message and does not ask. `cwd`, the call's working folder, may be ignored. */
+    classify(input: Readonly<Record<string, unknown>>, cwd?: string): CallClass | undefined;
     /** Builds what the user sees before a call that asks. Read-only work only. Throwing a `TypeError` says the
      *  input is invalid: jig-core blocks the call with its message and does not ask. Any other failure shows
-     *  "preview unavailable" and still asks. */
-    preview?(input: Readonly<Record<string, unknown>>, signal: AbortSignal): Promise<Preview>;
+     *  "preview unavailable" and still asks. `cwd` is the working folder of the call, as for `classify`. */
+    preview?(input: Readonly<Record<string, unknown>>, signal: AbortSignal, cwd?: string): Promise<Preview>;
     /** True when the tool masks its own production results, so jig-core's backstop leaves them alone. */
     masksOwnResults?: boolean;
     /** For a tool Pi ships, such as `bash`, that a plugin classifies only in part: `classify` answers for the calls it

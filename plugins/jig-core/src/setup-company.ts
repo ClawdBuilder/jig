@@ -6,7 +6,7 @@ import { setupStateFrom } from "./setup.ts";
 import type { SetupUi } from "./setup.ts";
 import { errorMessage } from "./errors.ts";
 import { loadPersonalConfig } from "./state.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import { writeSetup } from "./setup-write.ts";
 
 export interface CompanyStepResult {

@@ -14,7 +14,7 @@ import { runSetup } from "./setup.ts";
 import type { SetupUi } from "./setup.ts";
 import { shorten } from "./secret-status.ts";
 import { loadPersonalConfig } from "./state.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 
 /** Runs `/jig setup [section]`; it returns when the screen is finished. */
 export async function runSetupCommand(

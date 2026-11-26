@@ -11,7 +11,7 @@ import type { ReferenceParts } from "./setup-reference.ts";
 import { exampleQuestion } from "./setup-fields.ts";
 import type { SetupField } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 
 /** One candidate place: the reference built for it, and the plain phrase for a summary. Never a value. */
 export interface ChosenReference {

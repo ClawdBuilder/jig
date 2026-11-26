@@ -2,9 +2,10 @@
 
 ## Overview
 
-The tool manager's code. `index.ts` registers Pi's hooks; `gate.ts` and `results.ts` are the two hooks around every tool
-call; `classify.ts`, `decide.ts` and `gates.ts` decide; `approvals.ts` asks you; `redact.ts`, `cap.ts`, `records.ts` and
-`mask/` protect and record what comes back; `config.ts` and `state.ts` hold what plugins and `jig.json` give; `client.ts`
+The tool manager's code. `index.ts` registers Pi's hooks; `gate.ts` and `results.ts` are Pi's side of the two hooks around every
+tool call, over the engine (`engine.ts` and the files it calls), which holds what is decided and written and imports no agent;
+`classify.ts`, `decide.ts` and `gates.ts` decide; `approvals.ts` asks you; `redact.ts`, `cap.ts`, `records.ts` and
+`mask/` protect and record what comes back; `config.ts` and `engine-state.ts` hold what plugins and `jig.json` give; `client.ts`
 and `contract.ts` are what other plugins import. One call, followed through the files: [code map](../docs/code-map.md).
 Plugin overview: [jig-core](../EGM.md).
 
@@ -16,8 +17,23 @@ Plugin overview: [jig-core](../EGM.md).
   `runningJigState()` for tests. Hooks: `session_start`, `before_agent_start`, `tool_call` (`gate`), `tool_result`
   (`toolResult`), `tool_execution_end` (`finishCall`), `turn_end` (`finishTurn`), `session_shutdown`. Also `/jig`
   (`registerCommands`), `/profile` (`registerProfileCommand`) and the `watch` tool.
+- **The engine.** `engine.ts`: the types of a host and a call (`EngineHost`, `ToolInfo`, `CallRequest`, `Judged`, `RawResult`, `CallEnd`, `Engine`),
+  `createEngine(options: EngineOptions)` and `engineOf(state)`, which gives the engine that works on a state. An `Engine` has its `state`, `start(host)`,
+  `beginSession()`, `stop()`, `judge(request, host, signal)`, `answer(call, approval, host)`, `run(request, call, tool, host, signal, progress?)`,
+  `clean(request, result, host)` and `finish(request, end, host)`; each is a thin step onto `engine-session.ts`, `engine-judge.ts`, `engine-run.ts` or
+  `engine-results.ts`. A host builds an
+  `EngineHost` for each event (Pi: `pi-host.ts`); the engine reaches a screen, the model and the event bus only through it. `gate.ts` and `results.ts` are
+  Pi's adapters: they turn Pi's events into a `CallRequest` and a `RawResult` and the engine's answer into Pi's. `engine-results.ts` also has `cleanResult`, which says what
+  changed, so that an adapter can answer "nothing changed" as Pi expects.
+- **The tool contract.** `engine-tool.ts` (no import that runs): `EngineTool` (a `ToolDeclaration` with `label`, `description`, `promptSnippet`, `promptGuidelines`, `input`
+  as `JsonSchema`, `sequential`, `usesFolder` and `execute(input, call)`), `CallContext` (`callId`, `cwd`, `signal`, `seen`, `progress`, `jig`), `ToolResult` (`text`,
+  `data`, `isError`, and `facts` for the record), `isRefusal` and `executeTool`, the step that Pi's wrapper (`registerEngineTool`, [the kit](#the-kit)) shares with
+  `run`. `run` (`engine-run.ts`) is for a tool the engine runs itself: it refuses a call that `judge` or `answer` did not let through (the tool must be the one judged, for a
+  call the engine holds, not refused, not waiting, answered when it asked), calls the tool, turns a thrown error or a `RefusedError` into the result (the refusal is noted for the
+  record as `markRefused` does), cleans the result and writes the one record. `apiOf(state)` is the `JigApi` that `call.jig` is. `classify` and `preview` of a declaration get the
+  host's working folder as one more, optional argument (`ClassifyDeps.cwd`, the last argument of `buildPreview`); a tool that ignores it behaves as before.
 - **Plugin surface.** `client.ts`: `jig()`, `withJig(use)`; jig-core only: `publishJig(api)`, `withdrawJig(api)`. `contract.ts`:
-  types only, plus `JIG_EVENTS`. `api.ts`: `buildApi(state)`, each member a thin step onto `state.ts`, except `records.recall`, which
+  types only, plus `JIG_EVENTS`. `api.ts`: `buildApi(state)`, each member a thin step onto `engine-state.ts`, except `records.recall`, which
   writes a call-shaped record itself (call id `record-<uuid>`, facts `entries` and `queries`) outside any tool call.
 - **Deciding.** `classify.ts` (`classify`), `decide.ts` (`decide`, `isOutside`, `sessionKey`, `commandMatches`, `ruleMatches`,
   `namesNothing`, `namesOutsideCommand`, `DecisionSource`: `floor` | `rule` | `session` | `tool` | `table` | `unknown` | `gate`), `gates.ts`, `environments.ts`,
@@ -25,14 +41,16 @@ Plugin overview: [jig-core](../EGM.md).
   `writable-folders.ts` (`writableFolders`: the working folder plus the folders the person allowed, compared by real path), `loaded-code.ts`.
   `codemode.ts` (`classifyCodemode`, `codemodeAsk`, `RISKY_WORDS`): a Pi `codemode` script of tool calls is a local read, and a script naming `models`, an
   escape hatch or containing a `\u` escape (nothing is decoded) is an external write that asks.
-- **Asking.** `approvals.ts` (inside the waiting call: Pi's selector, or the review screen in `tui` mode; the `form` kind has no screen yet and uses the selector; a tool's `always: "ask"` drops the "allow for this session" answer), `review.ts`, `preview.ts`, `preview-html.ts`,
+- **Asking.** `ask.ts` (no Pi import: `AskRequest`, `Approval`, `chooseKind`, `createInTurn`, the queue that runs one question at a time and does not stop on a failed one), `approvals.ts` (inside the waiting call: Pi's selector, or the review screen in `tui` mode; the `form` kind has no screen yet and uses the selector; a tool's `always: "ask"` drops the "allow for this session" answer; it re-exports the names of `ask.ts`), `review.ts`, `preview.ts`, `preview-html.ts` (draws Markdown with the `marked` package, not Pi's),
   `preview-server.ts` (`createPreviewServer`, `MAX_PAGES` 50).
 - **Results.** `redact.ts` (`createRedactor`, `REDACTED`, `RedactionError`, `secretForms`), `cap.ts` (`CAP_CHARS` 50,000,
   `capContent`, `cleanupSpill`), `records.ts` (`callRecord`, `turnRecord`, `writeRecord`, `cleanupRecords`, `recordsDir`,
   `cleanFacts`, `conditionProblem`).
 - **Configuration and state.** `config.ts` (`jig.json` and company additions), `section-defaults.ts`, `section-state.ts`,
   `plugin-table.ts` (`FEATURES`, `offSectionsOf`: a session sets `state.offSections` from it, so a section kept for a plugin that did not load is off, not an unknown field),
-  `state.ts` (`createState`, `loadPersonalConfig`), `paths.ts` (`CONFIG_FILE_NAME`, `stateDir`, `configFile`, `privateDir`, `privateFolder`,
+  `engine-options.ts` (`EngineOptions`, types only: what a host gives `createEngine`, among it `offSections`, the sections that count as off, used by `start` in place of `offSectionsOf`),
+  `engine-state.ts` (the engine's state: `JigState`, `CallState`, `createEngineState`, `loadPersonalConfig`, `rememberCall`; it holds no agent) and `state.ts` (Pi's wrapper: `createState`, `PiState`; it exports the names of `engine-state.ts` too),
+  `paths.ts` (`CONFIG_FILE_NAME`, `stateDir`, `configFile`, `privateDir`, `privateFolder`,
   `appendPrivateLine`, `createPrivateFile`, `replacePrivateFile`, `removeOldFiles`), `commands.ts` (`/jig`, `/jig setup`, `/jig doctor`,
   `/jig rules`, `/jig records`).
 - **Services for plugins.** `secrets.ts` (references such as `pass:work/token`), `signin.ts`, `transports.ts`, `tunnels.ts`,
@@ -63,7 +81,18 @@ Plugin overview: [jig-core](../EGM.md).
 
 ## Invariants
 
-- **A failure blocks the call.** Anything that fails inside `gate` blocks with `jig-core could not decide: <error>` and a
+- **Engine files reach no Pi package.** Every file of `src/` not on Pi's side is an engine file, and it must not reach a package named
+  `@earendil-works/*` through imports that run, directly or through any file it imports (an `import type` does not count; an inline
+  `import { type X }` does). `test/engine-boundary.test.ts` checks it against the lists in `test/support/engine-files.ts`: Pi's side (`state.ts`, `gate.ts`, `results.ts` and `pi-host.ts`
+  are on it) and the files that reach Pi for now (the terminal commands that build the state with `state.ts`), a list that only shrinks. A new file is an engine file
+  until it is listed. **The engine's state has no `pi`:** `engine-state.ts` and the files of the engine never read `state.pi`; Pi's `PiState` adds it.
+- **The engine runs a tool only for a call it let through.** `run` refuses (a result with `isError`, nothing run, changed or written, so the host still answers or finishes the
+  call) when the tool is not the one that was judged, when the engine holds no open call with that id, or when the call was refused, still waits, or asks and has no answer.
+  A tool's error or refusal is its result, so `run` does not throw for what a tool does; it writes the one record, and the host does not call `finish` for a call it ran this way.
+- **The engine runs with no Pi, and a second test process proves it.** `npm run test:engine` starts `plugins/jig-core/test/engine/` with `test/support/no-pi.mjs`, which refuses
+  every import of `@earendil-works/*`, and `test/engine-process.test.ts` starts that process, so `npm test` covers it. Code of the engine that needs Pi at run time fails there; its need
+  moves behind the host or an option.
+- **A failure blocks the call.** Anything that fails inside `judge` (and so `gate`) blocks with `jig-core could not decide: <error>` and a
   record of kind `internal`; a failing plugin gate says `gate "<name>" (<plugin>) failed`. Exception: a `TypeError` from a declared
   tool's `classify` or `preview` blocks as invalid input (`<tool> cannot run with this input`, kind `invalid`, nobody asked).
   A tool never runs because jig-core could not tell.
@@ -89,8 +118,9 @@ Plugin overview: [jig-core](../EGM.md).
   `blocked: <reason>` for a blocked call (a protected-path reason names the path).
 - **`jig()` fails closed.** It throws `jig-core is not loaded` when the API is not published, so a Jig tool does not run
   ungoverned. `withdrawJig` runs on `session_shutdown`, so a plugin loading into the next runtime waits for the new core.
-- **The factory registers and starts nothing long-lived;** configuration loads at `session_start`. Clean-up of old records,
-  spill files and previews at start is best effort and never fails the start.
+- **The factory registers and starts nothing long-lived;** configuration loads at `session_start` (the engine's `start`). Clean-up of old records,
+  spill files and previews at start (the engine's `beginSession`) is best effort and never fails the start. The engine keeps the host it was
+  started with (`state.host`), so a watch that fires between events reaches the screen, the model and the event bus through it.
 - **Setup adds one named object and never edits one.** An `object` item (a connection, a collection, an environment) asks a name,
   refuses a name already in the map (an empty name leaves a map that has entries as it is), asks the questions of the form that applies
   (`when` matches the section's merged value, else the form with none; several matching forms ask which kind), and writes the answers as one
@@ -164,7 +194,7 @@ Plugin overview: [jig-core](../EGM.md).
   variables, every `OP_*`, the tool-config variables passed to `cmd:` commands (`GH_CONFIG_DIR`, `KUBECONFIG`, `AWS_*`...) and any
   variable an `env:<NAME>` reference names. Protected-path defaults read `XDG_CONFIG_HOME`, `APPDATA`, `DOCKER_CONFIG`.
 - **Globals.** `globalThis[Symbol.for("jig.core.api/v1")]` and `...pending/v1` (`client.ts`); a module-level running state (`index.ts`).
-- **Pi events.** Emits `jig:decision` and `jig:watch-done` on `pi.events` (`jig:stage-done` is emitted by `jig-workflow`). Timers in
+- **Pi events.** Emits `jig:decision` and `jig:watch-done` through `host.emit` (Pi: `pi.events`) (`jig:stage-done` is emitted by `jig-workflow`). Timers in
   `gates.ts`, `preview.ts`, `start-checks.ts`, `update-notice.ts`, `exec.ts`, `doctor-tools.ts` and the watch engine.
 - **Screen.** Configuration problems (first five, then "and N more") and the sandbox line go to `ctx.ui.notify` only when there is a UI.
 
@@ -172,6 +202,7 @@ Plugin overview: [jig-core](../EGM.md).
 
 - Run from the repository root: `node --import ./test/support/host.mjs --test "plugins/jig-core/test/*.test.ts"`
 - Whole suite: `npm test` at the repository root. Types and lint: `npm run check`.
+- The engine with no Pi: `npm run test:engine` (`plugins/jig-core/test/engine/`; a Pi-free harness in `engine/harness.ts`, a tool in `test/support/test-tool.ts`).
 - Docs: `node scripts/check-docs.mjs`
 
 ## The kit
@@ -187,13 +218,16 @@ roles: [code map](../docs/code-map.md).
 
 ### kit: Interface
 
-- **Request.** `createHttp(deps: HttpDeps): JigApi["http"]` (`http.ts`; `state.ts` builds `jig().http.request` from it),
+- **Request.** `createHttp(deps: HttpDeps): JigApi["http"]` (`http.ts`; `engine-state.ts` builds `jig().http.request` from it),
   `HttpError`, `isHttpError`, `TransportRefusal`, `isTransportRefusal` (`http-error.ts`, re-exported by `http.ts`), `credentialsOf`, `REDACTED`,
   `DEFAULT_TIMEOUT_MS` (30 s), `MAX_TIMEOUT_MS` (10 min), `DEFAULT_MAX_BYTES` (4 MiB), `MAX_MAX_BYTES` (64 MiB).
   `createTokens(now)`, `REPLACE_EARLY_MS` (`oauth.ts`). `untilAborted(work, signal)` (`abort.ts`).
 - **Tools.** `registerJigTool(pi, tool, options?)` (`tools.ts`: `pi.registerTool` plus default one-line renderers when the tool has none,
-  `JigToolOptions.summary`, and an `execute` wrapper that calls `jig().markRefused` on a `RefusedError`), `TOOLS_SECTION`,
-  `TOOL_SEARCH`, `NOT_DEFERRABLE`, `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`.
+  `JigToolOptions.summary`, and an `execute` wrapper that calls `jig().markRefused` on a `RefusedError`), `registerEngineTool(pi, tool, options?)` (the same for an
+  `EngineTool` of `../engine-tool.ts`: it builds the Pi tool, runs it through `executeTool`, hands `facts` to `addFacts`, throws a result with `isError` as Pi expects, and passes
+  the Pi tool to `registerJigTool`, so the renderers, `summary` and the deferred exposure are the same; it does not call `declareTool`), `TOOLS_SECTION`,
+  `TOOL_SEARCH`, `NOT_DEFERRABLE` (these three and `validateToolsSection` are in `tools-section.ts`, which imports no Pi package; `tools.ts` re-exports the
+  three), `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`.
   `stringEnum(values, { description?, default? })` (`schema.ts`). `isObject`, `InputError`, `RefusedError`,
   `NotConfiguredError`, `notSetUpMessage` (`values.ts`: the one line a plugin says while its section is missing, naming `/jig setup <section>` before the by-hand route; with `problem` it says the section is there but wrong and quotes it). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
 - **Actions.** `ActionSpec`, `ActionTable`, `usageLine`, `unknownAction`, `checkParams`, `describeActions`, `previewChanged`, `actionList`
@@ -264,6 +298,7 @@ roles: [code map](../docs/code-map.md).
 - **Sockets and timers.** `ports.ts` connects only to `127.0.0.1` (probe 2 s; `waitForPort` sleeps the caller's required `pollMs`); `freePort`
   listens on port 0, closes, then re-tests up to `attempts` (100) times 10 ms apart while the port still accepts, and returns it anyway. `http.ts` sets one deadline timer per request.
 - **Pi.** `tools.ts` calls `pi.registerTool`, re-registers as deferred when named, subscribes to `session_start`, and on a `RefusedError` calls `jig().markRefused`.
+  `registerEngineTool` does the same through `registerJigTool`, and for each call reads `jig().approvedPreview`, then calls `addFacts` with the result's facts.
 - **No processes, no `process.exit`.** `sandbox-programs.ts` only returns install and sysctl text; it never runs it.
 
 ### kit: Verification

@@ -76,6 +76,7 @@ and `npm run build` there first; a changed `src/` that was not built fails `chec
 |---|---|
 | `npm run check` | Pi installed |
 | `npm test` | the sandbox's programs, for its tests |
+| `npm run test:engine` | nothing: the engine's tests, in a process that cannot load Pi (`npm test` runs them too) |
 | `npm run check:install` | network |
 | `npm run check:web`, `npm run test:web` and `npm run check:dist` | `npm ci` in `plugins/jig-review/web` |
 

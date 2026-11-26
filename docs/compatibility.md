@@ -57,6 +57,9 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 - **The contract** is `plugins/jig-core/src/contract.ts`: the types, `JIG_EVENTS` and `JigApi`. Plugins reach the API through `jig()` and
   `withJig()` of `plugins/jig-core/src/client.ts`. See [the plugin contract](../plugins/jig-core/docs/plugin-contract.md).
 - **The kit** is the stateless helpers in `plugins/jig-core/src/kit/`. Every name they export is public.
+- **Registering a tool** is `registerJigTool` and `registerEngineTool`, both in `plugins/jig-core/src/kit/tools.ts`. `registerEngineTool` takes an
+  `EngineTool`, a tool that names no agent ([the plugin contract](../plugins/jig-core/docs/plugin-contract.md)). A declaration's `classify` and
+  `preview` also get the working folder of the call as one more, optional argument, which a tool may ignore.
 - **Tools and actions** are what the model is told it can call, what a person's rules in `jig.json` name, and what a company plugin's
   classify rules match. A name is a promise.
 - **The record line** is one JSON object per call or turn in `<state>/records/`, which `jig-lens` and dashboards read

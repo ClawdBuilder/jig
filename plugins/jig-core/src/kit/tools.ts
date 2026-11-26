@@ -15,26 +15,13 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-w
 import { Text, TruncatedText } from "@earendil-works/pi-tui";
 import type { TSchema } from "typebox";
 import { jig } from "../client.ts";
+import { executeTool } from "../engine-tool.ts";
+import type { EngineTool } from "../engine-tool.ts";
+import { NOT_DEFERRABLE, TOOL_SEARCH, TOOLS_SECTION } from "./tools-section.ts";
 
-/** The `jig.json` section that holds `deferred`. jig-core checks it; a company plugin may give defaults for it. */
-export const TOOLS_SECTION = "tools";
-
-/** Pi's tool that finds and activates deferred tools (its built-in extension `builtin:tool-search`). */
-export const TOOL_SEARCH = "tool_search";
-
-/** Tools that are never deferred: Pi's own, the file tools and `bash` (which `jig-sandbox` replaces), and the finders. */
-export const NOT_DEFERRABLE: ReadonlySet<string> = new Set([
-    "read",
-    "bash",
-    "edit",
-    "write",
-    "grep",
-    "find",
-    "ls",
-    "powershell",
-    "codemode",
-    TOOL_SEARCH,
-]);
+// These names live in `tools-section.ts`, which imports no Pi package. They are exported from here as well, where plugins
+// have always found them.
+export { NOT_DEFERRABLE, TOOL_SEARCH, TOOLS_SECTION } from "./tools-section.ts";
 
 interface Slot {
     tools: Map<string, ToolDefinition>;
@@ -306,4 +293,53 @@ export function registerJigTool<TParams extends TSchema = TSchema, TDetails = un
         return;
     }
     pi.registerTool(definition);
+}
+
+/**
+ * Registers an `EngineTool` with Pi: the same tool `registerJigTool` registers, built from a tool that names no agent. The name, the label,
+ * the description, the two prompt fields and the parameters are the tool's own, and `sequential` is Pi's `executionMode: "sequential"`. The
+ * Pi tool is handed to `registerJigTool`, so the one-line renderers, `options.summary` and the deferred exposure are the same.
+ *
+ * Pi's own events clean the result and write the record, so this only runs the tool, through the step the engine's `run` shares
+ * (`executeTool`). `call.cwd` is the folder Pi hands over, `call.seen` the preview you approved, and the facts of the result go to the record
+ * with `addFacts`. A result with `isError` is thrown as an error, which is how Pi takes one. The tool is not declared to jig-core here:
+ * the plugin does that with `declareTool(tool)`, as it does for `registerJigTool`.
+ */
+export function registerEngineTool(pi: ExtensionAPI, tool: EngineTool, options: JigToolOptions = {}): void {
+    const definition: ToolDefinition = {
+        name: tool.tool,
+        label: tool.label,
+        description: tool.description,
+        ...(tool.promptSnippet === undefined ? {} : { promptSnippet: tool.promptSnippet }),
+        ...(tool.promptGuidelines === undefined ? {} : { promptGuidelines: tool.promptGuidelines }),
+        parameters: tool.input as unknown as TSchema,
+        ...(tool.sequential === true ? { executionMode: "sequential" as const } : {}),
+        async execute(toolCallId, params, signal, onUpdate, ctx) {
+            const api = jig();
+            const seen = api.approvedPreview(toolCallId);
+            const result = await executeTool(
+                tool,
+                params as Record<string, unknown>,
+                {
+                    callId: toolCallId,
+                    cwd: ctx.cwd,
+                    signal: signal ?? new AbortController().signal,
+                    ...(seen === undefined ? {} : { seen }),
+                    ...(onUpdate === undefined
+                        ? {}
+                        : {
+                              progress: (text: string) =>
+                                  onUpdate({ content: [{ type: "text", text }], details: undefined }),
+                          }),
+                    jig: api,
+                },
+                // `registerJigTool`'s wrapper marks the refusal too; marking it twice is the same as once.
+                () => api.markRefused?.(toolCallId),
+            );
+            if (result.facts !== undefined) api.addFacts(toolCallId, result.facts);
+            if (result.isError === true) throw new Error(result.text);
+            return { content: [{ type: "text", text: result.text }], details: result.data };
+        },
+    };
+    registerJigTool(pi, definition, options);
 }

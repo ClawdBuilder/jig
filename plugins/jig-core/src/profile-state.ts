@@ -10,7 +10,7 @@ import { applyToPrompt, syncOverlays } from "./overlays.ts";
 import type { SkillRef } from "./overlays.ts";
 import { chooseProfile, PROFILE_SECTION, PROFILES_SECTION, profileEntries } from "./profiles.ts";
 import type { Selection } from "./profiles.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 
 /** A company plugin that registered with `profiles.register`, and everything it gave through its view of the API. */
 export interface CompanyEntry {
@@ -173,18 +173,6 @@ export function syncSkills(state: JigState, skills: readonly SkillRef[]): void {
     state.profile.merged = result.merged;
     state.profile.notes = result.notes;
     state.profile.syncKey = key;
-}
-
-/** The skills Pi lists as commands (`skill:<name>`), as far as Pi tells at session start. */
-export function loadedSkills(state: JigState): SkillRef[] {
-    try {
-        return state.pi
-            .getCommands()
-            .filter((command) => command.source === "skill" && /^skill:[a-z0-9-]+$/.test(command.name))
-            .map((command) => ({ name: command.name.slice("skill:".length), filePath: command.sourceInfo.path }));
-    } catch {
-        return [];
-    }
 }
 
 /** `before_agent_start`: the skill list of this turn. Edits the options' list by assigning a new one (Pi's skill objects stay as they are). */

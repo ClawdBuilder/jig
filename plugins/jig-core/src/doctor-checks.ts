@@ -29,7 +29,7 @@ import { activeOnboarding, effectiveDefaults } from "./profile-state.ts";
 import { sectionDetail, sectionState } from "./section-state.ts";
 import { notSetupLines, onboardingLines } from "./doctor-needs.ts";
 import { shorten } from "./secret-status.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import { relayHealth } from "./relay.ts";
 import { TRANSPORTS_SECTION, relayNames, relayOf } from "./transports-section.ts";
 
@@ -72,7 +72,7 @@ export function doctorContext(state: JigState): DoctorContext {
         now: state.now,
         onboarding: activeOnboarding(state),
         sectionSetup: state.sectionSetup,
-        codemodeActive: codemodeInSession(state.pi),
+        codemodeActive: codemodeInSession(state.activeTools === undefined ? {} : { getActiveTools: state.activeTools }),
         ...sessionFiltered(state.offSections, state.sectionChecks),
     };
 }
