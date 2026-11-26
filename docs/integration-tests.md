@@ -31,7 +31,8 @@ repository's workflow runs and public repositories.
 ## What a test can rely on
 
 Every test file starts in an isolated environment, set up by `test/support/hermetic.mjs` before the file runs, so a result does
-not depend on the machine. [`hermetic.test.ts`](../plugins/jig-core/test/hermetic.test.ts) checks each point.
+not depend on the machine. [`hermetic.test.ts`](../plugins/jig-core/test/hermetic.test.ts) checks each point. The engine's own tests
+(`npm run test:engine`) start with `test/support/no-pi.mjs`, which sets up the same world and then refuses every import of a Pi package.
 
 - **A temporary world.** `HOME`, `PI_CODING_AGENT_DIR`, `JIG_STATE_DIR`, `PASSWORD_STORE_DIR` and `GNUPGHOME` are in one temporary
   folder, which is removed when the file ends. The `XDG_*` folders are unset, so they fall under the temporary home.

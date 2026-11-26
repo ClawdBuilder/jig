@@ -40,7 +40,7 @@ closed instead of running ungoverned.
   never a body, a description or a query. A tool that defines its own renderer
   keeps it. Nothing the model receives changes.
 - **`declareTool(declaration)`** says how the tool's calls are classified.
-  - `classify` is pure and fast, because it runs before every call. It returns
+  - `classify` is pure and fast, because it runs before every call. It gets the working folder of the call as an optional second argument, and `preview` as an optional third; a tool that does not need it ignores it. It returns
     a `CallClass`: `environment`, `effect`, and optional `action`, `approval`,
     `atLeast` and `always`. `always: "ask"` is a floor rule: every call asks,
     no rule or session allow lowers it, and a rule may still deny it. It is new
@@ -227,6 +227,20 @@ talks to Pi.
 - **`kit/tools.ts`:** `registerJigTool(pi, tool, options?)` registers a tool
   and its one-line timeline renderers. `JigToolOptions.summary` is the
   optional full-line callback described above.
+  - **`registerEngineTool(pi, tool, options?)`** does the same for an `EngineTool`: a tool
+    that names no agent, with its declaration (`tool`, `plugin`, `classify`, `preview`), its
+    texts (`label`, `description`, `promptSnippet`, `promptGuidelines`), its parameters
+    (`input`, a JSON Schema), `sequential` and `execute(input, call)` in one object. The
+    renderers, `summary` and the deferred exposure are those of `registerJigTool`. The plugin
+    still calls `declareTool(tool)`, because an `EngineTool` is a `ToolDeclaration`.
+  - **`call`** has `callId`, `cwd` (the working folder Pi gives), `signal`, `seen` (the
+    preview you approved, as `approvedPreview` gives it), `progress` (when Pi shows updates)
+    and `jig`. The result is `text`, and optionally `data` (Pi's `details`), `isError` (thrown
+    as an error, as Pi expects) and `facts` (added to the record, as `addFacts` does). A
+    `RefusedError` is a refusal, as before.
+- **`kit/tools-section.ts`:** the `tools` section of `jig.json`: `TOOLS_SECTION`, `TOOL_SEARCH`, `NOT_DEFERRABLE` (the
+  tools that are never deferred) and `validateToolsSection(raw)`. It imports no Pi package; `kit/tools.ts` exports the
+  first three as well.
 - **`kit/values.ts`:** `isObject(value)`, `InputError`: a `TypeError` named
   `InputError`, which `jig-core` reads as "invalid input" when a tool's classify
   or preview throws it, and `NotConfiguredError`, an `InputError` for a section

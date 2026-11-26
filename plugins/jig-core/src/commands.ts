@@ -29,14 +29,15 @@ import { modelStatus } from "./model-auth.ts";
 import { sectionDetail } from "./section-state.ts";
 import { plainLine } from "./watch/clean.ts";
 import { deferredNames } from "./tool-exposure.ts";
-import type { JigState } from "./state.ts";
+import { piToolInfo } from "./pi-host.ts";
+import type { JigState, PiState } from "./state.ts";
 import { runSetupCommand } from "./setup-command.ts";
 
 /** A list longer than this is shown in a scrollable selector instead of a notice. */
 const NOTICE_LINES = 12;
 const MAX_RULE_LINES = 300;
 
-export function registerCommands(pi: ExtensionAPI, state: JigState): void {
+export function registerCommands(pi: ExtensionAPI, state: PiState): void {
     pi.registerCommand("jig", {
         description: "Jig tool manager: status, setup, doctor, rules per tool, records",
         getArgumentCompletions: (prefix) => {
@@ -92,12 +93,12 @@ async function doctorLines(state: JigState, args: readonly string[]): Promise<st
  * How a tool is classified before any call. A declared tool classifies each call from its input, so it may have no
  * answer for the input given here; that is not the unknown default, and the result is undefined.
  */
-function probe(state: JigState, name: string, input: Record<string, unknown>): Classification | undefined {
+function probe(state: PiState, name: string, input: Record<string, unknown>): Classification | undefined {
     try {
         const result = classify(name, input, {
             declarations: state.declarations,
             classifyRules: state.policy().classify,
-            toolInfo: (tool) => state.pi.getAllTools().find((info) => info.name === tool),
+            toolInfo: (tool) => piToolInfo(state.pi, tool),
         });
         return result.source === "unknown" && state.declarations.has(name) ? undefined : result;
     } catch {
@@ -129,7 +130,7 @@ const CLASS_LABEL: Record<ClassSource, string> = {
 
 // ---- /jig ----------------------------------------------------------------------------------------------------------------
 
-export function statusLines(state: JigState): string[] {
+export function statusLines(state: PiState): string[] {
     const tools = state.pi.getAllTools();
     const plugins = new Set<string>(["jig-core"]);
     for (const declaration of state.declarations.values()) plugins.add(declaration.plugin);
@@ -307,7 +308,7 @@ function watchesLine(state: JigState): string {
 
 // ---- /jig rules -------------------------------------------------------------------------------------------------------
 
-export function ruleLines(state: JigState, only: string | undefined, hasUI: boolean): string[] {
+export function ruleLines(state: PiState, only: string | undefined, hasUI: boolean): string[] {
     const policy = state.policy();
     const tools = state.pi.getAllTools();
     const names = [...new Set([...tools.map((tool) => tool.name), ...state.declarations.keys()])].sort();

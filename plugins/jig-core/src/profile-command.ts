@@ -2,8 +2,9 @@
 // in the session file (never shown to the model), so a reload, which the command runs when the agent is idle, and a resume
 // keep it. `/profile auto` drops it; `/profile none` turns every company off.
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { SkillRef } from "./overlays.ts";
 import { PROFILES_SECTION, profileEntries } from "./profiles.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 
 export const PROFILE_ENTRY = "jig-profile";
 
@@ -21,6 +22,18 @@ export function restoreSessionProfile(ctx: ExtensionContext): string | undefined
         return typeof entry.data?.name === "string" ? entry.data.name : undefined;
     }
     return undefined;
+}
+
+/** The skills Pi lists as commands (`skill:<name>`), as far as Pi tells at session start. */
+export function loadedSkills(pi: ExtensionAPI): SkillRef[] {
+    try {
+        return pi
+            .getCommands()
+            .filter((command) => command.source === "skill" && /^skill:[a-z0-9-]+$/.test(command.name))
+            .map((command) => ({ name: command.name.slice("skill:".length), filePath: command.sourceInfo.path }));
+    } catch {
+        return [];
+    }
 }
 
 /** The one line `/jig` shows. */

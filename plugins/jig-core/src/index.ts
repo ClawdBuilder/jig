@@ -17,39 +17,39 @@ import { agentDirFor } from "./kit/theme-preference.ts";
 import type { ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { buildApi } from "./api.ts";
 import { publishJig, withdrawJig } from "./client.ts";
-import { cleanupSpill } from "./cap.ts";
 import { registerCommands, sandboxLine } from "./commands.ts";
 import { describeProblem } from "./config.ts";
 import { errorMessage } from "./errors.ts";
+import { engineOf } from "./engine.ts";
 import { gate } from "./gate.ts";
 import { configFile } from "./paths.ts";
-import { offSectionsOf } from "./plugin-table.ts";
-import { cleanupPreviews } from "./preview-html.ts";
-import { cleanupRecords, conditionProblem } from "./records.ts";
+import { piHost } from "./pi-host.ts";
+import { conditionProblem } from "./records.ts";
 import { classifyCodemode, codemodeAsk } from "./codemode.ts";
 import { finishCall, finishTurn, toolResult } from "./results.ts";
-import { beforeTurn, loadedSkills, syncSkills } from "./profile-state.ts";
-import { registerProfileCommand, restoreSessionProfile } from "./profile-command.ts";
-import { startJobs } from "./start-jobs.ts";
+import { beforeTurn, syncSkills } from "./profile-state.ts";
+import { loadedSkills, registerProfileCommand, restoreSessionProfile } from "./profile-command.ts";
 import { settleDeferredTools } from "./tool-exposure.ts";
-import { createState, loadPersonalConfig } from "./state.ts";
-import type { JigCoreOptions, JigState } from "./state.ts";
+import { createState } from "./state.ts";
+import type { JigCoreOptions, PiState } from "./state.ts";
 import { registerWatchTool } from "./watch/tool.ts";
 
 export type { JigCoreOptions };
 
 /** The extension, with parts a test can replace (the masker, the browser). Pi loads the default export below. */
 /** The state of the jig-core runtime loaded in this process, for tests that drive the whole extension. */
-let running: JigState | undefined;
-export function runningJigState(): JigState | undefined {
+let running: PiState | undefined;
+export function runningJigState(): PiState | undefined {
     return running;
 }
 
 export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
     return (pi: ExtensionAPI) => {
-        const state = createState(pi, options);
-        state.configPath = () => configFile(getAgentDir());
-        state.agentDir = () => agentDirFor();
+        const state = createState(pi, {
+            ...options,
+            configPath: () => configFile(getAgentDir()),
+            agentDir: () => agentDirFor(),
+        });
         state.piVersion = VERSION;
         running = state;
         const api = buildApi(state);
@@ -84,15 +84,7 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
             // Safe to run twice: cancellation, reload and exit can all arrive here.
             withdrawJig(api);
             if (running === state) running = undefined;
-            state.sessionAllows.clear();
-            state.calls.clear();
-            state.watches.end();
-            state.startJobs?.abort();
-            state.startJobs = undefined;
-            state.screen = undefined;
-            state.models = undefined;
-            // The preview server listens only while previews are being read.
-            await state.previews.close().catch(() => undefined);
+            await engineOf(state).stop();
         });
         registerCommands(pi, state);
         registerProfileCommand(pi, state);
@@ -107,20 +99,16 @@ export function jigCore(options: JigCoreOptions = {}): ExtensionFactory {
     };
 }
 
-function startSession(state: JigState, ctx: ExtensionContext): void {
-    state.sessionId = ctx.sessionManager.getSessionId();
+function startSession(state: PiState, ctx: ExtensionContext): void {
+    const engine = engineOf(state);
     state.screen = ctx.hasUI ? ctx.ui : undefined;
     state.models = ctx.modelRegistry;
-    state.workingDir = ctx.cwd;
     // `/profile <name>` of this session, kept in the session file so that a reload or a resume keeps it.
     state.profile.session = restoreSessionProfile(ctx);
-    // A section kept in jig.json for a plugin that did not load is off, not an unknown field (src/plugin-table.ts).
-    state.offSections = offSectionsOf(state.sectionChecks.keys());
-    loadPersonalConfig(state);
+    // The session id, the working folder and jig.json, with the sections of the plugins that are loaded.
+    engine.start(piHost(state, ctx));
     // The merged skills of the active company (its overlays laid under the generic skills); the prompt's list is edited each turn.
-    syncSkills(state, loadedSkills(state));
-    // Watches saved by this session before Pi was closed start polling again.
-    state.watches.begin(state.sessionId);
+    syncSkills(state, loadedSkills(state.pi));
 
     const problems = [...state.policy().problems.map(describeProblem), ...state.startupProblems];
     if (problems.length > 0 && ctx.hasUI) {
@@ -139,29 +127,15 @@ function startSession(state: JigState, ctx: ExtensionContext): void {
     } catch {
         // The tools stay as they are: a larger context, not a broken session.
     }
-    // In the background: the session does not wait for it, and it cannot fail the start.
-    startJobs(state);
-
-    // Old records, spill files and preview pages are removed when a session starts.
-    const { config } = state.personal;
-    for (const clean of [
-        () => cleanupRecords(config.records.retentionDays, state.now()),
-        () => cleanupSpill(config.spill.retentionDays, state.now().getTime()),
-        () => cleanupPreviews(config.spill.retentionDays, state.now().getTime()),
-    ]) {
-        try {
-            clean();
-        } catch {
-            // Cleaning up is a courtesy; a session should still start.
-        }
-    }
+    // Saved watches, the background start jobs, and the removal of old records, spill files and preview pages.
+    engine.beginSession();
 }
 
 /**
  * Says whether `bash` is sandboxed, and in which network mode. A sandbox plugin starts after this, so its state is read
  * once it says it is ready; with none registered, the warning comes at once.
  */
-function announceSandbox(state: JigState, ctx: ExtensionContext): void {
+function announceSandbox(state: PiState, ctx: ExtensionContext): void {
     if (!ctx.hasUI) return;
     const provider = state.sandbox;
     const say = (): void => {

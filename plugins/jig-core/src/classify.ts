@@ -6,8 +6,8 @@
 //   3. the defaults built in for Pi's own tools;
 //   4. the tool's annotations (MCP-style hints), which Pi reports for any package's tools;
 //   5. the unknown default: a write outside the machine, which asks.
-import type { ToolAnnotations, ToolInfo } from "@earendil-works/pi-coding-agent";
 import type { ApprovalKind, CallClass, ClassifyRule, Effect, EnvironmentName, ToolDeclaration } from "./contract.ts";
+import type { ToolAnnotations, ToolInfo } from "./engine.ts";
 import { errorMessage, InvalidInputError } from "./errors.ts";
 import { canonicalAction } from "./kit/action-names.ts";
 
@@ -31,8 +31,10 @@ export interface ClassifyDeps {
     declarations: ReadonlyMap<string, ToolDeclaration>;
     /** Personal rules first, then the company's. */
     classifyRules: readonly ClassifyRule[];
-    /** The tool as Pi lists it, for its annotations. */
+    /** The tool as its agent lists it, for its annotations. */
     toolInfo(name: string): ToolInfo | undefined;
+    /** The working folder of the call, handed to a declaration's `classify` as one more argument. Missing: not handed. */
+    cwd?: string;
 }
 
 const LOCAL_READ: CallClass = { environment: "local", effect: "read" };
@@ -74,7 +76,7 @@ export function classify(tool: string, input: Readonly<Record<string, unknown>>,
         // user's rule or a hint must not guess for a tool that declared itself.
         let answer: ReturnType<typeof declaration.classify>;
         try {
-            answer = declaration.classify(input);
+            answer = deps.cwd === undefined ? declaration.classify(input) : declaration.classify(input, deps.cwd);
         } catch (error) {
             // A TypeError is the tool saying the input is invalid; anything else is a fault in the tool, which the
             // gate blocks as one.

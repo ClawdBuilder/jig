@@ -21,7 +21,7 @@ import {
 import type { ListedPackage } from "./packages.ts";
 import { projectTrust, untrustedDetail, untrustedSetupLine } from "./trust.ts";
 import { applyDelta, enabledFiles } from "./package-filter.ts";
-import type { JigState } from "../state.ts";
+import type { JigState } from "../engine-state.ts";
 
 /** One package that could not be loaded, with the plain reason: the doctor shows it as a FAIL line. */
 export interface LoadFailure {

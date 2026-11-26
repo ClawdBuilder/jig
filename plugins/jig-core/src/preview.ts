@@ -66,13 +66,15 @@ export function isInvalidInput(value: Preview | InvalidInput): value is InvalidI
 /**
  * Builds the preview with the tool's own function, which may take a while (it can read a diff or fetch text). A
  * `TypeError` from it means the input is invalid (the contract's rule), and comes back as `InvalidInput`. Any other
- * failure, or more than 15 seconds, gives "preview unavailable: <reason>", and the user can still decide.
+ * failure, or more than 15 seconds, gives "preview unavailable: <reason>", and the user can still decide. `cwd`, the working folder of
+ * the call, goes to the tool's function as one more argument when it is given.
  */
 export async function buildPreview(
     declaration: ToolDeclaration | undefined,
     input: Readonly<Record<string, unknown>>,
     fallbackSummary: string,
     timeoutMs: number = PREVIEW_TIMEOUT_MS,
+    cwd?: string,
 ): Promise<Preview | InvalidInput> {
     if (declaration?.preview === undefined) return { summary: fallbackSummary };
     const controller = new AbortController();
@@ -88,7 +90,11 @@ export async function buildPreview(
         }, timeoutMs);
     });
     try {
-        const preview: unknown = await Promise.race([declaration.preview(input, controller.signal), tooSlow]);
+        const planned =
+            cwd === undefined
+                ? declaration.preview(input, controller.signal)
+                : declaration.preview(input, controller.signal, cwd);
+        const preview: unknown = await Promise.race([planned, tooSlow]);
         if (!isPreview(preview)) throw new Error("the tool returned no summary");
         return preview;
     } catch (error) {

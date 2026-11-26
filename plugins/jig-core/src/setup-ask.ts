@@ -10,7 +10,7 @@ import { askProposal } from "./setup-proposal.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";
 import type { SetupChange, SetupField, SetupMethod, SetupPlan, SetupSection } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import { emptyAnswer, exampleQuestion, isHint, optionalNumberQuestion } from "./setup-fields.ts";
 import { getPath } from "./setup-values.ts";
 

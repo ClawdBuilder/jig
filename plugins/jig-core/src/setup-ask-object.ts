@@ -3,7 +3,7 @@
 // inside the object goes through the same "where is it kept" flow as any other, and still waits for the object.
 import type { SetupChange, SetupField, SetupObjectField, SetupObjectForm, SetupPlan } from "./setup-plan.ts";
 import type { SetupUi } from "./setup.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import type { SecretBackend } from "./config.ts";
 import { applyObject, listValues, objectNameProblem } from "./setup-answer.ts";
 import { chooseReference, probeChosen } from "./setup-reference-ask.ts";

@@ -5,7 +5,7 @@
 // tell, and a child agent is one of many that a parent started: ten of them must not each raise a passphrase prompt or
 // probe the VPN host. Nothing here is awaited by the session start, and nothing here can fail it.
 import { effectiveBackends } from "./config.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import { describeFailure } from "./start-checks.ts";
 import { unlockStoreAtStart } from "./start-unlock.ts";
 import { checkUpdateAtStart } from "./update-notice.ts";

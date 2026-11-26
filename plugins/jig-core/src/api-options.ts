@@ -1,7 +1,7 @@
 // The section options `registerSection` checks before it writes anything: a path list, and a company entry that names
 // methods for a section that never declared them. Kept out of api.ts so it stays one step per member.
 import type { OnboardingEntry } from "./contract-onboarding.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 
 /** Refuses a section option that must be a list of non-empty paths, such as `first` or `union`. */
 export function checkPathList(value: unknown, section: string, option: string, example: string): void {

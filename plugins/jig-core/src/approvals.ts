@@ -14,10 +14,17 @@
 // Tool calls from one model message run in parallel, and Pi has one dialog slot, so questions wait in a queue and are
 // shown one at a time.
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { ApprovalKind, Preview } from "./contract.ts";
+import { createInTurn } from "./ask.ts";
+import type { Approval, AskRequest, InTurn } from "./ask.ts";
+import type { Preview } from "./contract.ts";
 import type { OpenInBrowser } from "./config.ts";
 import { createReviewScreen } from "./review.ts";
 import type { Answer } from "./records.ts";
+
+// The question and the answer, and the choice of screen, are in `ask.ts`, which imports no Pi package. They are exported
+// from here as well, where callers have always found them.
+export { chooseKind } from "./ask.ts";
+export type { Approval, AskRequest } from "./ask.ts";
 
 const ALLOW = "Allow";
 const ALLOW_SESSION = "Allow for this session";
@@ -28,25 +35,6 @@ const MAX_REASON_CHARS = 500;
 /** How much of a long preview the selector shows when the review screen is not available. */
 const EXCERPT_LINES = 20;
 const EXCERPT_CHARS = 2_000;
-
-export interface AskRequest {
-    /** The line naming the tool, action, environment and effect. */
-    header: string;
-    preview: Preview;
-    kind: ApprovalKind;
-    /** The tool declared `always: "ask"`: there is no "allow for this session" answer. */
-    always?: boolean;
-}
-
-export interface Approval {
-    answer: Answer;
-    /** What the user typed after declining, if anything. */
-    reason?: string;
-    /** True when the question was closed without an answer (Esc on a selector, the run was aborted). */
-    dismissed: boolean;
-    /** How long the call waited for the user, in milliseconds, including time in the queue. */
-    waitedMs: number;
-}
 
 /** The parts of Pi's context a question needs. */
 export type AskContext = Pick<ExtensionContext, "ui" | "mode" | "signal">;
@@ -62,6 +50,8 @@ export interface Approvals {
 }
 
 export interface ApprovalsOptions {
+    /** The queue questions wait in. The engine's state holds one, so that a question of ours and one another plugin asks never overlap. */
+    inTurn?: InTurn;
     now?: () => number;
     /** Shows the rendered preview in the browser (the `o` key). The default writes the page and opens it. */
     openPreview?: (preview: Preview, header: string) => Promise<string>;
@@ -78,12 +68,7 @@ export function createApprovals(options: ApprovalsOptions = {}): Approvals {
         options.terminalSize ?? (() => ({ columns: process.stdout.columns ?? 80, rows: process.stdout.rows ?? 24 }));
 
     // One question at a time. A failed question does not stop the ones behind it.
-    let tail: Promise<unknown> = Promise.resolve();
-    function inTurn<T>(job: () => Promise<T>): Promise<T> {
-        const turn = tail.then(job, job);
-        tail = turn.catch(() => undefined);
-        return turn;
-    }
+    const inTurn = options.inTurn ?? createInTurn();
 
     /** The question as a selector: the header, the summary and, for a long preview, its first lines. */
     function selectorTitle(request: AskRequest): string {
@@ -206,12 +191,4 @@ function word(given: unknown, usual: string): string {
 
 function signalOption(ctx: AskContext): { signal: AbortSignal } | undefined {
     return ctx.signal === undefined ? undefined : { signal: ctx.signal };
-}
-
-/**
- * Which screen a call uses: the screen a rule or the tool chose, else the review screen when the preview has a body,
- * else a dialog.
- */
-export function chooseKind(chosen: ApprovalKind | undefined, preview: Preview): ApprovalKind {
-    return chosen ?? (preview.body !== undefined ? "review" : "dialog");
 }

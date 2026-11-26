@@ -340,6 +340,7 @@ describe("what plugins import", () => {
             "theme-preference.ts",
             "theme.css",
             "theme.ts",
+            "tools-section.ts",
             "tools.ts",
             "values.ts",
         ]);
@@ -444,6 +445,9 @@ describe("what plugins import", () => {
                 "themeControlScript",
                 "themeCss",
             ],
+            // The `tools` section's name, its never-deferred list and its check, kept apart from `tools.ts` so that no Pi import comes with
+            // them. `tools.ts` re-exports the three constants.
+            "tools-section.ts": ["NOT_DEFERRABLE", "TOOLS_SECTION", "TOOL_SEARCH", "validateToolsSection"],
             "tools.ts": [
                 "JigToolOptions",
                 "NOT_DEFERRABLE",
@@ -451,6 +455,7 @@ describe("what plugins import", () => {
                 "TOOL_SEARCH",
                 "deferredToolNames",
                 "hasToolSearch",
+                "registerEngineTool",
                 "registerJigTool",
                 "transcriptTools",
             ],

@@ -5,7 +5,7 @@
 import { RELAY_PROTOCOL, RelayAnswerError, relayHealth } from "./relay.ts";
 import { oneLine, printable } from "./kit/text.ts";
 import type { SetupUi } from "./setup.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import { DEFAULT_RELAY_CLIENT, urlProblem } from "./transports-section.ts";
 
 /** How many of a relay's services the line names; a relay may report thousands. */

@@ -12,7 +12,7 @@ import type { DoctorLine, DoctorReport } from "../doctor.ts";
 import { errorMessage } from "../errors.ts";
 import { helpFor, strayWordsMessage } from "./help.ts";
 import { npmInstall, piVersion, jigPackage } from "../pi-version.ts";
-import type { JigState } from "../state.ts";
+import type { JigState } from "../engine-state.ts";
 import { loadHeadless, ownPackage } from "./headless.ts";
 import type { LoadFailure } from "./headless.ts";
 import { terminalUi } from "./terminal.ts";

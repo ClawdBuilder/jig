@@ -14,14 +14,32 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `index.ts` | The factory: builds the state and hooks `tool_call`, `tool_result`, `tool_execution_end`, `turn_end`, `/jig` | Pi, which loads it |
+| `index.ts` | The factory: builds the state, hooks Pi's events, and calls the engine to start and stop | Pi, which loads it |
 
 ### The two hooks around a call
 
+Pi's side of a call: each file turns Pi's event into the engine's plain request and the engine's answer back into Pi's. What they decide and write is in [the engine](#the-engine).
+
 | File | What it does | Called by |
 |---|---|---|
-| `gate.ts` | The `tool_call` hook: classify, decide, ask the user, announce, then let the call run or block it | `index.ts` |
-| `results.ts` | After a tool ran: redact, mask production data, cap, and write the call's record | `index.ts` |
+| `gate.ts` | The `tool_call` hook: makes the request, has the engine judge it, and lets the call run or blocks it | `index.ts` |
+| `results.ts` | After a tool ran: the engine cleans the result and writes the record; writes the turn's record | `index.ts` |
+| `pi-host.ts` | Builds the engine's host from Pi's extension API and the context of one event | `gate.ts`, `results.ts`, `state.ts`, `index.ts`, `commands.ts` |
+
+### The engine
+
+What jig-core does with a call, with no agent in it. It imports no Pi package (`test/engine-boundary.test.ts`): what only a host has comes in through `EngineHost`.
+
+| File | What it does | Called by |
+|---|---|---|
+| `engine.ts` | The host and call types, `Engine`, `createEngine` and `engineOf` | `gate.ts`, `results.ts`, `index.ts` |
+| `engine-options.ts` | What a host gives `createEngine` (`EngineOptions`), such as the sections that count as off | `engine-state.ts` |
+| `engine-state.ts` | What the engine keeps (`JigState`, `CallState`) and reading `jig.json` | `engine.ts`, `state.ts`, `api.ts` |
+| `engine-judge.ts` | Steps 1 to 3 of a call: classify, decide, ask the host, announce (`judge`, `answer`) | `engine.ts` |
+| `engine-tool.ts` | The tool contract (`EngineTool`, `CallContext`, `ToolResult`) and the step Pi and `run` share | `engine-run.ts`, `kit/tools.ts`, `engine.ts` |
+| `engine-run.ts` | Steps 4 to 7 for a tool the engine runs: check the call, run the tool, clean the result, record it | `engine.ts` |
+| `engine-results.ts` | Steps 6 and 7 of a call the agent ran: clean the result, write the record | `engine.ts`, `engine-run.ts`, `results.ts` |
+| `engine-session.ts` | A session: `start` reads the settings, `beginSession` starts jobs, `stop` ends it | `engine.ts` |
 
 ### Deciding
 
@@ -30,30 +48,31 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `classify.ts` | Where a call acts and whether it reads or writes, from the tool's own word, a rule, or a default | `commands.ts`, `config.ts` and 3 more |
 | `codemode.ts` | Reads a codemode script: a plain read, or an external write when it can reach models, an escape hatch or a `\u` escape; the gate's ask reason | `index.ts` |
 | `decide.ts` | The pure decision: allow, ask or deny, from the rules table, the floor and your configuration | `commands.ts`, `config.ts` and 2 more |
-| `gates.ts` | Checks that other plugins register; a gate can make a decision stricter and never looser | `gate.ts`, `state.ts` |
+| `gates.ts` | Checks that other plugins register; a gate can make a decision stricter and never looser | `engine-judge.ts`, `engine-state.ts` |
 | `environments.ts` | The names a call can act in, and which are test and which are production | `config.ts` |
 | `protected-paths.ts` | The files Pi's own file tools may not touch: credentials, Pi's settings, Jig's state | `commands.ts`, `config.ts` and 2 more |
-| `writable-folders.ts` | The folders the file tools may write without asking: working, temp, a sandbox's allowed | `gate.ts`, `protected-paths.ts` |
-| `loaded-code.ts` | The code Pi loads at its next start with no sandbox: the local packages and extensions of its settings, guarded | `state.ts` |
+| `writable-folders.ts` | The folders the file tools may write without asking: working, temp, a sandbox's allowed | `engine-judge.ts`, `protected-paths.ts` |
+| `loaded-code.ts` | The code Pi loads at its next start with no sandbox: the local packages and extensions of its settings, guarded | `state.ts`, `engine-state.ts` |
 
 ### Asking you
 
 | File | What it does | Called by |
 |---|---|---|
-| `approvals.ts` | Asking inside the waiting call: dialog, review screen or form, one question at a time | `gate.ts`, `state.ts` |
+| `ask.ts` | The question and answer as plain types, the choice of screen, and the one-at-a-time queue | `engine-judge.ts`, `engine-state.ts`, `approvals.ts` |
+| `approvals.ts` | Asking inside the waiting call: dialog, review screen or form, shown on Pi's screens | `state.ts` |
 | `review.ts` | The review screen: a scrollable preview you approve with a key | `approvals.ts` |
-| `preview.ts` | The one-line summary and the body of what a call will do, from the tool or from the call itself | `gate.ts` |
-| `preview-html.ts` | A long preview as a page you can read in the browser (the `o` key); it shows and never answers | `index.ts`, `state.ts` |
-| `preview-server.ts` | The server on `127.0.0.1` that serves those pages to the browser, started by the first preview, closed with the session | `preview-html.ts`, `state.ts`, `index.ts` |
+| `preview.ts` | The one-line summary and the body of what a call will do, from the tool or from the call itself | `engine-judge.ts` |
+| `preview-html.ts` | A long preview as a page you can read in the browser (the `o` key); it shows and never answers | `engine-session.ts`, `state.ts` |
+| `preview-server.ts` | The server on `127.0.0.1` that serves those pages to the browser, started by the first preview, closed with the session | `preview-html.ts`, `engine-state.ts`, `index.ts` |
 
 ### Protecting what comes back
 
 | File | What it does | Called by |
 |---|---|---|
-| `redact.ts` | Removes every resolved secret, in all its spellings, from a result | `secrets.ts`, `signin.ts`, `state.ts` |
-| `cap.ts` | Cuts a very long result and keeps the whole text in a spill file the model can read | `index.ts`, `results.ts` |
+| `redact.ts` | Removes every resolved secret, in all its spellings, from a result | `secrets.ts`, `signin.ts`, `engine-state.ts` |
+| `cap.ts` | Cuts a very long result and keeps the whole text in a spill file the model can read | `engine-session.ts`, `results.ts`, `engine-results.ts` |
 | `records.ts` | One JSON line for every tool call and every model turn; never the arguments or the output | `approvals.ts`, `commands.ts` and 6 more |
-| `mask/index.ts` | The masker: customer personal data in production results becomes tokens | `state.ts` |
+| `mask/index.ts` | The masker: customer personal data in production results becomes tokens | `engine-state.ts` |
 | `mask/engine.ts` | Runs the passes over a value and fails closed with a fixed message | `mask/index.ts` |
 | `mask/pass.ts` | One pass over a value or text: field names, embedded JSON, query strings, free text | `mask/engine.ts` |
 | `mask/kinds.ts` | What a field or value is, and which field names mean what: the masking policy | the `mask/` passes |
@@ -80,7 +99,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `config.ts` | `jig.json` and what company plugins add; an error never makes the plugin guess | `api.ts`, `commands.ts` and 4 more |
 | `section-defaults.ts` | A company's defaults for a plugin's section: your own laid over them, a `null` leaving one out | `api.ts`, `config.ts`, `setup-plan.ts`, `doctor-needs.ts` |
-| `state.ts` | What jig-core keeps while Pi runs: tools, configuration, questions, one record per call in flight | `api.ts`, `commands.ts` and 3 more |
+| `state.ts` | Pi's wrapper of the engine's state: adds the agent, the screens that ask and the tool list | `index.ts`, `cli/headless.ts` and 4 more |
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
 | `commands.ts` | The `/jig` commands: status, doctor with its flags, rules, records, and the setup hand-off | `index.ts` |
 | `section-state.ts` | What one registered plugin section is: loaded, waiting for a person, not set, or invalid | `commands.ts`, `doctor-checks.ts` |
@@ -158,7 +177,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `update-versions.ts` | The newest stable release, `--to`, and the highest version inside every company `jig.range`; a range it cannot read is refused | `cli/update.ts`, `update-notice.ts` |
 | `update-company.ts` | Reads every installed company package's `jig.range` for the cap | `cli/update.ts`, `update-notice.ts` |
 | `registry.ts` | The registry npm uses: `jig update` asks `npm config get registry`; the notice reads env and .npmrc files without starting a program | `cli/update.ts`, `update-notice.ts` |
-| `updates-section.ts` | The `updates.check` section: checked like a plugin's so a company can turn the notice off; the person's file wins | `state.ts`, `update-notice.ts` |
+| `updates-section.ts` | The `updates.check` section: checked like a plugin's so a company can turn the notice off; the person's file wins | `engine-state.ts`, `update-notice.ts` |
 | `update-notice.ts` | The background notice in Pi: once a day, cached, silent offline or off, company cap, deprecated version, Pi newer than tested; the screen only | `start-jobs.ts` |
 | `update-notice-text.ts` | The notice's words for a home and a Pi folder; whether Jig's entry is pinned (Pi says nothing then) | `update-notice.ts` |
 
@@ -166,10 +185,10 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `profiles.ts` | The `profiles` and `profile` sections: their checks, folder and remote patterns, the origin remote read from `.git/config`, and the choice | `profile-state.ts`, `state.ts` |
-| `profile-state.ts` | Applies the choice: the active company's additions and section defaults, `onChange`, merged skills, the turn's skill list | `state.ts`, `api.ts`, `index.ts` and 2 more |
+| `profiles.ts` | The `profiles` and `profile` sections: their checks, folder and remote patterns, the origin remote read from `.git/config`, and the choice | `profile-state.ts`, `engine-state.ts` |
+| `profile-state.ts` | Applies the choice: the active company's additions and section defaults, `onChange`, merged skills, the turn's skill list | `engine-state.ts`, `api.ts`, `index.ts` and 2 more |
 | `overlays.ts` | Skill overlays: writes `<state>/skills/<profile>/<skill>/SKILL.md` (generic text plus the company's rules) and edits the skill list of a turn | `profile-state.ts` |
-| `profile-command.ts` | `/profile`: shows the active profile and why, chooses one for the session, restores the choice after a reload | `index.ts`, `commands.ts` |
+| `profile-command.ts` | `/profile`: shows the active profile and why, chooses one for the session, restores the choice after a reload; the skills Pi lists (`loadedSkills`) | `index.ts`, `commands.ts` |
 
 ### Session start
 
@@ -177,7 +196,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 |---|---|---|
 | `start-jobs.ts` | What a session start sets going in the background (the unlock and the checks), in the top-level interactive session only | `index.ts` |
 | `start-unlock.ts` | Gets the pass store unlocked at start (`secrets.pass.unlockAtStart`), and tells you only what you can use | `start-jobs.ts` |
-| `tool-exposure.ts` | The `tools` section (`tools.deferred`): its check, the warning for a name no plugin declared, and `tool_search` switched on | `state.ts`, `index.ts` |
+| `tool-exposure.ts` | `tools.deferred` at session start: the warning for a name no plugin declared, and `tool_search` switched on | `commands.ts`, `index.ts` |
 | `start-checks.ts` | The `startChecks` list of `jig.json`: what it accepts, and the one TCP connection each check makes | `config.ts`, `start-jobs.ts` and 2 more |
 
 ### What other plugins use
@@ -189,12 +208,12 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `client.ts` | How a plugin reaches jig-core at run time: `jig()` and `withJig()` | `index.ts`, and every other plugin |
 | `api.ts` | The API behind `jig()`: each function is a thin step onto the state | `index.ts` |
 | `api-options.ts` | The section options checked before anything is written: a path list and methods | `api.ts` |
-| `secrets.ts` | Resolves a reference such as `pass:work/token` just before a tool needs it | `state.ts` |
-| `signin.ts` | Sign-in services: how a company plugin signs requests in to its own systems | `state.ts` |
-| `transports.ts` | How a company plugin carries requests to its own systems itself | `state.ts` |
-| `transports-section.ts` | The `transports` relay section: URL, token and field checks, and company defaults | `state.ts`, `doctor-checks.ts` |
-| `relay.ts` | The built-in relay transport: health, the request body, and the three answers | `state.ts`, `doctor-checks.ts` |
-| `tunnels.ts` | How a company plugin gives a tool a network route of its own, such as a database behind a jump host | `state.ts` |
+| `secrets.ts` | Resolves a reference such as `pass:work/token` just before a tool needs it | `engine-state.ts` |
+| `signin.ts` | Sign-in services: how a company plugin signs requests in to its own systems | `engine-state.ts` |
+| `transports.ts` | How a company plugin carries requests to its own systems itself | `engine-state.ts` |
+| `transports-section.ts` | The `transports` relay section: URL, token and field checks, and company defaults | `engine-state.ts`, `doctor-checks.ts` |
+| `relay.ts` | The built-in relay transport: health, the request body, and the three answers | `engine-state.ts`, `doctor-checks.ts` |
+| `tunnels.ts` | How a company plugin gives a tool a network route of its own, such as a database behind a jump host | `engine-state.ts` |
 | `exec.ts` | Runs programs for tools: an argument list, never a shell, with a timeout and a minimal environment | `api.ts`, `preview-html.ts`, `secrets.ts` |
 | `exec-output.ts` | What a program's output keeps past the cap: head, tail, or both | `exec.ts` |
 | `contract-gate.ts` | The gate part of the contract: a gate's call and verdict, re-exported from `contract.ts` | `contract.ts` |
@@ -207,7 +226,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `kit/http.ts` | One HTTP request with the credential read for it: address checks, sign-in, transport, limits | `state.ts` |
+| `kit/http.ts` | One HTTP request with the credential read for it: address checks, sign-in, transport, limits | `engine-state.ts` |
 | `kit/jig-messages.ts` | The custom message types Jig's plugins put in Pi's conversation, and the label `/context` gives each | `jig-memory`, `jig-session` |
 | `kit/oauth.ts` | OAuth 2.0 without a browser: client credentials or a password, token kept in memory | `kit/http.ts` |
 | `kit/http-error.ts` | The one error a request throws | `kit/http.ts`, `kit/oauth.ts` |
@@ -231,6 +250,7 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 | `kit/text.ts` | Putting values and names into messages without surprises | `signin.ts`, `transports.ts`, `tunnels.ts` |
 | `kit/ports.ts` | For a tunnel that starts a program: a really free port, a test that it answers, a wait | a company plugin keeps a copy; no file here |
 | `kit/sandbox-programs.ts` | The programs the sandbox needs, where they are found, the install command per system, and the AppArmor sysctl | `jig-sandbox/src/programs.ts`, `doctor-tools.ts` |
+| `kit/tools-section.ts` | The `tools` section's name and check, and the tools that are never deferred; no Pi import | `kit/tools.ts`, `tool-exposure.ts`, `engine-state.ts`, `api.ts` |
 | `kit/tools.ts` | `registerJigTool`: registers a plugin's tool with default one-line timeline renderers, and again as `deferred` at session start when `tools.deferred` names it | every plugin's entry, `watch/tool.ts`, `tool-exposure.ts` |
 | `kit/values.ts` | Small stateless helpers that plugins share, such as the invalid-input error | `config.ts`, `kit/http.ts`, `kit/oauth.ts`, the watch files |
 
@@ -238,14 +258,14 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 
 | File | What it does | Called by |
 |---|---|---|
-| `watch/engine.ts` | The watch engine: polls each watch, saves it, and tells the agent once when it ends | `state.ts`, `watch/tool.ts` |
+| `watch/engine.ts` | The watch engine: polls each watch, saves it, and tells the agent once when it ends | `engine-state.ts`, `watch/tool.ts` |
 | `watch/tool.ts` | The `watch` tool: lists and stops the watches of every plugin | `index.ts` |
-| `watch/store.ts` | Saved watches: one small JSON file each, so a restart of Pi picks them up | `state.ts`, `watch/engine.ts` |
+| `watch/store.ts` | Saved watches: one small JSON file each, so a restart of Pi picks them up | `engine-state.ts`, `watch/engine.ts` |
 | `watch/outbox.ts` | Telling the agent without flooding it: batches and spaces the messages | `watch/engine.ts` |
 | `watch/message.ts` | What the agent is told when watches end, in plain words | `watch/engine.ts` |
 | `watch/clean.ts` | Cleans what a watch says before anyone reads it | `commands.ts`, `watch/engine.ts`, `watch/store.ts` |
 | `watch/format.ts` | How long a watch has run, as a short phrase | `watch/engine.ts`, `watch/tool.ts` |
-| `watch/timers.ts` | The timers the engine uses, behind a small interface a test can drive by hand | `state.ts`, `watch/engine.ts`, `watch/outbox.ts` |
+| `watch/timers.ts` | The timers the engine uses, behind a small interface a test can drive by hand | `engine-state.ts`, `watch/engine.ts`, `watch/outbox.ts` |
 
 ### Helpers
 
@@ -258,12 +278,13 @@ of `src/` is missing here or a file listed here is gone, so this table cannot dr
 The agent asks for `git push` of a branch. These are the steps, in order.
 
 1. **The hook.** Pi is about to run the tool, so it calls the `tool_call` handler that `index.ts` registered. That is
-   `gate` in `gate.ts`. Any failure inside it blocks the call with "jig-core could not decide", because a tool must
+   `gate` in `gate.ts`, which turns Pi's event into a request and calls `judge` in `engine-judge.ts` with a host built by
+   `pi-host.ts`. Any failure inside `judge` blocks the call with "jig-core could not decide", because a tool must
    never run when `jig-core` cannot tell whether it may.
 2. **Classify.** `classify` in `classify.ts` works out where the call acts and whether it reads or writes. The first
    answer wins: the tool's own declaration, then a classification rule in `config.ts`, then the built-in defaults for
    Pi's own tools, then the tool's hints, then the unknown default. `jig-git` declared `git push` when it loaded
-   (`api.ts` keeps the declarations in `state.ts`), as a write to `external`.
+   (`api.ts` keeps the declarations in `engine-state.ts`), as a write to `external`.
 3. **Decide.** `decide` in `decide.ts` runs five steps, each of which can only change what the step before gave: the
    rules table (a write to `external` asks), the tool's own minimum, the first rule of your configuration that
    matches, a session allow, and last the floor, which configuration can never lower. `environments.ts` says which
@@ -271,21 +292,24 @@ The agent asks for `git push` of a branch. These are the steps, in order.
 4. **Gates.** The decision is not `deny`, so `gates.ts` asks each gate other plugins registered. `jig-workflow`'s
    gate, if it is loaded, may hold the call. A gate can turn `allow` into `ask`, or `ask` into `deny`, never the
    reverse.
-5. **Ask.** The decision is `ask`, so `askUser` in `gate.ts` builds the preview (`preview.ts` calls `jig-git`'s own
-   preview: the commits that would be sent) and `approvals.ts` puts the question to you. A long preview uses
+5. **Ask.** The decision is `ask`, so `askUser` in `engine-judge.ts` builds the preview (`preview.ts` calls `jig-git`'s own
+   preview: the commits that would be sent) and the host's `ask` (`approvals.ts` in Pi) puts the question to you. A long preview uses
    `review.ts`; `preview-html.ts` can show it in the browser (through `preview-server.ts`), which only shows. You answer `y` in Pi. A `n` blocks the
    call, with your reason.
-6. **Announce.** `announce` tells other plugins about the decision on the event bus. The call is remembered in
-   `state.ts` with its class, its decision and the preview you approved, which the tool can read back.
+6. **Announce.** `announce` tells other plugins about the decision on the event bus (the host's `emit`). The call is remembered in
+   `engine-state.ts` with its class, its decision and the preview you approved, which the tool can read back.
 7. **The tool runs.** `jig-git` checks that what it is about to push is still what you approved, then runs git
    through `exec.ts`: an argument list, never a shell, with a timeout and a short environment, and a repository whose own
    configuration would run a command is refused (`git-config-guard.ts`).
-8. **The result.** Pi calls the `tool_result` handler, `toolResult` in `results.ts`. It redacts every secret
+8. **The result.** Pi calls the `tool_result` handler, `toolResult` in `results.ts`, which has `cleanResult` in `engine-results.ts` do the work. It redacts every secret
    `secrets.ts` resolved (`redact.ts`), masks customer data if the environment is production (`mask/`), and cuts a
    very long text, keeping the whole of it in a spill file (`cap.ts`). A failure here withholds the result and never
    passes it on unchecked.
-9. **The record.** At `tool_execution_end`, `records.ts` writes one line: the tool, the environment, the effect, the
+9. **The record.** At `tool_execution_end`, `finish` in `engine-results.ts` has `records.ts` write one line: the tool, the environment, the effect, the
    decision, your answer, how long it waited for you, the outcome and the duration. `jig-lens` reads these lines.
 10. **The model.** The result that is left goes to the model.
+
+A tool of the engine's own contract (`EngineTool`, `engine-tool.ts`) takes the same road. In Pi, `registerEngineTool` (`kit/tools.ts`, next to `registerJigTool`) is step 7: it runs the tool through
+`executeTool`, and Pi's hooks do steps 8 and 9. With a host that is not Pi, `run` in `engine-run.ts` does steps 7 to 9 itself, with the same `cleanResult` and `finish`.
 
 Back to the [jig-core overview](../README.md).

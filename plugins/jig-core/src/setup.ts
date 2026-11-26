@@ -20,7 +20,7 @@ import { withTransports } from "./setup-transports.ts";
 import { TRANSPORTS_SECTION } from "./transports-section.ts";
 import { sectionQuestions } from "./setup-section.ts";
 import { shorten } from "./secret-status.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 
 /** What a screen has to offer: Pi's UI in a session, a terminal in the `jig` command. */
 export interface SetupUi {

@@ -9,7 +9,7 @@ import { compareVersions, currentPiRequirement, jigPackage, reportedPiVersion } 
 import { readPackages } from "./cli/packages.ts";
 import { privateFolder, replacePrivateFile, stateDir } from "./paths.ts";
 import { registryFor, registryUrl } from "./registry.ts";
-import type { JigState } from "./state.ts";
+import type { JigState } from "./engine-state.ts";
 import { availableNotice, deprecatedNotice, isPinned, piNewerNotice } from "./update-notice-text.ts";
 import { selectTarget } from "./update-versions.ts";
 import type { RegistryMetadata } from "./update-versions.ts";

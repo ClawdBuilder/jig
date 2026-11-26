@@ -86,12 +86,14 @@ describe("the dependency", () => {
         const manifest = JSON.parse(fs.readFileSync(path.join(SRC, "..", "..", "..", "package.json"), "utf8")) as {
             dependencies: Record<string, string>;
         };
+        // `marked` draws the Markdown of jig-core's preview page: the engine has to load where Pi's copy is not installed.
         assert.deepEqual(Object.keys(manifest.dependencies).sort(), [
             "@anthropic-ai/sandbox-runtime",
             "@hono/node-server",
             "amaro",
             "hono",
             "ignore",
+            "marked",
             "mongodb",
             "socks",
             "yaml",

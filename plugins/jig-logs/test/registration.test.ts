@@ -198,12 +198,14 @@ test("the plugin adds no run-time dependency", () => {
     };
     // The packages of the repository are jig-api's `yaml`, jig-review's `hono`, `@hono/node-server` and `ignore`, and
     // jig-mongo's driver, and jig-sandbox's runtime. `amaro` is only for `bin/`'s installed-copy TypeScript loader, not for a plugin.
+    // `marked` draws the Markdown of jig-core's preview page: the engine has to load where Pi's copy is not installed.
     assert.deepEqual(Object.keys(manifest.dependencies ?? {}).sort(), [
         "@anthropic-ai/sandbox-runtime",
         "@hono/node-server",
         "amaro",
         "hono",
         "ignore",
+        "marked",
         "mongodb",
         "socks",
         "yaml",
