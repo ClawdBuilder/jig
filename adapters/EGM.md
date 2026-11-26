@@ -34,7 +34,7 @@ Parent: [root](../EGM.md).
 
 ## Verification
 
-- `node --import ./test/support/host.mjs --test plugins/jig-core/test/adapters-claude-code.test.ts`: the two files field by field, and the skill against `tools.json`.
+- `node --import ./test/support/host.mjs --test plugins/jig-core/test/adapters-claude-code.test.ts`: the two files field by field, the skill against `tools.json`, and the frontmatter of every skill (its name, the size of its description, the keys it may have).
 - `node --import ./test/support/host.mjs --test test/package.test.ts`: the tarball carries both files and the skill, and no `EGM.md`.
 - `node scripts/check-version-pins.mjs`: the two versions equal `package.json`'s.
-- By hand, in a throwaway Claude Code settings folder (`CLAUDE_CONFIG_DIR`): `claude plugin validate .`, `claude plugin marketplace add <this package's folder>`, then `claude plugin install jig@clawdbuilder`.
+- `npm run check:claude` (needs Claude Code): Claude Code itself validates the plugin, adds the marketplace, installs the plugin and starts its server, in a throwaway home and config folder. CI runs it on the tested version, and weekly on the newest.

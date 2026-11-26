@@ -1,0 +1,77 @@
+name: Claude Code canary
+
+# CI pins the Claude Code version Jig's plugin is tested with (ci.yml, "Install Claude Code"). This workflow tries the newest Claude Code
+# that npm has, once a week, so a release that would break the plugin shows up before anybody moves the pin, and not when a user updates.
+# It never runs on a pull request and is not a required check: a red run means "look at the new Claude Code", not "this change is bad".
+# See docs/compatibility.md.
+on:
+  schedule:
+    # Mondays, 05:47 UTC.
+    - cron: "47 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    name: Newest Claude Code (Node 26)
+    outputs:
+      claude: ${{ steps.claude.outputs.version }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      - name: Show the versions
+        run: |
+          node --version
+          npm --version
+
+      # `latest` is whatever npm calls the newest release. The check needs no `npm ci`: it imports only Node's own modules. The flag lets
+      # the package's install script run, as in ci.yml: npm 12 blocks it otherwise, and `claude` cannot start.
+      - name: Install the newest Claude Code
+        id: claude
+        run: |
+          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@latest
+          version="$(claude --version | cut -d ' ' -f 1)"
+          echo "Claude Code $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Newest Claude Code tried: $version (CI is pinned to the version in docs/compatibility.md)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Plugin check
+        run: npm run check:claude
+
+  # A red canary means "look at the new Claude Code", and a schedule's email is easy to miss. One issue, or a comment on the open one,
+  # names the version that was tried and links the run. The token may write issues on this job only.
+  report:
+    name: Report the red canary
+    needs: canary
+    if: failure()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Open an issue, or comment on the open one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          CANARY_AGENT: Claude Code
+          CANARY_VERSION: ${{ needs.canary.outputs.claude }}
+        run: node scripts/canary-issue.mjs

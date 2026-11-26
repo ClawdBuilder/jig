@@ -28,8 +28,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
   a cookie alone.
 - **Checks:** [CONTRIBUTING](CONTRIBUTING.md#the-checks) lists the commands and what each needs; CI runs them on every
   push and pull request, and `ci-ok` is the one required job. Run `npm run format` before committing. `check:install`
-  needs network. Package `files` patterns use the `dir/**` form: npm 10/11 and 12 read them differently, CI covers both
-  majors, and a local pack proves only this machine's npm.
+  and `check:gateway` need network, and `check:claude` needs Claude Code. Package `files` patterns use the `dir/**` form: npm 10/11
+  and 12 read them differently, CI covers both majors, and a local pack proves only this machine's npm.
 - **Adding or changing a plugin, tool or action:** read [the plugin contract](plugins/jig-core/docs/plugin-contract.md)
   and [the README shape](docs/writing.md#the-readme-shape); the audit test fails until the README, `TABLE` and a test
   agree (`plugins/jig-core/test/audit.test.ts`).
@@ -49,7 +49,8 @@ the one company plugin in this repository, and its tests run with `npm test`.
   commit. See [Compatibility](docs/compatibility.md).
 - **Changing the Pi or Node version, or a dependency:** read
   [Moving the Pi version](docs/compatibility.md#moving-the-pi-version) and [Releases](docs/releases.md). The tested Pi is `pi-coding-agent@1.5.2`. Dependencies are exact pins, enforced by
-  `npm run check`; an `@anthropic-ai/sandbox-runtime` update runs the real-sandbox tests.
+  `npm run check`; an `@anthropic-ai/sandbox-runtime` update runs the real-sandbox tests. The tested Claude Code moves by
+  [Moving the Claude Code version](docs/compatibility.md#moving-the-claude-code-version).
 - **Changing `bin/` or the launcher:** read [The launcher](docs/launcher.md); it is not a plugin.
 - **No secret-shaped literals, even fake ones.** Build a test value from parts, such as `["PMAK", "1a2b"].join("-")`; push
   protection rejects one, and history must then be rewritten (`no-secret-literals.test.ts`).

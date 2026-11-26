@@ -12,7 +12,8 @@ never edited.
 
 ## Cut one
 
-1. **Land it green.** The commit you tag is one whose `npm run check`, `npm test` and `npm run check:install` passed in CI.
+1. **Land it green.** The commit you tag is one whose `npm run check`, `npm test`, `npm run check:install`, `npm run check:gateway` and
+   `npm run check:claude` passed in CI.
 2. **Fold the fragments.** `node scripts/release.mjs 0.3.0` raises `version` in `package.json` and in the two files of the Claude Code plugin
    (`.claude-plugin/plugin.json` and `marketplace.json`, which `npm run check` keeps equal to it), folds every file in
    `changelog.d/` into `## [0.3.0] - <today>` under the headings Added, Changed, Fixed and Removed in that order, and

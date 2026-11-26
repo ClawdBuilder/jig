@@ -16,8 +16,9 @@ interface Job {
     "timeout-minutes"?: number;
     needs?: string | string[];
     uses?: string;
-    strategy?: { matrix?: { node?: number[] } };
-    steps?: Array<{ uses?: string }>;
+    permissions?: unknown;
+    strategy?: { matrix?: { node?: Array<number | string>; os?: string[] } };
+    steps?: Array<{ uses?: string; name?: string; run?: string; shell?: string }>;
 }
 interface Workflow {
     on: Record<string, unknown>;
@@ -147,7 +148,7 @@ describe("the Pi canary", () => {
         assert.deepEqual((report as { permissions?: unknown }).permissions, { contents: "read", issues: "write" });
         const text = read(".github/workflows/pi-canary.yml");
         assert.match(text, /PI_VERSION: \$\{\{ needs\.canary\.outputs\.pi \}\}/);
-        assert.match(text, /run: node scripts\/pi-canary-issue\.mjs/);
+        assert.match(text, /run: node scripts\/canary-issue\.mjs/);
         // The workflow's own token keeps read-only contents; only the report job may write issues.
         assert.deepEqual(canary.permissions, { contents: "read" });
     });
@@ -159,6 +160,145 @@ describe("the Pi canary", () => {
             assert.ok(new RegExp(`run: ${command}$`, "m").test(text), `the canary does not run ${command}`);
         }
         assert.doesNotMatch(text, /pi-coding-agent@\d/, "the canary must not pin a version");
+    });
+});
+
+describe("the gateway and Claude Code jobs of ci.yml", () => {
+    const ci = workflow("ci.yml");
+    const manifest = JSON.parse(read("package.json")) as {
+        engines: { node: string };
+        jig: { agents: Record<string, { minimum: string; tested: string }> };
+    };
+    const tested = manifest.jig.agents["claude-code"]?.tested ?? "";
+    const runs = (job: Job | undefined): string[] => (job?.steps ?? []).map((step) => step.run ?? "");
+    /** GitHub's expression syntax, written from parts so that no string here looks like a template that lost its backticks. */
+    const expression = (inner: string): string => ["$", "{{ ", inner, " }}"].join("");
+
+    test("the claude-code job installs exactly the Claude Code that package.json says is tested, and runs the plugin check", () => {
+        const job = ci.jobs["claude-code"];
+        assert.ok(job, "ci.yml has no claude-code job");
+        assert.equal(job.name, "Claude Code plugin");
+        assert.match(tested, /^\d+\.\d+\.\d+$/);
+        const installs = [...read(".github/workflows/ci.yml").matchAll(/@anthropic-ai\/claude-code@(\S+)/g)].map(
+            (match) => match[1],
+        );
+        assert.deepEqual(installs, [tested], "one install of Claude Code in ci.yml, at jig.agents.claude-code.tested");
+        // npm 12 runs a package's install script only when --allow-scripts names it, and Claude Code's program is put in place by one.
+        assert.ok(
+            runs(job).some((run) =>
+                run.includes(
+                    `npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@${tested}`,
+                ),
+            ),
+            "the install names the version and lets the package's install script run",
+        );
+        assert.ok(runs(job).includes("npm run check:claude"));
+        assert.equal(
+            runs(job).some((run) => /\bnpm ci\b/.test(run)),
+            false,
+            "the plugin check needs no npm ci",
+        );
+    });
+
+    test("the gateway job runs on Linux on the oldest Node that package.json allows and on 26, and gates ci-ok", () => {
+        const job = ci.jobs.gateway;
+        assert.ok(job, "ci.yml has no gateway job");
+        assert.equal(job.name, `Gateway, no Pi (Node ${expression("matrix.node")})`);
+        assert.equal(job["runs-on"], "ubuntu-24.04");
+        assert.equal(job["timeout-minutes"], 15);
+        assert.deepEqual(job.strategy?.matrix?.node?.map(String), [manifest.engines.node.replace(/^>=/, ""), "26"]);
+        const needs = [ci.jobs["ci-ok"]?.needs].flat();
+        assert.ok(needs.includes("gateway") && needs.includes("claude-code"), "ci-ok waits for both");
+    });
+
+    test("the advisory gateway job runs on macOS and Windows, with the same steps in bash, outside ci-ok", () => {
+        const job = ci.jobs["gateway-advisory"];
+        assert.ok(job, "ci.yml has no gateway-advisory job");
+        assert.equal(job.name, `Gateway, no Pi (${expression("matrix.os")}, advisory)`);
+        assert.deepEqual(job.strategy?.matrix?.os, ["macos-latest", "windows-latest"]);
+        assert.equal(job["timeout-minutes"], 20);
+        assert.equal([ci.jobs["ci-ok"]?.needs].flat().includes("gateway-advisory"), false, "it does not gate ci-ok");
+        const shells = (job.steps ?? []).filter((step) => step.run !== undefined).map((step) => step.shell);
+        assert.deepEqual([...new Set(shells)], ["bash"], "one shell on both systems");
+    });
+
+    for (const id of ["gateway", "gateway-advisory"]) {
+        test(`${id} never installs Pi and never runs npm ci: its point is a machine with no Pi`, () => {
+            const job = ci.jobs[id];
+            assert.ok(job, `ci.yml has no ${id} job`);
+            const all = runs(job).join("\n");
+            assert.doesNotMatch(all, /\bnpm (ci|install|i|add)\b/, "nothing is installed");
+            assert.doesNotMatch(
+                all,
+                /pi-coding-agent@|\bpi install\b|@earendil-works\/\S+@/,
+                "no Pi version is installed",
+            );
+            assert.ok(
+                (job.steps ?? []).some(
+                    (step) =>
+                        step.name === "No Pi on this machine" &&
+                        /npm ls -g[^\n]*@earendil-works\/pi-coding-agent/.test(step.run ?? "") &&
+                        /exit 1/.test(step.run ?? ""),
+                ),
+                "a step fails the job when a global Pi is found",
+            );
+            assert.ok(runs(job).includes("npm run check:gateway"));
+        });
+    }
+});
+
+describe("every canary", () => {
+    for (const file of ["pi-canary.yml", "claude-code-canary.yml"]) {
+        test(`${file}: only the report job may write issues, and it runs the shared issue script`, () => {
+            const canary = workflow(file);
+            assert.deepEqual(canary.permissions, { contents: "read" });
+            for (const [name, job] of Object.entries(canary.jobs)) {
+                if (name === "report") continue;
+                assert.doesNotMatch(
+                    JSON.stringify(job.permissions ?? {}),
+                    /issues/,
+                    `${file}: ${name} may write issues`,
+                );
+            }
+            assert.deepEqual(canary.jobs.report?.permissions, { contents: "read", issues: "write" });
+            assert.match(read(`.github/workflows/${file}`), /run: node scripts\/canary-issue\.mjs$/m);
+        });
+    }
+});
+
+describe("the Claude Code canary", () => {
+    const canary = workflow("claude-code-canary.yml");
+    const text = read(".github/workflows/claude-code-canary.yml");
+
+    test("runs weekly and by hand, and never on a push or a pull request", () => {
+        assert.deepEqual(Object.keys(canary.on).sort(), ["schedule", "workflow_dispatch"]);
+        const schedule = canary.on.schedule as Array<{ cron: string }>;
+        assert.equal(schedule.length, 1);
+        assert.match(schedule[0]?.cron ?? "", /^\d+ \d+ \* \* [0-6]$/, "once a week");
+    });
+
+    test("installs the newest Claude Code, never a pinned one, and runs the plugin check", () => {
+        assert.match(
+            text,
+            /npm install -g --allow-scripts=@anthropic-ai\/claude-code @anthropic-ai\/claude-code@latest/,
+            "the newest release, with its install script allowed",
+        );
+        assert.doesNotMatch(text, /claude-code@\d/, "the canary must not pin a version");
+        assert.match(text, /^\s+run: npm run check:claude$/m);
+    });
+
+    test("a red run opens one issue, or comments on the open one, naming Claude Code, its version and the run", () => {
+        const report = canary.jobs.report;
+        assert.ok(report, "the canary has no report job");
+        assert.equal(report.needs, "canary");
+        assert.match(String(report.if), /failure\(\)/);
+        assert.match(text, /CANARY_AGENT: Claude Code/);
+        assert.match(text, /CANARY_VERSION: \$\{\{ needs\.canary\.outputs\.claude \}\}/);
+        assert.match(
+            text,
+            /^\s+claude: \$\{\{ steps\.claude\.outputs\.version \}\}$/m,
+            "the canary job hands on the version",
+        );
     });
 });
 
@@ -209,5 +349,16 @@ describe("the Pi version Jig is tested with", () => {
             read("docs/integration-tests.md").includes(`Pi ${pinned}`),
             "docs/integration-tests.md names another Pi",
         );
+    });
+});
+
+describe("the Claude Code version Jig is tested with", () => {
+    const manifest = JSON.parse(read("package.json")) as { jig: { agents: Record<string, { tested: string }> } };
+    const tested = manifest.jig.agents["claude-code"]?.tested ?? "";
+
+    test(`docs/compatibility.md: the Claude Code "Tested with" row is that version, and a date`, () => {
+        const row = /^\| (\d+\.\d+\.\d+) \| (\d{4}-\d{2}-\d{2}) \|$/m.exec(read("docs/compatibility.md"));
+        assert.ok(row, 'docs/compatibility.md has no Claude Code "Tested with" row');
+        assert.equal(row[1], tested);
     });
 });

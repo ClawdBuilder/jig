@@ -138,6 +138,116 @@ jobs:
       - name: Lint the workflows
         run: ${{ runner.temp }}/actionlint -color
 
+  # The gateway as a person who uses another agent gets it: the package packed and installed with no Pi anywhere, started by its
+  # command, and asked real questions (scripts/check-gateway.mjs). This job has no `npm ci` and no Pi install, and that is the point of
+  # it: a Pi on the runner, or the dependencies of the checkout, would hide a gateway that cannot run without them. The two lines are the
+  # oldest Node that package.json allows and the current one.
+  gateway:
+    name: Gateway, no Pi (Node ${{ matrix.node }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.19.0", 26]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Show the versions
+        run: |
+          node --version
+          npm --version
+
+      # `npm ls` exits with 1 when it finds no such package.
+      - name: No Pi on this machine
+        shell: bash
+        run: |
+          npm ls -g --depth=0 || true
+          if npm ls -g --depth=0 @earendil-works/pi-coding-agent > /dev/null 2>&1; then
+            echo "::error::Pi is installed on this runner, so this job would not show that the gateway runs without it"
+            exit 1
+          fi
+
+      - name: Gateway check
+        run: npm run check:gateway
+
+  # Advisory, as `macos-advisory`: the same check on macOS and on Windows, where it has not passed in CI yet. The script uses no tool
+  # that only Linux has, but nothing has run it on these two systems, so a red run here reports and does not block a merge.
+  gateway-advisory:
+    name: Gateway, no Pi (${{ matrix.os }}, advisory)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      - name: Show the versions
+        shell: bash
+        run: |
+          node --version
+          npm --version
+
+      - name: No Pi on this machine
+        shell: bash
+        run: |
+          npm ls -g --depth=0 || true
+          if npm ls -g --depth=0 @earendil-works/pi-coding-agent > /dev/null 2>&1; then
+            echo "::error::Pi is installed on this runner, so this job would not show that the gateway runs without it"
+            exit 1
+          fi
+
+      - name: Gateway check
+        shell: bash
+        run: npm run check:gateway
+
+  # Claude Code checks the plugin itself (scripts/check-claude-plugin.mjs): it validates the plugin, adds the marketplace, installs the
+  # plugin and starts its server, with a home and a config folder of their own. No sign-in and no model. Like the gateway job, it
+  # runs no `npm ci`.
+  claude-code:
+    name: Claude Code plugin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      # Exactly jig.agents["claude-code"].tested in package.json: a test (plugins/jig-core/test/ci-config.test.ts) keeps the two equal.
+      # The weekly canary tries the newest Claude Code. The package puts its program in place with an install script, and npm 12 runs
+      # an install script only when the package is named in --allow-scripts: without the flag `claude` is installed and cannot start.
+      - name: Install Claude Code
+        run: |
+          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.332
+          claude --version
+
+      - name: Plugin check
+        run: npm run check:claude
+
   # The plugins against real services (docs/integration-tests.md). The services start as containers from
   # .github/integration/compose.yml, and each suite finds its service by the address in an environment variable.
   # JIG_IT_REQUIRE lists the services this job starts: a suite whose service did not come up fails, and does not skip.
@@ -433,9 +543,6 @@ jobs:
             echo "::endgroup::"
           done
 
-  # One name for branch protection to require, whatever jobs and matrix entries there are: `ci-ok` is the check to mark as required. It
-  # runs even when a job failed or was cancelled (`always()`), and fails unless every job it needs succeeded. A new job above must be
-  # added to `needs` (a test, plugins/jig-core/test/ci-config.test.ts, fails until it is).
   # Advisory: macOS is not a required platform yet, so this job reports and is not in ci-ok. It runs the same checks and
   # suite as `checks`, and the tests that need the Linux sandbox skip themselves with their reason.
   macos-advisory:
@@ -469,10 +576,14 @@ jobs:
       - name: Tests
         run: npm test
 
+  # One name for branch protection to require, whatever jobs and matrix entries there are: `ci-ok` is the check to mark as required. It
+  # runs even when a job failed or was cancelled (`always()`), and fails unless every job it needs succeeded. A new job above must be
+  # added to `needs` (a test, plugins/jig-core/test/ci-config.test.ts, fails until it is), except an advisory job: its id ends in
+  # `-advisory`, and it reports without blocking.
   ci-ok:
     name: ci-ok
     if: ${{ always() }}
-    needs: [checks, workflows, integration]
+    needs: [checks, workflows, gateway, claude-code, integration]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}

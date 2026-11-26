@@ -70,6 +70,14 @@ claude plugin marketplace remove clawdbuilder
 - **When to rebuild.** After a change to the gateway's code, a connector or a bundled dependency, run `npm run build:gateway` and commit `dist/`. `npm run check` fails with that command when the files are stale. Two builds give the same bytes.
 - **The command.** `jig-gateway` is `bin/jig-gateway.mjs`, plain JavaScript that loads the built file. With no built file it says so in one line on standard error and exits with code 1.
 
+## How it is checked
+
+CI checks the gateway the way a person gets it, and the plugin through Claude Code itself:
+
+- **`npm run check:gateway`** packs the package, installs it with no Pi anywhere, starts `jig-gateway` and asks for its tools, a read and a refused write. It runs on Node 22.19.0 and 26 on Linux, and as an advisory job on macOS and Windows.
+- **`npm run check:claude`** has Claude Code, at the version in `package.json`'s `jig.agents`, validate the plugin, add the marketplace, install the plugin and start its server. It needs no sign-in and no model.
+- **A weekly canary** runs the second check on the newest Claude Code ([Compatibility](../../../docs/compatibility.md#tested-with)).
+
 ## What it offers
 
 | Tool | What an agent can do | Where it comes from |

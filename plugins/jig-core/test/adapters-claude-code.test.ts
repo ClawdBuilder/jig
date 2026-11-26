@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
+import { parse } from "yaml";
 import { CLAUDE_ALLOW_RULE, CLAUDE_MARKETPLACE, CLAUDE_PLUGIN } from "../src/doctor-agents.ts";
 import { NO_SCREEN } from "../src/gateway/runtime.ts";
 
@@ -259,6 +260,144 @@ describe("the skill, adapters/claude-code/skills/git/SKILL.md", () => {
             wrong((from) => from.replaceAll("Jig's release tool", "the release tool")).join("\n"),
             /never says "Jig's release tool"/,
         );
+    });
+});
+
+// Every skill that an adapter ships, held to the rules that agents apply when they read a SKILL.md. The skill above is checked for its words; these
+// checks are about the file itself, and cover a second skill when one is added. An agent that finds a skill it does not accept drops it, and says little.
+
+/** The keys a SKILL.md may have in its frontmatter. Two sources: the Agent Skills specification (agentskills.io/specification) gives name, description,
+ *  license, compatibility, metadata and allowed-tools; Claude Code's own keys come from its skills documentation (code.claude.com/docs/en/skills) and
+ *  are the ones its 2.1.332 binary reads. Any other key is a typo or a key no agent reads, so a new one is added here on purpose. */
+const SKILL_KEYS = new Set([
+    // The Agent Skills specification.
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata",
+    "allowed-tools",
+    // Claude Code's own.
+    "when_to_use",
+    "argument-hint",
+    "arguments",
+    "disable-model-invocation",
+    "user-invocable",
+    "model",
+    "effort",
+    "shell",
+    "hooks",
+    "context",
+    "agent",
+    "paths",
+]);
+
+/** Kebab-case: lower-case letters and digits in words that one hyphen joins, as the Agent Skills specification asks. */
+const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/** The limits of the Agent Skills specification (name, description), and of Claude Code (description with when_to_use, in the list of skills). */
+const NAME_LIMIT = 64;
+const DESCRIPTION_LIMIT = 1024;
+const LISTING_LIMIT = 1536;
+
+/** The skills of every adapter: the folder's name, and the file. */
+function skillFolders(): Array<{ adapter: string; folder: string; file: string }> {
+    const adapters = path.join(ROOT, "adapters");
+    const folders = (parent: string): string[] =>
+        existsSync(parent)
+            ? readdirSync(parent, { withFileTypes: true })
+                  .filter((entry) => entry.isDirectory())
+                  .map((entry) => entry.name)
+            : [];
+    return folders(adapters).flatMap((adapter) =>
+        folders(path.join(adapters, adapter, "skills")).map((folder) => ({
+            adapter,
+            folder,
+            file: path.join(adapters, adapter, "skills", folder, "SKILL.md"),
+        })),
+    );
+}
+
+/** The frontmatter of a SKILL.md as the yaml package reads it, or undefined when there is none or it is not a map. */
+function frontmatterOf(text: string): Record<string, unknown> | undefined {
+    const front = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(text)?.[1];
+    if (front === undefined) return undefined;
+    const parsed: unknown = parse(front);
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : undefined;
+}
+
+/** The reasons the frontmatter of the skill in `folder` is wrong, one line each. Empty when it is right. */
+function frontmatterProblems(folder: string, front: Record<string, unknown> | undefined): string[] {
+    if (front === undefined) return ["has no frontmatter that is a map"];
+    const problems: string[] = [];
+    const { name, description, when_to_use: when } = front;
+    if (name !== folder) problems.push(`name is ${JSON.stringify(name)}, not the folder name ${folder}`);
+    if (typeof name !== "string" || !KEBAB_CASE.test(name)) problems.push("name is not kebab-case");
+    if (typeof name === "string" && name.length > NAME_LIMIT) problems.push(`name is longer than ${NAME_LIMIT}`);
+    if (typeof description !== "string" || description.trim() === "") problems.push("description is empty");
+    if (typeof description === "string" && description.length > DESCRIPTION_LIMIT)
+        problems.push(`description is longer than ${DESCRIPTION_LIMIT}`);
+    if (when !== undefined && typeof when !== "string") problems.push("when_to_use is not text");
+    const listed = [description, when].reduce<number>(
+        (sum, one) => sum + (typeof one === "string" ? one.length : 0),
+        0,
+    );
+    if (listed > LISTING_LIMIT) problems.push(`description and when_to_use together are longer than ${LISTING_LIMIT}`);
+    for (const key of Object.keys(front)) {
+        if (!SKILL_KEYS.has(key)) problems.push(`the key ${key} is not one that an agent reads`);
+    }
+    return problems;
+}
+
+describe("every skill of every adapter", () => {
+    const skills = skillFolders();
+
+    test("there is at least the git skill, and each folder holds a SKILL.md", () => {
+        assert.ok(skills.some((skill) => skill.adapter === "claude-code" && skill.folder === "git"));
+        for (const skill of skills) assert.equal(existsSync(skill.file), true, `${skill.file} is missing`);
+    });
+
+    for (const skill of skills) {
+        test(`adapters/${skill.adapter}/skills/${skill.folder}: the frontmatter is one an agent accepts`, () => {
+            assert.deepEqual(frontmatterProblems(skill.folder, frontmatterOf(readFileSync(skill.file, "utf8"))), []);
+        });
+    }
+
+    test("the check itself fails on another name, a name that is not kebab-case or is too long, an empty or long description, and a key nobody reads", () => {
+        const good = { name: "git", description: "Pull requests." };
+        const wrong = (change: Record<string, unknown>, folder = "git"): string =>
+            frontmatterProblems(folder, { ...good, ...change }).join("\n");
+        assert.deepEqual(frontmatterProblems("git", good), []);
+        assert.match(wrong({}, "pull-requests"), /not the folder name pull-requests/);
+        assert.match(wrong({ name: "Git" }, "Git"), /not kebab-case/);
+        assert.match(wrong({ name: "git-" }, "git-"), /not kebab-case/);
+        assert.match(wrong({ name: "git--hub" }, "git--hub"), /not kebab-case/);
+        assert.match(wrong({ name: "a".repeat(65) }, "a".repeat(65)), /name is longer than 64/);
+        assert.match(wrong({ description: "  " }), /description is empty/);
+        assert.match(wrong({ description: undefined }), /description is empty/);
+        assert.match(wrong({ description: "d".repeat(1025) }), /description is longer than 1024/);
+        assert.equal(wrong({ description: "d".repeat(1024) }), "", "1024 is the limit, and allowed");
+        assert.match(
+            wrong({ description: "d".repeat(1000), when_to_use: "w".repeat(537) }),
+            /together are longer than 1536/,
+        );
+        assert.equal(wrong({ description: "d".repeat(1000), when_to_use: "w".repeat(536) }), "");
+        assert.match(wrong({ when_to_use: 3 }), /when_to_use is not text/);
+        assert.match(wrong({ tools: "Bash" }), /the key tools is not one that an agent reads/);
+        assert.match(frontmatterProblems("git", undefined).join("\n"), /no frontmatter/);
+    });
+
+    test("the frontmatter reader reads a map, and nothing else, and stops at YAML that an agent would refuse", () => {
+        assert.deepEqual(frontmatterOf('---\nname: git\ndescription: "A: b"\n---\n# Body\n'), {
+            name: "git",
+            description: "A: b",
+        });
+        assert.equal(frontmatterOf("# No frontmatter\n"), undefined);
+        assert.equal(frontmatterOf("---\n- a\n- b\n---\n"), undefined);
+        // An unquoted colon in a description is a mistake that is easy to make, and the file is not YAML then.
+        assert.throws(() => frontmatterOf("---\nname: git\ndescription: A: b\n---\n"), /Nested mappings/);
     });
 });
 

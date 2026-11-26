@@ -30,10 +30,10 @@ Rules for contributors live in [AGENTS.md](./AGENTS.md). Read [docs/architecture
 - bin: [./bin/EGM.md](./bin/EGM.md) - the `jig` CLI entry, its Node loader hooks, and the optional `pi` tmux launcher (not a plugin; see [docs/launcher.md](./docs/launcher.md)).
 - adapters: [./adapters/EGM.md](./adapters/EGM.md) - what an agent that is not Pi reads: the Claude Code skill. The Claude Code plugin itself is `.claude-plugin/` at the package root (two JSON files; no code).
 - contracts: [./contracts/EGM.md](./contracts/EGM.md) - published front-end contracts; `palettes.json` is generated, `requests.js` is hand-written.
-- scripts: [./scripts/EGM.md](./scripts/EGM.md) - repository check and release scripts, including the changelog fragments and the 500-line ratchet, run by `npm run check`, `npm test` and the release flow.
+- scripts: [./scripts/EGM.md](./scripts/EGM.md) - repository check and release scripts, including the changelog fragments and the 500-line ratchet, run by `npm run check`, `npm test` and the release flow; the install checks for Pi, the gateway and the Claude Code plugin; `scripts/lib/` ([contract](./scripts/lib/EGM.md)) holds what they share.
 - `docs/` (not linked): human documentation. Start with [docs/architecture.md](./docs/architecture.md), [docs/permissions.md](./docs/permissions.md), [docs/decisions.md](./docs/decisions.md) and [docs/contracts.md](./docs/contracts.md). Markdown and images only.
-- `test/` (not linked): repository-level tests (docs check, contracts, launcher, package, release) and `test/support/` loaders. Each plugin has its own `test/` folder.
-- `.github/` (not linked): CI workflows and CODEOWNERS; `ci-ok` is the one CI job to require.
+- `test/` (not linked): repository-level tests (docs check, contracts, launcher, package, release, the canary issue script, the tree copy) and `test/support/` loaders. Each plugin has its own `test/` folder.
+- `.github/` (not linked): CI workflows (with a weekly canary each for Pi and for Claude Code) and CODEOWNERS; `ci-ok` is the one CI job to require.
 
 ## Global Invariants
 
@@ -85,6 +85,8 @@ Rules for contributors live in [AGENTS.md](./AGENTS.md). Read [docs/architecture
 - Run: `npm run check` (links, pins, docs, changelog fragments, the released changelog, contracts, `tsc`, Biome)
 - Run: `node scripts/file-sizes.mjs` (the 500-line ratchet alone)
 - Run: `npm run check:install` (needs network; a stock Pi installs this working tree and every extension must load)
+- Run: `npm run check:gateway` (needs network; the packed gateway is installed with no Pi and asked real questions)
+- Run: `npm run check:claude` (needs Claude Code; it validates, installs and connects the plugin, with no sign-in and no model)
 - Run: `npm run check:web`, `npm run test:web` and `npm run check:dist` (the review page; needs `npm ci` in `plugins/jig-review/web`)
 - Run: `npm run test:it` (integration tests; a suite skips when its service address is not set)
 - Before a commit: `npm run format`

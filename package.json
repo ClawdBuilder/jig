@@ -17,6 +17,8 @@
         "test:it": "node --import ./test/support/host.mjs --test --test-timeout=600000 \"plugins/*/test/it/*.test.ts\"",
         "check": "node test/support/link-host.mjs && node scripts/check-pinned-deps.mjs && node scripts/check-runtime-deps.mjs && node scripts/check-docs.mjs && node scripts/check-version-pins.mjs && node scripts/check-released-changelog.mjs && node scripts/check-changelog-fragments.mjs && node scripts/build-contracts.mjs --check && node scripts/build-gateway.mjs --check && tsc -p tsconfig.json && biome ci .",
         "check:install": "node scripts/check-install.mjs",
+        "check:gateway": "node scripts/check-gateway.mjs",
+        "check:claude": "node scripts/check-claude-plugin.mjs",
         "format": "biome format --write .",
         "lint": "biome lint .",
         "check:web": "npm --prefix plugins/jig-review/web run check",

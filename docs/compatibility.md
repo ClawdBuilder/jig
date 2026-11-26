@@ -19,6 +19,22 @@ the npm its Node line provides.
   supplies its own packages to an extension, so the real requirement is this table.
 - **To move the Pi version,** follow [Moving the Pi version](#moving-the-pi-version).
 
+The Claude Code plugin and the gateway have a tested version of their own, `jig.agents["claude-code"].tested` in `package.json`:
+
+| Claude Code | Checked |
+|---|---|
+| 2.1.332 | 2026-11-26 |
+
+- **Every push and pull request** runs the `Claude Code plugin` job with exactly this version: Claude Code itself validates the plugin,
+  adds the marketplace, installs the plugin and starts its server (`npm run check:claude`). It needs no sign-in and no model.
+- **Every push and pull request** also runs the `Gateway, no Pi` job on Node 22.19.0 and 26: the package is packed, installed with no Pi
+  anywhere and asked real questions (`npm run check:gateway`). The same check runs on macOS and Windows as an advisory job, outside `ci-ok`.
+- **Every week** the [Claude Code canary](../.github/workflows/claude-code-canary.yml) runs `npm run check:claude` on the newest Claude Code
+  that npm has. It never runs on a pull request. A red run opens one issue, or comments on the open one, and means the next Claude Code
+  would break the plugin.
+- **Not tested:** other Claude Code versions. `jig.agents["claude-code"].minimum` is the oldest one the plugin was run with.
+- **To move the Claude Code version,** follow [Moving the Claude Code version](#moving-the-claude-code-version).
+
 ## Moving the Pi version
 
 The Pi that Jig is tested with is named in six places that move together, in one commit:
@@ -34,6 +50,20 @@ The Pi that Jig is tested with is named in six places that move together, in one
 First run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`, "Run workflow") and wait for it to be green on
 the new release. Then change those places and run `npm run check`, `npm test` and `npm run check:install` on that Pi. The
 minimum, `jig.agents.pi.minimum`, moves only by a decision of its own.
+
+## Moving the Claude Code version
+
+The Claude Code that the plugin is tested with is named in five places that move together, in one commit:
+
+- `jig.agents["claude-code"].tested` in `package.json`, and its pin in `plugins/jig-core/test/surface.test.ts`;
+- the `Install Claude Code` step of `.github/workflows/ci.yml`;
+- the "Tested with" table above, with the date;
+- the sentence in [the gateway document](../plugins/jig-core/docs/gateway.md#use-it-in-claude-code) that says which version the plugin was run on.
+
+First run the weekly Claude Code canary by hand (`.github/workflows/claude-code-canary.yml`, "Run workflow") and wait for it to be green on
+the new release. Then change those places and run `npm run check:claude` on that version (`JIG_CLAUDE_BIN` names a Claude Code that is not
+first on the `PATH`). `ci-config.test.ts` fails when `package.json`, `ci.yml` and the table disagree. The minimum,
+`jig.agents["claude-code"].minimum`, moves only by a decision of its own.
 
 ## What is public
 
