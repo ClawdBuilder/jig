@@ -13,7 +13,7 @@ terminal, with no Pi session, no model and no provider login.
 ```
 
 The first line is a count of what it found. Then come the groups: this machine, the configuration, secrets, logins,
-the network, the sandbox and the records folder.
+the network, the sandbox, the records folder and other agents.
 
 ```text
 Jig doctor · 21 ok · 1 warning · 0 failures · 7 skipped
@@ -262,7 +262,7 @@ and the answer is no unless you say yes; `--yes` never replaces it.
 
 Every `jig` command runs with the home as `PI_CODING_AGENT_DIR` and ignores an outer one. A `jig` started from
 anywhere else — a global npm copy, a checkout, `npx` — hands over to the Jig installed in the home, so the command and
-the plugins are one version. When the home has no Jig, only `setup`, `help` and `--version` run; the others say
+the plugins are one version. When the home has no Jig, only `setup`, `lens`, `help` and `--version` run; the others say
 `Jig is not installed in <home>. Run: npx @clawdbuilder/jig setup` and exit 2.
 
 The command runs from `node_modules`, where Node will not strip TypeScript itself: its first line installs a small loader
@@ -321,12 +321,21 @@ reports (user and password)`. When they do not form a grid, it keeps the plain l
 | Network | only with `--network`: the configured hosts and the latest release |
 | Sandbox | whether `bash` is sandboxed, and the programs it needs |
 | Records | where today's records go, and whether they can be written |
+| Other agents | the gateway starts; the folder to give another agent; Claude Code, and Jig in it |
 
 Inside Pi the model line is Pi's own count: `ok` with `3 models available`, `warn` with `none available. Type /login.`
 The terminal doctor has no Pi to ask, so it reads the folder: `ok` when `auth.json` names a provider or a provider key is set
 in the environment, `warn` when it has neither and no extension is installed, and `skip` when an extension package other than
 Jig itself is installed (such as jig-bedrock), because its provider cannot be checked without loading Pi. The fix for a
 warning is `/login` in Pi; in a home it can also be `jig auth login <provider>` in a terminal.
+
+**Other agents** is the last group, in Pi and in a terminal. It reads only ([Gateway](../plugins/jig-core/docs/gateway.md#use-it-in-claude-code) says how Claude Code is set up):
+
+- **The gateway** is started with `--version`, and must print this package's version. A failure says to reinstall Jig.
+- **The settings folder** is the folder of the `jig.json` this doctor reads: the one another agent's Jig plugin must be given. The line also says when a gateway started with nothing set would read another folder, or none and run on built-in defaults.
+- **Claude Code** is one `skip` line, "Claude Code is not installed", when `claude` is not on the path. Otherwise the doctor asks for its version (a warning when it is older than `jig.agents.claude-code.minimum`), then for its marketplaces and plugins.
+- **Jig in Claude Code** is a `skip` with `claude plugin marketplace add` when the marketplace is not there, and a warning with the install command when the plugin is not. A plugin that is switched off, or another version than this one, is a warning with the command that mends it. When all is well, the line says Claude Code asks before each Jig tool unless you allow `mcp__plugin_jig_jig__*`.
+- **An answer it cannot read** is one `skip` line. The doctor starts no Claude Code session, changes no setting of it and installs nothing.
 
 A `skip` is not a failure. Every store is asked for metadata only: an entry exists, a variable is set, a file's
 size and mode, a Keychain lookup without the password, a 1Password item list without its fields, or a login

@@ -7,7 +7,8 @@ it is, what it holds, and how fast it answers. Back to the
 `~/.local/state/jig/lens/index.sqlite`, private to you (mode 0600, in a folder
 with mode 0700), in WAL mode so that Grafana can read while a session writes.
 Two sessions that write at once wait for each other for up to five seconds. The
-summary opens it read-only.
+summary opens it read-only. `jig lens` in a terminal imports new records first, as `/lens`
+does, so it opens the index for writing and makes it when it is missing.
 
 Times are seconds since the epoch, because Grafana's SQLite data source reads
 numbers as seconds.
@@ -27,6 +28,11 @@ numbers as seconds.
 - **`condition`** is the tag from `$JIG_CONDITION` (see [Records](../../jig-core/docs/records.md)), on both
   tables. An index made before it gets the column, empty for its old rows, the next time it is opened for
   writing, with no rebuild. Lines written without a tag stay `NULL`.
+
+- **`agentName`** and **`enforcedBy`** are on `call` only: which agent made the call, and which place enforced the
+  decision (see [Records](../../jig-core/docs/records.md)). An index made before them gets both columns, last, empty for
+  its old rows, the next time it is opened for writing, with no rebuild. A line written without them stays `NULL`: a
+  call made in Pi has no `enforcedBy`, and a line from before the fields has neither.
 
 Read the facts with `json_extract(facts, '$.passed')`. A field that does not
 apply is `NULL`. The tables are plain, not `STRICT`, so that Datasette can read

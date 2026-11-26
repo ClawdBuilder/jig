@@ -370,7 +370,13 @@ describe("the record of a call", () => {
                 outcome: "ok",
                 durationMs: 12,
                 toolCallId: "r-1",
+                agentName: "pi",
             },
+        );
+        assert.equal(
+            "enforcedBy" in (record ?? {}),
+            false,
+            "Pi's tool manager is the agent's own: no enforcement point",
         );
     });
 

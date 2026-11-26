@@ -11,8 +11,8 @@ Plugin overview: [jig-core](../EGM.md).
 
 ## Interface
 
-- **Subdirectories (each has its own contract):** [cli](./cli/EGM.md) (the `jig` command), [kit](#the-kit) (public helpers, described at the end of this file),
-  [mask](./mask/EGM.md) (the masker), [watch](./watch/EGM.md) (watch engine and tool).
+- **Subdirectories (each has its own contract):** [cli](./cli/EGM.md) (the `jig` command), [gateway](./gateway/EGM.md) (the MCP server for agents that are not Pi),
+  [kit](#the-kit) (public helpers, described at the end of this file), [mask](./mask/EGM.md) (the masker), [watch](./watch/EGM.md) (watch engine and tool).
 - **Entry (`index.ts`).** `jigCore(options?: JigCoreOptions): ExtensionFactory` (default export is `jigCore()`),
   `runningJigState()` for tests. Hooks: `session_start`, `before_agent_start`, `tool_call` (`gate`), `tool_result`
   (`toolResult`), `tool_execution_end` (`finishCall`), `turn_end` (`finishTurn`), `session_shutdown`. Also `/jig`
@@ -22,12 +22,13 @@ Plugin overview: [jig-core](../EGM.md).
   `beginSession()`, `stop()`, `judge(request, host, signal)`, `answer(call, approval, host)`, `run(request, call, tool, host, signal, progress?)`,
   `clean(request, result, host)` and `finish(request, end, host)`; each is a thin step onto `engine-session.ts`, `engine-judge.ts`, `engine-run.ts` or
   `engine-results.ts`. A host builds an
-  `EngineHost` for each event (Pi: `pi-host.ts`); the engine reaches a screen, the model and the event bus only through it. `gate.ts` and `results.ts` are
+  `EngineHost` for each event (Pi: `pi-host.ts`); the engine reaches a screen, the model and the event bus only through it. `EngineHost` has one optional member, `enforcedBy` (`EnforcedBy` of `records.ts`: `gateway`, `hook` or `shell-guard`), which `finish` writes to the call's record; Pi's host leaves it out. `gate.ts` and `results.ts` are
   Pi's adapters: they turn Pi's events into a `CallRequest` and a `RawResult` and the engine's answer into Pi's. `engine-results.ts` also has `cleanResult`, which says what
   changed, so that an adapter can answer "nothing changed" as Pi expects.
 - **The tool contract.** `engine-tool.ts` (no import that runs): `EngineTool` (a `ToolDeclaration` with `label`, `description`, `promptSnippet`, `promptGuidelines`, `input`
   as `JsonSchema`, `sequential`, `usesFolder` and `execute(input, call)`), `CallContext` (`callId`, `cwd`, `signal`, `seen`, `progress`, `jig`), `ToolResult` (`text`,
-  `data`, `isError`, and `facts` for the record), `isRefusal` and `executeTool`, the step that Pi's wrapper (`registerEngineTool`, [the kit](#the-kit)) shares with
+  `data`, `isError`, and `facts` for the record), `ConnectorModule` (what a plugin's `connector.ts` exports for a host with no Pi: `name`, `tools`, `notOffered` (actions it keeps
+  back from a gateway, by tool) and `register(jig)`; the kit re-exports it and the four types above as types only), `isRefusal` and `executeTool`, the step that Pi's wrapper (`registerEngineTool`, [the kit](#the-kit)) shares with
   `run`. `run` (`engine-run.ts`) is for a tool the engine runs itself: it refuses a call that `judge` or `answer` did not let through (the tool must be the one judged, for a
   call the engine holds, not refused, not waiting, answered when it asked), calls the tool, turns a thrown error or a `RefusedError` into the result (the refusal is noted for the
   record as `markRefused` does), cleans the result and writes the one record. `apiOf(state)` is the `JigApi` that `call.jig` is. `classify` and `preview` of a declaration get the
@@ -45,10 +46,10 @@ Plugin overview: [jig-core](../EGM.md).
   `preview-server.ts` (`createPreviewServer`, `MAX_PAGES` 50).
 - **Results.** `redact.ts` (`createRedactor`, `REDACTED`, `RedactionError`, `secretForms`), `cap.ts` (`CAP_CHARS` 50,000,
   `capContent`, `cleanupSpill`), `records.ts` (`callRecord`, `turnRecord`, `writeRecord`, `cleanupRecords`, `recordsDir`,
-  `cleanFacts`, `conditionProblem`).
+  `cleanFacts`, `conditionProblem`, `agentNameOf`, `EnforcedBy`).
 - **Configuration and state.** `config.ts` (`jig.json` and company additions), `section-defaults.ts`, `section-state.ts`,
   `plugin-table.ts` (`FEATURES`, `offSectionsOf`: a session sets `state.offSections` from it, so a section kept for a plugin that did not load is off, not an unknown field),
-  `engine-options.ts` (`EngineOptions`, types only: what a host gives `createEngine`, among it `offSections`, the sections that count as off, used by `start` in place of `offSectionsOf`),
+  `engine-options.ts` (`EngineOptions`, types only: what a host gives `createEngine`, among it `offSections`, the sections that count as off, used by `start` in place of `offSectionsOf`, and `skipUpdateCheck`, which makes `beginSession` leave out the update check and nothing else: a gateway sets it, Pi does not),
   `engine-state.ts` (the engine's state: `JigState`, `CallState`, `createEngineState`, `loadPersonalConfig`, `rememberCall`; it holds no agent) and `state.ts` (Pi's wrapper: `createState`, `PiState`; it exports the names of `engine-state.ts` too),
   `paths.ts` (`CONFIG_FILE_NAME`, `stateDir`, `configFile`, `privateDir`, `privateFolder`,
   `appendPrivateLine`, `createPrivateFile`, `replacePrivateFile`, `removeOldFiles`), `commands.ts` (`/jig`, `/jig setup`, `/jig doctor`,
@@ -57,7 +58,7 @@ Plugin overview: [jig-core](../EGM.md).
   `transports-section.ts` (`TRANSPORTS_SECTION`, `validateTransportsSection`, `relayOf`, `relayNames`, `tokenFilePaths`), `relay.ts`
   (`RELAY_PROTOCOL` 1, `relayRequest`, `relayHealth`; [relay protocol](../../../docs/relay-protocol.md)), `exec.ts`
   (`run`, `git`, `resolveProgram`, `GIT_FIXED_FLAGS`), `exec-output.ts` (`collector(limit, keep)`: the start, the end or both ends with the middle left out), `git-config-guard.ts` (`gitConfigRefusal`).
-- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-folder.ts`, `doctor-off.ts`: `offLine`, `sessionFiltered`, `doctor-codemode.ts`: the codemode line, which reads the session's tool list and, for its reason, the settings and MCP files, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
+- **Doctor and setup.** `doctor*.ts` (`doctor-checks.ts`, `doctor-needs.ts`, `doctor-company-range.ts`, `doctor-folder.ts`, `doctor-agents.ts`: `agentChecks`, the "Other agents" group, last in `DOCTOR_CHECKS`: it starts the built gateway with `--version`, names the settings folder to give another agent (`settings-home.ts` says what a gateway started with nothing set would find) and asks `claude` for its version and its two plugin lists; it only reads, and `CLAUDE_MARKETPLACE`, `CLAUDE_PLUGIN` and `CLAUDE_ALLOW_RULE` are pinned to `.claude-plugin/` by `adapters-claude-code.test.ts`; `doctor-off.ts`: `offLine`, `sessionFiltered`, `doctor-codemode.ts`: the codemode line, which reads the session's tool list and, for its reason, the settings and MCP files, `doctor-json.ts`, ...), `secret-status.ts`, `secret-mounts.ts` (`windowsDrive`: a file on a WSL Windows drive mounted without `metadata` gets no mode warning), `pi-version.ts`,
   `model-auth.ts` (`modelAuthState`, `modelSignInLine`, `modelStatus`, `modelProviderLine`: whether the folder has a model provider a person can use, from Pi's model registry in a session and from local files without one; Jig's own package is told from `jig-bedrock` by its exact name),
   `install-mode.ts` (`installMode(agentDir)`: `"home"` when the folder is `jigHome()`, else `"package"`; `installCommand`, `updateCommand`, `signInHint`, `folderName`, `UPDATE_PI`: the few words that differ, so no session text names a `jig` terminal command where Jig was installed with `pi install`);
   `setup*.ts` (`runSetup`, `buildSetupPlan`, `writeSetup`, `runSetupCommand`, ...), `onboarding.ts` and its `onboarding-*.ts` helpers
@@ -78,6 +79,12 @@ Plugin overview: [jig-core](../EGM.md).
   caps the version). `jig update`'s plan and run are [cli/update.ts](./cli/EGM.md).
 - **Profiles and start-up.** `profiles.ts`, `profile-state.ts`, `overlays.ts`, `profile-command.ts`; `start-jobs.ts`,
   `start-unlock.ts`, `start-checks.ts`, `tool-exposure.ts`. **Helper:** `errors.ts` (`errorMessage`).
+- **The settings folder without Pi.** `settings-home.ts`: `settingsHome(args, env, home)` gives `{ folder, source }` or undefined: a `--home <folder>` argument, then `JIG_HOME`,
+  then the default Jig home (`~/.jig`) only when it holds a `jig.json`. An empty value (also `--home ""`) counts as not set. The gateway and the doctor's "Other agents" group use it; the hook will.
+- **The gateway.** `gateway/` ([contract](./gateway/EGM.md)): `main.ts` (`runGateway`), `server.ts` (`createServerFactory`), `runtime.ts` (`createGatewayRuntime`), `host.ts`, `tool-list.ts`,
+  `connectors.ts`, `jig-tool.ts`. It is the only code that imports an MCP library, and it offers the tools of the connectors listed in `package.json` under `jig.connectors`.
+  Its docs page is [Gateway](../docs/gateway.md). `scripts/build-gateway.mjs` bundles `gateway/main.ts` and each connector into `../dist/` (committed, shipped); a change to the gateway's graph needs `npm run build:gateway`.
+  `pi-version.ts` has `packageFile()`, the one place that finds the package's `package.json`: three folders up, which holds for both `src/` and `dist/`.
 
 ## Invariants
 
@@ -89,6 +96,9 @@ Plugin overview: [jig-core](../EGM.md).
 - **The engine runs a tool only for a call it let through.** `run` refuses (a result with `isError`, nothing run, changed or written, so the host still answers or finishes the
   call) when the tool is not the one that was judged, when the engine holds no open call with that id, or when the call was refused, still waits, or asks and has no answer.
   A tool's error or refusal is its result, so `run` does not throw for what a tool does; it writes the one record, and the host does not call `finish` for a call it ran this way.
+- **A call's record names the agent, and the name is not proof.** `finish` writes `agentName` as `agentNameOf(host.agent.name)`: lower-cased, kept only when it is 1 to 40 of `a-z`, `0-9`, `.`, `_` and `-`, else `unknown`; Pi's lines say `pi`. `enforcedBy` is written only when the host names one, so a Pi line has none. Only call lines carry the two fields: turn lines and session lines are as they were, and `records.recall` writes neither.
+- **Only `gateway/` imports an MCP library.** `test/engine-boundary.test.ts` fails when a file of `src/` outside that folder imports `@modelcontextprotocol/*`, a type too, and when a gateway file reaches Pi
+  or is put on a list of `test/support/engine-files.ts`. The gateway's files are engine files like the rest.
 - **The engine runs with no Pi, and a second test process proves it.** `npm run test:engine` starts `plugins/jig-core/test/engine/` with `test/support/no-pi.mjs`, which refuses
   every import of `@earendil-works/*`, and `test/engine-process.test.ts` starts that process, so `npm test` covers it. Code of the engine that needs Pi at run time fails there; its need
   moves behind the host or an option.
@@ -182,27 +192,31 @@ Plugin overview: [jig-core](../EGM.md).
   by value for a resolve, and `unlockPass` decrypts one `pass` entry at session start (`secrets.pass.unlockAtStart`) and drops the
   value; the standalone `jig doctor` (`doctor-tools.ts`), with no sandbox provider active, forks the broker script the provider names
   (`SandboxProvider.brokerScript`, never a path into `jig-sandbox`; a provider that names none is checked for no broker; 5 s timer) and
-  runs `bwrap --unshare-user`.
+  runs `bwrap --unshare-user`. The doctor's "Other agents" group (`doctor-agents.ts`) starts `node` on the built gateway with `--version` and, only when `claude` is on PATH, `claude --version`,
+  `claude plugin marketplace list --json` and `claude plugin list --json` (5 s each; the one variable it adds to `exec`'s small environment is `CLAUDE_CONFIG_DIR`): reads, never an agent session.
 - **Network.** `update-notice.ts` (registry, once a day, silent offline or off; reads `NPM_CONFIG_*`, `PI_OFFLINE`), `doctor-network.ts`
   (opt-in), `start-checks.ts` (one TCP connection per `startChecks` entry, up to 16), and `kit/http.ts` behind `jig().http.request`.
   Start checks and the store unlock run only in a top-level session with a screen (never in a child agent); the update notice
-  also runs with no screen and then writes to `process.stderr`.
+  also runs with no screen and then writes to `process.stderr`, unless the host set `skipUpdateCheck` (the gateway does).
 - **Environment read:** `JIG_STATE_DIR`, `XDG_STATE_HOME`, `JIG_CONDITION` (validated at start), `JIG_AGENT_ROLE`, `JIG_PARENT_SESSION`,
-  `JIG_HOME` (`cli/home.ts` and the doctor), `JIG_PI_HOST` (`cli/pi-command.ts`), `JIG_OUTER_PI_DIR` (`protected-paths.ts`, the outer Pi
+  `JIG_HOME` (`cli/home.ts`, `settings-home.ts` and the doctor), `JIG_PI_HOST` (`cli/pi-command.ts`), `JIG_OUTER_PI_DIR` (`protected-paths.ts`, the outer Pi
   folder a `jig` session replaced), `PI_CODING_AGENT_DIR` (the theme preference), `PI_SUBAGENT_ID`, `PI_SUBAGENT_CHILD`, `PI_OFFLINE`,
-  `NPM_CONFIG_REGISTRY` and the other `NPM_CONFIG_*` paths, `PATH` (`Path`, `PATHEXT` in the doctor), `HOME`, `BROWSER`, WSL variables. Secret lookups also read `PASSWORD_STORE_DIR`, `GNUPGHOME`, the display and D-Bus
+  `NPM_CONFIG_REGISTRY` and the other `NPM_CONFIG_*` paths, `PATH` (`Path`, `PATHEXT` in the doctor), `HOME`, `BROWSER`, `CLAUDE_CONFIG_DIR` (passed on to `claude` by the doctor), WSL variables. Secret lookups also read `PASSWORD_STORE_DIR`, `GNUPGHOME`, the display and D-Bus
   variables, every `OP_*`, the tool-config variables passed to `cmd:` commands (`GH_CONFIG_DIR`, `KUBECONFIG`, `AWS_*`...) and any
   variable an `env:<NAME>` reference names. Protected-path defaults read `XDG_CONFIG_HOME`, `APPDATA`, `DOCKER_CONFIG`.
 - **Globals.** `globalThis[Symbol.for("jig.core.api/v1")]` and `...pending/v1` (`client.ts`); a module-level running state (`index.ts`).
 - **Pi events.** Emits `jig:decision` and `jig:watch-done` through `host.emit` (Pi: `pi.events`) (`jig:stage-done` is emitted by `jig-workflow`). Timers in
   `gates.ts`, `preview.ts`, `start-checks.ts`, `update-notice.ts`, `exec.ts`, `doctor-tools.ts` and the watch engine.
 - **Screen.** Configuration problems (first five, then "and N more") and the sandbox line go to `ctx.ui.notify` only when there is a UI.
+- **The gateway's streams.** Standard input and output are an MCP server's (`gateway/`): nothing in the gateway or in the engine it runs writes to standard output; a notice goes to
+  standard error. When standard input ends the process ends the engine's session and exits with code 0 (`gateway/EGM.md`).
 
 ## Verification
 
 - Run from the repository root: `node --import ./test/support/host.mjs --test "plugins/jig-core/test/*.test.ts"`
 - Whole suite: `npm test` at the repository root. Types and lint: `npm run check`.
-- The engine with no Pi: `npm run test:engine` (`plugins/jig-core/test/engine/`; a Pi-free harness in `engine/harness.ts`, a tool in `test/support/test-tool.ts`).
+- The engine with no Pi: `npm run test:engine` (`plugins/jig-core/test/engine/`; a Pi-free harness in `engine/harness.ts`, a tool in `test/support/test-tool.ts`). The gateway's tests are
+  `engine/gateway-*.test.ts` (no Pi, no child process) and `test/gateway-process.test.ts`, which starts `gateway/main.ts` and the built `dist/jig-gateway.mjs` as children with `test/support/refuse-pi.mjs`; `test/gateway-build.test.ts` checks the built files.
 - Docs: `node scripts/check-docs.mjs`
 
 ## The kit
@@ -227,7 +241,8 @@ roles: [code map](../docs/code-map.md).
   `EngineTool` of `../engine-tool.ts`: it builds the Pi tool, runs it through `executeTool`, hands `facts` to `addFacts`, throws a result with `isError` as Pi expects, and passes
   the Pi tool to `registerJigTool`, so the renderers, `summary` and the deferred exposure are the same; it does not call `declareTool`), `TOOLS_SECTION`,
   `TOOL_SEARCH`, `NOT_DEFERRABLE` (these three and `validateToolsSection` are in `tools-section.ts`, which imports no Pi package; `tools.ts` re-exports the
-  three), `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`.
+  three), `deferredToolNames`, `hasToolSearch`, `transcriptTools`, `JigToolOptions`. `tools.ts` also re-exports the types `EngineTool`, `CallContext`, `ToolResult`, `JsonSchema` and
+  `ConnectorModule` of `../engine-tool.ts` with `export type`, so a plugin can name them; a file that must load with no Pi imports them with `import type`, because `tools.ts` itself imports Pi.
   `stringEnum(values, { description?, default? })` (`schema.ts`). `isObject`, `InputError`, `RefusedError`,
   `NotConfiguredError`, `notSetUpMessage` (`values.ts`: the one line a plugin says while its section is missing, naming `/jig setup <section>` before the by-hand route; with `problem` it says the section is there but wrong and quotes it). `printable`, `stringOf`, `oneLine`, `shortList` (`text.ts`).
 - **Actions.** `ActionSpec`, `ActionTable`, `usageLine`, `unknownAction`, `checkParams`, `describeActions`, `previewChanged`, `actionList`

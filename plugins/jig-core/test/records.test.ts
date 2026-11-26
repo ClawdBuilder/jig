@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import {
+    agentNameOf,
     callRecord,
     cleanFacts,
     cleanupRecords,
@@ -50,6 +51,8 @@ const FULL: CallInput = {
     parentToolCallId: "call_1",
     spill: "/state/spill/s/call_1_2.txt",
     facts: { testsPassed: 12, ok: false, conclusion: "failure" },
+    agentName: "claude-code",
+    enforcedBy: "gateway",
 };
 
 describe("a call record", () => {
@@ -87,6 +90,8 @@ describe("a call record", () => {
             "parentToolCallId",
             "spill",
             "facts",
+            "agentName",
+            "enforcedBy",
         ]);
         assert.match(record.id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
         assert.equal(record.kind, "call");
@@ -99,6 +104,8 @@ describe("a call record", () => {
         assert.equal(record.waitedMs, 4322, "whole milliseconds");
         assert.equal(record.durationMs, 87);
         assert.deepEqual(record.facts, { testsPassed: 12, ok: false, conclusion: "failure" });
+        assert.equal(record.agentName, "claude-code");
+        assert.equal(record.enforcedBy, "gateway");
     });
 
     test("every line has its own id", () => {
@@ -150,6 +157,8 @@ describe("a call record", () => {
             "spill",
             "facts",
             "parentSession",
+            "agentName",
+            "enforcedBy",
         ]) {
             assert.equal(absent in record, false, absent);
         }
@@ -222,6 +231,51 @@ describe("a turn record", () => {
             [record.model, record.input, record.output, record.cacheRead, record.cacheWrite, record.cost],
             ["claude-test-1", 1200, 300, 5000, 700, 0.0421],
         );
+    });
+});
+
+describe("the agent's name", () => {
+    test("is copied as given, with the enforcement point, and a turn line has neither", () => {
+        const record = callRecord({ ...FULL, agentName: "opencode", enforcedBy: "hook" }, NOW, {});
+        assert.equal(record.agentName, "opencode");
+        assert.equal(record.enforcedBy, "hook");
+        const turn = turnRecord(
+            { session: "s", model: "m", input: 1, output: 1, cacheRead: 0, cacheWrite: 0, cost: 0 },
+            NOW,
+            {},
+        );
+        assert.equal("agentName" in turn, false);
+        assert.equal("enforcedBy" in turn, false);
+    });
+
+    test("is lower-cased, and kept when it is 1 to 40 letters, digits, dots, underscores and hyphens", () => {
+        assert.equal(agentNameOf("pi"), "pi");
+        assert.equal(agentNameOf("Claude-Code"), "claude-code");
+        assert.equal(agentNameOf("OpenCode"), "opencode");
+        assert.equal(agentNameOf("codex_cli.1"), "codex_cli.1");
+        assert.equal(agentNameOf("a"), "a");
+        assert.equal(agentNameOf("a".repeat(40)), "a".repeat(40));
+        assert.equal(agentNameOf("A".repeat(40)), "a".repeat(40));
+    });
+
+    test("is unknown when it is empty, too long, or has any other character", () => {
+        const cases = [
+            "",
+            "a".repeat(41),
+            "claude code",
+            "x\n",
+            "a/b",
+            "a:b",
+            "caf\u00e9",
+            "name\u202etxt",
+            "<b>",
+            "a\0b",
+        ];
+        for (const name of cases) assert.equal(agentNameOf(name), "unknown", JSON.stringify(name));
+    });
+
+    test("is unknown when it is not text at all, which a client's message can be", () => {
+        for (const name of [undefined, null, 7, true, {}, ["pi"]]) assert.equal(agentNameOf(name), "unknown");
     });
 });
 

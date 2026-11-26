@@ -87,9 +87,11 @@ describe("the dependency", () => {
             dependencies: Record<string, string>;
         };
         // `marked` draws the Markdown of jig-core's preview page: the engine has to load where Pi's copy is not installed.
+        // `@modelcontextprotocol/server` is the SDK of jig-core's gateway: only `plugins/jig-core/src/gateway/` imports it (`engine-boundary.test.ts`).
         assert.deepEqual(Object.keys(manifest.dependencies).sort(), [
             "@anthropic-ai/sandbox-runtime",
             "@hono/node-server",
+            "@modelcontextprotocol/server",
             "amaro",
             "hono",
             "ignore",

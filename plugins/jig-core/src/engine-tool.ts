@@ -56,6 +56,24 @@ export interface EngineTool extends ToolDeclaration {
 }
 
 /**
+ * What a plugin hands a host that runs tools with no Pi, such as a gateway: the plugin's `connector.ts` exports one of these as its default.
+ * The plugin's entry for Pi (`index.ts`) and its connector read the same tool objects, so a tool is declared once.
+ */
+export interface ConnectorModule {
+    /** The plugin's name, such as `jig-git`: the same as `EngineTool.plugin` of its tools. */
+    name: string;
+    /** The tools the plugin offers through a gateway. */
+    tools: EngineTool[];
+    /**
+     * The actions of its tools that the plugin does not offer through a gateway yet, by tool name: `{ pr: ["watch"] }`. A gateway leaves them out
+     * of the form it shows and refuses a call that names one. A plugin lists an action here when the engine would run it with no question.
+     */
+    notOffered?: Record<string, readonly string[]>;
+    /** What the plugin registers with the engine before the engine reads `jig.json`, such as the plugin's section of that file. */
+    register?(jig: JigApi): void;
+}
+
+/**
  * Whether an error is a tool refusing by its own rules: the kit's `RefusedError`. It is told by its name, because a plugin that was
  * loaded on its own has its own copy of the class, and `instanceof` would not see it.
  */

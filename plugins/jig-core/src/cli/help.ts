@@ -15,6 +15,7 @@ The first word decides what runs:
   jig doctor                check this machine, the home and the secret stores
   jig setup                 make the home, install Jig in it, then ask what is missing
   jig update                update the packages in the home; never the Pi binary
+  jig lens                  list the last calls Jig recorded; needs no Pi and no home
   jig help [command]        help for a command
 
 Options:
@@ -101,6 +102,21 @@ Examples:
   jig update --check
   jig update --self
   jig update npm:@clawdbuilder/jig-bedrock
+${EXIT_CODES}`,
+    lens: `Usage: jig lens
+
+List the last 20 calls Jig recorded, oldest first, one line each: the time (UTC), the agent
+that made the call, the tool, the action, Jig's decision, the outcome and the place that
+enforced the decision. A dash stands for a value the record does not have, such as the agent
+in a record from before Jig named it, or the place in a call made inside Pi. It first reads
+the records that are new into the index of jig-lens; it changes no record, and it needs no
+Pi and no Jig home. With no calls recorded it says so and exits 0.
+
+Options:
+  -h, --help show this help
+
+Example:
+  jig lens
 ${EXIT_CODES}`,
 };
 

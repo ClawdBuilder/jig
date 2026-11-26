@@ -31,6 +31,8 @@ const FULL: CallInput = {
     parentToolCallId: "call_1",
     spill: "/state/spill/s/call_1_2.txt",
     facts: { testsPassed: 12, ok: false, conclusion: "failure" },
+    agentName: "claude-code",
+    enforcedBy: "gateway",
 };
 
 const line = (record: object) => JSON.stringify(record);
@@ -72,6 +74,8 @@ test("every field of a call record becomes the column of the same name", () => {
         parentToolCallId: "call_1",
         spill: "/state/spill/s/call_1_2.txt",
         facts: '{"testsPassed":12,"ok":false,"conclusion":"failure"}',
+        agentName: "claude-code",
+        enforcedBy: "gateway",
     });
 });
 
@@ -147,6 +151,23 @@ test("a field that does not apply is null, and a call that never ran has no clas
     assert.equal(columns.waitedMs, null);
     assert.equal(columns.facts, null);
     assert.equal(columns.errorKind, "not-run");
+});
+
+test("a line written before agentName and enforcedBy still imports, with both empty", () => {
+    const { agentName, enforcedBy, ...before } = callRecord(FULL, WHEN, {});
+    assert.ok(agentName !== undefined && enforcedBy !== undefined, "the sample has both fields");
+    const row = parseLine(line(before));
+    assert.ok(row, "a line without the two fields is a record");
+    const columns = Object.fromEntries(CALL.map((field, i) => [field.name, row.values[i]]));
+    assert.equal(columns.agentName, null);
+    assert.equal(columns.enforcedBy, null);
+    assert.equal(columns.tool, "git");
+});
+
+test("an agent name or an enforcement point that is not text has no row", () => {
+    const good = callRecord(FULL, WHEN, {});
+    assert.equal(parseLine(line({ ...good, agentName: 7 })), undefined);
+    assert.equal(parseLine(line({ ...good, enforcedBy: { place: "hook" } })), undefined);
 });
 
 test("empty facts are no facts", () => {

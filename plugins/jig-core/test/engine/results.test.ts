@@ -91,8 +91,48 @@ describe("clean and finish", () => {
                 outcome: "ok",
                 durationMs: 12,
                 toolCallId: "call-7",
+                agentName: "test",
             },
         );
+    });
+
+    test("finish writes the agent's name from the host, lower-cased, and unknown when it does not fit", async () => {
+        const world = open();
+        const { engine } = world;
+        for (const [id, name] of [
+            ["call-a", "Claude-Code"],
+            ["call-b", "a name with spaces"],
+        ] as const) {
+            const host = { ...world.host, agent: { name, version: "1" } };
+            engine.finish(request("mystery", id), { isError: false }, host);
+        }
+        assert.deepEqual(
+            world.records().map((record) => record.agentName),
+            ["claude-code", "unknown"],
+        );
+    });
+
+    test("finish writes the enforcement point when the host names one, and leaves it out when it does not", async () => {
+        const world = open();
+        const { engine } = world;
+        engine.finish(request("mystery", "call-c"), { isError: false }, { ...world.host, enforcedBy: "gateway" });
+        engine.finish(request("mystery", "call-d"), { isError: false }, world.host);
+        const [named, plain] = world.records();
+        assert.equal(named?.enforcedBy, "gateway");
+        assert.equal(named?.agentName, "test");
+        assert.equal("enforcedBy" in (plain ?? {}), false);
+    });
+
+    test("a refused call is recorded with the agent and the enforcement point of the host that refused it", async () => {
+        const world = open({ canAsk: false });
+        const { engine } = world;
+        const host = { ...world.host, agent: { name: "claude-code", version: "2" }, enforcedBy: "gateway" as const };
+        await engine.judge(request("mystery", "call-e"), host, SIGNAL);
+        engine.finish(request("mystery", "call-e"), { isError: true, text: "Blocked by jig-core: ..." }, host);
+        const [record] = world.records();
+        assert.equal(record?.outcome, "blocked");
+        assert.equal(record?.agentName, "claude-code");
+        assert.equal(record?.enforcedBy, "gateway");
     });
 
     test("a refused call is recorded as blocked, with the kind and the line, and a call the engine never judged as not run", async () => {

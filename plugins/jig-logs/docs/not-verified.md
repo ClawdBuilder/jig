@@ -110,9 +110,9 @@ on, and the page that says it:
   [Python client examples](https://grafana.com/docs/loki/latest/reference/python-client-examples).
 
 What the documentation does not say, and CI settled on Loki 3.7:
-- **A search is a GET,** and `limit` may be 1. Both work. A gateway that limits the
+- **A search is a GET,** and `limit` may be 1. Both work. A proxy that limits the
   length of an address (often 8 KiB) would still refuse a very long call as a 4xx,
-  which the result calls a rejected query; no gateway was tried.
+  which the result calls a rejected query; no proxy was tried.
 - **The escapes of a double-quoted string are Go's.** A phrase with quotes and
   backslashes finds its line. `\uXXXX` for control characters is not reached, because
   a phrase has none.

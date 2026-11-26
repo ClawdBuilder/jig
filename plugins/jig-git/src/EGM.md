@@ -2,7 +2,9 @@
 
 ## Overview
 
-Three tools for the agent: `git` (local repository), `pr` (pull requests, or merge requests on GitLab) and `release` (tags and releases). Each is built by `buildTool` from an action table, a `classify` function and one `plan` function, so the preview a person approves and the call that runs are the same plan.
+Three tools for the agent: `git` (local repository), `pr` (pull requests, or merge requests on GitLab) and `release` (tags and releases). Each is built from an action table, a `classify` function and one `plan` function, so the preview a person approves and the call that runs are the same plan.
+
+`git` is built by `buildTool`, as a Pi tool and a declaration. `pr` and `release` are built by `buildEngineTool` as one `EngineTool`, which names no agent: Pi registers it with `registerEngineTool`, and `connector.ts` hands the same object to a host with no Pi.
 
 GitHub goes through `gh` and GitLab through `glab`. The forge comes from the repository's origin, never from the model.
 
@@ -10,17 +12,19 @@ Specification: [README](../README.md); detail: [Actions](../docs/actions.md), [W
 
 ## Interface
 
-- **Entry**: `index.ts` default `function (pi)`. It registers the three tools with Pi, and in `withJig` declares them to `jig-core`,
-  registers the `git` section (`{ first: ["accounts"], setup: GIT_SETUP }`), two gates and the comment watch. Hooks: `session_start`
+- **Entry**: `index.ts` default `function (pi)`. It registers `git` with `registerJigTool` and `pr` and `release` with `registerEngineTool`, and in `withJig` declares the three to
+  `jig-core`, registers the `git` section (`registerGitSection`), two gates and the comment watch. Hooks: `session_start`
   (`setWorkingDirectory(ctx.cwd)`) and `session_shutdown`.
-- **Tool builder**: `tool.ts` (`JigTool`, `buildTool`, `at`), `params.ts` (`parameterNames`, and `checkParams`/`ActionTable` re-exported
+- **Connector**: `connector.ts`, default export `ConnectorModule` (the type is in `kit/tools.ts`, types only): `name` `jig-git`, `tools` `[prTool, releaseTool]`, `notOffered` `{ pr: ["watch"], release: ["tag_create"] }`,
+  `register` = `registerGitSection`. Imports no Pi package at run time. The gates, the comment watch and the `git` tool are not in it.
+- **Tool builder**: `tool.ts` (`JigTool`, `buildTool` for `git`, `buildEngineTool` for `pr` and `release`, `at`), `params.ts` (`parameterNames`, and `checkParams`/`ActionTable` re-exported
   from `jig-core`'s `kit/actions.ts`), `onboarding.ts` (`GIT_SETUP`: the `gh` login and the account mappings setup asks for), `names.ts`
   (closed-grammar checks: `checkBranch`, `checkTag`, `checkRemote`, `checkRev`, `checkPaths`, `checkTitle`, `checkBody`...),
-  `previews.ts` (`Call`, `Reply`, `Planned`, `digest`, `checkUnchanged`, `toResult`), `text.ts`.
+  `previews.ts` (`Call`, with the folder of the call as `cwd`, `Reply`, `Planned`, `digest`, `checkUnchanged` and `checkSeen`, `toResult`), `text.ts`.
 - **Tool `git`** (`git.ts`: `GIT_ACTIONS`, `gitTool`): `status`, `diff`, `log`, `show`, `blame`, `branches`, `fetch`, `clone`, `branch`, `worktree`, `commit`, `stash`, `sync`, `merge`, `rebase`, `cherry_pick`, `restore`, `push`. Planners: `git-read.ts`, `git-branch.ts`, `git-changes.ts`, `git-integrate.ts`, `git-remote.ts`, `clone.ts`; shared `git-guards.ts`.
-- **Tool `pr`** (`pr.ts`: `PR_ACTIONS`, `prTool`): `view`, `list`, `comments`, `create`, `edit`, `ready`, `comment`, `reply`, `resolve`, `review`, `merge`, `watch`. Planners: `pr-read.ts`, `pr-write.ts`, `pr-watch-tool.ts`; GitLab twins `gitlab-pr.ts`, `gitlab-pr-read.ts`, `gitlab-pr-write.ts`.
-- **Tool `release`** (`release.ts`: `RELEASE_ACTIONS`, `releaseTool`): `tags`, `releases`, `tag_create`, `tag_push`, `release_create`; GitLab twin `gitlab-release.ts`.
-- **Forge and repo**: `forge.ts` (`forgeOf`, `gitlabHome`, `UnknownForgeHost`), `origin-host.ts` (`originHost`, resolves an ssh alias with `ssh -G`, cached), `repo.ts` (`resolveRepo`, `baseBranch`, `isProtected`, `setWorkingDirectory`), `config.ts` (`validateGitSection`, `gitSettings`).
+- **Tool `pr`** (`pr.ts`: `PR_ACTIONS`, `prTool`, an `EngineTool`): `view`, `list`, `comments`, `create`, `edit`, `ready`, `comment`, `reply`, `resolve`, `review`, `merge`, `watch`. Planners: `pr-read.ts`, `pr-write.ts`, `pr-watch-tool.ts`; GitLab twins `gitlab-pr.ts`, `gitlab-pr-read.ts`, `gitlab-pr-write.ts`.
+- **Tool `release`** (`release.ts`: `RELEASE_ACTIONS`, `releaseTool`, an `EngineTool`): `tags`, `releases`, `tag_create`, `tag_push`, `release_create`; GitLab twin `gitlab-release.ts`.
+- **Forge and repo**: `forge.ts` (`forgeOf`, `gitlabHome`, `UnknownForgeHost`), `origin-host.ts` (`originHost`, resolves an ssh alias with `ssh -G`, cached), `repo.ts` (`resolveRepo`, `repoHere` and `workspaceRoot`, each with the call's folder as an optional last argument; `baseBranch`, `isProtected`, `setWorkingDirectory`), `config.ts` (`validateGitSection`, `gitSettings`, `registerGitSection`).
 - **Runners**: `run.ts` (`git`, `gitOut`, `gitTry`, `T_NETWORK`, `T_PUSH`), `github.ts` (`gh`, `ghJson`, `ghWrite`, `apiGet`, `graphql`), `gitlab.ts` (`glab`, `glabJson`, `glabPages`, `glabWrite`), `api-output.ts`, `ci.ts` (check roll-up for `pr view`).
 - **Gates**: `fetch-guard.ts` (`FETCH_GATE = "git-fetch-host"`, `createFetchGuard`), `runs-later-gate.ts` (`RUNS_LATER_GATE = "git-guarded-paths"`, `runsLaterGate`) with `guarded.ts`.
 - **Event**: `events.ts` (`PUSHED_EVENT = "jig-git:pushed"`, payload `{ repo, branch, sha, pr? }`, `setAnnouncer`, `announcePushed`).
@@ -29,7 +33,9 @@ Specification: [README](../README.md); detail: [Actions](../docs/actions.md), [W
 ## Invariants
 
 - **Imports from `jig-core`** are only `client.ts`, `contract.ts` and `kit/` (`accounts`, `pi-project-paths`, `runs-later`, `schema`, `tools`, `values`). `jig-git` never imports `jig-ops`; it only emits `jig-git:pushed`.
-- **Plan, compare, run.** `checkParams`, then `plan`, then `checkUnchanged(toolCallId, planned)`, then run. A write that changed since the preview is refused. The preview calls the same plan with an empty call id; a plan reads state and changes nothing. Tools run sequentially, so a push lands before the pull request that needs it.
+- **Plan, compare, run.** `checkParams`, then `plan`, then `checkUnchanged(toolCallId, planned)` (for `pr` and `release`: `checkSeen(call.seen, planned)`), then run. A write that changed since the preview is refused. The preview calls the same plan with an empty call id; a plan reads state and changes nothing. Tools run sequentially, so a push lands before the pull request that needs it.
+- **The folder is the call's.** `pr` and `release` hand `call.cwd` to every `resolveRepo` in their files (25 places, in `pr-read`, `pr-write`, `pr-watch-tool`, `gitlab-pr`, `gitlab-pr-read`, `gitlab-pr-write`, `gitlab-release` and `release`), and `preview` gets it from the engine. So two calls for two folders answer for their own. The module variable of `repo.ts` is only the fallback, and the `git` tool, its gates and the tests still use it. A new lookup of a repository in those files must pass the folder too.
+- **No Pi at run time in `pr` and `release`.** Their import graph and `connector.ts` hold no run-time import of a Pi package; `tool.ts` and `index.ts` name Pi's types with `import type`. A type of the kit comes in with `import type`, because `kit/tools.ts` imports Pi.
 - **Every model-supplied value passes a closed grammar** in `names.ts` or `params.ts`, and `additionalProperties` is false.
 - **The forge is decided by origin and configuration only, never the model:** origin's host (for an ssh alias, the host `ssh -G` reports, else the conventions `github.com-<alias>`, `ssh.github.com`, `altssh.gitlab.com`), `git.cloneHost` (GitHub) and `git.forges`. An origin with no host (a local path, no origin) is GitHub. Any other host throws `UnknownForgeHost` with the line that fixes it. No call can send `forges`.
 - **A fetch asks for a host the user's configuration does not name** (`github.com`, `gitlab.com`, `git.cloneHost`, hosts of `git.forges` are trusted). A `This session` answer is remembered per host.

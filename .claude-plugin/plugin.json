@@ -1,0 +1,26 @@
+{
+    "name": "jig",
+    "version": "0.5.11",
+    "description": "Jig's tools for Claude Code: read pull requests and releases, with every call decided by Jig's rules and recorded.",
+    "author": {
+        "name": "Jig Contributors"
+    },
+    "userConfig": {
+        "jig_home": {
+            "type": "directory",
+            "title": "Jig settings folder",
+            "description": "The folder that holds jig.json. Leave it empty to use Jig's built-in defaults.",
+            "required": false
+        }
+    },
+    "mcpServers": {
+        "jig": {
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/plugins/jig-core/dist/jig-gateway.mjs"],
+            "env": {
+                "JIG_HOME": "${user_config.jig_home}"
+            }
+        }
+    },
+    "skills": "./adapters/claude-code/skills"
+}

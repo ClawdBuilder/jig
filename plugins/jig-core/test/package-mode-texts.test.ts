@@ -479,6 +479,8 @@ describe("the source", () => {
         ["jig-core/src/setup-command.ts", `ctx.ui.select("jig setup"`],
         ["jig-core/src/commands.ts", `show(ctx, "jig doctor"`],
         ["jig-core/src/doctor-folder.ts", `"Jig home"`],
+        // The gateway has no Pi. Its `status` text points a person to the terminal doctor, which reports the problems of jig.json in full.
+        ["jig-core/src/gateway/jig-tool.ts", "Run `jig doctor` to see these problems in full."],
     ];
     const codeFiles = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>

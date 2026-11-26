@@ -62,6 +62,14 @@ was started:
 - **Checks before the first prompt,** such as reaching a VPN-only host: `startChecks` (up to 16 TCP checks), run by `jig-core`.
 - **Unlocking a password store at start:** `secrets.pass.unlockAtStart`, run by `jig-core` when `pass` is an enabled backend.
 
+The `jig` command answers a few words itself before it starts Pi. One of them needs no Pi and no Jig home: `jig lens`
+lists the last 20 calls Jig recorded, one line each (time, agent, tool, action, decision, outcome and the place that
+enforced the decision), or says on one line that there are none ([jig-lens](../plugins/jig-lens/README.md#commands)).
+`jig lens --help` says more. Any other word goes to Pi.
+
+`bin/` holds one more start file that is not part of the launcher: `jig-gateway.mjs`, the command `jig-gateway`, an MCP server for an agent that is not
+Pi. It needs no Pi, no Jig home and no tmux ([Gateway](../plugins/jig-core/docs/gateway.md)).
+
 Why the launcher is this small: [Decisions](decisions.md#2026-11-02-an-optional-launcher-with-nothing-a-company-decides).
 
 Back to [the README](../README.md) and [Setup and doctor](setup-and-doctor.md).

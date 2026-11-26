@@ -154,7 +154,7 @@ auth: { query: { name: "api_key", value: "file:~/.config/orders-api/key" } }
 ## A sign-in service
 
 Some systems are signed in to by code, not by a stored password: a single
-sign-on gateway, for example. A company plugin supplies that code as a
+sign-on service, for example. A company plugin supplies that code as a
 **sign-in service**, and a request names it with `auth: { signIn: "corp-sso" }`.
 
 The headers it returns are added to the request, and `jig-core` asks it again
@@ -203,7 +203,7 @@ auth: {
 ## Sign-in services
 
 A company plugin supplies the code that signs a request in, such as for a single
-sign-on gateway, as a **sign-in service**.
+sign-on service, as a **sign-in service**.
 - **The company plugin registers it** with `signIn.register(name, service)`.
   Registering the same name again replaces the service.
 - **A request asks for it by name,** with `auth: { signIn: name }` in

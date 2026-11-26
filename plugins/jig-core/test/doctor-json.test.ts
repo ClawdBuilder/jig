@@ -9,6 +9,7 @@ import { defaultConfig, emptyAdditions } from "../src/config.ts";
 import type { DoctorContext, DoctorOptions } from "../src/doctor.ts";
 import { doctorReportFile, reportJson, writeDoctorReport } from "../src/doctor-json.ts";
 import { runDoctor } from "../src/doctor.ts";
+import { jigPackage } from "../src/pi-version.ts";
 
 let home: string;
 let agentDir: string;
@@ -66,6 +67,8 @@ function options(): DoctorOptions {
         jigRepository: "git+https://github.com/example/jig.git",
         home,
         pathLookup: (program) => (program === "pass" ? "/usr/bin/pass" : undefined),
+        // No program starts: the built gateway, which the "Other agents" group asks for its version, answers with this package's.
+        run: async () => ({ code: 0, stdout: `${jigPackage().version}\n`, stderr: "", timedOut: false }),
     };
 }
 
@@ -103,7 +106,7 @@ describe("the JSON report", () => {
         const json = reportJson(report, new Date("2026-11-04T12:00:00.000Z"));
         assert.deepEqual(
             json.groups.map((group) => group.id),
-            ["machine", "config", "secrets", "logins", "network", "sandbox", "records"],
+            ["machine", "config", "secrets", "logins", "network", "sandbox", "records", "agents"],
         );
         for (const group of json.groups) {
             assert.equal(typeof group.title, "string");

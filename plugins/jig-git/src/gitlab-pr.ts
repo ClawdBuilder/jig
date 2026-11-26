@@ -33,7 +33,7 @@ export async function homeOf(params: Readonly<Record<string, unknown>>, call: Ca
     const aThread = params.action === "reply" || params.action === "resolve";
     let repo: Repo;
     try {
-        repo = await resolveRepo(params.repo as string | undefined, call.signal);
+        repo = await resolveRepo(params.repo as string | undefined, call.signal, call.cwd);
     } catch (error) {
         if (aThread && !looksLikeGitlabThread(params.thread)) return { forge: "github" };
         throw error;
@@ -50,7 +50,7 @@ async function planWatch(
     call: Call,
     home: GitlabHome,
 ): Promise<Planned> {
-    const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal), call };
+    const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
     let number: number;
     if (params.number !== undefined) {
         number = checkNumber(params.number);

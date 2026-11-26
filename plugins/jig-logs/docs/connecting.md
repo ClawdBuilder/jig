@@ -20,7 +20,7 @@ name.
 
 - **The user name** of the first form cannot hold a colon. Grafana Cloud's Loki
   takes this form, with the user of the stack and an API token.
-- **A sign-in service**, such as a single sign-on gateway, is asked for the system
+- **A sign-in service**, such as a single sign-on service, is asked for the system
   `logs` and the full address of the request.
 
 The request carries `accept: application/json`, and `content-type:

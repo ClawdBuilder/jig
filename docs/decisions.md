@@ -4,6 +4,7 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 
 ## Contents
 
+- [2026-11-26: Jig's engine runs without Pi, and other agents reach it through a gateway](#2026-11-26-jigs-engine-runs-without-pi-and-other-agents-reach-it-through-a-gateway)
 - [2026-11-19: Jig runs as an ordinary Pi package, and the home is optional](#2026-11-19-jig-runs-as-an-ordinary-pi-package-and-the-home-is-optional)
 - [2026-11-19: the relay sign-in is always offered, and sets a relay up when there is none](#2026-11-19-the-relay-sign-in-is-always-offered-and-sets-a-relay-up-when-there-is-none)
 - [2026-11-19: a person sets up a session relay and signs in through it](#2026-11-19-a-person-sets-up-a-session-relay-and-signs-in-through-it)
@@ -79,6 +80,27 @@ Dated so the reasons stay attached. Each entry says what was decided, and why.
 - [Earlier decisions that still hold (2026-10-29)](#earlier-decisions-that-still-hold-2026-10-29)
 - [Relationship to the existing harness](#relationship-to-the-existing-harness)
 - [`amaro` is a runtime dependency of the CLI, not of a plugin](#amaro-is-a-runtime-dependency-of-the-cli-not-of-a-plugin)
+
+## 2026-11-26: Jig's engine runs without Pi, and other agents reach it through a gateway
+
+**Decision.** Jig's engine, the part that classifies, decides, runs and records a call, runs without Pi. An agent that is not Pi reaches Jig's
+tools through the gateway, an MCP server (`jig-gateway`, [Gateway](../plugins/jig-core/docs/gateway.md)). Claude Code is the first, through a
+plugin that starts the gateway: the package root is that plugin (`.claude-plugin/`). Pi stays fully supported and unchanged: it loads the same
+plugins through `pi.extensions`, and the same rules and records serve both.
+
+**Why.** The entry this replaces, "Pi only. No Claude Code plugin." (2026-10-29), was one line with no reasons. What changed is that people who use
+Jig also work in other agents, and what Jig decides and records should not depend on which agent made the call. A Pi plugin can only be loaded by
+Pi; an MCP server is a door that these agents already have.
+
+**What this version does.** It offers `pr` and `release` with their reads, and `jig status`. A write is refused, because nobody can be asked from
+there. It adds no approval question and no shell guard in Claude Code; those come later, so the plugin is for reading pull requests and releases.
+
+**Two words, settled.** "Gateway" now means this server. Where a document used it for a company's network part, it says "proxy", or "sign-on
+service" where someone signs in. "Adapter" keeps its meaning, a piece of a plugin that speaks one outside system; the new part is always an "agent
+adapter" ([Glossary](glossary.md#other-agents)).
+
+**Replaces** "Pi only. No Claude Code plugin." in [Earlier decisions that still hold](#earlier-decisions-that-still-hold-2026-10-29). The sentence
+stays there, marked as replaced.
 
 ## 2026-11-19: Jig runs as an ordinary Pi package, and the home is optional
 
@@ -2111,7 +2133,8 @@ its own safety pipeline.
 
 ## Earlier decisions that still hold (2026-10-29)
 
-- **Pi only.** No Claude Code plugin.
+- **Pi only.** No Claude Code plugin. **Replaced on 2026-11-26:** [the engine runs without Pi, and Claude Code reaches it through a
+  gateway](#2026-11-26-jigs-engine-runs-without-pi-and-other-agents-reach-it-through-a-gateway). Pi stays fully supported.
 - **Two repositories.** This public, generic `jig`, and a private company
   plugin kept at the company.
 - **One approval per change** (after tests and checks, before the pull request

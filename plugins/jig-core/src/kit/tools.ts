@@ -23,6 +23,10 @@ import { NOT_DEFERRABLE, TOOL_SEARCH, TOOLS_SECTION } from "./tools-section.ts";
 // have always found them.
 export { NOT_DEFERRABLE, TOOL_SEARCH, TOOLS_SECTION } from "./tools-section.ts";
 
+// The types of the tool contract, for a plugin that writes an `EngineTool` and a `connector.ts`. They are types only: they cost nothing at
+// run time, so a connector must import them with `import type`, because this file imports Pi at run time.
+export type { CallContext, ConnectorModule, EngineTool, JsonSchema, ToolResult } from "../engine-tool.ts";
+
 interface Slot {
     tools: Map<string, ToolDefinition>;
     /** After the first session start of this runtime (a reload makes a new `pi`, so a new slot): a tool registered now

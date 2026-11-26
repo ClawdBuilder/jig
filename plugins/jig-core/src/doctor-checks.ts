@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DoctorContext, DoctorGroupId, DoctorLine, DoctorOptions } from "./doctor.ts";
+import { agentChecks } from "./doctor-agents.ts";
 import { networkChecks } from "./doctor-network.ts";
 import { offLine, sessionFiltered } from "./doctor-off.ts";
 import { checkSecrets } from "./doctor-secrets.ts";
@@ -47,6 +48,7 @@ export const DOCTOR_CHECKS: ReadonlyArray<
     ["network", networkChecks],
     ["sandbox", sandboxChecks],
     ["records", recordsChecks],
+    ["agents", agentChecks],
 ];
 /** The checked part of a running jig-core. */
 export function doctorContext(state: JigState): DoctorContext {
@@ -510,5 +512,3 @@ function firstMessages(messages: readonly string[]): string {
     if (first === undefined) return "the check did not say what is missing.";
     return `${first}${rest.length === 0 ? "" : ` (and ${rest.length} more)`}`;
 }
-
-/** What the active company's onboarding list says its people must supply, for the sections that are not loaded yet. */

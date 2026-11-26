@@ -6,7 +6,7 @@
 // entry in docs/decisions.md, and for the contract a new `version`. Never loosen a pin to get a build green: if a name has to go, say
 // so in docs/decisions.md first (docs/compatibility.md).
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { jig, withdrawJig, withJig } from "../src/client.ts";
@@ -77,11 +77,35 @@ describe("the global handle", () => {
 });
 
 describe("the package", () => {
-    test("states the Pi minimum and tested version as public version data", () => {
+    test("states the minimum and tested version of Pi and of Claude Code as public version data", () => {
         const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
-            jig?: unknown;
+            jig?: { agents?: unknown };
         };
-        assert.deepEqual(manifest.jig, { agents: { pi: { minimum: "1.4.0", tested: "1.5.2" } } });
+        assert.deepEqual(manifest.jig?.agents, {
+            pi: { minimum: "1.4.0", tested: "1.5.2" },
+            "claude-code": { minimum: "2.1.326", tested: "2.1.332" },
+        });
+    });
+
+    test("lists the connectors the gateway loads: a plugin's name and the file that hands its tools to a host that is not Pi", () => {
+        const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
+            jig?: { connectors?: unknown };
+        };
+        assert.deepEqual(manifest.jig?.connectors, { "jig-git": "./plugins/jig-git/src/connector.ts" });
+    });
+
+    test("has the commands jig and jig-gateway, and ships the built gateway that jig-gateway and an agent's configuration start", () => {
+        const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
+            bin?: unknown;
+            files?: string[];
+        };
+        assert.deepEqual(manifest.bin, { jig: "./bin/jig.mjs", "jig-gateway": "./bin/jig-gateway.mjs" });
+        assert.equal(manifest.files?.includes("plugins/jig-core/dist/**"), true);
+        // The Claude Code plugin is the package root: its two files and its skill ship, and so does the folder they sit in.
+        assert.equal(manifest.files?.includes("adapters/**"), true);
+        assert.equal(manifest.files?.includes(".claude-plugin/**"), true);
+        assert.equal(existsSync(path.join(ROOT, "plugins/jig-core/dist/jig-gateway.mjs")), true);
+        assert.equal(existsSync(path.join(ROOT, "bin/jig-gateway.mjs")), true);
     });
 });
 
@@ -448,11 +472,18 @@ describe("what plugins import", () => {
             // The `tools` section's name, its never-deferred list and its check, kept apart from `tools.ts` so that no Pi import comes with
             // them. `tools.ts` re-exports the three constants.
             "tools-section.ts": ["NOT_DEFERRABLE", "TOOLS_SECTION", "TOOL_SEARCH", "validateToolsSection"],
+            // The five types of the tool contract (`CallContext`, `ConnectorModule`, `EngineTool`, `JsonSchema`, `ToolResult`) are re-exported from
+            // `../engine-tool.ts` as types only, for a plugin's `EngineTool` and its `connector.ts`.
             "tools.ts": [
+                "CallContext",
+                "ConnectorModule",
+                "EngineTool",
                 "JigToolOptions",
+                "JsonSchema",
                 "NOT_DEFERRABLE",
                 "TOOLS_SECTION",
                 "TOOL_SEARCH",
+                "ToolResult",
                 "deferredToolNames",
                 "hasToolSearch",
                 "registerEngineTool",
@@ -511,12 +542,15 @@ describe("the record line", () => {
                 parentToolCallId: "t0",
                 spill: "file",
                 facts: { rows: 1 },
+                agentName: "claude-code",
+                enforcedBy: "gateway",
             },
             new Date(0),
             env,
         );
         assert.deepEqual(Object.keys(call).sort(), [
             "action",
+            "agentName",
             "agentRole",
             "answer",
             "approval",
@@ -525,6 +559,7 @@ describe("the record line", () => {
             "decisionSource",
             "durationMs",
             "effect",
+            "enforcedBy",
             "environment",
             "environmentKind",
             "error",

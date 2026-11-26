@@ -11,8 +11,9 @@ it once.
 - **Tool call:** time, session, parent session and agent role (for a child
   agent), ticket when one is active, tool, action, plugin, environment,
   effect, decision, approval kind, your answer, time waited for you, outcome,
-  error kind, duration, tool call id, parent call id, spill path, and the
-  tool's facts.
+  error kind, duration, tool call id, parent call id, spill path, the
+  tool's facts, the agent that made the call, and the place that enforced the
+  decision.
 - **Model turn:** time, session, parent session, agent role, ticket, model,
   input, output, cache-read and cache-write tokens, and cost. These come from
   Pi's usage data.
@@ -49,6 +50,7 @@ kind plus one masked and redacted line of at most 200 characters.
 | `approval`, `answer`, `waitedMs` | call | The kind of question, your answer, and the milliseconds the call waited |
 | `outcome`, `errorKind`, `error` | call | `ok`, `error` or `blocked`; the kind of failure; one line |
 | `durationMs`, `toolCallId`, `parentToolCallId`, `spill`, `facts` | call | How long the tool ran; Pi's call ids; the spill file; the tool's facts |
+| `agentName`, `enforcedBy` | call | The agent that made the call; the place that enforced the decision (see below) |
 | `model`, `input`, `output`, `cacheRead`, `cacheWrite`, `cost` | turn | The model id, the token counts, and the total cost in dollars |
 
 A field that does not apply is left out. A call that never reached jig-core (an
@@ -68,6 +70,12 @@ it has no environment, effect or decision, and its error kind is `not-run`.
 - **`approval`** is `dialog`, `review` or `form`; **`answer`** is `allow`,
   `allow-session` or `decline`; **`waitedMs`** includes the time in the queue.
 - **`parentToolCallId`:** a nested call's id is `<parent>/<n>`.
+- **`agentName`** is the name the agent gave itself, lower-cased, when it is 1 to 40 characters of `a-z`, `0-9`,
+  `.`, `_` and `-`; any other name is written as `unknown`, so a name is never proof of who called. Pi's lines say `pi`.
+  A line written before this field has none, and neither has a line from `records.recall`.
+- **`enforcedBy`** is `gateway`, `hook` or `shell-guard`: the place outside Pi that decided the call (the gateway of an MCP
+  server, an agent's hook, or the guard around its shell). It is left out in Pi, where the tool manager is the agent's own,
+  and in a line written before this field.
 
 ### Error kinds
 

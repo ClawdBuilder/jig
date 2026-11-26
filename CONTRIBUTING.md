@@ -29,9 +29,11 @@ Every plugin under `plugins/` is a Pi package, loaded through `package.json`'s `
 | `plugins/` | the fifteen plugins; [Plugins](docs/plugins.md) names every tool |
 | `contracts/` | versioned files for front-ends; [Front-end contracts](docs/contracts.md) |
 | `examples/jig-acme/` | the one example company plugin, a template to copy |
-| `scripts/` | the gates `npm run check` runs, and the release scripts |
+| `scripts/` | the gates `npm run check` runs, the install checks, and the release scripts |
 | `test/` | the root tests, the isolated host in `test/support/`, the eval corpus in `test/eval/` |
-| `bin/` | `jig.mjs`, the `pi` launcher and the host hooks; [The launcher](docs/launcher.md) |
+| `bin/` | `jig.mjs`, `jig-gateway.mjs`, the `pi` launcher and the host hooks; [The launcher](docs/launcher.md) |
+| `adapters/` | what other agents read: the Claude Code skill; [Gateway](plugins/jig-core/docs/gateway.md) |
+| `.claude-plugin/` | the Claude Code plugin's file and its marketplace file: the package root is the plugin |
 | `docs/` | the pages and diagrams, including the plugin map and the [writing guide](docs/writing.md) |
 | `.github/` | the workflows, the PR and issue templates, CODEOWNERS, the integration services |
 | `AGENTS.md`, `CONTRIBUTING.md`, `README.md` | the rules an agent reads first, this page, the front page |
@@ -78,11 +80,19 @@ and `npm run build` there first; a changed `src/` that was not built fails `chec
 | `npm test` | the sandbox's programs, for its tests |
 | `npm run test:engine` | nothing: the engine's tests, in a process that cannot load Pi (`npm test` runs them too) |
 | `npm run check:install` | network |
+| `npm run check:gateway` | network; no Pi and no `npm ci` |
+| `npm run check:claude` | Claude Code at the minimum in `jig.agents` or newer; no sign-in |
 | `npm run check:web`, `npm run test:web` and `npm run check:dist` | `npm ci` in `plugins/jig-review/web` |
 
 Every one of them passes before a commit; CI runs all of them on every push and pull request, and `ci-ok` is the job to
 require. A test suite for a real service skips when its address is not set, so `npm test` never needs one; the integration
 suite is `npm run test:it` (see [Integration tests](docs/integration-tests.md)).
+
+- **`check:gateway`** packs the package, installs it with no Pi and asks the gateway real questions. It imports only Node's own
+  modules, so it runs before `npm ci`.
+- **`check:claude`** has Claude Code itself validate and install the plugin, in a temporary home, with no sign-in and no model.
+  `JIG_CLAUDE_BIN` names a Claude Code that is not first on the `PATH`; the tested version is `jig.agents["claude-code"].tested` in
+  `package.json`.
 
 `npm test` and `npm run test:it` pass `--test-timeout=600000`. Node applies that to a whole test file, not to each
 test, so it bounds a hung file at ten minutes.
@@ -121,6 +131,8 @@ chmod +x .git/hooks/pre-push
 - **The agent contract, if the folder has one.** Many folders have an `EGM.md` for coding agents: its interface, invariants and
   side effects. When a change alters one of those, update it in the same commit. No test compares it with the code, so a reviewer
   checks it by hand.
+- **The built gateway, if its code changes.** `plugins/jig-core/dist/` is generated and committed. A change to gateway code, to a connector or to a bundled dependency needs `npm run build:gateway`, and
+  `npm run check` fails with that command when the built files are stale ([Gateway](plugins/jig-core/docs/gateway.md#the-built-gateway)).
 - **A changelog line, if a user would notice.** Add a file in [changelog.d/](changelog.d/): its `### Added`, `### Changed`,
   `### Fixed` or `### Removed` heading and one line, written for the person reading it after an update.
 - **A decision, if a public name goes.** Removing or renaming anything in [Compatibility](docs/compatibility.md) needs a dated

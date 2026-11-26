@@ -10,7 +10,7 @@ Behavior, commands and settings are specified in the [README](./README.md) and `
 
 - **Entry:** `index.ts` re-exports the default of `./src/index.ts`, so Pi labels the plugin by its folder name. Keep it a one-line re-export.
 - **Code:** [src](./src/EGM.md) holds all logic: the import, the `/lens` command, the figures, the page server, the viewers and the usage view.
-- **Command:** `/lens [ticket KEY | session [id] | days N | compare [days N] | usage | web | grafana | datasette | rebuild | status]`.
+- **Command:** `/lens [ticket KEY | session [id] | days N | compare [days N] | usage | web | grafana | datasette | rebuild | status]`. In a terminal, `jig lens` (`src/cli.ts`, started by `bin/jig.mjs`, which jig-core's own command list may not import) imports and prints the last 20 calls, with no Pi.
 - **Config:** the `lens` section of `jig.json`, one field: `port` (default 3300, for Grafana or Datasette). The section is registered with a `setup` summary for `/jig setup`. The `/lens web` page also reads the `ui` section's `theme` as a fallback for Pi's saved theme.
 - **Event bus:** other plugins may emit `jig-lens:model-names` to name models in the usage view.
 - **Non-code siblings** (no contract file):
@@ -30,7 +30,7 @@ Behavior, commands and settings are specified in the [README](./README.md) and `
 
 ## Side Effects
 
-- **Disk:** writes only under `<state>/lens` (index, Grafana data, viewer log); reads `jig-core`'s record files, Pi's session files and Pi's saved theme (`<agentDir>/theme.json`, for the page). Details in [src](./src/EGM.md#side-effects).
+- **Disk:** writes only under `<state>/lens` (index, Grafana data, viewer log; `jig lens` makes the index when it is missing); reads `jig-core`'s record files, Pi's session files and Pi's saved theme (`<agentDir>/theme.json`, for the page). Details in [src](./src/EGM.md#side-effects).
 - **Network and processes:** a local page on 127.0.0.1 for the session; Grafana or Datasette detached on `lens.port`; a browser opener. No outbound traffic.
 
 ## Verification

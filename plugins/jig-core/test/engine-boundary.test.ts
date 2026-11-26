@@ -7,6 +7,9 @@
 // A tool that runs outside Pi has to load the engine without Pi's packages installed, so a path to one is a failure of that
 // install, not of style. A few terminal-command files still reach Pi because they build the state with Pi's wrapper (`state.ts`);
 // they are listed, and the test fails when a listed file stops reaching Pi, so the list can only shrink.
+//
+// One more rule is about a library and not about Pi: no file outside `src/gateway/` imports an MCP library (design 5.5), so the engine stays a library that
+// any front door can use, and the SDK's types do not leak into it. The gateway's own files are engine files like the rest.
 import assert from "node:assert/strict";
 import {
     existsSync,
@@ -195,6 +198,61 @@ describe("the engine files of jig-core", () => {
             assert.ok(!listed.has(file), `${file} is on a list of test/support/engine-files.ts`);
             const reach = reachOf(read, file, piSide);
             assert.equal(reach, undefined, reach === undefined ? "" : said(file, reach));
+        }
+    });
+});
+
+const MCP_PACKAGES = "@modelcontextprotocol/";
+
+/** Every import of an MCP library in a tree outside the `gateway` folder: the file, the line and the package, as text. Any import counts, a type too. */
+function mcpImportsOutsideGateway(root: string): string[] {
+    const found: string[] = [];
+    for (const file of sourceFiles(root)) {
+        if (file.startsWith("gateway/")) continue;
+        for (const { specifier, line } of importsOf(readFileSync(path.join(root, file), "utf8"))) {
+            if (specifier.startsWith(MCP_PACKAGES)) found.push(`${file}:${line} imports ${specifier}`);
+        }
+    }
+    return found;
+}
+
+describe("the MCP library is the gateway's alone", () => {
+    test("no file outside gateway/ imports an MCP library", () => {
+        assert.deepEqual(mcpImportsOutsideGateway(SRC), []);
+    });
+
+    test("the gateway's files are engine files that reach no Pi package, and none is exempt on a list", () => {
+        const read = reader(SRC);
+        const piSide = new Set(PI_SIDE_FILES);
+        const listed = new Set([...PI_SIDE_FILES, ...REACHES_PI_FOR_NOW]);
+        const gateway = sourceFiles(SRC).filter((file) => file.startsWith("gateway/"));
+        assert.equal(gateway.length > 0, true, "the gateway has files");
+        for (const file of gateway) {
+            assert.ok(!listed.has(file), `${file} is on a list of test/support/engine-files.ts`);
+            const reach = reachOf(read, file, piSide);
+            assert.equal(reach, undefined, reach === undefined ? "" : said(file, reach));
+        }
+    });
+
+    test("the check finds an import of any kind, in any folder but the gateway's", () => {
+        const root = mkdtempSync(path.join(tmpdir(), "jig-engine-"));
+        const write = (file: string, text: string) => {
+            mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+            writeFileSync(path.join(root, file), text);
+        };
+        try {
+            write("gateway/server.ts", 'import { McpServer } from "@modelcontextprotocol/server";\n');
+            write("engine.ts", 'import { McpServer } from "@modelcontextprotocol/server";\n');
+            write("kit/types.ts", 'import type { Tool } from "@modelcontextprotocol/core";\n');
+            write("later.ts", 'const stdio = await import("@modelcontextprotocol/server/stdio");\n');
+            write("fine.ts", 'import { hono } from "hono";\nimport "@modelcontextprotocolx/other";\n');
+            assert.deepEqual(mcpImportsOutsideGateway(root).sort(), [
+                "engine.ts:1 imports @modelcontextprotocol/server",
+                "kit/types.ts:1 imports @modelcontextprotocol/core",
+                "later.ts:1 imports @modelcontextprotocol/server/stdio",
+            ]);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
         }
     });
 });

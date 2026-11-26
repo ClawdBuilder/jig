@@ -1,9 +1,10 @@
 // `node scripts/release.mjs <version>`: what cutting a release changes. It folds every fragment in `changelog.d/` into a dated
 // `## [<version>]` section, with the entries of repeated `### Added`, `### Changed`, `### Fixed` and `### Removed` headings
 // gathered under one of each, deletes the fragments, leaves the sentence under `## [Unreleased]` that points at the folder,
-// and raises `version` in package.json. It commits nothing and tags nothing: docs/releases.md says what comes next.
+// and raises `version` in package.json and in the two files of the Claude Code plugin, which name the same version. It commits
+// nothing and tags nothing: docs/releases.md says what comes next.
 //   node scripts/release.mjs 0.3.0 [--date 2026-11-04] [--root <folder>] [--dry-run]
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HEADINGS, readFragments } from "./changelog-fragments.mjs";
@@ -16,6 +17,9 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** The order the changelog writes its headings in. */
 const ORDER = HEADINGS;
+
+/** The files of the Claude Code plugin that carry the package version, as paths below the package folder. */
+export const PLUGIN_FILES = [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"];
 
 /** The `version` of a package.json's text. */
 export function versionOf(manifest) {
@@ -139,14 +143,35 @@ export function cut(changelog, version, date, body) {
     };
 }
 
-/** Both files after a release, or the problems that stop it. Nothing is written by this function. */
-export function release({ changelog, manifest, version, date, fragments = [], problems: fragmentProblems = [] }) {
+/** A JSON file's text with its `"version"` set, or undefined when the text holds none. Nothing else in the text moves. */
+export function withVersion(text, version) {
+    const field = /("version":\s*")[^"]*(")/;
+    return field.test(text) ? text.replace(field, `$1${version}$2`) : undefined;
+}
+
+/** The files after a release, or the problems that stop it. Nothing is written by this function. `plugin` holds the text of each
+ *  file of `PLUGIN_FILES`, by path. */
+export function release({
+    changelog,
+    manifest,
+    plugin = {},
+    version,
+    date,
+    fragments = [],
+    problems: fragmentProblems = [],
+}) {
     const problems = [...fragmentProblems];
     if (!EXACT.test(version)) problems.push(`"${version}" is not a version of the form 1.2.3`);
     if (!DATE.test(date)) problems.push(`"${date}" is not a date of the form 2026-11-04`);
     const current = versionOf(manifest);
     if (EXACT.test(version) && compare(version, current) <= 0) {
         problems.push(`${version} is not newer than package.json's ${current}`);
+    }
+    const plugins = {};
+    for (const name of PLUGIN_FILES) {
+        const raised = plugin[name] === undefined ? undefined : withVersion(plugin[name], version);
+        if (raised === undefined) problems.push(`${name} is missing or has no "version" to raise`);
+        else plugins[name] = raised;
     }
     const previous = unreleased(changelog);
     if (previous?.split("\n").some((line) => /^### /.test(line) || line.startsWith("- "))) {
@@ -164,6 +189,7 @@ export function release({ changelog, manifest, version, date, fragments = [], pr
         problems: [],
         changelog: text,
         manifest: manifest.replace(/("version":\s*")[^"]*(")/, `$1${version}$2`),
+        plugin: plugins,
     };
 }
 
@@ -192,11 +218,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         manifest: path.join(root, "package.json"),
         changelog: path.join(root, "CHANGELOG.md"),
     };
+    // A plugin file that is not there stays out of the map, and the release says so and stops.
+    const plugin = {};
+    for (const name of PLUGIN_FILES) {
+        if (existsSync(path.join(root, name))) plugin[name] = readFileSync(path.join(root, name), "utf8");
+    }
     const changelog = readFileSync(files.changelog, "utf8");
     const fragments = readFragments(path.join(root, "changelog.d"));
     const result = release({
         changelog,
         manifest: readFileSync(files.manifest, "utf8"),
+        plugin,
         version,
         date,
         fragments: fragments.files,
@@ -209,6 +241,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!dryRun) {
         writeFileSync(files.changelog, result.changelog);
         writeFileSync(files.manifest, result.manifest);
+        for (const name of PLUGIN_FILES) writeFileSync(path.join(root, name), result.plugin[name]);
         for (const fragment of fragments.files) rmSync(path.join(root, "changelog.d", fragment.name));
     }
     const entries = gather(fragments.files.map((fragment) => fragment.text).join("\n\n")).reduce(
@@ -217,12 +250,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     );
     console.log(
         [
-            `${version}: ${dryRun ? "would change" : "changed"} CHANGELOG.md and package.json`,
+            `${version}: ${dryRun ? "would change" : "changed"} CHANGELOG.md, package.json and the Claude Code plugin files`,
             `  CHANGELOG.md: ## [Unreleased] keeps its sentence, and ## [${version}] - ${date} holds ${entries} entries`,
             `  changelog.d: ${dryRun ? "would fold and delete" : "folded and deleted"} ${fragments.files.length} fragment${
                 fragments.files.length === 1 ? "" : "s"
             }`,
-            `  package.json: version is ${version}`,
+            `  package.json, ${PLUGIN_FILES.join(" and ")}: version is ${version}`,
             `Next: review the diff, commit "Release ${version}", tag v${version}, and push the branch and the tag.`,
             "docs/releases.md has the whole process.",
         ].join("\n"),

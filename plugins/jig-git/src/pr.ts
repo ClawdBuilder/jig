@@ -21,8 +21,8 @@ import { planComments, planList, planView } from "./pr-read.ts";
 import { homeOf, planGitlabPr } from "./gitlab-pr.ts";
 import { planWatch } from "./pr-watch-tool.ts";
 import type { Call, Planned } from "./previews.ts";
-import { at, buildTool } from "./tool.ts";
-import type { JigTool } from "./tool.ts";
+import { at, buildEngineTool } from "./tool.ts";
+import type { EngineTool } from "../../jig-core/src/kit/tools.ts";
 
 export const PR_ACTIONS = {
     view: { summary: "state, review, checks and body", optional: ["repo", "number", "branch"] },
@@ -203,11 +203,11 @@ function planGithubPr(params: Readonly<Record<string, unknown>>, call: Call): Pr
     }
 }
 
-export const prTool: JigTool = buildTool({
+export const prTool: EngineTool = buildEngineTool({
     name: "pr",
     label: "Pull request",
     description:
-        "Pull and merge requests by the repository's origin: view, comments, create, review, merge. Every write asks the user first. Read the git skill before your first pr call.",
+        "Pull and merge requests by the repository's origin: view, comments, create, review, merge. Every write needs the user's approval first. Read the git skill before your first pr call.",
     promptSnippet: "Pull and merge requests: view, comments, watch, create, review, merge",
     promptGuidelines: [
         "Use the pr tool for pull requests and merge requests, not bash: the shell has no GitHub or GitLab sign-in. Push the branch with the git tool first.",
@@ -216,4 +216,7 @@ export const prTool: JigTool = buildTool({
     table: PR_ACTIONS,
     classify: classifyPr,
     plan: async (params, call) => planPr(params, call),
+    // Calls run in order, so a push lands before the pull request that needs it, and they work on the folder of the call.
+    sequential: true,
+    usesFolder: true,
 });

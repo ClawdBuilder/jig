@@ -20,7 +20,7 @@ import type { Timers } from "./watch/timers.ts";
 /** `ok` works, `warn` is worth knowing, `fail` will stop a tool, `skip` was not checked or does not apply. */
 export type DoctorLevel = "ok" | "warn" | "fail" | "skip";
 
-export type DoctorGroupId = "machine" | "config" | "secrets" | "logins" | "network" | "sandbox" | "records";
+export type DoctorGroupId = "machine" | "config" | "secrets" | "logins" | "network" | "sandbox" | "records" | "agents";
 
 /** The groups, in the order the report shows them. */
 export const DOCTOR_GROUPS: ReadonlyArray<{ id: DoctorGroupId; title: string }> = [
@@ -31,6 +31,7 @@ export const DOCTOR_GROUPS: ReadonlyArray<{ id: DoctorGroupId; title: string }> 
     { id: "network", title: "Network" },
     { id: "sandbox", title: "Sandbox" },
     { id: "records", title: "Records" },
+    { id: "agents", title: "Other agents" },
 ];
 
 /** One finding. `title` is a short plain name, `detail` a sentence, and `fix` one command or next action. */
@@ -139,6 +140,8 @@ export interface DoctorOptions {
     brokerScript?: string;
     /** The built-in agent roles folder. Default: the one beside this package. Tests pass a missing path. */
     rolesFolder?: string;
+    /** The built gateway the "Other agents" group starts. Default: the one in this package. Tests pass a missing path. */
+    gatewayFile?: string;
     /** The home folder, for paths written as `~/...`. Default: the user's. */
     home?: string;
     /** How long one login check may take. Default 5 seconds. */

@@ -76,9 +76,11 @@ test("it needs nothing that is not in Node or Pi: no package of its own", () => 
     // jig-mongo's driver, and jig-sandbox's runtime; no other plugin imports them (checked below). `amaro` is the CLI's
     // TypeScript loader for an installed copy (`bin/`), not a plugin dependency.
     // `marked` draws the Markdown of jig-core's preview page: the engine has to load where Pi's copy is not installed.
+    // `@modelcontextprotocol/server` is the SDK of jig-core's gateway: only `plugins/jig-core/src/gateway/` imports it (`engine-boundary.test.ts`).
     assert.deepEqual(Object.keys(manifest.dependencies ?? {}).sort(), [
         "@anthropic-ai/sandbox-runtime",
         "@hono/node-server",
+        "@modelcontextprotocol/server",
         "amaro",
         "hono",
         "ignore",

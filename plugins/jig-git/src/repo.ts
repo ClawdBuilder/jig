@@ -1,6 +1,8 @@
 // Which repository a call means. The workspace is the folder Pi was started in, or, when that folder is inside a
 // repository, the folder that holds the repository. A call names a repository by its folder name in the workspace, or by
 // an absolute path inside a work tree. Without a name, a call means the repository Pi was started in.
+// The three functions below take the working folder of the call as an optional last argument (`cwd`). `pr` and `release` pass it, so a
+// call is answered for its own folder; without it a function uses the folder the session started in.
 import fs from "node:fs";
 import path from "node:path";
 import type { GitSettings } from "./config.ts";
@@ -19,8 +21,8 @@ export interface Repo {
 /** A folder name in the workspace. `clone` creates only these, so every cloned repository can be named in a later call. */
 export const DIR_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-// The tools' preview() and classify() get no context, so the folder Pi runs in is remembered when a session starts and
-// refreshed by every call that does carry a context.
+// The `git` tool, its gates and the tests get no folder with a call, so the folder Pi runs in is remembered when a session starts
+// and refreshed by every `git` call. `pr` and `release` carry their folder and use this only when a call has none.
 let startDirectory = process.cwd();
 
 export function setWorkingDirectory(dir: string): void {
@@ -51,16 +53,16 @@ async function topLevel(dir: string, signal?: AbortSignal): Promise<string | und
     }
 }
 
-/** The repository Pi was started in, if there is one. */
-export async function repoHere(signal?: AbortSignal): Promise<Repo | undefined> {
-    const root = await topLevel(workingDirectory(), signal);
+/** The repository of the working folder (`cwd`, else the folder Pi was started in), if there is one. */
+export async function repoHere(signal?: AbortSignal, cwd?: string): Promise<Repo | undefined> {
+    const root = await topLevel(cwd ?? workingDirectory(), signal);
     return root === undefined ? undefined : { root, name: path.basename(root) };
 }
 
 /** The folder that holds the repositories a call can name. */
-export async function workspaceRoot(signal?: AbortSignal): Promise<string> {
-    const here = await repoHere(signal);
-    const folder = here === undefined ? workingDirectory() : path.dirname(here.root);
+export async function workspaceRoot(signal?: AbortSignal, cwd?: string): Promise<string> {
+    const here = await repoHere(signal, cwd);
+    const folder = here === undefined ? (cwd ?? workingDirectory()) : path.dirname(here.root);
     try {
         return fs.realpathSync(folder);
     } catch {
@@ -70,18 +72,19 @@ export async function workspaceRoot(signal?: AbortSignal): Promise<string> {
 
 /**
  * The repository a call means. `input` is a folder name in the workspace or an absolute path inside a work tree. Without
- * it, the repository Pi was started in.
+ * it, the repository Pi was started in. `cwd` is the call's working folder; without it, the folder Pi was started in.
  */
-export async function resolveRepo(input: string | undefined, signal?: AbortSignal): Promise<Repo> {
+export async function resolveRepo(input: string | undefined, signal?: AbortSignal, cwd?: string): Promise<Repo> {
+    const start = cwd ?? workingDirectory();
     if (input === undefined || input === "") {
-        const here = await repoHere(signal);
+        const here = await repoHere(signal, cwd);
         if (here) return here;
         throw new Error(
-            `repo is required: Pi was not started inside a git repository. Name a folder in ${await workspaceRoot(signal)} or give an absolute path`,
+            `repo is required: Pi was not started inside a git repository. Name a folder in ${await workspaceRoot(signal, cwd)} or give an absolute path`,
         );
     }
     if (input.includes("\0") || input.length > 1000) throw new Error("repo is not a valid name or path");
-    const workspace = await workspaceRoot(signal);
+    const workspace = await workspaceRoot(signal, cwd);
     const byName = !path.isAbsolute(input);
     if (byName && !DIR_NAME.test(input)) {
         if (/^[^/\s]+\/[^/\s]+$/.test(input)) {
@@ -118,7 +121,7 @@ export async function resolveRepo(input: string | undefined, signal?: AbortSigna
     if (!byName && input.split("/").includes(".."))
         throw new Error(`repo path must not contain "..": ${input.slice(0, 120)}`);
     const wanted = byName ? path.join(workspace, input) : input;
-    const fallback = byName ? path.join(workingDirectory(), input) : input;
+    const fallback = byName ? path.join(start, input) : input;
     let real: string;
     try {
         real = fs.realpathSync(wanted);
@@ -131,7 +134,7 @@ export async function resolveRepo(input: string | undefined, signal?: AbortSigna
         } catch {
             throw new Error(
                 byName
-                    ? `repo "${input}" not found in ${workspace} or ${workingDirectory()}`
+                    ? `repo "${input}" not found in ${workspace} or ${start}`
                     : `repo path ${input.slice(0, 120)} is not an existing directory`,
             );
         }
@@ -142,8 +145,8 @@ export async function resolveRepo(input: string | undefined, signal?: AbortSigna
         // A name is a folder in the workspace or below the folder Pi runs in, and a link must not carry it elsewhere.
         const inside = (parent: string): boolean =>
             real === parent || real.startsWith(parent.endsWith(path.sep) ? parent : `${parent}${path.sep}`);
-        if (!inside(workspace) && !inside(workingDirectory()))
-            throw new Error(`repo "${input}" resolves outside ${workspace} and ${workingDirectory()}`);
+        if (!inside(workspace) && !inside(start))
+            throw new Error(`repo "${input}" resolves outside ${workspace} and ${start}`);
         if (root !== real) throw new Error(`"${input}" in ${workspace} is not the root of a git repository`);
     }
     return { root, name: byName ? input : root };

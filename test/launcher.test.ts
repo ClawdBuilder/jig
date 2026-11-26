@@ -790,6 +790,7 @@ describe("the launcher page", { skip: launcherSkip }, () => {
             "startChecks",
             "secrets.pass.unlockAtStart",
             "WSL_INTEROP",
+            "jig lens",
         ])
             assert.ok(section.includes(word), word);
     });

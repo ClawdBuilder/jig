@@ -1,5 +1,6 @@
-// The package version is one fact in three places users see: package.json, package-lock.json and install examples. A
-// historical sentence such as "the 0.4.2 floor" is not an install example and is left alone.
+// The package version is one fact in five places users see: package.json, package-lock.json, the two files of the Claude Code
+// plugin (`.claude-plugin/plugin.json` and `marketplace.json`) and install examples. A historical sentence such as "the 0.4.2
+// floor" is not an install example and is left alone.
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -30,6 +31,29 @@ if (lock.version !== manifest.version)
 const locked = lock.packages?.[""]?.version;
 if (locked !== manifest.version)
     failures.push(`package-lock.json packages[""] version ${locked} differs from package.json ${manifest.version}`);
+
+/** Each file of the Claude Code plugin, and the versions it names: the plugin's own, or each plugin the marketplace lists. */
+const PLUGIN_FILES = [
+    [".claude-plugin/plugin.json", (json) => [json.version]],
+    [
+        ".claude-plugin/marketplace.json",
+        (json) => (Array.isArray(json.plugins) ? json.plugins.map((one) => one?.version) : []),
+    ],
+];
+for (const [rel, versionsOf] of PLUGIN_FILES) {
+    let versions;
+    try {
+        versions = versionsOf(JSON.parse(readFileSync(path.join(ROOT, rel), "utf8")));
+    } catch {
+        failures.push(`${rel} is missing or is not JSON`);
+        continue;
+    }
+    if (versions.length === 0) failures.push(`${rel} names no version`);
+    for (const version of versions) {
+        if (version !== manifest.version)
+            failures.push(`${rel} version ${version} differs from package.json ${manifest.version}`);
+    }
+}
 
 for (const file of [path.join(ROOT, "README.md"), ...walk(path.join(ROOT, "docs"))]) {
     const text = readFileSync(file, "utf8");

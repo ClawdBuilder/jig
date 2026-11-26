@@ -8,7 +8,7 @@ import type { Content } from "./cap.ts";
 import type { CallState, JigState } from "./engine-state.ts";
 import type { CallEnd, CallRequest, EngineHost, RawResult } from "./engine.ts";
 import { errorMessage } from "./errors.ts";
-import { callRecord, cleanFacts, oneLine, writeRecord } from "./records.ts";
+import { agentNameOf, callRecord, cleanFacts, oneLine, writeRecord } from "./records.ts";
 import type { ErrorKind, Outcome } from "./records.ts";
 
 type Parts = { content: Content[]; structured: unknown; details: unknown };
@@ -151,6 +151,7 @@ export function finish(state: JigState, request: CallRequest, end: CallEnd, host
         const facts = cleanFacts(call?.facts ?? {}, (text) => state.redactor.text(text));
         const plugin = call?.plugin;
         const parent = call?.parentToolCallId ?? request.parentCallId;
+        const enforcedBy = host.enforcedBy;
         writeRecord(
             callRecord(
                 {
@@ -183,6 +184,8 @@ export function finish(state: JigState, request: CallRequest, end: CallEnd, host
                     ...(parent === undefined ? {} : { parentToolCallId: parent }),
                     ...(call?.spill === undefined ? {} : { spill: call.spill }),
                     ...(facts === undefined ? {} : { facts }),
+                    agentName: agentNameOf(host.agent.name),
+                    ...(enforcedBy === undefined ? {} : { enforcedBy }),
                 },
                 state.now(),
             ),

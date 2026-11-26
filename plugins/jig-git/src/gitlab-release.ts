@@ -36,7 +36,7 @@ export function planReleases(
     const tag = params.tag === undefined ? undefined : checkTag(params.tag);
     const n = Math.max(1, Math.min(100, Math.trunc(params.n ?? 20)));
     return readOnly(`release releases in ${params.repo ?? "here"}`, async () => {
-        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal), call };
+        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
         if (tag !== undefined) {
             const r = await get<GlRelease>(gl, "glab api (release)", `releases/${encodeURIComponent(tag)}`);
             const flags = r.upcoming_release ? "upcoming" : "";
@@ -92,7 +92,7 @@ export async function planReleaseCreate(params: CreateReleaseParams, call: Call,
         throw new Error(
             "release_create: GitLab does not write release notes; write them in notes, or use its changelog API to generate them",
         );
-    const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal), call };
+    const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
     const { signal, settings } = call;
     const where = `${projectBase(home)}/releases/${encodeURIComponent(tag)}`;
     const exists = await glab(apiArgs(home, where), { cwd: gl.repo.root, signal });

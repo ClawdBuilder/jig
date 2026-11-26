@@ -139,7 +139,7 @@ interface CreateParams {
 }
 
 export async function planCreate(params: CreateParams, call: Call): Promise<Planned> {
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const { signal, settings } = call;
     const title = ruledTitle(params.title, settings);
     if (params.body === undefined || params.body.trim() === "") {
@@ -308,7 +308,7 @@ export async function planEdit(params: EditParams, call: Call): Promise<Planned>
         throw new InputError(
             "pr edit needs title, body, base, labels or reviewers. Usage: pr edit {number, title?, body?, base?, labels?, reviewers?, repo?}",
         );
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const shown = lines(
         edit.title !== undefined && `Title: ${edit.title}`,
         edit.base !== undefined && `Base: ${edit.base}`,
@@ -366,7 +366,7 @@ export async function planEdit(params: EditParams, call: Call): Promise<Planned>
 
 export async function planReady(params: { repo?: string; number?: number }, call: Call): Promise<Planned> {
     const number = checkNumber(params.number);
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     return {
         preview: {
             summary: `mark pull request ${number} in ${repo.name} ready for review`,
@@ -392,7 +392,7 @@ export async function planComment(
 ): Promise<Planned> {
     const number = checkNumber(params.number);
     const body = checkBody(params.body);
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     return {
         preview: reviewPreview(
             `comment on pull request ${number} in ${repo.name}`,
@@ -528,7 +528,7 @@ export async function planReview(
             "pr review sends a comment or requests changes. It never approves: approval stays with a person.",
         );
     const body = checkBody(params.body);
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const verb = params.event === "comment" ? "a review comment" : "a request for changes";
     return {
         preview: reviewPreview(
@@ -581,7 +581,7 @@ export async function planMerge(
     if (!METHODS.includes(params.method as Method)) throw new Error("method is required: merge, squash or rebase");
     const method = params.method as Method;
     const auto = params.auto === true;
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const pr: PrDetail = await viewPr(repo, String(number), call);
     const state = pr.state ?? "OPEN";
     if (state !== "OPEN") throw new Error(`pull request ${number} is ${state.toLowerCase()}, not open`);

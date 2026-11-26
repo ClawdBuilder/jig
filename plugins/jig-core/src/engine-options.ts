@@ -34,4 +34,7 @@ export interface EngineOptions {
     /** Pi only: the entry files of the extensions Pi has loaded. Asked when the rules are built, because Pi refuses to say
      *  while extensions are still loading. Default: none. */
     extensionFiles?: () => readonly string[];
+    /** Leaves out the update check that `beginSession` starts, and nothing else of it. A host sets it when the notice would reach
+     *  nobody (a gateway's goes to standard error) or the registry should not be read. Default: false, so Pi checks as before. */
+    skipUpdateCheck?: boolean;
 }

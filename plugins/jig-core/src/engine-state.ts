@@ -133,6 +133,8 @@ export interface JigState {
     offSections?: ReadonlySet<string>;
     /** The sections the host said are off (`EngineOptions.offSections`). `start` uses them for `offSections`; without them it works them out. */
     hostOffSections: ReadonlySet<string> | undefined;
+    /** `EngineOptions.skipUpdateCheck`: the start jobs leave out the update check. */
+    skipUpdateCheck: boolean;
     /** Defaults of plugins that never registered with `profiles.register`, per plugin section, laid under the personal section.
      *  The active company's defaults come on top of them (`effectiveDefaults`). */
     sectionDefaults: Map<string, unknown>;
@@ -282,6 +284,7 @@ export function createEngineState(options: EngineOptions): JigState {
         workingDir: "",
         configLoaded: false,
         hostOffSections: options.offSections,
+        skipUpdateCheck: options.skipUpdateCheck === true,
         env,
         sessionId: undefined,
         screen: undefined,

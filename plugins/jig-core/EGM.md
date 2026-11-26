@@ -5,7 +5,7 @@
 The tool manager every other Jig plugin needs. It sits over every tool call through Pi's hooks, whoever wrote the tool: it
 classifies where the call acts and whether it reads or writes, decides allow, ask or deny from the rules and the floor, asks
 you inside the waiting call, then redacts, masks, caps and records the result. It also holds `jig.json`, secrets, sign-in and
-transports, the watch engine, the setup questions, the `jig` command for the Jig home and the kit that other plugins import. Specification:
+transports, the watch engine, the setup questions, the `jig` command for the Jig home, the gateway (an MCP server that offers Jig's tools to an agent that is not Pi) and the kit that other plugins import. Specification:
 [README](./README.md); file roles and one call followed through them: [code map](./docs/code-map.md).
 
 ## Interface
@@ -32,7 +32,7 @@ transports, the watch engine, the setup questions, the `jig` command for the Jig
   `JIG_LENS_INDEX`, `JIG_OUTER_PI_DIR`, `JIG_PARENT_SESSION`, `JIG_PI_HOST`, `JIG_ROLE_POLICY`, `JIG_STATE_DIR`, `JIG_THEME_FOOTER`.
   jig-core itself reads every one but `JIG_LENS_*` (read by `jig-lens`), `JIG_THEME_FOOTER` (read by `jig-theme`) and `JIG_ROLE_POLICY`
   (defined and parsed in the kit, read by `jig-agents` and `jig-sandbox`).
-- **Subdirectories:** [src](./src/EGM.md) (with [cli](./src/cli/EGM.md), [kit](./src/EGM.md#the-kit), [mask](./src/mask/EGM.md),
+- **Subdirectories:** [src](./src/EGM.md) (with [cli](./src/cli/EGM.md), [gateway](./src/gateway/EGM.md), [kit](./src/EGM.md#the-kit), [mask](./src/mask/EGM.md),
   [watch](./src/watch/EGM.md)).
 - **Not contracts:** `docs/` (the detail pages the README links) and `test/` (unit tests, tests inside a real Pi session with a
   scripted model, and the pinned-surface tests).
@@ -71,7 +71,8 @@ transports, the watch engine, the setup questions, the `jig` command for the Jig
   ordinary Pi folder), through `setup-write.ts`: after a confirm, with a backup when the file already exists, and a restore of that backup
   when the result is not ok.
 - **Processes and network.** Programs without a shell through `exec`; `127.0.0.1` preview listener; the daily update-notice fetch,
-  opt-in doctor checks, TCP `startChecks`, and the HTTP requests plugins ask for. Nothing else leaves the machine.
+  opt-in doctor checks, TCP `startChecks`, and the HTTP requests plugins ask for. Nothing else leaves the machine. The doctor also starts the built
+  gateway with `--version` and, when it is installed, `claude` for three read commands (its version and its two plugin lists).
 - **Global.** One process-wide API slot on `globalThis`, withdrawn at `session_shutdown`.
 
 ## Verification

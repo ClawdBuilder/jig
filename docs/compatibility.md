@@ -19,6 +19,22 @@ the npm its Node line provides.
   supplies its own packages to an extension, so the real requirement is this table.
 - **To move the Pi version,** follow [Moving the Pi version](#moving-the-pi-version).
 
+The Claude Code plugin and the gateway have a tested version of their own, `jig.agents["claude-code"].tested` in `package.json`:
+
+| Claude Code | Checked |
+|---|---|
+| 2.1.332 | 2026-11-26 |
+
+- **Every push and pull request** runs the `Claude Code plugin` job with exactly this version: Claude Code itself validates the plugin,
+  adds the marketplace, installs the plugin and starts its server (`npm run check:claude`). It needs no sign-in and no model.
+- **Every push and pull request** also runs the `Gateway, no Pi` job on Node 22.19.0 and 26: the package is packed, installed with no Pi
+  anywhere and asked real questions (`npm run check:gateway`). The same check runs on macOS and Windows as an advisory job, outside `ci-ok`.
+- **Every week** the [Claude Code canary](../.github/workflows/claude-code-canary.yml) runs `npm run check:claude` on the newest Claude Code
+  that npm has. It never runs on a pull request. A red run opens one issue, or comments on the open one, and means the next Claude Code
+  would break the plugin.
+- **Not tested:** other Claude Code versions. `jig.agents["claude-code"].minimum` is the oldest one the plugin was run with.
+- **To move the Claude Code version,** follow [Moving the Claude Code version](#moving-the-claude-code-version).
+
 ## Moving the Pi version
 
 The Pi that Jig is tested with is named in six places that move together, in one commit:
@@ -35,6 +51,20 @@ First run the weekly Pi canary by hand (`.github/workflows/pi-canary.yml`, "Run 
 the new release. Then change those places and run `npm run check`, `npm test` and `npm run check:install` on that Pi. The
 minimum, `jig.agents.pi.minimum`, moves only by a decision of its own.
 
+## Moving the Claude Code version
+
+The Claude Code that the plugin is tested with is named in five places that move together, in one commit:
+
+- `jig.agents["claude-code"].tested` in `package.json`, and its pin in `plugins/jig-core/test/surface.test.ts`;
+- the `Install Claude Code` step of `.github/workflows/ci.yml`;
+- the "Tested with" table above, with the date;
+- the sentence in [the gateway document](../plugins/jig-core/docs/gateway.md#use-it-in-claude-code) that says which version the plugin was run on.
+
+First run the weekly Claude Code canary by hand (`.github/workflows/claude-code-canary.yml`, "Run workflow") and wait for it to be green on
+the new release. Then change those places and run `npm run check:claude` on that version (`JIG_CLAUDE_BIN` names a Claude Code that is not
+first on the `PATH`). `ci-config.test.ts` fails when `package.json`, `ci.yml` and the table disagree. The minimum,
+`jig.agents["claude-code"].minimum`, moves only by a decision of its own.
+
 ## What is public
 
 Company plugins import `jig-core`'s contract and kit, and people write `jig.json` and dashboards against the names below. They are
@@ -48,9 +78,13 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 | The `JIG_*` environment variables | `surface.test.ts` |
 | Every tool name and its actions, every slash command, every `jig.json` section | `plugin-surface.test.ts` |
 | Which parts of `jig-core` a plugin may import | `boundaries.test.ts` |
-| The package's `jig.agents.pi` minimum and tested versions | `surface.test.ts`, `pi-requirement.test.ts` |
+| The package's `jig.agents` minimum and tested versions, for Pi and for Claude Code | `surface.test.ts`, `pi-requirement.test.ts` |
+| The package's `jig.connectors`: the plugins whose tools the gateway offers | `surface.test.ts` |
+| The commands `jig` and `jig-gateway`, and the built file `plugins/jig-core/dist/jig-gateway.mjs` | `surface.test.ts` |
 | The `updates.check` setting | `surface.test.ts` |
 | The `transports` section and its relay fields | `surface.test.ts` |
+| The gateway's tools (`pr`, `release`, `jig`), the actions it keeps back and the `dir` parameter | `gateway-process.test.ts` |
+| The Claude Code plugin: its names, its server, the `jig_home` value and the allow rule | `adapters-claude-code.test.ts` |
 
 - **The handle** is `Symbol.for("jig.core.api/v1")` on `globalThis`, which holds the `JigApi`. Plugins that load before `jig-core` wait
   on `Symbol.for("jig.core.pending/v1")`. `JigApi.version` is `1`.
@@ -59,17 +93,25 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 - **The kit** is the stateless helpers in `plugins/jig-core/src/kit/`. Every name they export is public.
 - **Registering a tool** is `registerJigTool` and `registerEngineTool`, both in `plugins/jig-core/src/kit/tools.ts`. `registerEngineTool` takes an
   `EngineTool`, a tool that names no agent ([the plugin contract](../plugins/jig-core/docs/plugin-contract.md)). A declaration's `classify` and
-  `preview` also get the working folder of the call as one more, optional argument, which a tool may ignore.
+  `preview` also get the working folder of the call as one more, optional argument, which a tool may ignore. The same file exports the types
+  `EngineTool`, `CallContext`, `ToolResult`, `JsonSchema` and `ConnectorModule`, as types only: a plugin's `connector.ts`, which hands its tools to an agent
+  that is not Pi, imports them with `import type`.
 - **Tools and actions** are what the model is told it can call, what a person's rules in `jig.json` name, and what a company plugin's
   classify rules match. A name is a promise.
 - **The record line** is one JSON object per call or turn in `<state>/records/`, which `jig-lens` and dashboards read
   ([Records](../plugins/jig-core/docs/records.md)).
-- **The version data** is `jig.agents.pi` in `package.json`: the oldest Pi a release runs with, and the one it is tested with.
+- **The version data** is `jig.agents` in `package.json`: for Pi (`pi`) and for Claude Code (`claude-code`), the oldest version a release runs with, and the one it is tested with.
   A company package may cap Jig with `jig.range` in its own package.json.
 - **The `updates` section** turns the background update notice off with `updates.check: false`; a company plugin can set
   that default, and the person's file wins.
 - **The `transports` section** declares relay transports. Its `kind` is `"relay"`; `url`, `token`, `client`, `services`
   and `fields` are the entry's fields, and a company plugin can default all but the person's token.
+- **The commands** are `jig` and `jig-gateway`, the `bin` entries of the package. An agent's configuration starts the gateway as the command or as `node <package>/plugins/jig-core/dist/jig-gateway.mjs`, so that path is a name too.
+- **The gateway's tools** are what an agent that is not Pi is told it can call: `pr` and `release` with the actions of the Pi tools, less `pr watch` and `release tag_create`, each with an
+  optional `dir`, and `jig` with the action `status` ([Gateway](../plugins/jig-core/docs/gateway.md)).
+- **The Claude Code plugin** is the package root: the plugin `jig` in the marketplace `clawdbuilder` (`.claude-plugin/`), with one MCP server named `jig`, so
+  its tools are `mcp__plugin_jig_jig__*`; the one value it asks for, `jig_home`; and the skill `jig:git`
+  ([Use it in Claude Code](../plugins/jig-core/docs/gateway.md#use-it-in-claude-code)).
 - **The variables** are `JIG_STATE_DIR`, `JIG_CONDITION`, `JIG_AGENT_ROLE`, `JIG_PARENT_SESSION`, `JIG_ROLE_POLICY`, `JIG_LENS_INDEX`,
   `JIG_LENS_DASHBOARDS` and `JIG_THEME_FOOTER`.
 - **Everything else in `jig-core`** is internal: any other file, the text of a message, the layout of `/jig`. It can change in any

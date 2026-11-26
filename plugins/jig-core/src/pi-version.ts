@@ -55,9 +55,18 @@ export function reportedPiVersion(read: () => string | undefined = piVersion): s
     return found === "0.0.0" ? undefined : found;
 }
 
+/**
+ * The package.json of the package this code is in. The one place that knows where it is, from the file's own URL, three folders up. That is right in
+ * both layouts of the gateway, because the built gateway is written to `plugins/jig-core/dist/`, which is as deep as `plugins/jig-core/src/`
+ * (`scripts/build-gateway.mjs`). A file that moves to another depth, or a bundle written to another folder, would find the wrong file.
+ */
+export function packageFile(): URL {
+    return new URL("../../../package.json", import.meta.url);
+}
+
 /** Jig's version, the Node.js range its package.json requires, and where its repository is. Empty when it cannot be
  *  read. `file` is for a test; the default is this checkout's own package.json. */
-export function jigPackage(file: string | URL = new URL("../../../package.json", import.meta.url)): {
+export function jigPackage(file: string | URL = packageFile()): {
     name?: string;
     version?: string;
     node?: string;
@@ -81,9 +90,7 @@ export interface PiRequirement {
 }
 
 /** The Pi requirement a release states in `jig.agents.pi`, or undefined when the package does not say. */
-export function piRequirement(
-    file: string | URL = new URL("../../../package.json", import.meta.url),
-): PiRequirement | undefined {
+export function piRequirement(file: string | URL = packageFile()): PiRequirement | undefined {
     const found = readPackage(file);
     const agents = found?.jig?.agents;
     const pi = agents?.pi;

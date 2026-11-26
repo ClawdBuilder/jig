@@ -1,0 +1,15 @@
+{
+    "name": "clawdbuilder",
+    "description": "Jig: tools for coding agents, with every call decided by your rules and recorded.",
+    "owner": {
+        "name": "Jig Contributors"
+    },
+    "plugins": [
+        {
+            "name": "jig",
+            "source": "./",
+            "description": "Jig's pull request and release tools for Claude Code, decided by Jig's rules and recorded.",
+            "version": "0.5.11"
+        }
+    ]
+}

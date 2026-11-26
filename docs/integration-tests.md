@@ -39,6 +39,8 @@ not depend on the machine. [`hermetic.test.ts`](../plugins/jig-core/test/hermeti
 - **Git has one identity.** `GIT_CONFIG_GLOBAL` is a file that sets `Jig Test <test@example.com>`, and `GIT_CONFIG_NOSYSTEM=1`. A test can
   commit, and no setting of the machine reaches it. `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` are removed, for a run from a git hook.
 - **Pi stays offline:** `PI_OFFLINE=1`, no version check, no telemetry.
+- **Claude Code is never started.** The first folder on `PATH` holds a `claude` that exits at once, so `jig doctor`, which looks for Claude Code and asks it
+  for its version, says the same on every machine.
 - **No credentials.** `AWS_*`, `AZURE_*`, `SSH_AUTH_SOCK`, `GH_TOKEN`, `GITHUB_TOKEN`, `GITLAB_TOKEN`, `NPM_TOKEN`, `KUBECONFIG` and model
   API keys are removed.
 - **Integration suites keep what they name:** every `JIG_IT_*` variable and `NODE_EXTRA_CA_CERTS`; `GH_TOKEN` and `GITHUB_TOKEN` when
@@ -168,7 +170,7 @@ expectations hold for every backend, and they seed their own data (`test/support
 - **Elasticsearch** runs with `ELASTIC_PASSWORD` set, which turns security on with HTTPS. The workflow copies the
   certificate authority out of the container and sets `NODE_EXTRA_CA_CERTS` for the test step.
 - **OpenSearch** runs with `DISABLE_SECURITY_PLUGIN=true`. It speaks plain HTTP, so the tests reach it through a
-  transport, which is the path a company's gateway takes.
+  transport, which is the path a company's proxy takes.
 - **Loki** runs with `-auth.enabled=true`, and the tests send the tenant `jig-it`. Both nodes also get
   `-ingester.query-store-max-look-back-period=168h -querier.query-ingesters-within=200h`, because Loki otherwise answers
   only for the last three hours and the tests search windows of days. The limited node adds `-store.max-query-length=20m
