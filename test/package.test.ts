@@ -97,6 +97,19 @@ test("the npm tarball has the command and the plugins, and no tests", { timeout:
     assert.match(result.version, /^\d+\.\d+\.\d+$/);
     const has = (pattern: RegExp): boolean => result.files.some((file) => pattern.test(file));
     assert.ok(has(/^bin\/jig\.mjs$/), "the command");
+    assert.ok(has(/^bin\/jig-gateway\.mjs$/), "the start file of the gateway command");
+    // The built gateway, which the command and an agent's configuration start: four generated files, committed.
+    for (const built of ["jig-gateway.mjs", "connectors/jig-git.mjs", "tools.json", "theme.css"]) {
+        assert.ok(result.files.includes(`plugins/jig-core/dist/${built}`), `the built gateway: ${built}`);
+    }
+    // The Claude Code plugin is the package root: its two files (a dot folder npm packs only when `files` names it) and the skill they name.
+    for (const claude of [
+        ".claude-plugin/plugin.json",
+        ".claude-plugin/marketplace.json",
+        "adapters/claude-code/skills/git/SKILL.md",
+    ]) {
+        assert.ok(result.files.includes(claude), `the Claude Code plugin: ${claude}`);
+    }
     assert.ok(has(/^plugins\/jig-core\/index\.ts$/), "the core plugin");
     assert.ok(has(/^plugins\/jig-core\/src\//), "the core sources");
     assert.ok(has(/^plugins\/jig-review\/web\/dist\/index\.html$/), "the review page");

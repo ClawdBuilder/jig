@@ -238,6 +238,16 @@ talks to Pi.
     and `jig`. The result is `text`, and optionally `data` (Pi's `details`), `isError` (thrown
     as an error, as Pi expects) and `facts` (added to the record, as `addFacts` does). A
     `RefusedError` is a refusal, as before.
+  - **The types** `EngineTool`, `CallContext`, `ToolResult`, `JsonSchema` and `ConnectorModule` are exported
+    from `kit/tools.ts` as types only. That file imports Pi at run time, so a plugin file that must load with no
+    Pi writes `import type { EngineTool } from "../../jig-core/src/kit/tools.ts"`.
+  - **`ConnectorModule`** is what a plugin's `connector.ts` exports as its default, for a host that is not Pi
+    (a gateway). It has `name` (the plugin), `tools` (the `EngineTool` objects it offers; the plugin's Pi entry
+    registers the same objects), `notOffered` (the actions of those tools that the plugin does not offer through a
+    gateway yet, by tool name, such as `{ pr: ["watch"] }`: a gateway leaves them out of the form it shows and refuses
+    them) and `register(jig)` (what the plugin registers before the engine reads `jig.json`, such as its section).
+    A connector and every file it imports at run time must load with no Pi package. The gateway loads the connectors that
+    the package's `package.json` lists under `jig.connectors`, a plugin name and a path ([Gateway](gateway.md#connectors)).
 - **`kit/tools-section.ts`:** the `tools` section of `jig.json`: `TOOLS_SECTION`, `TOOL_SEARCH`, `NOT_DEFERRABLE` (the
   tools that are never deferred) and `validateToolsSection(raw)`. It imports no Pi package; `kit/tools.ts` exports the
   first three as well.

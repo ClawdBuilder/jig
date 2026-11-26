@@ -28,6 +28,7 @@ Rules for contributors live in [AGENTS.md](./AGENTS.md). Read [docs/architecture
 - jig-acme: [./examples/jig-acme/EGM.md](./examples/jig-acme/EGM.md) - the fictional Acme Corp company plugin, the only place a company plugin lives here; its `src/` folders have their own contracts, linked from that file.
 - **Plugin events** (Pi's event bus; plugins never import each other): `jig:decision` (emitted by `jig-core` after every decision; read by `jig-git`, `jig-sandbox`, `jig-session`) and `jig:watch-done` (emitted by `jig-core` when a watch ends; read by `jig-agents`); `jig-git:pushed` (emitted by `jig-git`, read by `jig-ops`); `jig-ops:ci-finished` and `jig-ops:artifact-ready` (emitted by `jig-ops`, `jig-workflow` reads `ci-finished`); `jig-review:approved` (emitted by `jig-review`, read by `jig-workflow`); `jig:stage-done` (emitted by `jig-workflow`, read by `jig-memory`); `jig-theme:segment` (any plugin adds a footer part; `jig-sandbox` does); `jig-lens:model-names` (another plugin names a model for `jig-lens`).
 - bin: [./bin/EGM.md](./bin/EGM.md) - the `jig` CLI entry, its Node loader hooks, and the optional `pi` tmux launcher (not a plugin; see [docs/launcher.md](./docs/launcher.md)).
+- adapters: [./adapters/EGM.md](./adapters/EGM.md) - what an agent that is not Pi reads: the Claude Code skill. The Claude Code plugin itself is `.claude-plugin/` at the package root (two JSON files; no code).
 - contracts: [./contracts/EGM.md](./contracts/EGM.md) - published front-end contracts; `palettes.json` is generated, `requests.js` is hand-written.
 - scripts: [./scripts/EGM.md](./scripts/EGM.md) - repository check and release scripts, including the changelog fragments and the 500-line ratchet, run by `npm run check`, `npm test` and the release flow.
 - `docs/` (not linked): human documentation. Start with [docs/architecture.md](./docs/architecture.md), [docs/permissions.md](./docs/permissions.md), [docs/decisions.md](./docs/decisions.md) and [docs/contracts.md](./docs/contracts.md). Markdown and images only.
@@ -58,10 +59,9 @@ Rules for contributors live in [AGENTS.md](./AGENTS.md). Read [docs/architecture
 - **Dependencies are exact pins.** No `^` or `~`; TypeScript is the native 7.x compiler, so no code imports `"typescript"`; Pi packages stay peer dependencies; shipped code imports only root dependencies, Node modules or Pi packages.
 - **No secret-shaped literals**, even fake ones, in tests or docs: build them at run time from parts.
 - **Where a contract file may not go.** Never put a file directly in `plugins/` or `examples/`: `scripts/check-runtime-deps.mjs` reads every entry there as a plugin folder and crashes on a file. Never put one in `plugins/jig-review/web/src/` or `web/public/`: `src/` is hashed into `web/build.json` and `public/` is copied into `web/dist/`, so a stray file fails `npm run check:dist` and ships to the browser. Never put one in `plugins/jig-core/src/kit/` (`test/surface.test.ts` pins the exact file list) or `plugins/jig-agents/src/` (`test/readme.test.ts` requires every file there to be named in the README layout). That is why `plugins/` and `examples/` have no `EGM.md`, `jig-review/web` has one contract for its whole page, the `jig-core` kit is described in `plugins/jig-core/src/EGM.md` and the `jig-agents` source in `plugins/jig-agents/EGM.md`. Before adding a contract file to any other folder, run `npm test`: a test may pin that folder's file list.
-- **Package contents.** `package.json` `files` ships `bin/**`, each plugin's `index.ts`, `src/**`, `package.json` and `README.md`, its
+- **Package contents.** `package.json` `files` ships `bin/**`, `adapters/**`, `.claude-plugin/**`, each plugin's `index.ts`, `src/**`, `package.json` and `README.md`, its
   `skills/**` and `themes/**`, the sandbox broker and the agent roles, `contracts/**`, `docs/**`, `README.md`, `CHANGELOG.md` and
-  `LICENSE` (and the built review page, the lens viewer and the lens page). An `EGM.md` under `src/`, `bin/` or `contracts/` ships with its folder; one at
-  a plugin root does not.
+  `LICENSE` (and the built review page, the lens viewer and the lens page). No `EGM.md` ships (`!**/EGM.md` is the last entry of `files`; `test/package.test.ts` checks it).
 
 ## Global Side Effects
 
@@ -72,7 +72,7 @@ Rules for contributors live in [AGENTS.md](./AGENTS.md). Read [docs/architecture
   `jig-sandbox` allow-list and background logs.
 - **Ticket memory.** `memory.folder`, else `$XDG_DATA_HOME/jig/tickets`, else `~/.local/share/jig/tickets`.
 - **Local servers on loopback only.** The review page, the lens page, the diff preview, and detached Grafana or Datasette when asked listen on 127.0.0.1. `jig-sandbox`'s localhost bridge listens on 127.0.0.1 and, best effort, `::1`, on the port of each bridged task or `network.localhost` entry.
-- **Child processes.** `git`, `gh`, `glab`, `kubectl`, `helm`, `ssh`, `aws`, `npm`, `ps`, `pass`, `op`, `tmux`, the installed `pi`, browser
+- **Child processes.** `git`, `gh`, `glab`, `kubectl`, `helm`, `ssh`, `aws`, `claude` (only `jig doctor`, three read commands), `npm`, `ps`, `pass`, `op`, `tmux`, the installed `pi`, browser
   openers, the sandbox broker with `bwrap`, `socat` and `python3`, and child Pi processes for `jig-agents`, as argument lists, never
   through a shell. The one exception: `jig-sandbox` background tasks hand a wrapped command string to the user's shell, inside the sandbox.
 - **Network.** Only through `jig-core`'s HTTP path or the plugins' own named clients (MongoDB driver, `gh`, `kubectl`); `jig setup`

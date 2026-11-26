@@ -304,6 +304,62 @@ test("an index made before the condition column gets it when next opened, and ke
     assert.equal(again.prepare("SELECT condition FROM call").get()?.condition, "baseline");
 });
 
+test("an index made before agentName and enforcedBy gets both columns when next opened, and keeps its rows", async (t) => {
+    const state = tempState(t);
+    const where = paths(state);
+    // The schema as it was: the two columns are the last ones, so the comma after `facts` goes with them.
+    const before = SCHEMA.replace(",\n    agentName TEXT,\n    enforcedBy TEXT\n);", "\n);");
+    assert.notEqual(before, SCHEMA);
+    mkdirSync(where.lens, { recursive: true });
+    const old = new DatabaseSync(where.index);
+    old.exec("PRAGMA journal_mode = WAL");
+    old.exec(before);
+    const names = (db: DatabaseSync) =>
+        db
+            .prepare("PRAGMA table_info(call)")
+            .all()
+            .map((row) => String(row.name));
+    assert.equal(names(old).includes("agentName"), false);
+    assert.equal(names(old).includes("enforcedBy"), false);
+    old.exec(
+        `INSERT INTO call (id, time, session, agentRole, tool, outcome, toolCallId)
+         VALUES ('old-1', 1793268000, 's-old', 'main', 'read', 'ok', 'tc-old')`,
+    );
+    old.close();
+
+    const db = open(t, where.index);
+    // The same columns in the same order as an index that was made new.
+    assert.deepEqual(
+        names(db),
+        CALL.map((field) => field.name),
+    );
+    assert.deepEqual(
+        { ...db.prepare("SELECT tool, agentName, enforcedBy FROM call").get() },
+        { tool: "read", agentName: null, enforcedBy: null },
+    );
+
+    // A new line fills both columns in the upgraded table, and opening it once more is harmless.
+    writeRecords(state, [
+        call("n1", "2026-10-30T10:00:00Z", "s-new", "read", { agentName: "claude-code", enforcedBy: "gateway" }),
+        call("n2", "2026-10-30T10:01:00Z", "s-new", "read"),
+    ]);
+    const result = await importRecords(db, { records: where.records, now: NOW });
+    assert.deepEqual([result.calls, result.turns], [2, 0]);
+    db.close();
+    const again = open(t, where.index);
+    assert.deepEqual(
+        again
+            .prepare("SELECT id, agentName, enforcedBy FROM call ORDER BY id")
+            .all()
+            .map((row) => ({ ...row })),
+        [
+            { id: "n1", agentName: "claude-code", enforcedBy: "gateway" },
+            { id: "n2", agentName: null, enforcedBy: null },
+            { id: "old-1", agentName: null, enforcedBy: null },
+        ],
+    );
+});
+
 test("opening the index again changes nothing, and a rebuild makes the same indexes", async (t) => {
     const where = await sampleIndex(tempState(t));
     const first = open(t, where.index);

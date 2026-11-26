@@ -20,6 +20,16 @@ function run(script: string, args: string[]): { status: number | null; output: s
     return { status: result.status, output: `${result.stdout}${result.stderr}` };
 }
 
+/** The two files of the Claude Code plugin, which name the package version, as the repository writes them. */
+const PLUGIN = (version: string): Record<string, string> => ({
+    ".claude-plugin/plugin.json": `${JSON.stringify({ name: "jig", version, description: 'A "version" is a word here.' }, null, 4)}\n`,
+    ".claude-plugin/marketplace.json": `${JSON.stringify(
+        { name: "market", plugins: [{ name: "jig", source: "./", version }] },
+        null,
+        4,
+    )}\n`,
+});
+
 /** A folder with the files a release changes, and its changelog.d fragments. */
 function project(version: string, changelog: string, fragments: Record<string, string> = {}): string {
     const root = mkdtempSync(path.join(tmpdir(), "jig-release-"));
@@ -28,6 +38,8 @@ function project(version: string, changelog: string, fragments: Record<string, s
         path.join(root, "package.json"),
         `${JSON.stringify({ name: "jig", version, private: true }, null, 4)}\n`,
     );
+    mkdirSync(path.join(root, ".claude-plugin"));
+    for (const [name, text] of Object.entries(PLUGIN(version))) writeFileSync(path.join(root, name), text);
     writeFileSync(path.join(root, "CHANGELOG.md"), changelog);
     mkdirSync(path.join(root, "changelog.d"));
     for (const [name, text] of Object.entries(fragments)) {
@@ -171,6 +183,57 @@ describe("release", () => {
         assert.equal(readFileSync(path.join(root, "CHANGELOG.md"), "utf8"), before);
         assert.equal(JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).version, "0.2.0");
         assert.deepEqual(readdirSync(path.join(root, "changelog.d")).sort(), Object.keys(FRAGMENTS).sort());
+    });
+
+    test("raises the version of the Claude Code plugin's two files as well, and changes nothing else in them", () => {
+        const root = project("0.2.0", CHANGELOG, FRAGMENTS);
+        const { status, output } = run("release.mjs", ["0.3.0", "--date", "2026-11-04", "--root", root]);
+        assert.equal(status, 0, output);
+        assert.match(
+            output,
+            /\.claude-plugin\/plugin\.json and \.claude-plugin\/marketplace\.json: version is 0\.3\.0/,
+        );
+        for (const [name, before] of Object.entries(PLUGIN("0.2.0"))) {
+            const after = readFileSync(path.join(root, name), "utf8");
+            assert.equal(after, before.replace(/"version": "0\.2\.0"/, '"version": "0.3.0"'), name);
+            assert.doesNotMatch(after, /0\.2\.0/, name);
+        }
+        const plugin = JSON.parse(readFileSync(path.join(root, ".claude-plugin/plugin.json"), "utf8"));
+        assert.equal(plugin.version, "0.3.0");
+        assert.equal(plugin.description, 'A "version" is a word here.', "the text of the file is kept");
+        const market = JSON.parse(readFileSync(path.join(root, ".claude-plugin/marketplace.json"), "utf8"));
+        assert.equal(market.plugins[0].version, "0.3.0");
+    });
+
+    test("--dry-run leaves the plugin's files as they were", () => {
+        const root = project("0.2.0", CHANGELOG, FRAGMENTS);
+        const { status, output } = run("release.mjs", ["0.3.0", "--date", "2026-11-04", "--root", root, "--dry-run"]);
+        assert.equal(status, 0, output);
+        for (const [name, before] of Object.entries(PLUGIN("0.2.0"))) {
+            assert.equal(readFileSync(path.join(root, name), "utf8"), before, name);
+        }
+    });
+
+    test("stops, and writes nothing, when a plugin file is missing or holds no version", () => {
+        for (const [name, replaced] of [
+            [".claude-plugin/plugin.json", undefined],
+            [".claude-plugin/marketplace.json", "{}\n"],
+        ] as const) {
+            const root = project("0.2.0", CHANGELOG, FRAGMENTS);
+            if (replaced === undefined) rmSync(path.join(root, name));
+            else writeFileSync(path.join(root, name), replaced);
+            const { status, output } = run("release.mjs", ["0.3.0", "--date", "2026-11-04", "--root", root]);
+            assert.equal(status, 1, output);
+            assert.match(output, new RegExp(`${name.replace(/[.]/g, "\\.")} is missing or has no "version" to raise`));
+            assert.match(output, /Nothing was written/);
+            assert.equal(
+                readFileSync(path.join(root, "CHANGELOG.md"), "utf8"),
+                CHANGELOG,
+                "the changelog is untouched",
+            );
+            assert.equal(JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).version, "0.2.0");
+            assert.deepEqual(readdirSync(path.join(root, "changelog.d")).sort(), Object.keys(FRAGMENTS).sort());
+        }
     });
 
     test("says what stops it and writes nothing: an old version, a bad date, no fragments, or an entry under [Unreleased]", () => {

@@ -32,7 +32,9 @@ export function startJobs(state: JigState): void {
     // A print-mode session has no UI but a person reading the command's output: the update notice can still be shown
     // on stderr, never in the model's context. The other start jobs need a screen, so they stay off.
     if (state.screen === undefined) {
-        void checkUpdateAtStart(state, (message) => process.stderr.write(`${message}\n`), notice);
+        if (!state.skipUpdateCheck) {
+            void checkUpdateAtStart(state, (message) => process.stderr.write(`${message}\n`), notice);
+        }
         return;
     }
     const control = new AbortController();
@@ -53,7 +55,7 @@ export function startJobs(state: JigState): void {
             signal: control.signal,
         });
     }
-    void checkUpdateAtStart(state, notify, notice);
+    if (!state.skipUpdateCheck) void checkUpdateAtStart(state, notify, notice);
     const { startChecks } = state.personal.config;
     if (startChecks.length > 0) {
         void state.startChecks

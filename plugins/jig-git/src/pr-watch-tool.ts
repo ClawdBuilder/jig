@@ -14,7 +14,7 @@ export async function planWatch(
     params: { repo?: string; number?: number; branch?: string },
     call: Call,
 ): Promise<Planned> {
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const remote = await requireRemote(repo, call.settings, call.signal);
     const { slug } = remote;
     let number: number;

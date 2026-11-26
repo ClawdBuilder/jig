@@ -2,24 +2,29 @@
 
 ## Overview
 
-Two unrelated things live here, and neither is a plugin: Pi never loads them.
+Three unrelated things live here, and none is a plugin: Pi never loads them.
 
-- **The `jig` command** (`jig.mjs`, with two Node loader hooks): the CLI named in the root `package.json` `bin`. It is Pi for the Jig home (`~/.jig`, or `JIG_HOME`): it answers help and version before importing Pi or any plugin, hands over to the Jig installed in the home, and routes `doctor`, `setup` and `update` to `plugins/jig-core/src/cli/main.ts`; every other word (Pi's own options, a message, and Pi's package commands) starts Pi through the `pi` launcher with the home as `PI_CODING_AGENT_DIR`.
+- **The `jig` command** (`jig.mjs`, with two Node loader hooks): the CLI named in the root `package.json` `bin`. It is Pi for the Jig home (`~/.jig`, or `JIG_HOME`): it answers help and version before importing Pi or any plugin, hands over to the Jig installed in the home, routes `doctor`, `setup` and `update` to `plugins/jig-core/src/cli/main.ts` and `lens` to `plugins/jig-lens/src/cli.ts`; every other word (Pi's own options, a message, and Pi's package commands) starts Pi through the `pi` launcher with the home as `PI_CODING_AGENT_DIR`.
+- **The `jig-gateway` command** (`jig-gateway.mjs`): the second entry of the root `package.json` `bin`. The Jig gateway, an MCP server over standard input and output for an agent that is not Pi, as a command. It loads the built gateway and runs it.
 - **The optional `pi` launcher** (`pi`, `tmux.conf`, `clipboard-copy`): starts an interactive Pi inside its own tmux so closing the window only detaches it. Its specification is the [launcher spec](../docs/launcher.md); this file lists only what the code reads.
 
 ## Interface
 
 - **`jig.mjs`** (executable, `#!/usr/bin/env node`):
   - **The home first.** `JIG_HOME` (trimmed) or `~/.jig`, resolved. An outer `PI_CODING_AGENT_DIR` is kept in `JIG_OUTER_PI_DIR` and replaced with the home, so the floor still protects the Pi folder it named.
-  - **One version.** When the home holds a Jig (its npm copy, or a local package its `settings.json` lists), a copy started from anywhere else runs that one with the same words and exits its status. With no Jig in the home, only `setup`, `help`, `--help`, `-h`, `--version` and `-v` run; another word says `Jig is not installed in <home>. Run: npx @clawdbuilder/jig setup` and exits 2.
+  - **One version.** When the home holds a Jig (its npm copy, or a local package its `settings.json` lists), a copy started from anywhere else runs that one with the same words and exits its status. With no Jig in the home, only `setup`, `lens`, `help`, `--help`, `-h`, `--version` and `-v` run; another word says `Jig is not installed in <home>. Run: npx @clawdbuilder/jig setup` and exits 2.
   - `jig --help | -h`, `jig help [command]`: usage or per-command help from `plugins/jig-core/src/cli/help.ts` (`helpFor`,
     `nearestCommand`, `USAGE`). `jig <command> --help` reaches that command's own help: a Jig command's from the same file, Pi's from Pi.
     An unknown name for `jig help` exits 2 with a "Did you mean" hint; so does a one-word near miss of a command, while any other
     word goes to Pi as a message.
   - `jig --version | -v [--json]`: prints `package.json`'s `version`, or `{"schema":1,"version":...}`; any other extra argument exits 2.
   - `jig doctor`, `jig setup`, `jig update`: registers the loader hooks, then `await run(command, rest)` from `plugins/jig-core/src/cli/main.ts`; its result is the exit code.
+  - `jig lens`: registers the loader hooks, then `await run(rest)` from `plugins/jig-lens/src/cli.ts`; its result is the exit code. The launcher starts it itself because jig-core's `cli/main.ts` may not import a plugin (`boundaries.test.ts`). `jig lens --help` and `-h` print the help of `help.ts` and run nothing. It needs no Jig home and no Pi, and it never goes to Pi: a word after `lens` is refused by `cli.ts`, and a message that only starts with the word (`jig "lens of the camera"`) is one first word and goes to Pi.
   - Any other word — Pi's own command, a flag, or a message: starts `bin/pi` with `PI_CODING_AGENT_DIR=<home>` and `JIG_COMMAND=jig`, and exits its status. `jig auth --help` keeps Pi's own help after one Jig line naming the home's `auth.json`.
   - Pi is found by, in order: `JIG_PI_HOST`, then `PI_HOST_DIR` (each must be Pi's package folder, else not found); `<node dir>/../lib/node_modules/@earendil-works/pi-coding-agent`; a `pi` on `PATH` resolved to its package. Not found: the hooks strip types alone and the command still runs; `setup` then says Jig needs Pi and exits 1, and `update` says it needs Pi too.
+- **`jig-gateway.mjs`** (executable, `#!/usr/bin/env node`): plain JavaScript, with no type stripper, no Jig home and no Pi. It imports `../plugins/jig-core/dist/jig-gateway.mjs` (made by `npm run build:gateway`, committed and shipped) and calls its `runGateway(argv, env)` with the
+  arguments it was given; the words are the gateway's own (`--home <folder>`, `--version`, `--help`; [Gateway](../plugins/jig-core/docs/gateway.md)). With no built file it writes one line to standard error and exits with code 1. The file is found from its own URL, which Node resolves to its real
+  path, so it works when started through the link that npm makes in a bin folder.
 - **`jig-strip-hooks.mjs`**: `loadTypescript(url, context, nextLoad)` (synchronous, for `module.registerHooks`) strips types with `amaro` (`strip-only`) only for a `.ts` under `node_modules`, which Node will not do itself; other `.ts` files go to Node as `module-typescript`. `load` (for `module.register`) strips every `file:` `.ts` URL with amaro, wherever it lives.
 - **`jig-host-hooks.mjs`**: `resolve(specifier, context, next)`. Reads `?host=<dir>` from its own URL and maps `typebox` and `@earendil-works/pi-{coding-agent,tui,ai,agent-core}` to that Pi's own copies.
 - **`pi`** (bash 4.4+, executable): the launcher.
@@ -38,18 +43,22 @@ Two unrelated things live here, and neither is a plugin: Pi never loads them.
 - **Never a shim loop.** With no `PI_BIN`, the launcher skips any `pi` that does not resolve into `@earendil-works/pi-coding-agent`.
 - **Environment values never travel in argv.** Only variable names go on the tmux command line; values pass through tmux's socket (`update-environment`).
   The one value that does is the launcher's own session name, `-e "JIG_TMUX_SESSION=$name"` (`bin/pi:199`; `$name` includes the folder's name, and `tmux ls` shows it anyway). `docs/launcher.md` says so (issue #200). Add no other value to that command line.
-- **Docs and script agree.** `test/launcher.test.ts` fails when `docs/launcher.md` misses a flag or variable `pi` reads. Change the script and that page in the same commit.
+- **Docs and script agree.** `test/launcher.test.ts` fails when `docs/launcher.md` misses a flag or variable `pi` reads, or `jig lens`. Change the script and that page in the same commit.
 - **`tmux.conf` reads only `JIG_PACKAGE_DIR`.** Keep `pi` and `clipboard-copy` executable and shipped (`bin/**` is in the package `files`).
 - **Help and version stay fast.** They run before Pi or any plugin is imported, and work without Pi installed.
+- **`jig-gateway.mjs` stays plain.** It imports only `node:` modules and the built file, so the command starts as fast as Node does and needs nothing installed. It never goes through `jig.mjs` and is not routed by it.
+- **An executable here is a command in Claude Code.** The package root is the Claude Code plugin, and Claude Code puts a plugin's `bin/` at the end of its shell's `PATH`. So the list of executable files in this folder is pinned (`plugins/jig-core/test/adapters-claude-code.test.ts`) and named in `plugins/jig-core/docs/gateway.md`; a new one changes both.
 - **Loader hooks stay small.** `jig-strip-hooks.mjs` imports only `amaro` (an exact-pinned root dependency) and Node modules; `jig-host-hooks.mjs` imports only Node modules.
 
 ## Side Effects
 
-- **`jig.mjs`:** reads `../package.json`, the home's `settings.json` and each package's `package.json`, writes stdout and stderr, sets `PI_CODING_AGENT_DIR` (and `JIG_OUTER_PI_DIR` for the outer one), registers module hooks for the process, and spawns the home's copy or the launcher.
+- **`jig.mjs`:** reads `../package.json`, the home's `settings.json` and each package's `package.json`, writes stdout and stderr (`jig lens` also reads the records and writes jig-lens's index in the state folder), sets `PI_CODING_AGENT_DIR` (and `JIG_OUTER_PI_DIR` for the outer one), registers module hooks for the process, and spawns the home's copy or the launcher.
+- **`jig-gateway.mjs`:** reads the built file's place, imports it, and then does what the gateway does (reads the settings folder and the connector files, writes records in the state folder at the first call; `plugins/jig-core/src/gateway/EGM.md`).
 - **`pi`:** runs `tmux -L jig` (own server, socket and `@jig_cwd` option), `exec`s Pi, and on WSL runs `timeout 2 <cmd.exe> /c exit` to probe the interop socket. Reads `/dev/tty` (or `JIG_TTY`) for the reattach menu, and exits 1 before anything else on a bash older than 4.4.
 - **`clipboard-copy`:** runs the clipboard program; on failure `tmux display-message "Not copied: ..."` or a line on stderr, exit 1.
 
 ## Verification
 
+- `jig-gateway.mjs`: `node --import ./test/support/host.mjs --test plugins/jig-core/test/gateway-build.test.ts` (through a link, and with the built file missing) and `test/gateway-package.test.ts` (the installed command; needs network).
 - Run: `node --import ./test/support/host.mjs --test test/launcher.test.ts` from the repo root. It runs `bin/pi` with a fake Pi, tmux and timeout in a closed world (`test/support/launcher-world.ts`); nothing real starts.
 - Whole suite: `npm test`.

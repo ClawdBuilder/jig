@@ -12,6 +12,7 @@ Specification: [README](./README.md); detail pages are under `docs/`, starting w
 
 - **Entry**: `index.ts` re-exports the default of `./src/index.ts`. The entry sits at the plugin root so Pi labels the extension `jig-git`; the code stays in `src/`.
 - **Tools and actions**: `git` (18 actions), `pr` (12), `release` (5). The README tables are the specification; see [src contract](./src/EGM.md) for the names.
+- **Connector**: `src/connector.ts` has a default export of type `ConnectorModule`, for a host that runs tools with no Pi (a gateway): `name` `jig-git`, `tools` `[pr, release]` (the objects Pi registers), `notOffered` `{ pr: ["watch"], release: ["tag_create"] }` (local writes, which the engine would run with no question) and `register`, which registers the `git` section. `git`, the two gates and the comment watch are not in it.
 - **Config section** `git` in `jig.json`: `base`, `protected`, `commitMessage`, `branchName`, `prTitle`, `prTemplate`, `cloneHost`, `watchComments`, `watchBots`, `forges`, `accounts`.
 - **Setup.** `src/onboarding.ts` (`GIT_SETUP`) declares what the section needs from a person: the `gh` login, and which `gh` account to use
   for a set of repositories (`git.accounts`), so `/jig setup` and `jig setup` ask for them.
@@ -31,6 +32,8 @@ Specification: [README](./README.md); detail pages are under `docs/`, starting w
 - **Credentials are attached by `jig-core`.** The plugin names a `gh` account and never sees a token. `gh` and `glab` own the sign-in; there is no sign-in flow and no stored credential here.
 - **No deploys and no workflows.** CI belongs to `jig-ops`; deploys have their own tool.
 - **Approval stays human.** `pr review` never approves, and `jig-git` adds no endpoint that approves.
+- **The connector loads with no Pi.** `connector.ts` and every file it imports at run time import no Pi package; a type from `kit/tools.ts` comes in with `import type`, because that file imports Pi. `plugins/jig-core/test/engine/connector-git.test.ts` loads it in a process that refuses every Pi package.
+- **`pr` and `release` take the folder from the call.** Every lookup of a repository in their files passes `call.cwd`; `repo.ts` falls back to the folder Pi started in only when none is given. The `git` tool still reads that variable.
 - **Generic only.** Examples use `PROJ-123`, `orders-api` and `github.com`.
 
 ## Side Effects

@@ -16,7 +16,7 @@ company transport (reads, a create, updates and a link).
 
 Each item says what to try.
 
-- the direct sign-in forms (`basic`, `bearer`, `oauth`, `signIn` and `transport`) against a real gateway; the real sessions used
+- the direct sign-in forms (`basic`, `bearer`, `oauth`, `signIn` and `transport`) against a real company proxy; the real sessions used
   one company transport, not these;
 - Jira Cloud: `search/jql` and the Cloud create screen, users and long comment threads; the real sessions used one site;
 - attachments and transitions on a real site;

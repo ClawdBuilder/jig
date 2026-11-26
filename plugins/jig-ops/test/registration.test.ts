@@ -415,9 +415,11 @@ describe("the package", () => {
         // The packages of the repository are jig-api's `yaml`, jig-review's `hono`, `@hono/node-server` and `ignore`, and
         // jig-mongo's driver, and jig-sandbox's runtime. `amaro` is only for `bin/`'s installed-copy TypeScript loader, not for a plugin.
         // `marked` draws the Markdown of jig-core's preview page: the engine has to load where Pi's copy is not installed.
+        // `@modelcontextprotocol/server` is the SDK of jig-core's gateway: only `plugins/jig-core/src/gateway/` imports it (`engine-boundary.test.ts`).
         assert.deepEqual(Object.keys(all.dependencies ?? {}).sort(), [
             "@anthropic-ai/sandbox-runtime",
             "@hono/node-server",
+            "@modelcontextprotocol/server",
             "amaro",
             "hono",
             "ignore",

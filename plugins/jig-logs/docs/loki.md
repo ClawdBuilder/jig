@@ -28,7 +28,7 @@ in Loki's own documentation, and what was not, is in
 | Field | Meaning |
 |---|---|
 | `backend.type` | `"loki"` |
-| `backend.url` | Where Loki is, without `/loki/api/v1`. It may hold a path, such as a gateway's prefix |
+| `backend.url` | Where Loki is, without `/loki/api/v1`. It may hold a path, such as a proxy's prefix |
 | `backend.auth` | Any of the four kinds (see [Connecting](connecting.md)) |
 | `backend.tenant` | Optional. Sent as the header `X-Scope-OrgID` on every request |
 | `environments.<name>.selector` | Required. A LogQL stream selector with at least one `=` or `=~` matcher that has a value |
@@ -36,7 +36,7 @@ in Loki's own documentation, and what was not, is in
 
 - **`backend.auth`:** for Grafana Cloud use `username` and `password`: the user
   shown in the Loki details of the stack, and an API token as a secret reference.
-  Behind a gateway, `token` or `signIn`.
+  Behind a proxy, `token` or `signIn`.
 - **`backend.tenant`:** it is sent through a transport too. Without it a Loki that
   has several tenants answers 401, "no org id". A Loki with `auth_enabled: false`
   has one tenant, `fake`, and needs none. Up to 300 visible characters; `a\|b`
@@ -94,7 +94,7 @@ value of `query`. The line filters come before the model's `query`, so Loki drop
 lines before it parses them.
 
 The parameters are in the address, as Loki's documentation shows them. So a
-sign-in service, a transport and a gateway in front of Loki see the query, as they
+sign-in service, a transport and a proxy in front of Loki see the query, as they
 would from any other Loki client; with Elasticsearch it is in the body.
 
 ## What a filter becomes
@@ -138,7 +138,7 @@ all the lines, merged and sorted by time in the direction asked. A hit keeps its
 time as an ISO instant with the digits Loki gave (3, 6 or 9 after the second), its
 line, and the labels of its stream; hit lines show the time and the line only.
 
-A reply that is not log lines (HTML from a gateway, a `matrix` result, a line
+A reply that is not log lines (HTML from a proxy, a `matrix` result, a line
 without a time) is not read at all and becomes an `invalid_response` gap, so a hit
 is never dropped quietly.
 

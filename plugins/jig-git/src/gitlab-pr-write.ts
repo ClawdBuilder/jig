@@ -38,7 +38,7 @@ const TEMPLATE_FILES = [
 ];
 
 async function glOf(params: { repo?: string }, call: Call, home: GitlabHome): Promise<Gl> {
-    return { home, repo: await resolveRepo(params.repo, call.signal), call };
+    return { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
 }
 
 /** What a write passes to glab: the repository to run in and the abort signal. */
@@ -61,7 +61,7 @@ interface CreateParams {
 }
 
 export async function planCreate(params: CreateParams, call: Call, home: GitlabHome): Promise<Planned> {
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const { signal, settings } = call;
     const title = ruledTitle(params.title, settings);
     if (params.body === undefined || params.body.trim() === "") {

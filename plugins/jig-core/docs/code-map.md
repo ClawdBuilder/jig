@@ -32,14 +32,30 @@ What jig-core does with a call, with no agent in it. It imports no Pi package (`
 
 | File | What it does | Called by |
 |---|---|---|
-| `engine.ts` | The host and call types, `Engine`, `createEngine` and `engineOf` | `gate.ts`, `results.ts`, `index.ts` |
-| `engine-options.ts` | What a host gives `createEngine` (`EngineOptions`), such as the sections that count as off | `engine-state.ts` |
+| `engine.ts` | The host (one optional `enforcedBy`) and call types, `Engine`, `createEngine`, `engineOf` | `gate.ts`, `results.ts`, `index.ts` |
+| `engine-options.ts` | What a host gives `createEngine` (`EngineOptions`): the sections that count as off, no update check | `engine-state.ts` |
 | `engine-state.ts` | What the engine keeps (`JigState`, `CallState`) and reading `jig.json` | `engine.ts`, `state.ts`, `api.ts` |
 | `engine-judge.ts` | Steps 1 to 3 of a call: classify, decide, ask the host, announce (`judge`, `answer`) | `engine.ts` |
-| `engine-tool.ts` | The tool contract (`EngineTool`, `CallContext`, `ToolResult`) and the step Pi and `run` share | `engine-run.ts`, `kit/tools.ts`, `engine.ts` |
+| `engine-tool.ts` | The tool contract (`EngineTool`, `CallContext`, `ToolResult`, `ConnectorModule`) and `executeTool` | `engine-run.ts`, `kit/tools.ts`, `engine.ts` |
 | `engine-run.ts` | Steps 4 to 7 for a tool the engine runs: check the call, run the tool, clean the result, record it | `engine.ts` |
 | `engine-results.ts` | Steps 6 and 7 of a call the agent ran: clean the result, write the record | `engine.ts`, `engine-run.ts`, `results.ts` |
 | `engine-session.ts` | A session: `start` reads the settings, `beginSession` starts jobs, `stop` ends it | `engine.ts` |
+
+### The gateway
+
+An MCP server over standard input and output that runs the engine for an agent that is not Pi ([Gateway](gateway.md)). It is the only code that imports an MCP library (`test/engine-boundary.test.ts`).
+
+| File | What it does | Called by |
+|---|---|---|
+| `gateway/main.ts` | The process: the settings folder, the connectors, the server on standard input and output | the agent, `bin/jig-gateway.mjs` |
+| `gateway/server.ts` | The MCP server: registers each tool and hands each call to the runtime | `gateway/main.ts` |
+| `gateway/runtime.ts` | What lives for the process: the engine made at the first call, the call flow, the queue | `gateway/main.ts`, `gateway/server.ts` |
+| `gateway/host.ts` | The engine's host for the gateway: nobody can be asked; the agent and id of a request | `gateway/runtime.ts`, `gateway/server.ts` |
+| `gateway/tool-list.ts` | One tool as the gateway lists it: the parameters an agent sees, with `dir` | `gateway/runtime.ts` |
+| `gateway/connectors.ts` | Finds the connector files, from source or built, and loads one by a computed path | `gateway/main.ts` |
+| `gateway/jig-tool.ts` | The `jig` tool, `status` only: the last outcomes and the problems of `jig.json` | `gateway/runtime.ts` |
+
+`scripts/build-gateway.mjs` bundles `gateway/main.ts` and each connector into `plugins/jig-core/dist/` (committed, shipped); [Gateway](gateway.md#the-built-gateway) says when to rebuild.
 
 ### Deciding
 
@@ -101,6 +117,7 @@ What jig-core does with a call, with no agent in it. It imports no Pi package (`
 | `section-defaults.ts` | A company's defaults for a plugin's section: your own laid over them, a `null` leaving one out | `api.ts`, `config.ts`, `setup-plan.ts`, `doctor-needs.ts` |
 | `state.ts` | Pi's wrapper of the engine's state: adds the agent, the screens that ask and the tool list | `index.ts`, `cli/headless.ts` and 4 more |
 | `paths.ts` | Where jig-core keeps things: the state folder, records, spill files, previews, the key | `cap.ts`, `index.ts` and 4 more |
+| `settings-home.ts` | The settings folder without Pi: `--home`, `JIG_HOME`, the default home with a `jig.json` | `gateway/main.ts` |
 | `commands.ts` | The `/jig` commands: status, doctor with its flags, rules, records, and the setup hand-off | `index.ts` |
 | `section-state.ts` | What one registered plugin section is: loaded, waiting for a person, not set, or invalid | `commands.ts`, `doctor-checks.ts` |
 | `plugin-table.ts` | The built-in plugins and their `jig.json` sections; which sections have no loaded plugin | `index.ts`, `cli/headless.ts`, `doctor-off.ts` |
@@ -112,6 +129,7 @@ What jig-core does with a call, with no agent in it. It imports no Pi package (`
 | `doctor.ts` | `/jig doctor`: the check list, the levels, the counts, the metadata and the text report, quiet or full | `commands.ts`, `doctor-json.ts` |
 | `doctor-checks.ts` | The machine, configuration and protected-file checks, the ordered check list, and the context they read from jig-core | `doctor.ts`, `commands.ts` |
 | `doctor-tools.ts` | The login, sandbox and records checks: it starts a login tool for its status, never to sign in | `doctor-checks.ts` |
+| `doctor-agents.ts` | The Other agents group: gateway starts, folder to give an agent, Claude Code with Jig in it | `doctor-checks.ts` |
 | `doctor-folder.ts` | The doctor row for the folder Pi runs with, and who chose it (`JIG_HOME` only for a home) | `doctor-checks.ts` |
 | `doctor-company-range.ts` | The doctor line for a company Jig range this Jig is outside, with the command that moves Jig | `doctor-checks.ts` |
 | `doctor-codemode.ts` | The doctor line "Codemode": on or off from the session, a skip in the terminal | `doctor-checks.ts` |
@@ -121,7 +139,7 @@ What jig-core does with a call, with no agent in it. It imports no Pi package (`
 | `doctor-secrets.ts` | Every secret reference in the effective settings, its plain label, its status and the command that adds it | `doctor-checks.ts`, `doctor-tools.ts`, `commands.ts` |
 | `secret-mounts.ts` | Whether a file is on a WSL Windows drive (no mode): the mount table, else the /mnt/<letter>/ prefix | `secret-status.ts` |
 | `secret-status.ts` | One reference's status, found by metadata only: pass/env/file, a Keychain lookup without `-w`, an op item list, or a login tool's status; never a value | `doctor-secrets.ts`, `setup.ts` |
-| `pi-version.ts` | Pi's version from the package Pi loaded (`0.0.0` counts as unknown), and Jig's own version, Node.js minimum and repository from its package.json | `doctor-checks.ts`, `update-notice.ts` |
+| `pi-version.ts` | Pi's version from the package Pi loaded (`0.0.0` counts as unknown), and Jig's own version, Node.js minimum and repository from its package.json, which `packageFile()` finds | `doctor-checks.ts`, `update-notice.ts`, `gateway/main.ts` |
 | `install-mode.ts` | Whether the folder in use is the Jig home or an ordinary Pi folder, and the commands that differ | `model-auth.ts`, `setup-command.ts`, `doctor-checks.ts` and 2 more |
 
 ### Setup
@@ -306,7 +324,7 @@ The agent asks for `git push` of a branch. These are the steps, in order.
    very long text, keeping the whole of it in a spill file (`cap.ts`). A failure here withholds the result and never
    passes it on unchecked.
 9. **The record.** At `tool_execution_end`, `finish` in `engine-results.ts` has `records.ts` write one line: the tool, the environment, the effect, the
-   decision, your answer, how long it waited for you, the outcome and the duration. `jig-lens` reads these lines.
+   decision, your answer, how long it waited for you, the outcome, the duration, and the agent's name. `jig-lens` and `jig lens` read these lines.
 10. **The model.** The result that is left goes to the model.
 
 A tool of the engine's own contract (`EngineTool`, `engine-tool.ts`) takes the same road. In Pi, `registerEngineTool` (`kit/tools.ts`, next to `registerJigTool`) is step 7: it runs the tool through

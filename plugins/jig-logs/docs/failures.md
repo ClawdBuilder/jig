@@ -98,7 +98,7 @@ request may get past them (see
 | `rate_limited` | HTTP 429 | no |
 | `response_too_large` | A reply over 16 MiB (for Loki also HTTP 413 or a 400 "max entries") | no |
 | `window_too_long` | Loki's 400 "the query time range exceeds the limit" | yes |
-| `invalid_response` | A reply that is not a search result, such as an HTML page from a gateway | no |
+| `invalid_response` | A reply that is not a search result, such as an HTML page from a proxy | no |
 | `query_rejected` | Any other 4xx answer (not 401, 403, 404, 408 or 429) | no |
 | `index_not_found` | HTTP 404, or an `index_not_found_exception` in any other answer | no |
 | `request_budget`, `time_budget` | The call used its requests or its time | no |

@@ -35,6 +35,10 @@ export type ErrorKind =
 
 export type Answer = NonNullable<DecisionEvent["answer"]>;
 
+/** The place that decided a call, when it was not Pi's own tool manager: the gateway of an MCP server, an agent's hook, or the guard
+ *  around its shell. */
+export type EnforcedBy = "gateway" | "hook" | "shell-guard";
+
 /** Fields every line has. */
 interface Line {
     id: string;
@@ -72,6 +76,10 @@ export interface CallRecord extends Line {
     parentToolCallId?: string;
     spill?: string;
     facts?: Facts;
+    /** The agent the call came from, as `agentNameOf` keeps its name: `pi` in Pi. The agent says it, which is not proof. */
+    agentName?: string;
+    /** Which enforcement point decided. Left out in Pi, where the tool manager is the agent's own. */
+    enforcedBy?: EnforcedBy;
 }
 
 export interface TurnRecord extends Line {
@@ -110,6 +118,17 @@ export function conditionProblem(env: NodeJS.ProcessEnv): string | undefined {
     const value = env.JIG_CONDITION;
     if (value === undefined || value === "" || CONDITION.test(value)) return undefined;
     return "JIG_CONDITION must be 1 to 32 characters of letters, digits, dots, underscores and hyphens, so records carry no condition";
+}
+
+/** What an agent's name may be in a record: 1 to 40 characters that are safe in a dashboard label and a file name. */
+const AGENT_NAME = /^[a-z0-9._-]{1,40}$/;
+
+/** The agent's name as a record keeps it: lower-cased, and kept only when it fits. The agent chooses its own name and the
+ *  record goes into a file other programs read, so anything else, and anything that is not text, is written as `unknown`. */
+export function agentNameOf(name: unknown): string {
+    if (typeof name !== "string") return "unknown";
+    const lower = name.toLowerCase();
+    return AGENT_NAME.test(lower) ? lower : "unknown";
 }
 
 /** The fields every line has. The parent session, the role and the condition come from the environment: a child agent
@@ -152,6 +171,8 @@ export function callRecord(input: CallInput, now: Date, env: NodeJS.ProcessEnv =
         ...(input.parentToolCallId === undefined ? {} : { parentToolCallId: input.parentToolCallId }),
         ...(input.spill === undefined ? {} : { spill: input.spill }),
         ...(input.facts === undefined || Object.keys(input.facts).length === 0 ? {} : { facts: input.facts }),
+        ...(input.agentName === undefined ? {} : { agentName: input.agentName }),
+        ...(input.enforcedBy === undefined ? {} : { enforcedBy: input.enforcedBy }),
     };
 }
 

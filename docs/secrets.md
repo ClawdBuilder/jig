@@ -140,7 +140,7 @@ the value from your store when a request needs it.
 ## Sign-in that a company provides
 
 Some systems are not signed in to with a stored password. A single sign-on
-gateway hands out a short-lived token that code has to fetch and renew. A
+service hands out a short-lived token that code has to fetch and renew. A
 company plugin supplies that code as a **sign-in service**, and a tool asks for
 the headers of one request by the service's name instead of naming a secret
 reference.

@@ -114,7 +114,7 @@ limits, and has an example for each type.
 - the backend's type and address, and the indexes or selectors;
 - how environments map to the log's own environment names, as `filter` or in the
   `selector`, and to `jig-core` environments, as `jigEnvironment`;
-- the sign-in: a company sign-in service (for example a single sign-on gateway),
+- the sign-in: a company sign-in service (for example a single sign-on service),
   or a company transport registered with `jig-core`. A transport carries each
   request and signs it in, so `backend` holds `{ "transport": "<name>", "url" }`
   in place of `auth`, and its `url` may be `http://`. A relay configured under

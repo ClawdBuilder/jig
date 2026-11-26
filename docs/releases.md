@@ -13,14 +13,15 @@ never edited.
 ## Cut one
 
 1. **Land it green.** The commit you tag is one whose `npm run check`, `npm test` and `npm run check:install` passed in CI.
-2. **Fold the fragments.** `node scripts/release.mjs 0.3.0` raises `version` in `package.json`, folds every file in
+2. **Fold the fragments.** `node scripts/release.mjs 0.3.0` raises `version` in `package.json` and in the two files of the Claude Code plugin
+   (`.claude-plugin/plugin.json` and `marketplace.json`, which `npm run check` keeps equal to it), folds every file in
    `changelog.d/` into `## [0.3.0] - <today>` under the headings Added, Changed, Fixed and Removed in that order, and
    deletes the fragments. The sentence under `## [Unreleased]` that points at the folder stays.
 3. **Re-capture the doctor samples after the version bump.** Pack the tree, install it into a temporary home with
    `jig setup --source <tarball> --yes`, run `jig doctor`, and paste its real output into [README](../README.md) and
    [Your first hour](first-hour.md); `npm run check` fails if a captured `Jig — x.y.z` line is stale.
-4. **Read the diff.** The script writes the two files and deletes the folded fragments; the entries are what a user will
-   read.
+4. **Read the diff.** The script writes the changelog and those three files and deletes the folded fragments; the entries
+   are what a user will read.
 5. **Commit** it as `Release 0.3.0`.
 6. **Tag and push both, after `ci-ok` on main's merge commit.** The [Release workflow](../.github/workflows/release.yml)
    checks the `ci-ok` check-run on the tagged commit and refuses a tag pushed before it exists; wait for the merge

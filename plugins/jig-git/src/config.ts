@@ -4,9 +4,11 @@
 // the defaults, so a typo never leaves a tool half configured. `watch` and `artifacts` were here while jig-git ran the CI
 // watch; they are `ops.watch` and `ops.artifacts` now, and the error for them says so.
 import { jig } from "../../jig-core/src/client.ts";
+import type { JigApi } from "../../jig-core/src/contract.ts";
 import { isObject } from "../../jig-core/src/kit/values.ts";
 import { unknownField } from "../../jig-core/src/kit/fields.ts";
 import { checkBranch } from "./names.ts";
+import { GIT_SETUP } from "./onboarding.ts";
 import { validateAccounts } from "../../jig-core/src/kit/accounts.ts";
 import type { AccountMap } from "../../jig-core/src/kit/accounts.ts";
 
@@ -140,6 +142,14 @@ export function validateGitSection(raw: unknown): string[] {
         );
     }
     return errors;
+}
+
+/**
+ * Registers the `git` section with jig-core: its check, `accounts` as the key a first setup asks for, and the questions setup puts. The Pi
+ * entry (`index.ts`) and the connector (`connector.ts`) both call this one function, so the section is the same wherever the plugin loads.
+ */
+export function registerGitSection(api: JigApi): void {
+    api.config.registerSection("git", validateGitSection, { first: ["accounts"], setup: GIT_SETUP });
 }
 
 /** `git.accounts` as written, when the section is valid; an empty map when it is absent. */

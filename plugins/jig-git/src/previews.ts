@@ -9,11 +9,13 @@ import type { Facts, Preview } from "../../jig-core/src/contract.ts";
 import { jig } from "../../jig-core/src/client.ts";
 import type { GitSettings } from "./config.ts";
 
-/** What every action is given: the call it belongs to, its abort signal, and the settings read for this call. */
+/** What every action is given: the call it belongs to, its abort signal, the settings read for this call and, for `pr` and `release`, its folder. */
 export interface Call {
     toolCallId: string;
     signal?: AbortSignal;
     settings: GitSettings;
+    /** The working folder of the call, which `pr` and `release` hand to every lookup of a repository. Without it, `repo.ts` uses the folder Pi started in. */
+    cwd?: string;
 }
 
 /** What an action returns to the model: plain text, plus a few facts for the record. */
@@ -41,9 +43,13 @@ export function digest(...parts: readonly unknown[]): string {
  * (a rule allowed it), jig-core has no approved preview and there is nothing to compare.
  */
 export function checkUnchanged(toolCallId: string, planned: Planned, label: string): void {
-    const approved = jig().approvedPreview(toolCallId);
-    if (approved?.fingerprint === undefined || planned.preview.fingerprint === undefined) return;
-    if (approved.fingerprint !== planned.preview.fingerprint) {
+    checkSeen(jig().approvedPreview(toolCallId), planned, label);
+}
+
+/** The same check for a tool that is handed the approved preview (`call.seen`) and does not ask jig-core for it. */
+export function checkSeen(seen: Preview | undefined, planned: Planned, label: string): void {
+    if (seen?.fingerprint === undefined || planned.preview.fingerprint === undefined) return;
+    if (seen.fingerprint !== planned.preview.fingerprint) {
         throw new Error(previewChanged(label));
     }
 }

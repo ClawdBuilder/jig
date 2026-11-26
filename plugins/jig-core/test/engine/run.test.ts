@@ -76,6 +76,7 @@ describe("a read", () => {
                 decisionSource: "table",
                 outcome: "ok",
                 toolCallId: "call-1",
+                agentName: "test",
             },
         );
     });

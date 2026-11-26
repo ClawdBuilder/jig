@@ -6,6 +6,7 @@ import type { ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { launcherBashPath } from "../../../test/support/launcher-world.ts";
+import { callRecord } from "../src/records.ts";
 import { ptyArgv, ptyAvailable } from "../../../test/support/pty.ts";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -216,13 +217,60 @@ describe("routing: the first word decides", { skip: launcherSkip }, () => {
             ["doctor", "--help"],
             ["setup", "--help"],
             ["update", "--help"],
+            ["lens", "--help"],
             ["help", "doctor"],
+            ["help", "lens"],
         ]) {
             const result = await run(args);
             assert.equal(result.code, 0, args.join(" "));
             assert.match(result.stdout, /Usage: jig/);
         }
         assert.deepEqual(calls(), []);
+    });
+
+    test("`lens` lists the recorded calls and does not start Pi; a message that starts with the word still goes to Pi", async () => {
+        const state = path.join(root, "state");
+        const empty = await run(["lens"], { env: { JIG_STATE_DIR: state } });
+        assert.equal(empty.code, 0, empty.stderr);
+        assert.equal(empty.stdout, "No calls recorded yet.\n");
+
+        mkdirSync(path.join(state, "records"), { recursive: true });
+        const record = callRecord(
+            {
+                session: "s1",
+                tool: "pr",
+                action: "list",
+                decision: "allow",
+                outcome: "ok",
+                toolCallId: "t1",
+                agentName: "claude-code",
+                enforcedBy: "gateway",
+            },
+            new Date("2026-10-30T10:00:00.000Z"),
+            {},
+        );
+        writeFileSync(path.join(state, "records", "2026-10-30.jsonl"), `${JSON.stringify(record)}\n`);
+        const listed = await run(["lens"], { env: { JIG_STATE_DIR: state } });
+        assert.equal(listed.code, 0, listed.stderr);
+        assert.deepEqual(listed.stdout.trim().split(/ {2,}/), [
+            "2026-10-30T10:00:00Z",
+            "claude-code",
+            "pr",
+            "list",
+            "allow",
+            "ok",
+            "gateway",
+        ]);
+        assert.deepEqual(calls(), [], "Pi was not started");
+
+        const refused = await run(["lens", "days", "3"], { env: { JIG_STATE_DIR: state } });
+        assert.equal(refused.code, 2);
+        assert.equal(refused.stderr.trim(), 'jig lens takes no words like "days". To ask Pi, run: jig "lens days 3"');
+        assert.deepEqual(calls(), [], "a stray word is refused, not passed on");
+
+        const message = await run(["lens of the camera"], { env: { JIG_STATE_DIR: state } });
+        assert.equal(message.code, 0, message.stderr);
+        assert.deepEqual(piArgs(), ["lens of the camera"]);
     });
 
     test("-h, --help, -v and --version are Jig's", async () => {
@@ -291,18 +339,21 @@ describe("one Jig copy", { skip: launcherSkip }, () => {
         assert.match(result.stdout, /Usage: jig doctor/);
     });
 
-    test("with no Jig in the home only setup, help and version run, and the rest says what to run", async () => {
+    test("with no Jig in the home only setup, lens, help and version run, and the rest says what to run", async () => {
         const list = await run(["list"]);
         assert.equal(list.code, 2);
         assert.equal(list.stderr.trim(), `Jig is not installed in ${jig}. Run: npx ${NAME} setup`);
         const bare = await run([]);
         assert.equal(bare.code, 2);
         assert.match(bare.stderr, /^Jig is not installed in /);
-        // The three that work: the bootstrap, the help and the version.
-        for (const args of [["--version"], ["--help"], ["setup", "--help"]]) {
-            const result = await run(args);
+        // The four that work: the bootstrap, the recorded calls, the help and the version.
+        for (const args of [["--version"], ["--help"], ["setup", "--help"], ["lens"], ["lens", "--help"]]) {
+            const result = await run(args, { env: { JIG_STATE_DIR: path.join(root, "state") } });
             assert.equal(result.code, 0, args.join(" "));
         }
+        const lens = await run(["lens"], { env: { JIG_STATE_DIR: path.join(root, "state") } });
+        assert.equal(lens.stdout, "No calls recorded yet.\n");
+        assert.equal(existsSync(log), false, "no Pi was started");
     });
 });
 

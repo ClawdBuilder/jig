@@ -2,8 +2,8 @@
 // git configuration, credentials or Pi agent folder. The first tests look at this very process, which that file already set up; the
 // others start a process of their own with a dirty environment and look at what the file made of it.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, realpathSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -92,6 +92,25 @@ describe("a process started from a dirty environment", () => {
         }
         assert.equal(env.GIT_CONFIG_NOSYSTEM, "1");
         assert.equal(env.PI_OFFLINE, "1");
+    });
+
+    test("puts a claude that exits at once first on PATH, so that no test starts the real Claude Code", () => {
+        const first = (process.env.PATH ?? "").split(path.delimiter)[0] ?? "";
+        assert.equal(
+            path.dirname(first),
+            path.dirname(process.env.HOME ?? ""),
+            "the first folder on PATH is in the temporary world",
+        );
+        assert.equal(statSync(path.join(first, "claude")).mode & 0o111, 0o111, "it can be run");
+        // A bare name is found through PATH, so this starts the program the doctor would find.
+        const asked = spawnSync("claude", ["--version"], { encoding: "utf8" });
+        assert.equal(asked.status, 1);
+        assert.equal(asked.stdout, "");
+        // A process started from a dirty environment gets a folder of its own first, with the PATH it was given after it.
+        const env = inside({});
+        const [own, ...rest] = (env.PATH ?? "").split(path.delimiter);
+        assert.equal(path.dirname(own ?? ""), path.dirname(env.HOME ?? ""));
+        assert.equal(rest.join(path.delimiter), process.env.PATH);
     });
 
     test("gets a new folder each time, and the folder is gone when the process ends", () => {

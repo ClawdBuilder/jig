@@ -58,6 +58,10 @@ parent. A short separate Pi process, such as a judge model call, is a side call:
 Anything else, or the wrong arguments (`/lens days 91`), shows the usage line and
 does nothing: `Usage: /lens [ticket KEY | session [id] | days N | compare [days N] | usage | web | grafana | datasette | rebuild | status]`.
 
+`jig lens` in a terminal needs no Pi and no Jig home. It imports new records, then prints one line for each of the last
+20 calls, oldest first: the time (UTC), the agent, the tool, the action, the decision, the outcome and the place that
+enforced the decision, with a dash for a value the record lacks. With no calls it says so and exits 0. It takes no words yet.
+
 ## Rules
 
 - **Read-only over the records.** They belong to `jig-core`. The index is a copy

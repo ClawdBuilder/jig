@@ -2,6 +2,7 @@
 // The `jig` command: Pi for the Jig home, `~/.jig` or JIG_HOME. It hands over to the Jig installed in the home, so a global
 // copy, a checkout and npx all run that one version, then routes on the first word:
 //   doctor, setup, update   Jig's own commands (see plugins/jig-core/src/cli/main.ts)
+//   lens                    the last recorded calls, with no Pi and no home (plugins/jig-lens/src/cli.ts)
 //   help, --help, -h        Jig's help
 //   --version, -v           Jig's version
 //   --                      Pi, with the words after it
@@ -96,8 +97,8 @@ if (homeCommand !== undefined && real(homeCommand) !== real(self)) {
     process.exit(handed.status ?? 1);
 }
 
-// --- No Jig in the home: only the bootstrap, the help and the version can run.
-if (homeCommand === undefined && !["setup", "help", "--help", "-h", "--version", "-v"].includes(first ?? "")) {
+// --- No Jig in the home: only the bootstrap, `lens` (it reads the records and needs no home), the help and the version can run.
+if (homeCommand === undefined && !["setup", "lens", "help", "--help", "-h", "--version", "-v"].includes(first ?? "")) {
     process.stderr.write(`Jig is not installed in ${home}. Run: npx ${JIG} setup\n`);
     process.exit(2);
 }
@@ -217,6 +218,19 @@ if (first === undefined || first === "--") {
     const authFile = shorten(path.join(home, "auth.json"), homedir());
     process.stdout.write(`In Jig, \`jig auth\` signs in for this home; credentials are stored in ${authFile}.\n`);
     startPi(args);
+} else if (first === "lens" && (args.includes("--help") || args.includes("-h"))) {
+    await help(["lens"]);
+} else if (first === "lens") {
+    // jig-core's own command list may not import a plugin, so the launcher starts this one itself.
+    await loadHooks();
+    let lens;
+    try {
+        lens = await import("../plugins/jig-lens/src/cli.ts");
+    } catch (error) {
+        process.stderr.write(`jig lens could not start: ${String(error?.message ?? error)}\n`);
+        process.exit(1);
+    }
+    process.exit(await lens.run(args.slice(1)));
 } else if (JIG_COMMANDS.has(first)) {
     await loadHooks();
     let main;

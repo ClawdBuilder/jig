@@ -18,14 +18,29 @@ first time it uses it, where that helps.
 | **Kind** | In a tool table: `read`, `local write` (this machine) or `external write` (a service). |
 | **Section** | A plugin's own part of `jig.json`, such as `git` or `jira`. An error names the key. |
 | **Workspace** | The folder Pi started in, or the repository folder that holds it. |
-| **Adapter** | A small piece of a plugin that speaks one outside system, such as one CI system or one log backend. |
+| **Adapter (of a plugin)** | A small piece of a plugin that speaks one outside system, such as one CI system or one log backend. |
 
 - **A company plugin** is never part of this repository. The one exception is [`examples/jig-acme`](../examples/jig-acme/README.md),
   a made-up company's plugin that shows how to write one.
 - **Kind** also says whether the action asks you first, such as `external write, asks`.
 - **A section** is checked by its plugin, which starts with defaults when it is wrong.
 - **A workspace** is where `jig-git` finds repositories.
-- **An adapter** that lacks an action refuses it, naming it.
+- **An adapter** that lacks an action refuses it, naming it. The word is always "of a plugin"; what joins an agent to Jig is an
+  [agent adapter](#other-agents).
+
+## Other agents
+
+| Term | Meaning |
+|---|---|
+| **Engine** | The part of `jig-core` that classifies, decides, runs and records a call. It needs no Pi. |
+| **Gateway** | Jig's MCP server, `jig-gateway`: it offers Jig's tools to an agent that is not Pi. |
+| **Agent adapter** | What joins one agent to the engine: Pi's extension, or a plugin that starts the gateway. |
+| **Connector** | A plugin's `src/connector.ts`: it hands the plugin's tools to the gateway. |
+
+- **The engine** is the same code in Pi and behind the gateway, so one set of rules and one record serve every agent.
+- **The gateway** is not a company's network part: that is a **proxy**, or a **sign-on service** where someone signs in.
+- **The Claude Code plugin** is the first agent adapter besides Pi's ([Use it in Claude Code](../plugins/jig-core/docs/gateway.md#use-it-in-claude-code)).
+- **A connector** is listed in `package.json` under `jig.connectors`. Today only `jig-git` has one.
 
 ## Rules and decisions
 
@@ -91,7 +106,7 @@ evidence is **held**. **Credential** sources are in
 - **A secret reference** is resolved by `jig-core` just before the tool runs
   (see [Secrets](secrets.md)).
 - **A sign-in service** is asked for the headers of one request, as a single
-  sign-on gateway would give them. Their values are removed from output like
+  sign-on service would give them. Their values are removed from output like
   secrets.
 - **A transport** can go through a local sign-in proxy that holds the session,
   so the tool never sees a token. A tool sends through it by name.

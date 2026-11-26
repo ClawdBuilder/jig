@@ -14,7 +14,7 @@ import { cleanResult, finish } from "./engine-results.ts";
 import { run } from "./engine-run.ts";
 import { beginSession, start, stop } from "./engine-session.ts";
 import type { EngineTool, ToolResult } from "./engine-tool.ts";
-import type { ErrorKind } from "./records.ts";
+import type { EnforcedBy, ErrorKind } from "./records.ts";
 import type { WatchMessage } from "./watch/message.ts";
 
 export type { CallState, EngineOptions, JigState } from "./engine-state.ts";
@@ -42,6 +42,8 @@ export interface ToolInfo {
 export interface EngineHost {
     agent: { name: string; version: string };
     session: { id: string; parent?: string; role: string };
+    /** Which enforcement point this host is, for the record of a call. Pi leaves it out. */
+    enforcedBy?: EnforcedBy;
     /** The working folder of this call. */
     cwd: string;
     /** False: an ask is refused, as "no screen" is today. */

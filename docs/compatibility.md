@@ -48,9 +48,13 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 | The `JIG_*` environment variables | `surface.test.ts` |
 | Every tool name and its actions, every slash command, every `jig.json` section | `plugin-surface.test.ts` |
 | Which parts of `jig-core` a plugin may import | `boundaries.test.ts` |
-| The package's `jig.agents.pi` minimum and tested versions | `surface.test.ts`, `pi-requirement.test.ts` |
+| The package's `jig.agents` minimum and tested versions, for Pi and for Claude Code | `surface.test.ts`, `pi-requirement.test.ts` |
+| The package's `jig.connectors`: the plugins whose tools the gateway offers | `surface.test.ts` |
+| The commands `jig` and `jig-gateway`, and the built file `plugins/jig-core/dist/jig-gateway.mjs` | `surface.test.ts` |
 | The `updates.check` setting | `surface.test.ts` |
 | The `transports` section and its relay fields | `surface.test.ts` |
+| The gateway's tools (`pr`, `release`, `jig`), the actions it keeps back and the `dir` parameter | `gateway-process.test.ts` |
+| The Claude Code plugin: its names, its server, the `jig_home` value and the allow rule | `adapters-claude-code.test.ts` |
 
 - **The handle** is `Symbol.for("jig.core.api/v1")` on `globalThis`, which holds the `JigApi`. Plugins that load before `jig-core` wait
   on `Symbol.for("jig.core.pending/v1")`. `JigApi.version` is `1`.
@@ -59,17 +63,25 @@ Jig's public interface. Each row is pinned by a test in `plugins/jig-core/test/`
 - **The kit** is the stateless helpers in `plugins/jig-core/src/kit/`. Every name they export is public.
 - **Registering a tool** is `registerJigTool` and `registerEngineTool`, both in `plugins/jig-core/src/kit/tools.ts`. `registerEngineTool` takes an
   `EngineTool`, a tool that names no agent ([the plugin contract](../plugins/jig-core/docs/plugin-contract.md)). A declaration's `classify` and
-  `preview` also get the working folder of the call as one more, optional argument, which a tool may ignore.
+  `preview` also get the working folder of the call as one more, optional argument, which a tool may ignore. The same file exports the types
+  `EngineTool`, `CallContext`, `ToolResult`, `JsonSchema` and `ConnectorModule`, as types only: a plugin's `connector.ts`, which hands its tools to an agent
+  that is not Pi, imports them with `import type`.
 - **Tools and actions** are what the model is told it can call, what a person's rules in `jig.json` name, and what a company plugin's
   classify rules match. A name is a promise.
 - **The record line** is one JSON object per call or turn in `<state>/records/`, which `jig-lens` and dashboards read
   ([Records](../plugins/jig-core/docs/records.md)).
-- **The version data** is `jig.agents.pi` in `package.json`: the oldest Pi a release runs with, and the one it is tested with.
+- **The version data** is `jig.agents` in `package.json`: for Pi (`pi`) and for Claude Code (`claude-code`), the oldest version a release runs with, and the one it is tested with.
   A company package may cap Jig with `jig.range` in its own package.json.
 - **The `updates` section** turns the background update notice off with `updates.check: false`; a company plugin can set
   that default, and the person's file wins.
 - **The `transports` section** declares relay transports. Its `kind` is `"relay"`; `url`, `token`, `client`, `services`
   and `fields` are the entry's fields, and a company plugin can default all but the person's token.
+- **The commands** are `jig` and `jig-gateway`, the `bin` entries of the package. An agent's configuration starts the gateway as the command or as `node <package>/plugins/jig-core/dist/jig-gateway.mjs`, so that path is a name too.
+- **The gateway's tools** are what an agent that is not Pi is told it can call: `pr` and `release` with the actions of the Pi tools, less `pr watch` and `release tag_create`, each with an
+  optional `dir`, and `jig` with the action `status` ([Gateway](../plugins/jig-core/docs/gateway.md)).
+- **The Claude Code plugin** is the package root: the plugin `jig` in the marketplace `clawdbuilder` (`.claude-plugin/`), with one MCP server named `jig`, so
+  its tools are `mcp__plugin_jig_jig__*`; the one value it asks for, `jig_home`; and the skill `jig:git`
+  ([Use it in Claude Code](../plugins/jig-core/docs/gateway.md#use-it-in-claude-code)).
 - **The variables** are `JIG_STATE_DIR`, `JIG_CONDITION`, `JIG_AGENT_ROLE`, `JIG_PARENT_SESSION`, `JIG_ROLE_POLICY`, `JIG_LENS_INDEX`,
   `JIG_LENS_DASHBOARDS` and `JIG_THEME_FOOTER`.
 - **Everything else in `jig-core`** is internal: any other file, the text of a message, the layout of `/jig`. It can change in any

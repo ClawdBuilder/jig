@@ -15,8 +15,8 @@ import type { Call, Planned } from "./previews.ts";
 import { digest, readOnly, reviewPreview } from "./previews.ts";
 import { baseBranch, resolveRepo } from "./repo.ts";
 import { git, gitOut, gitTry, mayHaveLanded, revParse, summaryOf, T_NETWORK, T_PUSH } from "./run.ts";
-import { at, buildTool } from "./tool.ts";
-import type { JigTool } from "./tool.ts";
+import { at, buildEngineTool } from "./tool.ts";
+import type { EngineTool } from "../../jig-core/src/kit/tools.ts";
 import { firstLines, plural } from "./text.ts";
 
 export const RELEASE_ACTIONS = {
@@ -44,7 +44,7 @@ const ReleaseParams = Type.Object(
                 minLength: 1,
                 maxLength: 1000,
                 description:
-                    "A folder in the workspace, or an absolute path inside a work tree. Omit it for the repo Pi runs in.",
+                    "A folder in the workspace, or an absolute path inside a work tree. Omit it for the repo you work in.",
             }),
         ),
         tag: Type.Optional(
@@ -131,7 +131,7 @@ function planTags(params: { repo?: string; pattern?: string; contains?: string; 
     const contains = params.contains === undefined ? undefined : checkRev(params.contains, "contains");
     const n = Math.max(1, Math.min(100, Math.trunc(params.n ?? 20)));
     return readOnly(`release tags in ${params.repo ?? "here"}`, async () => {
-        const repo = await resolveRepo(params.repo, call.signal);
+        const repo = await resolveRepo(params.repo, call.signal, call.cwd);
         const args = [
             "tag",
             "--list",
@@ -176,7 +176,7 @@ function planReleases(params: { repo?: string; tag?: string; n?: number }, call:
     const tag = params.tag === undefined ? undefined : checkTag(params.tag);
     const n = Math.max(1, Math.min(100, Math.trunc(params.n ?? 20)));
     return readOnly(`release releases in ${params.repo ?? "here"}`, async () => {
-        const repo = await resolveRepo(params.repo, call.signal);
+        const repo = await resolveRepo(params.repo, call.signal, call.cwd);
         const flags = await repoFlags(repo, call.settings, call.signal);
         if (tag !== undefined) {
             const r = ghJson<ReleaseDetail>(
@@ -241,7 +241,7 @@ async function planTagCreate(
     const tag = checkTag(params.tag);
     const message = checkCommitMessage(params.message);
     const target = params.target === undefined ? "HEAD" : checkRev(params.target, "target");
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const { signal } = call;
     if (await revParse(repo.root, `refs/tags/${tag}`, signal))
         throw new Error(`tag ${tag} already exists in ${repo.name}; a tag is never moved or deleted from here`);
@@ -269,7 +269,7 @@ async function planTagCreate(
 async function planTagPush(params: { repo?: string; tag?: string; remote?: string }, call: Call): Promise<Planned> {
     const tag = checkTag(params.tag);
     const remote = params.remote === undefined ? "origin" : checkRemote(params.remote);
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const { signal } = call;
     const object = (
         await gitTry(repo.root, ["rev-parse", "--verify", "--quiet", `refs/tags/${tag}`], { signal })
@@ -356,7 +356,7 @@ async function planReleaseCreate(params: CreateReleaseParams, call: Call): Promi
     const notes = params.notes === undefined ? "" : checkBody(params.notes, "notes");
     const target = params.target === undefined ? undefined : checkRev(params.target, "target");
     const generate = params.generate_notes === true;
-    const repo = await resolveRepo(params.repo, call.signal);
+    const repo = await resolveRepo(params.repo, call.signal, call.cwd);
     const { signal, settings } = call;
     const remote = await requireRemote(repo, settings, signal);
     const { slug } = remote;
@@ -431,7 +431,7 @@ async function planRelease(params: Readonly<Record<string, unknown>>, call: Call
     const p = params as never;
     // The releases are the forge's; the repository says which forge. Tags are git and need no answer.
     if (params.action === "releases" || params.action === "release_create") {
-        const repo = await resolveRepo(params.repo as string | undefined, call.signal);
+        const repo = await resolveRepo(params.repo as string | undefined, call.signal, call.cwd);
         const home = await forgeOf(repo, call.settings, call.signal);
         if (home.forge === "gitlab")
             return params.action === "releases"
@@ -454,14 +454,17 @@ async function planRelease(params: Readonly<Record<string, unknown>>, call: Call
     }
 }
 
-export const releaseTool: JigTool = buildTool({
+export const releaseTool: EngineTool = buildEngineTool({
     name: "release",
     label: "Release",
     description:
-        "Tags and releases: list, create, push. The user is asked before a tag or release is pushed or created. Read the git skill before your first release call.",
+        "Tags and releases: list, create, push. The user must approve before a tag or release is pushed or created. Read the git skill before your first release call.",
     promptSnippet: "Tags and releases: list, create, push",
     parameters: ReleaseParams,
     table: RELEASE_ACTIONS,
     classify: classifyRelease,
     plan: async (params, call) => planRelease(params, call),
+    // Calls run in order, and they work on the folder of the call.
+    sequential: true,
+    usesFolder: true,
 });

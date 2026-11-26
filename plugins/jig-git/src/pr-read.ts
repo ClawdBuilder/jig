@@ -95,7 +95,7 @@ function formatPr(repo: Repo, pr: PrDetail): string {
 
 export function planView(params: { repo?: string; number?: number; branch?: string }, call: Call): Planned {
     return readOnly(`pr view ${params.number ?? params.branch ?? "here"} in ${params.repo ?? "here"}`, async () => {
-        const repo = await resolveRepo(params.repo, call.signal);
+        const repo = await resolveRepo(params.repo, call.signal, call.cwd);
         const pr = await viewPr(repo, await selectorFor(repo, params, call.signal), call);
         return {
             text: formatPr(repo, pr),
@@ -127,7 +127,7 @@ export function planList(
     const head = params.branch === undefined ? undefined : checkBranch(params.branch);
     const limit = Math.max(1, Math.min(50, Math.trunc(params.limit ?? 20)));
     return readOnly(`pr list in ${params.repo ?? "here"}`, async () => {
-        const repo = await resolveRepo(params.repo, call.signal);
+        const repo = await resolveRepo(params.repo, call.signal, call.cwd);
         const flags = await repoFlags(repo, call.settings, call.signal);
         const args = [
             "pr",
@@ -214,7 +214,7 @@ export function planComments(
 ): Planned {
     const author = params.author === undefined ? undefined : checkLine(params.author, "author").replace(/^@/, "");
     return readOnly(`pr comments ${params.number ?? params.branch ?? "here"} in ${params.repo ?? "here"}`, async () => {
-        const repo = await resolveRepo(params.repo, call.signal);
+        const repo = await resolveRepo(params.repo, call.signal, call.cwd);
         const remote = await requireRemote(repo, call.settings, call.signal);
         const { slug } = remote;
         const number =

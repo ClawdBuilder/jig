@@ -97,7 +97,13 @@ The notes on single actions are in [Actions](docs/actions.md).
 - **Which repository.** Every action takes an optional `repo`: a folder name in
   the workspace, or an absolute path inside a work tree. Without it, a call
   means the repository Pi started in. The workspace is the folder Pi started
-  in, or, inside a repository, the folder that holds it.
+  in, or, inside a repository, the folder that holds it. For `pr` and `release`
+  the folder is the one the call is made in, which is the same folder in Pi.
+- **Outside Pi.** `src/connector.ts` hands `pr` and `release` to a host that runs tools with no Pi, such as a
+  gateway, with the registration of the `git` section. They are the same tool objects Pi registers, so the actions,
+  the rules and the previews are the same. The connector keeps two actions back for now, because they are
+  local writes that would run with no question: `pr watch` and `release tag_create`. The `git` tool, the two gates and the
+  comment watch are Pi's alone.
 - **The forge comes from the repository.** `github.com` is GitHub, `gitlab.com` is GitLab, an ssh alias is the host `ssh -G` says it is,
   and `git.forges` names a host that ssh cannot explain, such as a self-hosted GitLab. An origin on any other host is refused with
   the line that fixes it ([GitLab](docs/gitlab.md#which-forge-a-repository-is-on)).
@@ -180,7 +186,7 @@ listener that fails never undoes the push. The details are in
 ## Layout
 
 - `index.ts`: the entry Pi loads; it hands on to `src/index.ts`.
-- `src/`: the implementation, its checks and the parts it runs on.
+- `src/`: the implementation, its checks and the parts it runs on; `src/connector.ts` is the entry for a host that is not Pi.
 - `skills/`: the skill text; read it before the first call.
 - `test/`: the unit tests, fake hosts and real-program tests.
 

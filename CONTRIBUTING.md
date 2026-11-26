@@ -31,7 +31,9 @@ Every plugin under `plugins/` is a Pi package, loaded through `package.json`'s `
 | `examples/jig-acme/` | the one example company plugin, a template to copy |
 | `scripts/` | the gates `npm run check` runs, and the release scripts |
 | `test/` | the root tests, the isolated host in `test/support/`, the eval corpus in `test/eval/` |
-| `bin/` | `jig.mjs`, the `pi` launcher and the host hooks; [The launcher](docs/launcher.md) |
+| `bin/` | `jig.mjs`, `jig-gateway.mjs`, the `pi` launcher and the host hooks; [The launcher](docs/launcher.md) |
+| `adapters/` | what other agents read: the Claude Code skill; [Gateway](plugins/jig-core/docs/gateway.md) |
+| `.claude-plugin/` | the Claude Code plugin's file and its marketplace file: the package root is the plugin |
 | `docs/` | the pages and diagrams, including the plugin map and the [writing guide](docs/writing.md) |
 | `.github/` | the workflows, the PR and issue templates, CODEOWNERS, the integration services |
 | `AGENTS.md`, `CONTRIBUTING.md`, `README.md` | the rules an agent reads first, this page, the front page |
@@ -121,6 +123,8 @@ chmod +x .git/hooks/pre-push
 - **The agent contract, if the folder has one.** Many folders have an `EGM.md` for coding agents: its interface, invariants and
   side effects. When a change alters one of those, update it in the same commit. No test compares it with the code, so a reviewer
   checks it by hand.
+- **The built gateway, if its code changes.** `plugins/jig-core/dist/` is generated and committed. A change to gateway code, to a connector or to a bundled dependency needs `npm run build:gateway`, and
+  `npm run check` fails with that command when the built files are stale ([Gateway](plugins/jig-core/docs/gateway.md#the-built-gateway)).
 - **A changelog line, if a user would notice.** Add a file in [changelog.d/](changelog.d/): its `### Added`, `### Changed`,
   `### Fixed` or `### Removed` heading and one line, written for the person reading it after an update.
 - **A decision, if a public name goes.** Removing or renaming anything in [Compatibility](docs/compatibility.md) needs a dated

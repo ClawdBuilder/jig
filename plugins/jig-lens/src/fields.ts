@@ -52,6 +52,10 @@ export const CALL: readonly Field[] = [
     optional("parentToolCallId"),
     optional("spill"),
     optional("facts", "json"),
+    // The agent the call came from and the place that decided it. Last, so that an index made before them has its
+    // columns in the same order as a new one, and a line written before them leaves both empty.
+    optional("agentName"),
+    optional("enforcedBy"),
 ];
 
 export const TURN: readonly Field[] = [

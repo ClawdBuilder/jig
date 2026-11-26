@@ -5,7 +5,7 @@
 //
 // The integration suites (`npm run test:it`) keep what names their services (`JIG_IT_*`, `NODE_EXTRA_CA_CERTS`), the token that the
 // GitHub suites sign in with, and the kubeconfig that the cluster suite reads.
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
@@ -52,6 +52,14 @@ for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", 
 for (const name of ["XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_RUNTIME_DIR"]) {
     delete env[name];
 }
+
+// Claude Code is an agent that `jig doctor` looks for on PATH and starts to ask for its version and its plugins. No test may start the real one, so
+// the first folder on PATH holds a `claude` that exits at once: the doctor's line about it is the same on every machine.
+const bin = path.join(root, "bin");
+mkdirSync(bin, { mode: 0o700 });
+writeFileSync(path.join(bin, "claude"), "#!/bin/sh\nexit 1\n");
+chmodSync(path.join(bin, "claude"), 0o755);
+env.PATH = `${bin}${path.delimiter}${env.PATH ?? ""}`;
 
 env.HOME = path.join(root, "home");
 env.GIT_CONFIG_GLOBAL = path.join(root, "gitconfig");

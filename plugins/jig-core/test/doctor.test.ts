@@ -11,6 +11,7 @@ import { doctorMarkers, formatDoctor, runDoctor } from "../src/doctor.ts";
 import type { DoctorContext, DoctorLine, DoctorOptions, DoctorReport } from "../src/doctor.ts";
 import type { OnboardingEntry } from "../src/contract.ts";
 import { countQuickIssues, findOnPath } from "../src/doctor-secrets.ts";
+import { jigPackage } from "../src/pi-version.ts";
 
 let home: string;
 let agentDir: string;
@@ -85,7 +86,13 @@ function options(overrides: Partial<DoctorOptions> = {}): DoctorOptions {
         jigVersion: "0.3.0",
         home,
         pathLookup: () => "/usr/bin/program",
-        run: async () => ({ code: 0, stdout: "", stderr: "", timedOut: false }),
+        // Every program answers with nothing, but the built gateway, which the "Other agents" group starts, prints this package's version.
+        run: async (file) => ({
+            code: 0,
+            stdout: file === process.execPath ? `${jigPackage().version}\n` : "",
+            stderr: "",
+            timedOut: false,
+        }),
         ...overrides,
     };
 }
@@ -701,8 +708,8 @@ describe("/jig doctor logins and sandbox", () => {
             }),
             options({
                 pathLookup: (program) => (program === "gh" ? "/usr/bin/gh" : undefined),
-                run: async (_file, args) => {
-                    asked = args;
+                run: async (file, args) => {
+                    if (file === "gh") asked = args;
                     return {
                         code: 1,
                         stdout: "github.com\n  ✓ Logged in to github.com account acme (keyring)\n  X Failed to log in to github.com account old\n",

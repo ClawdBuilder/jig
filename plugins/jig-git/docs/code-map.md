@@ -10,7 +10,8 @@ Read it with the code open. Back to the [jig-git overview](../README.md).
 | `api-output.ts` | The answer of `gh api -i` and `glab api -i`: a status line, the headers, a… | `github.ts`, `gitlab.ts`, `watch-core.ts` |
 | `ci.ts` | What `pr view` says about the checks of a pull request, in one line. The… | `gitlab-pr-read.ts`, `gitlab-pr-write.ts`, `pr-read.ts` and 1 more |
 | `clone.ts` | clone: fetch a GitHub repository into a new folder of the workspace. It runs… | `git.ts` |
-| `config.ts` | The `git` section of jig.json: what it may hold, how it is checked, and the… | `events.ts`, `fetch-guard.ts`, `forge.ts` and 10 more |
+| `config.ts` | The `git` section of jig.json: what it may hold, how it is checked, and the… | `connector.ts`, `events.ts`, `fetch-guard.ts` and 11 more |
+| `connector.ts` | The entry for an agent that is not Pi (a gateway): the tools it offers there, and what it… | a gateway; no file of jig-git imports it |
 | `events.ts` | The announcement of a push. jig-git does not watch CI, and it cannot import… | `git-remote.ts`, `gitlab-pr-write.ts`, `index.ts` and 1 more |
 | `fetch-guard.ts` | Who a `fetch` talks to. A fetch is a read, and reads do not ask, but it is… | `index.ts` |
 | `forge.ts` | Which forge a repository is on. The decision is made from the host of origin… | `events.ts`, `gitlab-pr-read.ts`, `gitlab-pr-write.ts` and 5 more |
@@ -31,26 +32,26 @@ Read it with the code open. Back to the [jig-git overview](../README.md).
 | `guarded.ts` | What a tree-moving git operation would change in the files that run later… | `git-branch.ts`, `git-changes.ts`, `git-integrate.ts` and 1 more |
 | `index.ts` | jig-git: git, GitHub and GitLab for the agent. Three tools, `git`, `pr` and… || Pi |
 | `names.ts` | Checks on every name, path and text the model supplies, before it reaches a… | `clone.ts`, `config.ts`, `fetch-guard.ts` and 13 more |
-| `onboarding.ts` | What a git needs from a person: the `gh` login, and the `gh` account for each set of repositories | `index.ts` |
+| `onboarding.ts` | What a git needs from a person: the `gh` login, and the `gh` account for each set of repositories | `config.ts` |
 | `origin-host.ts` | The real host behind the host in origin's address. An ssh origin often names… | `fetch-guard.ts`, `forge.ts`, `github.ts` and 1 more |
 | `params.ts` | What a tool with an `action` parameter accepts, written once: for each… | `git.ts`, `pr.ts`, `release.ts` and 1 more |
 | `pr-read.ts` | Pull requests, read only: view, list and comments. Output is bounded plain… | `gitlab-pr-read.ts`, `pr-watch-tool.ts`, `pr-write.ts` and 1 more |
 | `pr-watch-tool.ts` | `pr watch`: starts the watch on the comments of a pull request (see… | `pr.ts` |
 | `pr-watch.ts` | The watch on the comments of a pull request. People answer a pull request on… | `gitlab-pr-write.ts`, `gitlab-pr.ts`, `index.ts` and 2 more |
 | `pr-write.ts` | Pull request writes: create, edit, ready, comment, reply, resolve, review… | `gitlab-pr-write.ts`, `pr-watch-tool.ts`, `pr.ts` |
-| `pr.ts` | The `pr` tool: pull requests and reviews on GitHub, through gh, and merge… | `index.ts` |
+| `pr.ts` | The `pr` tool: pull requests and reviews on GitHub, through gh, and merge… | `connector.ts`, `index.ts` |
 | `previews.ts` | Plan, preview, run. Each action works out what it would do (checks the… | `clone.ts`, `git-branch.ts`, `git-changes.ts` and 16 more |
-| `release.ts` | The `release` tool: tags and releases. Creating a tag is local. Pushing a… | `index.ts` |
+| `release.ts` | The `release` tool: tags and releases. Creating a tag is local. Pushing a… | `connector.ts`, `index.ts` |
 | `repo.ts` | Which repository a call means. The workspace is the folder Pi was started… | `clone.ts`, `events.ts`, `fetch-guard.ts` and 19 more |
 | `run.ts` | git, through jig-core. jig-core starts git from an argument list with hooks,… | `clone.ts`, `fetch-guard.ts`, `git-branch.ts` and 17 more |
 | `runs-later-gate.ts` | A git operation that changes the working tree can write a file that runs… | `index.ts` |
 | `text.ts` | Small helpers for the plain text every jig-git tool returns to the model. | `git-changes.ts`, `git-guards.ts`, `git-integrate.ts` and 9 more |
-| `tool.ts` | What the four tools have in common. A tool is its parameter schema, its… | `git.ts`, `index.ts`, `pr.ts` and 1 more |
+| `tool.ts` | What the three tools have in common. A tool is its parameter schema, its… | `git.ts`, `pr.ts`, `release.ts` |
 | `watch-core.ts` | What the comment watch of both forges shares (see pr-watch.ts): what a watch… | `gitlab-watch.ts`, `pr-watch.ts` |
 
 ## One call: `git status`
 
-1. **The action.** `index.ts` registers the tool with Pi. `tool.ts` calls `checkParams` (`params.ts`) and `classify`.
+1. **The action.** `index.ts` registers the tool with Pi. `tool.ts` calls `checkParams` (`params.ts`) and `classify`. (`pr` and `release` are built by `buildEngineTool` in the same file, and `connector.ts` hands them to an agent that is not Pi.)
 2. **The plan.** For `status`, `git.ts` calls `planStatus` in `git-read.ts`, which wraps the read in `readOnly` (`previews.ts`).
 3. **The repository.** `git-read.ts` resolves the repository through `repo.ts`; `repoHere` runs `git rev-parse` through `exec.ts`.
 4. **The command.** `statusOne` builds `git status --porcelain=v2 --branch` and runs it through `exec.ts`, with the sandbox and timeout.

@@ -6,6 +6,7 @@
             "**",
             "!**/node_modules",
             "!plugins/jig-review/web",
+            "!plugins/jig-core/dist",
             "!plugins/jig-logs/test/golden",
             "!plugins/jig-theme/themes",
             "!package-lock.json"

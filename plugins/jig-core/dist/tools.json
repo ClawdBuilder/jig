@@ -1,0 +1,273 @@
+[
+    {
+        "name": "jig",
+        "title": "Jig",
+        "description": "Jig's own tool. status: the last calls Jig decided in this server, with the decision or the reason a call was refused, and any problem in the settings.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "status"
+                    ],
+                    "description": "- status: what Jig decided lately, and what is wrong with its settings"
+                }
+            },
+            "required": [
+                "action"
+            ],
+            "additionalProperties": false
+        },
+        "connector": "jig-core"
+    },
+    {
+        "name": "pr",
+        "title": "Pull request",
+        "description": "Pull and merge requests by the repository's origin: view, comments, create, review, merge. Every write needs the user's approval first. Read the git skill before your first pr call.",
+        "inputSchema": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "view",
+                        "list",
+                        "comments",
+                        "create",
+                        "edit",
+                        "ready",
+                        "comment",
+                        "reply",
+                        "resolve",
+                        "review",
+                        "merge"
+                    ],
+                    "description": "- view: state, review, checks and body\n- list: pull requests by state, author or branch\n- comments: conversation, reviews and line comments, with thread ids\n- create: open one from a pushed branch; returns the open one if there is one\n- edit: title, body, base, labels, reviewers\n- ready: draft to ready for review\n- comment: a comment on the conversation\n- reply: a reply in a review thread\n- resolve: resolve a review thread\n- review: comment or request changes; never approves\n- merge: merge, squash or rebase at the head you saw; or auto-merge"
+                },
+                "repo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Folder/path, not owner/name; default repo."
+                },
+                "number": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Pull/merge request number."
+                },
+                "branch": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Head branch; default current."
+                },
+                "base": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Base; default git.base or default branch."
+                },
+                "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "description": "One line."
+                },
+                "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60000,
+                    "description": "Markdown; create omit template; edit replaces."
+                },
+                "draft": {
+                    "type": "boolean",
+                    "description": "create: open it as a draft."
+                },
+                "method": {
+                    "type": "string",
+                    "enum": [
+                        "merge",
+                        "squash",
+                        "rebase"
+                    ],
+                    "description": "How to merge."
+                },
+                "auto": {
+                    "type": "boolean",
+                    "description": "merge: turn on auto-merge instead of merging now."
+                },
+                "event": {
+                    "type": "string",
+                    "enum": [
+                        "comment",
+                        "request_changes"
+                    ],
+                    "description": "review: comment/request changes; a person approves."
+                },
+                "thread": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 200,
+                    "description": "Thread id from pr comments."
+                },
+                "author": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "list/ comments: author or @me."
+                },
+                "unresolved": {
+                    "type": "boolean",
+                    "description": "comments: unresolved only."
+                },
+                "state": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "closed",
+                        "merged",
+                        "all"
+                    ],
+                    "description": "list: state; default open."
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50,
+                    "description": "list: count, default 20."
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "maxItems": 30,
+                    "description": "edit: labels to add."
+                },
+                "reviewers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "maxItems": 30,
+                    "description": "edit: reviewers. GitLab: usernames."
+                },
+                "dir": {
+                    "type": "string",
+                    "description": "The folder you work in, as an absolute path to a folder that exists. Omit it for the folder the Jig server was started in. To use another repository of the workspace, name it with repo."
+                }
+            },
+            "additionalProperties": false
+        },
+        "connector": "jig-git"
+    },
+    {
+        "name": "release",
+        "title": "Release",
+        "description": "Tags and releases: list, create, push. The user must approve before a tag or release is pushed or created. Read the git skill before your first release call.",
+        "inputSchema": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "tags",
+                        "releases",
+                        "tag_push",
+                        "release_create"
+                    ],
+                    "description": "- tags: tags: the latest matching a pattern, or those containing a commit\n- releases: releases, listed; or one in full\n- tag_push: push a tag (asks)\n- release_create: a GitHub or GitLab release (asks)"
+                },
+                "repo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "A folder in the workspace, or an absolute path inside a work tree. Omit it for the repo you work in."
+                },
+                "tag": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "A tag name. releases: show this release in full."
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 10000,
+                    "description": "tag_create: the tag's message."
+                },
+                "target": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "tag_create: the commit to tag. Default HEAD. release_create: the branch or commit a new tag points at. Default: the default branch."
+                },
+                "remote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "tag_push: the remote. Default origin."
+                },
+                "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "description": "release_create: the release title. Default: the tag."
+                },
+                "notes": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60000,
+                    "description": "release_create: the release notes, Markdown."
+                },
+                "draft": {
+                    "type": "boolean",
+                    "description": "release_create: save it as a draft. GitHub only."
+                },
+                "prerelease": {
+                    "type": "boolean",
+                    "description": "release_create: mark it as a pre-release. GitHub only."
+                },
+                "generate_notes": {
+                    "type": "boolean",
+                    "description": "release_create: let GitHub write the notes. GitHub only."
+                },
+                "pattern": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "tags: a glob such as v1.*."
+                },
+                "contains": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "tags: only tags that contain this commit."
+                },
+                "n": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "tags, releases: how many. Default 20."
+                },
+                "dir": {
+                    "type": "string",
+                    "description": "The folder you work in, as an absolute path to a folder that exists. Omit it for the folder the Jig server was started in. To use another repository of the workspace, name it with repo."
+                }
+            },
+            "additionalProperties": false
+        },
+        "connector": "jig-git"
+    }
+]

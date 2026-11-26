@@ -62,7 +62,8 @@ show how; [Plugins](docs/plugins.md) is the map of every tool.
 - **Linux and WSL2:** tested in CI and daily use. **macOS:** runs, with Seatbelt in the sandbox; `filtered` and `ask`
   networking mean `off` there ([sandbox](plugins/jig-sandbox/docs/network.md)). **Native Windows:** not yet, because of
   the sandbox.
-- **Agent:** Pi 1.4 or later, tested with 1.5.2; Jig is a set of Pi plugins, and other agents are not supported.
+- **Agent:** Pi 1.4 or later, tested with 1.5.2; Jig is a set of Pi plugins. Claude Code 2.1.326 or later can read pull requests and releases
+  through Jig's gateway ([Use it in Claude Code](plugins/jig-core/docs/gateway.md#use-it-in-claude-code)); no other agent is supported yet.
 
 ![A dark browser code review with two Java diff files, a file list, a review summary and Approve in the header; example data](docs/img/review-dark.png)
 

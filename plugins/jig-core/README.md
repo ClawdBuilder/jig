@@ -155,6 +155,7 @@ Every file: [Code map](docs/code-map.md).
 - [Records](docs/records.md): Read when you need the record.
 - [Running programs](docs/running-programs.md): Read before a program runs.
 - [Plugin contract](docs/plugin-contract.md): Read before you add a plugin.
+- [Gateway](docs/gateway.md): Read before you start the MCP server for an agent that is not Pi.
 - [Reuse](../../docs/reuse.md#tool-manager): Read about Reuse.
 
 **Set it up**

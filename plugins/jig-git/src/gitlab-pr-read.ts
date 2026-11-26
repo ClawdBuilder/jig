@@ -234,7 +234,7 @@ export function planView(
     home: GitlabHome,
 ): Planned {
     return readOnly(`pr view ${params.number ?? params.branch ?? "here"} in ${params.repo ?? "here"}`, async () => {
-        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal), call };
+        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
         const mr = await getMr(gl, await mrNumber(gl, params));
         return {
             text: formatMr(gl, mr, await checksOf(gl, mr)),
@@ -260,7 +260,7 @@ export function planList(
     const source = params.branch === undefined ? undefined : checkBranch(params.branch);
     const limit = Math.max(1, Math.min(50, Math.trunc(params.limit ?? 20)));
     return readOnly(`pr list in ${params.repo ?? "here"}`, async () => {
-        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal), call };
+        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
         const rows = await get<Mr[]>(
             gl,
             "glab api (merge requests)",
@@ -343,7 +343,7 @@ export function planComments(
 ): Planned {
     const author = params.author === undefined ? undefined : checkLine(params.author, "author").replace(/^@/, "");
     return readOnly(`pr comments ${params.number ?? params.branch ?? "here"} in ${params.repo ?? "here"}`, async () => {
-        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal), call };
+        const gl: Gl = { home, repo: await resolveRepo(params.repo, call.signal, call.cwd), call };
         const number = await mrNumber(gl, params);
         const { items: all, more } = await glabPages<GlDiscussion>(
             home,

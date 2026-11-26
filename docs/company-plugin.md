@@ -130,17 +130,17 @@ for `transports` with `addSectionDefaults("transports", ...)`, and let the perso
 your plugin cannot also be declared in `transports`, in either order. Prefer this for a session relay that follows the
 [relay protocol](relay-protocol.md); write a transport only for a route that needs code the protocol does not
 carry.
-[`transport.ts`](../examples/jig-acme/src/transport.ts) hands the request to a gateway on this machine, as an HTTP proxy is asked.
+[`transport.ts`](../examples/jig-acme/src/transport.ts) hands the request to a proxy on this machine, asking it the way a client asks an HTTP proxy.
 
 - **A transport gets** the system, method, address, headers and a text body, and **returns** a status, headers in lower case and
   a text body. It carries `GET`, `POST`, `PUT`, `PATCH` and `DELETE` only.
 - **It is told the caller's limits:** `maxBytes` (read no more, and one byte past it so `truncated` can be set) and `timeoutMs`.
-  [`transport.ts`](../examples/jig-acme/src/transport.ts) stops reading at the first and drops a stalled gateway at the second.
-- **A header the gateway repeated is returned as a list** (`set-cookie` above all), one entry for each time it was sent.
+  [`transport.ts`](../examples/jig-acme/src/transport.ts) stops reading at the first and drops a stalled proxy at the second.
+- **A header the proxy repeated is returned as a list** (`set-cookie` above all), one entry for each time it was sent.
 - **It fails with a line that names no address.** The address may hold a query, and `jig-core` never repeats it either.
 - **It honours the call's signal,** so a cancelled call stops the request.
-- **Nothing in clear text crosses a network.** The example accepts only a gateway on this machine, because it speaks plain http
-  to it. A remote gateway needs CONNECT and TLS.
+- **Nothing in clear text crosses a network.** The example accepts only a proxy on this machine, because it speaks plain http
+  to it. A remote proxy needs CONNECT and TLS.
 
 ### 5. Tunnels
 

@@ -106,3 +106,52 @@ describe("start, beginSession and stop", () => {
         await engine.stop();
     });
 });
+
+describe("the update check that beginSession starts", () => {
+    /** An engine for a session that is not a child agent, with the notice on and the registry named: only the switch can stop the check. */
+    function checkedWorld(skipUpdateCheck?: boolean) {
+        return open({
+            engine: {
+                env: { ...process.env, PI_OFFLINE: "", PI_SUBAGENT_ID: "", PI_SUBAGENT_CHILD: "" },
+                ...(skipUpdateCheck === undefined ? {} : { skipUpdateCheck }),
+            },
+        });
+    }
+
+    /** How many times the registry was asked while `run` ran. */
+    async function registryAsked(run: () => void): Promise<number> {
+        const original = globalThis.fetch;
+        let asked = 0;
+        globalThis.fetch = (async () => {
+            asked += 1;
+            throw new Error("offline");
+        }) as typeof fetch;
+        try {
+            run();
+            await new Promise<void>((resolve) => setImmediate(resolve));
+        } finally {
+            globalThis.fetch = original;
+        }
+        return asked;
+    }
+
+    test("starts as it did before, by default: a session with no screen asks the registry", async () => {
+        const { engine, host } = checkedWorld();
+        engine.start(host);
+        assert.equal(engine.state.skipUpdateCheck, false);
+        assert.equal(await registryAsked(() => engine.beginSession()), 1);
+    });
+
+    test("is left out when the host says so, and nothing else of beginSession is", async () => {
+        const world = checkedWorld(true);
+        const { engine, host } = world;
+        const folder = path.join(world.stateDir, "records");
+        mkdirSync(folder, { recursive: true });
+        const old = path.join(folder, "2020-01-01.jsonl");
+        writeFileSync(old, "{}\n");
+        engine.start(host);
+        assert.equal(engine.state.skipUpdateCheck, true);
+        assert.equal(await registryAsked(() => engine.beginSession()), 0);
+        assert.equal(existsSync(old), false, "the old records are still removed");
+    });
+});

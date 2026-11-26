@@ -28,7 +28,7 @@ paths (see [Permissions](permissions.md#the-floor-what-configuration-cannot-chan
 |---|---|---|---|
 | [`jig-core`](../plugins/jig-core/README.md) | built | `watch`; the tool manager and the `/jig` commands | 1 |
 | [`jig-git`](../plugins/jig-git/README.md) | built | `git`, `pr`, `release` | 2 |
-| [`jig-lens`](../plugins/jig-lens/README.md) | built | none: the `/lens` command | 2 |
+| [`jig-lens`](../plugins/jig-lens/README.md) | built | none: the `/lens` command, and `jig lens` in a terminal | 2 |
 | [`jig-sandbox`](../plugins/jig-sandbox/README.md) | built | `bash` (replaces Pi's), `bg_output`, `bg_list`, `bg_kill`; the `/sandbox` and `/ps` commands | 2 |
 | [`jig-workflow`](../plugins/jig-workflow/README.md) | built | `workflow`; the `/workflow` command, and a gate in `jig-core` | 3 |
 | [`jig-memory`](../plugins/jig-memory/README.md) | built | `ticket` (pasted evidence, open checks); ticket folders, cards, recall and `/ticket` | 3 |
